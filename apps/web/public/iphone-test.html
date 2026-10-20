@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="tr" style="color-scheme: light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<!-- iPhone denemesi (telefon bildirimi Tur 2): Mert'in gerçek iPhone'da iOS'un kendi davranışını ölçtüğü sayfa.
+     Giriş yok, sunucuya bir şey göndermez; cevaplar yalnız bu tarayıcıda (localStorage) durur.
+     Bilerek manifest bağlantısı yok: ana ekrana eklenince Newfork'un /app'i değil bu sayfa açılır. -->
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NF Test">
+<title>NF Test · iPhone denemesi</title>
+<style>
+  :root {
+    --theme-surface: #ffffff; --theme-surface-soft: #f7f9f8; --theme-surface-muted: #f0f3f1;
+    --theme-text: #17221e; --theme-muted: #66716c; --theme-border: #dce3df;
+    --theme-accent: #176954; --theme-accent-soft: #dbece5; --warn-soft: #fbf0dc; --warn: #6b4708;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--theme-surface-muted); color: var(--theme-text); font: 16px/1.45 -apple-system, "Inter", system-ui, sans-serif;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  main { max-width: 560px; margin: 0 auto; display: grid; gap: 12px; }
+  h1 { font-size: 22px; margin: 4px 0 0; }
+  h2 { font-size: 15px; margin: 12px 0 0; color: var(--theme-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .card { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+  .card h3 { margin: 0; font-size: 17px; }
+  .card p { margin: 0; }
+  .n { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 12px; background: var(--theme-accent-soft); color: var(--theme-accent); font-size: 13px; font-weight: 700; margin-right: 6px; }
+  .muted { color: var(--theme-muted); font-size: 14px; }
+  .note { background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
+  dt { color: var(--theme-muted); } dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+  button { font: inherit; font-weight: 600; min-height: 44px; border-radius: 10px; border: 1px solid var(--theme-border); background: var(--theme-surface); color: var(--theme-text); padding: 0 14px; }
+  button.go { background: var(--theme-accent); border-color: var(--theme-accent); color: #fff; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ans { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ans label { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--theme-border); border-radius: 20px; font-size: 14px; }
+  .ans input:checked + span { font-weight: 700; color: var(--theme-accent); }
+  textarea { font: inherit; font-size: 14px; width: 100%; min-height: 44px; border: 1px solid var(--theme-border); border-radius: 10px; padding: 8px 10px; }
+  .out:empty { display: none; }
+  .out { font-size: 14px; font-weight: 600; color: var(--theme-accent); min-height: 1em; }
+  pre { white-space: pre-wrap; font-size: 12px; background: var(--theme-surface-soft); border-radius: 10px; padding: 10px; margin: 0; max-height: 280px; overflow: auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>iPhone denemesi</h1>
+  <p class="muted">Telefon bildirimi akışı için iPhone'un kendi davranışını ölçüyoruz. Yaklaşık 15 dakika. Başlamadan önce ekran kaydını aç (Denetim Merkezi → kayıt düğmesi). Her adımda gördüğünü işaretle; sonda “Sonuçları kopyala” ile bana yapıştır.</p>
+
+  <section class="card" aria-label="Bu cihaz">
+    <h3>Bu cihaz</h3>
+    <dl id="dev"></dl>
+  </section>
+
+  <h2>A · Safari'de (bu sayfa açıkken)</h2>
+
+  <section class="card" data-step="1">
+    <h3><span class="n">1</span>Safari'nin çubuğu</h3>
+    <p>Alttaki adres çubuğuna bak. Share (kare ve ok) nerede?</p>
+    <div class="ans" data-q="1" data-opts="Çubukta görünüyor|Önce ≡ (sol), sonra menüde|Önce ••• (sağ), sonra menüde|Başka yerde"></div>
+    <textarea data-note="1" placeholder="Not (isteğe bağlı): ≡ menüsünde ne var?"></textarea>
+  </section>
+
+  <section class="card" data-step="2">
+    <h3><span class="n">2</span>Sayfanın açtığı paylaş sayfası</h3>
+    <p>Düğmeye bas. Açılan listede “Add to Home Screen” var mı? Varsa ekleme, kapat.</p>
+    <div class="row"><button type="button" class="go" id="share">Paylaş sayfasını aç</button></div>
+    <p class="out" id="share-out"></p>
+    <div class="ans" data-q="2" data-opts="Var|Yok|Paylaş sayfası açılmadı"></div>
+  </section>
+
+  <section class="card" data-step="3">
+    <h3><span class="n">3</span>Safari'nin kendi Share menüsü</h3>
+    <p>Bu kez Safari'nin Share düğmesiyle aç. “Add to Home Screen”i bulmak için ne gerekti?</p>
+    <div class="ans" data-q="3" data-opts="Hemen göründü|Aşağı kaydırınca|View More'a basınca|Bulamadım"></div>
+  </section>
+
+  <section class="card" data-step="4">
+    <h3><span class="n">4</span>Ekleme sayfası</h3>
+    <p>“Add to Home Screen”e bas. Açılan sayfada üst köşeler yazı mı (Cancel / Add), simge mi (✕ / ✓)? “Open as Web App” anahtarı açık mı? Açık bırak, ekle.</p>
+    <div class="ans" data-q="4" data-opts="Yazı, anahtar açık|Simge, anahtar açık|Anahtar kapalıydı|Anahtar yoktu"></div>
+  </section>
+
+  <section class="card" data-step="5">
+    <h3><span class="n">5</span>Ekledikten sonra</h3>
+    <p>“Add”e basınca iOS seni kendiliğinden ana ekrana götürdü mü, Safari'de mi kaldın?</p>
+    <div class="ans" data-q="5" data-opts="Ana ekrana geçti|Safari'de kaldım|Yeni uygulama kendiliğinden açıldı"></div>
+    <p class="muted">Sonra ana ekrandaki “NF Test” simgesine dokun ve B bölümüne geç.</p>
+  </section>
+
+  <h2>B · Ana ekrandaki “NF Test”te</h2>
+
+  <section class="card" data-step="6">
+    <h3><span class="n">6</span>Simge nereyi açtı</h3>
+    <p>Yukarıdaki “Bu cihaz” kutusunda <b>Mod</b> “Ana ekran uygulaması” ve <b>Adres</b> bu sayfa olmalı.</p>
+    <div class="ans" data-q="6" data-opts="Bu sayfa, ana ekran uygulaması olarak|Safari'de açıldı|Başka bir sayfa açıldı"></div>
+  </section>
+
+  <section class="card" data-step="7">
+    <h3><span class="n">7</span>Safari'den taşınanlar</h3>
+    <p>Safari'de bu sayfa bir çerez ve bir kayıt bıraktı. Ana ekran uygulaması onları görüyor mu? (Kendiliğinden ölçülür.)</p>
+    <dl id="carry"></dl>
+  </section>
+
+  <section class="card" data-step="8">
+    <h3><span class="n">8</span>İzin penceresi</h3>
+    <p>Düğmeye bas. iOS'un penceresinde ne yazdığını kayıtta görelim; <b>Allow</b>'a bas.</p>
+    <div class="row"><button type="button" class="go" id="perm">Bildirim izni iste</button></div>
+    <p class="out" id="perm-out"></p>
+    <textarea data-note="8" placeholder="Penceredeki metin (kayıtta da var; istersen yaz)"></textarea>
+  </section>
+
+  <section class="card" data-step="9">
+    <h3><span class="n">9</span>Uygulama açıkken test bildirimi</h3>
+    <p>İzin verdiysen düğmeye bas. Ekranın üstünde afiş çıktı mı? Sonra kilit ekranına ve Bildirim Merkezi'ne de bak.</p>
+    <div class="row"><button type="button" class="go" id="notify">Test bildirimi göster</button></div>
+    <p class="out" id="notify-out"></p>
+    <div class="ans" data-q="9" data-opts="Afiş çıktı|Afiş yok, Bildirim Merkezi'nde var|Hiçbir yerde yok"></div>
+  </section>
+
+  <h2>C · Canlı Newfork ve silme</h2>
+
+  <section class="card" data-step="10">
+    <h3><span class="n">10</span>Newfork'un ana ekran uygulaması</h3>
+    <p>Safari'de <b>www.tepebash.com</b>'u aç, Newfork'u ana ekrana ekle, Newfork simgesinden aç. Girişte iCloud Anahtar Zinciri parolanı önerdi mi? Girince Account → Notifications → Turn on → Allow. Bildirim gerçekten “On” oldu mu?</p>
+    <div class="ans" data-q="10a" data-opts="Parolayı önerdi|Önermedi, elle yazdım"></div>
+    <div class="ans" data-q="10b" data-opts="On oldu|Allow'dan sonra yine Off|Hata verdi"></div>
+  </section>
+
+  <section class="card" data-step="11">
+    <h3><span class="n">11</span>“Don't Allow” ve silme</h3>
+    <p>Ana ekrandaki “NF Test”e basılı tut → Remove App. iOS'un sorduğu soruyu kayıtta görelim. Sonra bu sayfayı Safari'de yeniden aç, yeniden ekle, 8. adımda bu kez <b>Don't Allow</b> de. Ayarlar → Bildirimler listesinde “NF Test” var mı?</p>
+    <div class="ans" data-q="11" data-opts="Listede var|Listede yok"></div>
+  </section>
+
+  <section class="card" data-step="12">
+    <h3><span class="n">12</span>E-postadan açılan bağlantı</h3>
+    <p>Bağlantıyı kopyala, kendine e-postayla gönder; Gmail'de ve Apple Mail'de ayrı ayrı aç. Nerede açıldı? Gmail'in kendi tarayıcısıysa “Open in Safari”yi ara. Açılınca “Bu cihaz”daki <b>Davet izi</b> “var” olmalı.</p>
+    <div class="row"><button type="button" class="go" id="copy">Bağlantıyı kopyala</button></div>
+    <p class="out" id="copy-out"></p>
+    <div class="ans" data-q="12a" data-opts="Gmail: kendi tarayıcısı|Gmail: Safari|Gmail: Safari görünümü (pusulalı)"></div>
+    <div class="ans" data-q="12b" data-opts="Apple Mail: Safari|Apple Mail: başka"></div>
+    <div class="ans" data-q="12c" data-opts="Davet izi taşındı|Taşınmadı"></div>
+    <textarea data-note="12" placeholder="Gmail'in tarayıcısında Add to Home Screen çıktı mı? Open in Safari nerede?"></textarea>
+  </section>
+
+  <section class="card">
+    <h3>Sonuçlar</h3>
+    <p class="muted">Safari ve ana ekran uygulaması cevapları ayrı saklar; ikisinde de kopyalayıp bana gönder.</p>
+    <div class="row"><button type="button" class="go" id="result">Sonuçları kopyala</button></div>
+    <p class="out" id="result-out"></p>
+    <pre id="result-text" hidden></pre>
+  </section>
+</main>
+<script>
+(function () {
+  var KEY = 'nf-iphone-test';
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { store = {}; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* özel pencere */ } }
+  function $(s) { return document.querySelector(s); }
+  var ua = navigator.userAgent;
+  var standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  var ver = (ua.match(/Version\/(\d+(?:\.\d+)?)/) || [])[1] || (ua.match(/OS (\d+)_(\d+)/) || []).slice(1).join('.') || '?';
+  var inApp = /GSA\/|FBAN|FBAV|Instagram|Gmail|LinkedInApp/.test(ua);
+  var mode = standalone ? 'Ana ekran uygulaması' : inApp ? 'Uygulama içi tarayıcı' : /CriOS|FxiOS|EdgiOS/.test(ua) ? 'Başka tarayıcı' : /Safari/.test(ua) ? 'Safari (ya da Safari görünümü)' : 'Bilinmiyor';
+  var hasSetup = /[?&]setup=alerts\b/.test(location.search);
+  var perm = 'Notification' in window ? Notification.permission : 'yok (Safari sekmesinde normal)';
+  function row(dl, k, v) { var dt = document.createElement('dt'); dt.textContent = k; var dd = document.createElement('dd'); dd.textContent = v; dl.appendChild(dt); dl.appendChild(dd); }
+  var dev = $('#dev');
+  row(dev, 'iOS / Safari', ver);
+  row(dev, 'Mod', mode);
+  row(dev, 'Adres', location.pathname + location.search);
+  row(dev, 'Davet izi', hasSetup ? 'var (?setup=alerts)' : 'yok');
+  row(dev, 'Bildirim izni', perm);
+  row(dev, 'Push', 'PushManager' in window ? 'var' : 'yok');
+
+  // 7: Safari'de bir kez yazılır; ana ekran uygulaması okur.
+  function cookie() { var m = document.cookie.match(/(?:^|; )nf_ios_test=([^;]+)/); return m ? m[1] : ''; }
+  var lsCode = ''; try { lsCode = localStorage.getItem('nf-ios-test-code') || ''; } catch (e) { lsCode = ''; }
+  if (!standalone && !cookie()) {
+    var code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    document.cookie = 'nf_ios_test=' + code + '; max-age=2592000; path=/; secure; samesite=lax';
+    try { localStorage.setItem('nf-ios-test-code', code); lsCode = code; } catch (e) { /* yok */ }
+  }
+  var carry = $('#carry');
+  row(carry, 'Çerez (JavaScript)', cookie() ? 'var · ' + cookie() : 'yok');
+  row(carry, 'Kayıt (localStorage)', lsCode ? 'var · ' + lsCode : 'yok');
+  row(carry, 'Burası', standalone ? 'ana ekran uygulaması' : 'Safari: kod burada yazıldı; ana ekranda aynı kod görünüyorsa taşınmış');
+  store.auto = { ver: ver, mode: mode, setup: hasSetup, perm: perm, cookie: cookie() ? 'var' : 'yok', ls: lsCode ? 'var' : 'yok' };
+  save();
+
+  // Cevaplar
+  Array.prototype.forEach.call(document.querySelectorAll('.ans'), function (box) {
+    var q = box.getAttribute('data-q');
+    box.setAttribute('role', 'radiogroup');
+    box.getAttribute('data-opts').split('|').forEach(function (t) {
+      var l = document.createElement('label'); var i = document.createElement('input');
+      i.type = 'radio'; i.name = 'q' + q; i.value = t; if (store['q' + q] === t) i.checked = true;
+      i.addEventListener('change', function () { store['q' + q] = t; save(); });
+      var s = document.createElement('span'); s.textContent = t; l.appendChild(i); l.appendChild(s); box.appendChild(l);
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('textarea[data-note]'), function (ta) {
+    var k = 'n' + ta.getAttribute('data-note'); ta.value = store[k] || '';
+    ta.addEventListener('input', function () { store[k] = ta.value; save(); });
+  });
+
+  $('#share').addEventListener('click', function () {
+    var out = $('#share-out');
+    if (!navigator.share) { out.textContent = 'Bu tarayıcıda paylaş sayfası yok.'; return; }
+    navigator.share({ title: 'NF Test', url: location.href }).then(function () { out.textContent = 'Paylaş sayfası kapandı.'; }, function (e) { out.textContent = 'Paylaş sayfası kapandı (' + (e && e.name) + ').'; });
+  });
+
+  $('#perm').addEventListener('click', function () {
+    var out = $('#perm-out');
+    if (!('Notification' in window)) { out.textContent = 'Burada bildirim yok: bu adım ana ekrandaki “NF Test”te yapılır.'; return; }
+    Notification.requestPermission().then(function (p) { store.permResult = p; save(); out.textContent = 'Sonuç: ' + p; });
+  });
+
+  $('#notify').addEventListener('click', function () {
+    var out = $('#notify-out');
+    if (!('Notification' in window) || Notification.permission !== 'granted') { out.textContent = 'Önce 8. adımda izin ver (ana ekrandaki “NF Test”te).'; return; }
+    if (!('serviceWorker' in navigator)) { out.textContent = 'Service worker yok.'; return; }
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function () { return navigator.serviceWorker.ready; })
+      .then(function (reg) { return reg.showNotification('Newfork test', { body: 'Bu bir deneme bildirimi.', icon: '/icon-192.png', tag: 'nf-ios-test', data: { url: '/iphone-test.html' } }); })
+      .then(function () { store.notified = true; save(); out.textContent = 'Gönderildi.'; }, function (e) { out.textContent = 'Hata: ' + (e && e.message); });
+  });
+
+  function copy(text, out, done) {
+    function fallback() { var pre = $('#result-text'); pre.hidden = false; pre.textContent = text; out.textContent = 'Kopyalanamadı; aşağıdaki metni seçip kopyala.'; }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { out.textContent = done; }, fallback); else fallback();
+  }
+  $('#copy').addEventListener('click', function () {
+    var link = location.origin + '/iphone-test.html?setup=alerts';
+    var out = $('#copy-out');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(function () { out.textContent = 'Kopyalandı: ' + link; }, function () { out.textContent = link; });
+    else out.textContent = link;
+  });
+  $('#result').addEventListener('click', function () {
+    var lines = ['iPhone denemesi · ' + new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) + ' PT', 'Cihaz: ' + JSON.stringify(store.auto)];
+    Object.keys(store).sort().forEach(function (k) { if (k !== 'auto' && store[k] !== '' && store[k] != null) lines.push(k + ': ' + store[k]); });
+    lines.push('UA: ' + ua);
+    copy(lines.join('\n'), $('#result-out'), 'Kopyalandı. Bana yapıştır.');
+  });
+})();
+</script>
+</body>
+</html>
