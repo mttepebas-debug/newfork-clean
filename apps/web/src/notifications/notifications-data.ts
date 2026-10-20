@@ -2,7 +2,6 @@ import {
   notificationCountsSchema,
   notificationFeedSchema,
   notificationReadResultSchema,
-  notificationSeenResultSchema,
   type NotificationFeed,
   type NotificationFilter,
   type NotificationReadInput,
@@ -34,16 +33,13 @@ export async function getNotificationFeed(workspaceId: string, filter: Notificat
 export async function getNotificationCounts(workspaceId: string) {
   return notificationCountsSchema.parse(await notificationsApi(workspaceId, "/count"));
 }
-export async function markNotificationsSeen(workspaceId: string) {
-  return notificationSeenResultSchema.parse(await notificationsApi(workspaceId, "/seen", { method: "POST", body: "{}" }));
-}
 export async function markNotificationsRead(workspaceId: string, read: NotificationReadInput) {
   return notificationReadResultSchema.parse(
     await notificationsApi(workspaceId, "/read", { method: "POST", body: JSON.stringify(read) }),
   );
 }
 
-/** The badge: what arrived since the list was last opened. */
+/** The badge and the tabs' counts; the badge shows unread_count. */
 export function useNotificationCounts(workspaceId: string | undefined) {
   return useQuery({
     queryKey: notificationKeys.counts(workspaceId ?? ""),
@@ -61,19 +57,6 @@ export function useNotificationFeed(workspaceId: string, filter: NotificationFil
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: enabled && Boolean(workspaceId),
-  });
-}
-
-/** Opening the list clears the badge; the rows stay unread until clicked. */
-export function useMarkNotificationsSeen(workspaceId: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => markNotificationsSeen(workspaceId),
-    onSuccess: () => {
-      client.setQueryData(notificationKeys.counts(workspaceId), (old: { unseen_count: number } | undefined) =>
-        old ? { ...old, unseen_count: 0 } : old,
-      );
-    },
   });
 }
 

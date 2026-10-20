@@ -18,7 +18,6 @@ const {
   markNotificationsRead,
   notificationKeys,
   useMarkNotificationsRead,
-  useMarkNotificationsSeen,
   useNotificationFeed,
 } = await import("./notifications-data");
 
@@ -92,17 +91,5 @@ describe("notification hooks", () => {
     release({ updated: 1, unread_count: 0 });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(invalidate).toHaveBeenCalledWith({ queryKey: notificationKeys.all(w) });
-  });
-
-  it("clears the badge when the list is opened", async () => {
-    const { client, Wrapper } = wrapper();
-    client.setQueryData(notificationKeys.counts(w), { unseen_count: 4, unread_count: 5, needs_action_count: 1 });
-    apiRequest.mockResolvedValueOnce({ unseen_count: 0 });
-    const { result } = renderHook(() => useMarkNotificationsSeen(w), { wrapper: Wrapper });
-    await act(async () => {
-      await result.current.mutateAsync();
-    });
-    expect(apiRequest.mock.calls[0]?.[1]).toBe(`${base}/seen`);
-    expect(client.getQueryData(notificationKeys.counts(w))).toEqual({ unseen_count: 0, unread_count: 5, needs_action_count: 1 });
   });
 });

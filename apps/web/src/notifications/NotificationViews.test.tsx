@@ -85,7 +85,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("NotificationsPanel", () => {
-  it("lists the rows by day with their counts and clears the badge on opening", async () => {
+  it("lists the rows by day with their counts and leaves the badge on opening", async () => {
     answer({
       all: feedPage([
         notice(),
@@ -100,7 +100,7 @@ describe("NotificationsPanel", () => {
     expect(within(dialog).getByText("Earlier")).toBeTruthy();
     expect(within(dialog).getByRole("tab", { name: "Needs action, 1" })).toBeTruthy();
     expect(within(dialog).getByRole("tab", { name: "Unread, 2" })).toBeTruthy();
-    await waitFor(() => expect(calls("/seen")).toHaveLength(1));
+    expect(calls("/seen")).toHaveLength(0);
     expect(within(dialog).getByRole("link", { name: /See all notifications/ }).getAttribute("href")).toBe("/app/notifications");
   });
 
@@ -267,8 +267,8 @@ describe("NotificationsPage", () => {
 });
 
 describe("NotificationBell", () => {
-  it("shows the unseen count and opens the full-screen list", async () => {
-    answer({ all: feedPage([notice()]) }, { unseen_count: 4, unread_count: 4, needs_action_count: 1 });
+  it("shows the unread count and opens the full-screen list", async () => {
+    answer({ all: feedPage([notice()]) }, { unseen_count: 0, unread_count: 4, needs_action_count: 1 });
     HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
       this.setAttribute("open", "");
     };
@@ -276,7 +276,7 @@ describe("NotificationBell", () => {
       this.removeAttribute("open");
     };
     mount(<NotificationBell workspaceId={w} />);
-    const bell = await screen.findByRole("button", { name: "Notifications, 4 new" });
+    const bell = await screen.findByRole("button", { name: "Notifications, 4 unread" });
     fireEvent.click(bell);
     expect(await screen.findByRole("heading", { name: "Notifications" })).toBeTruthy();
     expect(await screen.findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ })).toBeTruthy();

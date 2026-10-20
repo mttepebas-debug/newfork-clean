@@ -73,7 +73,7 @@ test("a manager approves time off from the notification panel, and the employee 
   // Ayse's menu counts it; the panel shows it under Needs action and decides it inline.
   const ayse = await signedIn(browser, "ayse");
   await ayse.goto("/app/schedule/requests");
-  const menuItem = ayse.getByRole("navigation", { name: "Primary" }).getByRole("button", { name: /^Notifications, \d+ new$/ });
+  const menuItem = ayse.getByRole("navigation", { name: "Primary" }).getByRole("button", { name: /^Notifications, \d+ unread$/ });
   await expect(menuItem).toBeVisible();
   const panel = await openPanel(ayse);
   await panel.getByRole("tab", { name: /^Needs action/ }).click();

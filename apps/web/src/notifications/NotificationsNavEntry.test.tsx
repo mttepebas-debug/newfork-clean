@@ -37,23 +37,26 @@ beforeEach(() => {
   realtime.mockReset();
   apiRequest.mockReset();
   apiRequest.mockImplementation(async (_client: unknown, path: string) =>
-    path.endsWith("/count") ? { unseen_count: 3, unread_count: 3, needs_action_count: 0 } : path.endsWith("/seen") ? { unseen_count: 0 } : feedPage([]),
+    path.endsWith("/count") ? { unseen_count: 0, unread_count: 3, needs_action_count: 0 } : feedPage([]),
   );
 });
 afterEach(cleanup);
 
 describe("the left menu's Notifications", () => {
-  it("shows the unseen count, opens the panel and clears the count", async () => {
+  // One number for the person: the badge is the Unread tab's count, so opening
+  // the panel leaves it as it is; reading a row or "Mark all read" lowers it.
+  it("shows the unread count and keeps it when the panel opens", async () => {
     mount();
-    const item = await screen.findByRole("button", { name: "Notifications, 3 new" });
+    const item = await screen.findByRole("button", { name: "Notifications, 3 unread" });
     expect(item.getAttribute("aria-haspopup")).toBe("dialog");
     expect(realtime).toHaveBeenCalledWith(me, w);
     fireEvent.click(item);
     expect(screen.getByRole("dialog", { name: "Notifications" })).toBeTruthy();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Notifications" }).getAttribute("aria-expanded")).toBe("true"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Notifications, 3 unread" }).getAttribute("aria-expanded")).toBe("true"));
+    expect(apiRequest.mock.calls.some(([, path]) => String(path).endsWith("/seen"))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Notifications" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Notifications, 3 unread" }));
   });
 
   it("is not there for someone the core does not let read their own list", () => {

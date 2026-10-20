@@ -6,23 +6,12 @@ import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { CatalogPageHeader } from "../views/CatalogPageHeader";
 import { NotificationList, NotificationTabs } from "./NotificationList";
-import { useMarkNotificationsRead, useMarkNotificationsSeen, useNotificationCounts } from "./notifications-data";
+import { useMarkNotificationsRead, useNotificationCounts } from "./notifications-data";
 import "./notifications.css";
 
 export const notificationsPath = "/app/notifications";
 /** A person's own notification choices (Account → Notifications). */
 export const notificationSettingsPath = "/account/preferences/notifications";
-
-/** Opening any view of the list clears the badge once (rows stay unread). */
-function useSeenOnOpen(workspaceId: string, open: boolean) {
-  const counts = useNotificationCounts(workspaceId).data;
-  const seen = useMarkNotificationsSeen(workspaceId);
-  const unseen = counts?.unseen_count ?? 0;
-  const { mutate, isPending } = seen;
-  useEffect(() => {
-    if (open && unseen > 0 && !isPending) mutate();
-  }, [open, unseen, isPending, mutate]);
-}
 
 function useReadAll(workspaceId: string) {
   const read = useMarkNotificationsRead(workspaceId);
@@ -51,7 +40,6 @@ export function NotificationsPanel({
   const panel = useRef<HTMLElement>(null);
   const panelId = useId();
   const readAll = useReadAll(workspaceId);
-  useSeenOnOpen(workspaceId, true);
   useEffect(() => {
     panel.current?.focus();
   }, []);
@@ -112,7 +100,6 @@ export function NotificationsSheet({
   const dialog = useRef<HTMLDialogElement>(null);
   const panelId = useId();
   const readAll = useReadAll(workspaceId);
-  useSeenOnOpen(workspaceId, true);
   useEffect(() => {
     const node = dialog.current;
     if (node && !node.open) node.showModal?.();
@@ -155,7 +142,6 @@ export function NotificationsPage() {
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const panelId = useId();
   const readAll = useReadAll(workspaceId);
-  useSeenOnOpen(workspaceId, Boolean(workspaceId));
   if (!context) return null;
   return (
     <section className="settings-page ni-page list-page" aria-labelledby="notifications-title">
@@ -185,9 +171,9 @@ export function NotificationsPage() {
   );
 }
 
-/** Phone: the bell with the unseen count; it opens the full-screen list. */
+/** Phone: the bell with the Unread tab's count; it opens the full-screen list. */
 export function NotificationBell({ workspaceId, className }: { readonly workspaceId: string; readonly className?: string }) {
-  const unseen = useNotificationCounts(workspaceId).data?.unseen_count ?? 0;
+  const unread = useNotificationCounts(workspaceId).data?.unread_count ?? 0;
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   return (
@@ -197,13 +183,13 @@ export function NotificationBell({ workspaceId, className }: { readonly workspac
         type="button"
         className={className ? `ni-bell ${className}` : "ni-bell"}
         aria-haspopup="dialog"
-        aria-label={unseen ? `Notifications, ${unseen} new` : "Notifications"}
+        aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         onClick={() => setOpen(true)}
       >
         <Bell size={20} aria-hidden />
-        {unseen ? (
+        {unread ? (
           <span className="ni-bell-count" aria-hidden>
-            {unseen > 99 ? "99+" : unseen}
+            {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
       </button>
