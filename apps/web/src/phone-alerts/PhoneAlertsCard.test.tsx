@@ -89,8 +89,9 @@ describe("PhoneAlertsCard on iPhone Safari", () => {
     expect(steps.getAttribute("aria-modal")).toBe("true");
     const items = within(steps).getAllByRole("listitem").map((item) => item.textContent!.replace(/\s+/g, " "));
     expect(items).toEqual([
-      "1Tap Share at the bottom of Safari.",
-      "2Tap Add to Home Screen, then Add.",
+      // Share sits at the bottom on iOS 18, behind ••• on iOS 26 and behind the Page Menu on iOS 27.
+      "1In Safari, tap Share. Don't see it? Tap More or Page Menu first.",
+      "2Tap Add to Home Screen, then Add. Not in the list? Scroll down or tap View More.",
       "3Open Newfork from your Home Screen, sign in, and tap Turn on again.",
     ]);
     expect(steps.textContent).toContain("iPhone shows alerts only for apps on the Home Screen.");

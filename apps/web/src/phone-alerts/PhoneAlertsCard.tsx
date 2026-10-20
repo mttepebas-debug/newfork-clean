@@ -1,5 +1,5 @@
 import { Button } from "@newfork/ui";
-import { BellRing, MonitorSmartphone, Share } from "lucide-react";
+import { BellRing, Ellipsis, Menu, MonitorSmartphone, Share } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -127,14 +127,19 @@ export function HomeScreenSteps({ onClose, onNotNow }: { onClose: () => void; on
         <ol className="phone-alerts-steps">
           <li>
             <span aria-hidden>1</span>
+            {/* iOS 18 shows Share in Safari's bar; iOS 26 keeps it behind •••, iOS 27 behind the Page Menu. */}
             <p>
-              Tap <Share size={16} aria-hidden /> <strong>Share</strong> at the bottom of Safari.
+              In Safari, tap <Share size={16} aria-hidden /> <strong>Share</strong>. Don't see it? Tap{" "}
+              <Ellipsis size={16} aria-hidden />
+              <span className="sr-only">More</span> or <Menu size={16} aria-hidden />
+              <span className="sr-only">Page Menu</span> first.
             </p>
           </li>
           <li>
             <span aria-hidden>2</span>
             <p>
-              Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.
+              Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>. Not in the list? Scroll down or tap{" "}
+              <strong>View More</strong>.
             </p>
           </li>
           <li>
