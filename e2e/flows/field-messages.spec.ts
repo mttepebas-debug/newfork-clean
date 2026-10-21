@@ -81,8 +81,9 @@ for (const screen of screens) {
         await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
         await ayse.locator(".lineup-phone-dock").getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).click();
       } else {
-        // The desktop Lineup, F (Mert 2026-10-19): Kadikoy's ticket, its team in the list under it.
-        await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
+        // The desktop Lineup, F (Mert 2026-10-19): Kadikoy's ticket, its team in the list under it. The desktop has no
+        // Location menu of its own since the ticket carries the place (Mert 2026-10-21): the page opens on Kadikoy.
+        await ayse.goto(`/app/schedule/lineup?date=${day}&location=${sql(`select tests.id('${run}:K');`)}`);
         await expect(ayse.getByRole("region", { name: /^Kadikoy, / })).toBeVisible();
         await expect(ayse.getByRole("tabpanel")).toContainText("Emre Person");
         await ayse.getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).click();
