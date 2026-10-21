@@ -228,6 +228,7 @@ export function EmployeeScheduleBoard({
         weekStartDate={model.week_start}
         selectedDate={selectedDate}
         weekStartDay={model.week_start_day}
+        today={today}
         calendarMarkers={createScheduleCalendarMarkers(
           calendarPosts,
           model.locations.map((item) => item.id),

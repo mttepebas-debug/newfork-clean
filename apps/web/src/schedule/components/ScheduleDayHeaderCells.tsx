@@ -35,7 +35,7 @@ export function ScheduleDayHeaderCells({
   return (
     <>
       {locationGroups.flatMap((location, locationIndex) => {
-        // A group of several locations has no zone of its own: the device's calendar.
+        // Each column marks its own location's day (S-226).
         const today = todayDate ?? todayIn(location.timezone);
         return days.map((day, dayIndex) => {
           const dayClosures = closures.filter(

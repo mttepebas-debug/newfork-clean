@@ -69,6 +69,7 @@ import {
   openToday,
   type ManagerNeed,
 } from "./manager-home-model";
+import { validZone } from "../lib/today";
 import "../employee-hub/employee-dashboard.css";
 import "../employee-hub/home-daylight.css";
 import "./manager-home.css";
@@ -200,7 +201,8 @@ export function WorkspacePage() {
   const casesUnknown = exchanges.isError && !exchanges.data;
   const needs = day ? homeNeeds(day, exchanges.data?.cases ?? [], phone) : [];
   const shownNeeds = selected === "all" ? needs : needsAt(needs, selected);
-  const zone = locations[0]?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // The day is the location's (S-226): the one the page is narrowed to, else the first.
+  const zone = validZone((locations.find((item) => item.id === selected) ?? locations[0])?.timezone);
   const minute = clockMinutes(now, zone);
   const people = locations.reduce((sum, item) => sum + onNow(item, now), 0);
   const firstName = model.display_name.trim().split(/\s+/)[0] ?? "";

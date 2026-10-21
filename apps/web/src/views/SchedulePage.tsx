@@ -40,7 +40,6 @@ import { useAuth } from "../auth/AuthContext";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { requestErrorText, ScreenError } from "../lib/request-error";
-import { todayIn } from "../lib/today";
 import { NoAccessState } from "../shell/NoAccessState";
 import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { Tooltip } from "../shell/Tooltip";
@@ -133,7 +132,7 @@ import { useRetroactiveEditPrompt } from "../schedule/hooks/useRetroactiveEditPr
 import { usePendingOpsQuery } from "../schedule/hooks/usePendingOpsQuery";
 import { useScheduleDrafts } from "../schedule/hooks/useScheduleDrafts";
 import { useScheduleMode } from "../schedule/hooks/useScheduleMode";
-import { useScheduleQuery } from "../schedule/hooks/useScheduleQuery";
+import { useScheduleQuery, useScheduleToday } from "../schedule/hooks/useScheduleQuery";
 import { useScheduleRealtime } from "../schedule/hooks/useScheduleRealtime";
 import { useScheduleViewerPresence } from "../schedule/hooks/useScheduleViewerPresence";
 import { saveScheduleLogo } from "../settings/organization-data";
@@ -283,7 +282,7 @@ export function SchedulePage({
   const navigate = useNavigate();
   const [search, setSearch] = useSearchParams();
   const { activeDraftId, isEditMode, setMode: setScheduleMode } = useScheduleMode();
-  const today = todayIn();
+  const today = useScheduleToday(context?.workspace.id ?? null);
   const selectedDate = validDate(search.get("date")) ?? today;
   const view: ScheduleView = search.get("view") === "day" ? "day" : "week";
   const layout = search.get("layout") === "unified" ? "unified" : "separate";
@@ -2697,6 +2696,7 @@ export function SchedulePage({
         view={view}
         weekStartDate={model.week_start}
         weekStartDay={model.week_start_day}
+        today={today}
         calendarMarkers={calendarMarkers}
         layout={layout}
         onLayoutChange={setLayout}

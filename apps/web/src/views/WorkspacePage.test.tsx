@@ -796,6 +796,20 @@ describe("WorkspacePage setup checklist", () => {
       expect(rows()).toHaveLength(2);
     });
 
+    // S-226: the date over the greeting is the chosen location's day; for all of them, the first one's.
+    it("dates the day by the location the page is narrowed to", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      // 11:30 PM Tuesday in California, 9:30 AM Wednesday in Istanbul.
+      vi.setSystemTime(new Date("2026-10-21T06:30:00Z"));
+      vi.mocked(getManagerHome).mockResolvedValue({ ...two, locations: [{ ...besiktas, timezone: "America/Los_Angeles" }, kadikoy] });
+      renderPage();
+      fireEvent.click(await screen.findByRole("button", { name: /^Kadikoy:/ }));
+      expect(document.querySelector(".dl-date")?.textContent).toBe("Wednesday, October 21");
+      fireEvent.click(within(screen.getByRole("group", { name: "Location" })).getByRole("button", { name: "All locations" }));
+      expect(document.querySelector(".dl-date")?.textContent).toBe("Tuesday, October 20");
+      vi.useRealTimers();
+    });
+
     it("draws one card and no chips for one location", async () => {
       renderPage();
       await screen.findByRole("heading", greeting);

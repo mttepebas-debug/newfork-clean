@@ -41,6 +41,8 @@ interface ScheduleTopBarProps {
   readonly weekStartDate: string;
   readonly selectedDate?: string;
   readonly weekStartDay: "monday" | "sunday";
+  // The page's today, the location's (S-226), for the calendar.
+  readonly today?: string;
   readonly calendarMarkers?: readonly CalendarMarker[];
   readonly layout: ScheduleLayoutMode;
   readonly onLayoutChange: (layout: ScheduleLayoutMode) => void;
@@ -100,6 +102,7 @@ export function ScheduleTopBar({
   weekStartDate,
   selectedDate,
   weekStartDay,
+  today,
   calendarMarkers,
   onDayPick,
   onWeekJump,
@@ -248,6 +251,7 @@ export function ScheduleTopBar({
                   }
                   weekStartDate={weekStartDate}
                   weekStartDay={weekStartDay}
+                  today={today}
                   markers={calendarMarkers}
                   onDayPick={(date) => {
                     (view === "week" && !calendarDayOpensDay

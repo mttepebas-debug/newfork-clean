@@ -1,10 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   getScheduleReadModel,
   scheduleReadKey,
 } from "../schedule-data";
-import type { ScheduleView } from "@newfork/shared/schedule";
+import type { ScheduleReadModel, ScheduleView } from "@newfork/shared/schedule";
+import { firstLocationZone, todayIn } from "../../lib/today";
 
 interface UseScheduleQueryOptions {
   readonly enabled?: boolean;
@@ -25,4 +26,15 @@ export function useScheduleQuery(
       previousQuery?.queryKey[1] === workspaceId ? previousData : undefined,
     staleTime: 30_000,
   });
+}
+
+/**
+ * The page's today, the location's (S-226). The day is asked before its read loads: the zone a loaded read
+ * names, else the device's; once it loads, a page whose location is a day ahead asks that day next.
+ */
+export function useScheduleToday(workspaceId: string | null): string {
+  const locations = useQueryClient()
+    .getQueriesData<ScheduleReadModel>({ queryKey: ["schedule-read", workspaceId] })
+    .find(([, data]) => data?.locations.length)?.[1]?.locations;
+  return todayIn(locations && firstLocationZone(locations));
 }

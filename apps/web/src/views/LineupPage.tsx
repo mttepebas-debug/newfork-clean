@@ -7,7 +7,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { clockIn, todayIn } from "../lib/today";
 import { usePhoneWidth } from "../lib/usePhoneWidth";
-import { useScheduleQuery } from "../schedule/hooks/useScheduleQuery";
+import { useScheduleQuery, useScheduleToday } from "../schedule/hooks/useScheduleQuery";
 import { useScheduleRealtime } from "../schedule/hooks/useScheduleRealtime";
 import { lineupDay, unpublishedCount, type LineupLocation } from "../schedule/lineup";
 import { useLineupDay } from "../schedule/lineup-data";
@@ -47,7 +47,7 @@ function dayName(iso: string): string {
 export function LineupPage() {
   const { context } = useAuth();
   const workspaceId = context?.workspace.id ?? null;
-  const today = todayIn();
+  const today = useScheduleToday(workspaceId);
   const [params, setParams] = useSearchParams();
   const requested = params.get("date") ?? "";
   const date = isoDate.test(requested) ? requested : today;

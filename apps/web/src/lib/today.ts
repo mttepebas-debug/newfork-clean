@@ -33,6 +33,16 @@ export function todayIn(zone?: string, now: Date = new Date()): string {
   return dateInZone(now, validZone(zone));
 }
 
+/**
+ * The zone of a page that shows several locations (S-226): the first one's in their own order. Each
+ * location's column still marks its own day; undefined with no location (then the device's).
+ */
+export function firstLocationZone(
+  locations: readonly { readonly timezone: string; readonly sort_order: number }[],
+): string | undefined {
+  return [...locations].sort((a, b) => a.sort_order - b.sort_order)[0]?.timezone;
+}
+
 /** The wall-clock time (HH:MM, 24 h) in the location's zone, else the device's. */
 export function clockIn(zone?: string, now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-GB", {

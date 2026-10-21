@@ -8,6 +8,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { inDeviceZone } from "./employee-hub/device-zone.testing";
 
 // The phone bar (ManagementMobileNav) repeats the sidebar's links; jsdom applies
 // no media queries, so sidebar links are read inside the sidebar.
@@ -1074,6 +1075,32 @@ describe("App", () => {
     expect(
       screen.queryByRole("gridcell", { name: /Unassigned total hours/ }),
     ).toBeNull();
+  });
+
+  // S-226: the page's today is the location's day. 11:30 PM Sunday in California is Monday in Istanbul:
+  // Schedule opens on Istanbul's week, its calendar marks Monday, and "this week" is that week.
+  it("opens on the location's week and marks the location's today when the device is a day behind", async () => {
+    await inDeviceZone("America/Los_Angeles", async () => {
+      vi.setSystemTime(new Date("2026-08-17T06:30:00Z"));
+      const istanbul = (weekStart: string): ScheduleReadModel => ({
+        ...scheduleFixtureForWeek(weekStart),
+        locations: scheduleFixture.locations.map((location) => ({ ...location, timezone: "Europe/Istanbul" })),
+      });
+      vi.mocked(getScheduleReadModel).mockImplementation(async (_workspace, date) =>
+        istanbul(date >= "2026-08-17" ? "2026-08-17" : "2026-08-10"));
+      window.history.pushState({}, "", "/app/schedule");
+      testAuth.role = "owner";
+      render(<App />);
+      await waitFor(() => expect(screen.getByTestId("schedule-day-header-2026-08-17").getAttribute("data-today")).toBe("true"), { timeout: 5000 });
+      expect(screen.queryByTestId("schedule-day-header-2026-08-16")).toBeNull();
+      // The week on screen is this week: its button switches views rather than jumping.
+      expect(document.querySelector('[title="Switch to daily view"]')).not.toBeNull();
+      expect(document.querySelector('[title="Jump to this week"]')).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Open schedule calendar" }));
+      const calendar = await screen.findByRole("dialog", { name: "Schedule calendar" });
+      expect(within(calendar).getByRole("gridcell", { name: "August 17, 2026" }).getAttribute("aria-current")).toBe("date");
+      expect(within(calendar).getByRole("gridcell", { name: "August 16, 2026" }).getAttribute("aria-current")).toBeNull();
+    });
   });
 
   // BL-714: a mouse press on the logo in another week opens the logo window;

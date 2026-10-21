@@ -21,6 +21,8 @@ interface MiniCalendarProps {
   readonly onDayPick: (date: string) => void;
   // Omit for a day-only calendar: no week-jump dots, no week highlight.
   readonly onWeekJump?: (date: string) => void;
+  // The page's today, the location's (S-226); the device's calendar when omitted.
+  readonly today?: string;
 }
 
 const monthNames = [
@@ -149,8 +151,9 @@ export function MiniCalendar({
   markers = [],
   onDayPick,
   onWeekJump,
+  today,
 }: MiniCalendarProps) {
-  const todayUtc = fromIso(todayIn());
+  const todayUtc = fromIso(today ?? todayIn());
   const initialIso = selectedDate ?? weekStartDate ?? toIso(todayUtc);
   const [viewMonth, setViewMonth] = useState(
     () =>

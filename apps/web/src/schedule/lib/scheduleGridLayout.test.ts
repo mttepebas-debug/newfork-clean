@@ -89,12 +89,14 @@ describe("scheduleGridLayout", () => {
 
   // S1 (G14): one location's column keeps its own time zone, merged or not; a
   // group of several has none and follows the device.
-  it("gives a merged group of one location that location's time zone", () => {
+  // S-226: a merged column marks the page's day, the first location's in their own order.
+  it("gives a merged group its first location's time zone", () => {
     const zoneOf = (sources: typeof locations) =>
       createScheduleGridLocationGroups({ layout: "unified", locations: sources })[0]!.timezone;
 
     expect(zoneOf([locations[0]!])).toBe("America/Los_Angeles");
-    expect(zoneOf(locations)).toBe("");
+    const [main, patio] = locations;
+    expect(zoneOf([{ ...patio!, timezone: "Europe/Istanbul" }, { ...main!, timezone: "America/New_York" }])).toBe("America/New_York");
   });
 
   it("resolves the reference interaction location for unified cells", () => {

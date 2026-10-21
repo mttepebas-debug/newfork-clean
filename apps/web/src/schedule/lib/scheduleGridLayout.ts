@@ -4,6 +4,7 @@ import type {
   ScheduleView,
 } from "@newfork/shared/schedule";
 
+import { firstLocationZone } from "../../lib/today";
 import { addDays } from "./scheduleDateTime";
 
 export const scheduleGridEmployeeColumnWidth = 200;
@@ -78,8 +79,8 @@ export function createScheduleGridLocationGroups({
       {
         id: "unified",
         name: locations.map((item) => item.name).join(" + "),
-        // One location keeps its own zone; several have none of their own.
-        timezone: locations.length === 1 ? locations[0]!.timezone : "",
+        // Several locations in one column mark the page's day: the first location's (S-226).
+        timezone: firstLocationZone(locations) ?? "",
         sort_order: 0,
         publication_status: locations.every(
           (item) => item.publication_status === "published",

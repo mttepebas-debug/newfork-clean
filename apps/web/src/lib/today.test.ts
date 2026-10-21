@@ -43,7 +43,8 @@ describe("todayIn", () => {
     "src/schedule/components/ScheduleDayHeaderCells.tsx",
     "src/schedule/components/MiniCalendar.tsx",
     "src/communications/AnnouncementDrawer.tsx",
-    "src/views/SchedulePage.tsx",
+    // S-226: Schedule and Lineup read the location's today here.
+    "src/schedule/hooks/useScheduleQuery.ts",
     "src/dev/EmployeeOnboardingPreview.tsx",
   ])("%s takes today from todayIn", (file) => {
     const source = readFileSync(file, "utf8");
