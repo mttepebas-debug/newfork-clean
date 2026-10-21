@@ -58,10 +58,10 @@
   z-index: 120;
   background: var(--theme-scrim-soft);
 }
-/* A floating card 12 px from the menu and the window, with the menu's 3.2:1
-   edge; the hour's sky behind its title and tabs (Mert 2026-10-21, drawer
-   variants B and C). */
 .ni-panel {
+  /* A floating card 12 px from the menu and the window, with the menu's 3.2:1
+     edge; the hour's sky behind its title and tabs (Mert 2026-10-21, drawer
+     variants B and C). */
   position: fixed;
   top: 12px;
   bottom: 12px;
