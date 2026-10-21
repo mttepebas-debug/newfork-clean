@@ -26,6 +26,7 @@ import {
 import {
   AddStaffButton,
   CallOffCell,
+  EmptyDepartment,
   OutGroups,
   ReplaceName,
   StaffWindow,
@@ -621,7 +622,8 @@ function DesktopTeam({
             </span>
             {editing ? (
               <span className="lineup-desk-dept-add">
-                {department.id ? (
+                {/* An empty department carries its Add Staff in its frame instead (EmptyDepartment). */}
+                {department.id && department.jobs.length ? (
                   <AddStaffButton
                     department={department.name}
                     onAdd={() => onStaff({ kind: "add", department: { id: department.id!, name: department.name } })}
@@ -631,7 +633,17 @@ function DesktopTeam({
             ) : null}
           </h3>
           <div className="lineup-phone-list">
-            {department.jobs.length ? null : <p className="lineup-staff-none">No one in {department.name} yet.</p>}
+            {department.jobs.length ? null : (
+              <EmptyDepartment
+                department={department.name}
+                shift={shift.name}
+                onAdd={
+                  editing && department.id
+                    ? () => onStaff({ kind: "add", department: { id: department.id!, name: department.name } })
+                    : null
+                }
+              />
+            )}
             {department.jobs.map((job) => (
               <div className="lineup-phone-job" key={job.id}>
                 <p>

@@ -980,14 +980,43 @@
 .lineup-desk-dept-add > .lineup-staff-add {
   margin-right: -6px;
 }
-.lineup-staff-none {
-  margin: 0;
-  padding: 18px 16px;
-  color: var(--theme-text-secondary);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
+/* A department with no one on it (Mert 2026-10-21, Varyant 2; newfork-pages/lineup-bos-departman .empty): an icon
+   tile, the title, one line, and the heading's green Add Staff, all in the middle of the frame. */
+.lineup-staff-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 18px 16px 16px;
   text-align: center;
+}
+.lineup-staff-empty-ic {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-secondary);
+}
+.lineup-staff-empty-ic svg {
+  width: 20px;
+  height: 20px;
+}
+.lineup-staff-empty > b {
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 650;
+}
+.lineup-staff-empty > p {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.lineup-staff-empty > .lineup-staff-add {
+  margin: 4px 0 0;
 }
 .lineup-staff-out h3 {
   color: var(--theme-text-secondary);
