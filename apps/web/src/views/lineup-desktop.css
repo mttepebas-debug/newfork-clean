@@ -61,6 +61,46 @@
   border-radius: 16px;
   background: var(--theme-surface);
 }
+/* Folded from its chevron (Mert 2026-10-21): one line, the place, day, state and when it went out, then the tabs, so
+   more of the list shows. On a narrow ticket the day and "Published at" go; the place keeps room for its name. */
+.lineup-desk-page .lineup-card:not(.is-open) {
+  display: grid;
+  container-type: inline-size;
+  grid-template-columns: minmax(96px, max-content) minmax(0, max-content) auto minmax(0, 1fr) minmax(220px, 320px) 32px;
+  grid-template-areas: "loc date state at band fold";
+  align-items: center;
+  column-gap: 14px;
+  padding: 0 10px 0 16px;
+}
+.lineup-desk-page .lineup-card:not(.is-open) > .lineup-card-head {
+  display: contents;
+}
+.lineup-desk-page .lineup-card:not(.is-open) .lineup-card-date {
+  margin: 0;
+}
+.lineup-desk-page .lineup-card:not(.is-open) .lineup-card-at {
+  justify-self: stretch;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@container (max-width: 760px) {
+  .lineup-desk-page .lineup-card:not(.is-open) :is(.lineup-card-date, .lineup-card-at) {
+    display: none;
+  }
+}
+.lineup-desk-page .lineup-card:not(.is-open) > .lineup-card-band {
+  grid-area: band;
+  padding: 0;
+  border-top: 0;
+}
+/* Up to fold, down to open: a chevron to the right would read as the next location. */
+.lineup-desk-page .lineup-card.is-open .lineup-card-fold svg {
+  transform: rotate(180deg);
+}
+.lineup-desk-page .lineup-card:not(.is-open) .lineup-card-fold svg {
+  transform: none;
+}
 .lineup-desk-arrow {
   display: grid;
   place-items: center;

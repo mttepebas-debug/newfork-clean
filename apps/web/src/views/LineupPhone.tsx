@@ -401,7 +401,7 @@ function teamEmpty(shift: LineupShift, editing: LineupEditing | null): boolean {
  * The lineup card (card 1, "boarding pass"; Mert 2026-10-17 ~11:45 AM, ~12:30 PM, ~1:10 PM): the place and day on
  * the left, Live or Draft with Edit over when it went out on the right, the chevron; a torn edge; Shift · People ·
  * Hours; Team · Notes · Read inside. A tap anywhere on it but its tabs folds it to its header. The desktop's ticket
- * (F, Mert 2026-10-19) is the same card, always open: no `onFold`, no chevron.
+ * (F, Mert 2026-10-19) is the same card; its chevron folds it to one line that keeps the tabs (`keepTabs`, 2026-10-21).
  */
 export function LineupCard({
   location,
@@ -412,6 +412,7 @@ export function LineupCard({
   open,
   joined,
   onFold,
+  keepTabs = false,
   edit,
   held,
   day,
@@ -428,8 +429,10 @@ export function LineupCard({
   readonly open: boolean;
   /** An empty shift's box hangs off it (Mert 2026-10-17 ~2 PM). */
   readonly joined: boolean;
-  /** Folding it to its header (the phone); the desktop's ticket doesn't fold. */
+  /** Folding it to its header (the phone, a tap anywhere on it); the desktop's ticket folds from its chevron only. */
   readonly onFold?: () => void;
+  /** The desktop's ticket: folded, it keeps its tabs on one line with its header (Mert 2026-10-21). */
+  readonly keepTabs?: boolean;
   /** Taking the lineup back to draft, for someone who may publish. */
   readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
   /** The Publish sheet is open over it: a lineup that goes out lights up once it closes. */
@@ -476,7 +479,7 @@ export function LineupCard({
       data-lineup-card={`${location.id}:${shift.key}`}
       style={style}
       aria-label={`${location.name}, ${shift.name}`}
-      onClick={onFold ? tap : undefined}
+      onClick={onFold && !keepTabs ? tap : undefined}
     >
       <div className="lineup-card-head">
         <p className="lineup-card-loc">
@@ -526,8 +529,8 @@ export function LineupCard({
             ref={foldButton}
             className="lineup-card-fold"
             aria-expanded={open}
-            aria-controls={open ? panel : undefined}
-            aria-label={open ? "Hide list" : "Show list"}
+            aria-controls={keepTabs ? undefined : open ? panel : undefined}
+            aria-label={keepTabs ? (open ? "Hide details" : "Show details") : open ? "Hide list" : "Show list"}
             onClick={onFold}
           >
             <ChevronDown aria-hidden />
@@ -554,10 +557,12 @@ export function LineupCard({
               <dd>{span ? range(span.firstIn, span.lastOut, timeFormat) : "—"}</dd>
             </div>
           </dl>
-          <div className="lineup-card-band" ref={tabs}>
-            {children}
-          </div>
         </>
+      ) : null}
+      {open || keepTabs ? (
+        <div className="lineup-card-band" ref={tabs}>
+          {children}
+        </div>
       ) : null}
       {editing && edit ? (
         <LineupEditWindow

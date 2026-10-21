@@ -44,6 +44,27 @@ import "./lineup-desktop.css";
 // (the gear by SECTION) and the notes (LINEUP-EDIT W2a), and calls people off, adds them and replaces them (W3a);
 // called off and replaced people sit at the foot of the list.
 
+// Folded, the ticket is one line so more of the list shows (Mert 2026-10-21); this device remembers it. Storage that
+// is not there (a private window) leaves it open and never throws.
+const foldedKey = "newfork.lineup.ticketFolded";
+
+function readFolded(): boolean {
+  try {
+    return window.localStorage.getItem(foldedKey) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeFolded(folded: boolean) {
+  try {
+    if (folded) window.localStorage.setItem(foldedKey, "1");
+    else window.localStorage.removeItem(foldedKey);
+  } catch {
+    // Nothing kept: the next visit opens it, never wrongly.
+  }
+}
+
 function range(start: string, end: string, format: ScheduleTimeFormat): string {
   if (!start || !end) return "";
   return `${formatTime(start, format, "long")} – ${formatTime(end, format, "long")}`;
@@ -112,6 +133,7 @@ export function DesktopLineupPage({
   const [toolsSlot, setToolsSlot] = useState<HTMLDivElement | null>(null);
   // Each location and shift keeps its own tab.
   const [segs, setSegs] = useState<Readonly<Record<string, Seg>>>({});
+  const [folded, setFolded] = useState(readFolded);
   const picked = locations.find((item) => item.id === locationId) ?? null;
   const shown = picked ? [picked] : locations.length > 1 ? locations : locations.slice(0, 1);
   const ready = !loading && !error;
@@ -162,6 +184,11 @@ export function DesktopLineupPage({
         previous={many ? (lineups[index - 1]?.location ?? null) : undefined}
         next={many ? (lineups[index + 1]?.location ?? null) : undefined}
         onMove={(location) => setAt(location.id)}
+        folded={folded}
+        onFold={() => {
+          writeFolded(!folded);
+          setFolded(!folded);
+        }}
       />
     );
   }
@@ -210,6 +237,8 @@ function DesktopLineup({
   previous,
   next,
   onMove,
+  folded,
+  onFold,
 }: {
   readonly location: LineupLocation;
   readonly shift: LineupShift;
@@ -226,6 +255,8 @@ function DesktopLineup({
   readonly previous: LineupLocation | null | undefined;
   readonly next: LineupLocation | null | undefined;
   readonly onMove: (location: LineupLocation) => void;
+  readonly folded: boolean;
+  readonly onFold: () => void;
 }) {
   const ids = useId();
   const panel = `${ids}panel`;
@@ -252,7 +283,9 @@ function DesktopLineup({
           dateLabel={dateLabel}
           now={now}
           timeFormat={timeFormat}
-          open
+          open={!folded}
+          onFold={onFold}
+          keepTabs
           joined={false}
           edit={edit}
           held={held}

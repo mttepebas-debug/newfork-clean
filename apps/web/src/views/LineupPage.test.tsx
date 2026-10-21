@@ -156,7 +156,7 @@ describe("LineupPage", () => {
     expect(read).toHaveBeenCalledWith(ws, day, "day");
     expect(within(ticket).getByText("Live")).toBeTruthy();
     expect(within(ticket).getByRole("tab", { name: "Team 1" }).getAttribute("aria-selected")).toBe("true");
-    // The ticket doesn't fold on the desktop.
+    // The desktop's ticket folds its details, not the list (below).
     expect(within(ticket).queryByRole("button", { name: "Hide list" })).toBeNull();
     const heads = document.querySelector(".lineup-desk-cols")!;
     // Section is the last column, by the list's right edge (Mert 2026-10-19 ~5:30 AM).
@@ -166,6 +166,33 @@ describe("LineupPage", () => {
     expect(within(row).getByLabelText("No section")).toBeTruthy();
     // One list: the person's circle comes from the one place that draws it (LineupPersonCircle).
     expect(row.querySelector(".lineup-phone-avatar")?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  // Mert 2026-10-21: the ticket folds to one line so more of the list shows; this device remembers it.
+  it("folds the ticket to one line from its chevron, its tabs kept, and remembers it on this device", async () => {
+    window.localStorage.removeItem("newfork.lineup.ticketFolded");
+    renderPage();
+    const ticket = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(within(ticket).getByText("Hours")).toBeTruthy();
+    fireEvent.click(within(ticket).getByRole("button", { name: "Hide details" }));
+    expect(within(ticket).queryByText("Hours")).toBeNull();
+    expect(ticket.classList.contains("is-open")).toBe(false);
+    // Folded, the tabs still change the list.
+    fireEvent.click(within(ticket).getByRole("tab", { name: "Notes" }));
+    expect(within(screen.getByRole("tabpanel")).getByText("No notes yet.")).toBeTruthy();
+    // Only the chevron opens it, not a click on the ticket.
+    fireEvent.click(ticket);
+    expect(within(ticket).queryByText("Hours")).toBeNull();
+    // Another location keeps it folded.
+    fireEvent.click(screen.getByRole("button", { name: "Next location: Uptown" }));
+    expect(within(screen.getByRole("region", { name: "Uptown, Lunch" })).queryByText("Hours")).toBeNull();
+    cleanup();
+    renderPage();
+    const again = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(within(again).queryByText("Hours")).toBeNull();
+    fireEvent.click(within(again).getByRole("button", { name: "Show details" }));
+    expect(within(again).getByText("Hours")).toBeTruthy();
+    expect(window.localStorage.getItem("newfork.lineup.ticketFolded")).toBeNull();
   });
 
   it("moves between locations with the arrows beside the ticket, off at the ends", async () => {
@@ -261,6 +288,8 @@ describe("LineupPage", () => {
     expect(desk).toMatch(/\.lineup-desk-cols \{[^}]*text-align: center;/);
     expect(desk).toMatch(/\.lineup-desk-cols > :nth-child\(2\) \{\s*text-align: left;/);
     expect(desk).toMatch(/\.lineup-desk-cell \{[^}]*text-align: center;/);
+    // Folded, the ticket's head and its tabs share one line.
+    expect(desk).toMatch(/\.lineup-desk-page \.lineup-card:not\(\.is-open\) > \.lineup-card-head \{\s*display: contents;/);
   });
 
   it("reads the notes and, once published, who read it in the ticket's tabs", async () => {
