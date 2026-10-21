@@ -257,6 +257,24 @@
   color: var(--theme-text);
   font-weight: 600;
 }
+/* The chosen shift reads at a glance (Mert 2026-10-21): a 3 px dark green line under it and its name and count in
+   the same green, bolder. Over the list page's 2 px tab line too (list-page.css), hence the doubled classes; every
+   tab keeps a 3 px line, clear when not chosen, so no name moves. The tab fills its row rather than its own 42 px:
+   taller, the row (overflow hidden) cut the line off. */
+.lineup-shift-tabs.lineup-shift-tabs.catalog-toolbar.catalog-toolbar .catalog-status-tabs button {
+  height: auto;
+  min-height: 0;
+  margin-bottom: 0;
+  border-bottom-width: 3px;
+}
+.lineup-shift-tabs.lineup-shift-tabs.catalog-toolbar.catalog-toolbar .catalog-status-tabs button.active {
+  border-bottom: 3px solid var(--theme-accent-deep);
+  color: var(--theme-accent-deep);
+  font-weight: 700;
+}
+.lineup-shift-tabs .catalog-status-tabs button.active strong {
+  color: var(--theme-accent-deep);
+}
 .lineup-shift-tabs.catalog-toolbar .catalog-status-tabs button:focus-visible {
   outline: 2px solid var(--theme-focus);
   outline-offset: -2px;
