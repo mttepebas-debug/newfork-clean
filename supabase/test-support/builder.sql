@@ -171,6 +171,12 @@ declare
 begin
   workspace := public.create_owner_workspace_service(owner_id, 'World ' || w);
   perform tests.remember(w, workspace);
+  -- ponytail: a workspace waits for approval by default (KATILIM-ONAY, S-231); the test world's people let
+  -- themselves in when they finish onboarding (tests.person 'active'), so the world turns it off. A test about
+  -- approval turns it on with public.set_onboarding_approval_service.
+  insert into public.employee_onboarding_settings (workspace_id, final_approval_required, updated_by)
+  values (workspace, false, owner_id)
+  on conflict (workspace_id) do update set final_approval_required = false;
 
   perform public.update_owner_onboarding_service(
     owner_id, workspace, 'World ' || w, 2::smallint, false,
