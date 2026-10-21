@@ -122,7 +122,17 @@ describe("Employee Hub's today on a device in another zone (S-226)", () => {
     expect(getEmployeeScheduleBoard).not.toHaveBeenCalledWith(workspaceId, "2026-08-25");
     await waitFor(() => expect(exchangesFrom()).toContain("2026-08-26"));
     expect(exchangesFrom()).not.toContain("2026-08-25");
+    // The device is told once, under the title, whose clock the page keeps.
+    expect(screen.getByText(/^Times in (Türkiye|Turkey)( Standard)? Time$/).className).toBe("zone-note");
     view.unmount();
+  });
+
+  it("says nothing about the zone on a device that keeps the location's clock", async () => {
+    vi.mocked(getEmployeeHub).mockResolvedValue({ ...hub, time_off_timezone: "America/Los_Angeles",
+      locations: [{ ...hub.locations[0]!, timezone: "America/Los_Angeles" }] });
+    renderAt("/app/employee-hub/schedule");
+    await screen.findByRole("tabpanel", { name: "This week" });
+    expect(document.querySelector(".zone-note")).toBeNull();
   });
 
   it("opens Team schedule on Wednesday", async () => {
@@ -153,5 +163,6 @@ describe("Employee Hub's today on a device in another zone (S-226)", () => {
     renderAt("/app/employee-hub");
     await waitFor(() => expect(getExchanges).toHaveBeenCalled());
     expect(exchangesFrom().filter(Boolean)).toEqual(["2026-08-26"]);
+    expect(document.querySelector(".dl-hero .zone-note")?.textContent).toMatch(/^Times in (Türkiye|Turkey)/);
   });
 });

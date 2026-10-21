@@ -1,4 +1,5 @@
 import type { EmployeeHubReadModel, EmployeeHubShift } from "@newfork/shared";
+import { ZoneNote } from "../shell/ZoneNote";
 import { useQuery } from "@tanstack/react-query";
 import { useRef, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
@@ -191,6 +192,7 @@ export function EmployeeDashboard({
           <p className="dl-date">
             {new Date(`${today}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" })}
           </p>
+          <ZoneNote zone={homeZone(model)} now={now} />
           <h1 className="dl-greet" id="employee-hub-title">
             <span>{greetingAt(minute, now)},</span> <span className="dl-nm">{firstName}.</span>
           </h1>

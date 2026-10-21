@@ -268,7 +268,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const open = await within(cards).findByRole("button", { name: /^Time off: Alex Kim/ });
     expect(open.getAttribute("aria-label")).toContain("Needs decision");
     expect(plain(open.querySelector(".request-sentence")!.textContent)).toBe("Alex Kim asked for time off Mon, Jan 15 – Tue, Jan 16. 1 shift becomes open.");
-    expect(plain(open.querySelector(".request-card-foot")!.textContent)).toBe("Needs decisionExpires Jan 14, 9:00 AM UTC time");
+    expect(plain(open.querySelector(".request-card-foot")!.textContent)).toBe("Needs decisionExpires Jan 14, 9:00 AM UTC");
     const closed = within(cards).getByRole("button", { name: /^Time off: Deniz Acar/ });
     expect(closed.querySelector(".request-card-foot")!.textContent).toBe("Approved");
     fireEvent.click(open);
@@ -739,9 +739,9 @@ describe("Requests > Time off (FB-6.3.6)", () => {
         const view = renderPage();
         const row = await screen.findByRole("row", { name: /Alex Kim/ });
         expect(plain(within(row).getByText(/^Jan 14, 12:00 PM$/).textContent)).toBe("Jan 14, 12:00 PM");
-        expect(within(row).getByText("Istanbul time")).toBeTruthy();
+        expect(within(row).getByText(/^(Türkiye|Turkey)( Standard)? Time$/)).toBeTruthy();
         const drawer = await openTimeOffRequest();
-        expect(plain(drawer.textContent)).toContain("Decide by Jan 14, 12:00 PM Istanbul time");
+        expect(plain(drawer.textContent)).toMatch(/Decide by Jan 14, 12:00 PM (Türkiye|Turkey)( Standard)? Time/);
         view.unmount();
       });
     }

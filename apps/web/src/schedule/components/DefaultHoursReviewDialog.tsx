@@ -6,6 +6,7 @@ import "./default-hours-review.css";
 import { requestErrorText } from "../../lib/request-error";
 import { scheduleRefusalReason } from "../lib/scheduleRefusalReason";
 import { FieldNote } from "../../shell/FieldNote";
+import { zoneName } from "../../lib/today";
 
 export function DefaultHoursReviewDialog({ workspaceId, session, model, initialSelectedIds = [], onClose, onApplied }: {
   workspaceId: string; session: ScheduleEditSession; model: ScheduleReadModel; initialSelectedIds?: readonly string[];
@@ -74,7 +75,7 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
       const [h, m] = value.split(":");
       return model.settings.time_format === "24h" ? `${h}:${m}` : `${Number(h) % 12 || 12}:${m} ${Number(h) >= 12 ? "PM" : "AM"}`;
     };
-    return `${clock(s.start_time)} – ${clock(s.end_time)}${s.end_time < s.start_time ? " (next day)" : ""} · ${s.time_timezone}`;
+    return `${clock(s.start_time)} – ${clock(s.end_time)}${s.end_time < s.start_time ? " (next day)" : ""} · ${zoneName(s.time_timezone)}`;
   };
   return <div className="schedule-dialog-layer">
     <button type="button" className="schedule-dialog-backdrop" aria-label="Close default hours review" disabled={Boolean(pending)} onClick={onClose} />

@@ -39,6 +39,7 @@ import {
   versionStateLabel,
 } from "./document-rules";
 import { WindowAlert } from "../shell/WindowAlert";
+import { zoneName } from "../lib/today";
 
 // What a person typed into the drawer. Nothing stores it before its own
 // command runs, so each value is kept here against what it was typed for:
@@ -533,7 +534,7 @@ function DocumentDetailContent({
                       timeStyle: "short",
                       timeZone: obligation.timezone,
                     }).format(new Date(obligation.deadline_at)) +
-                    ` (${obligation.timezone})`
+                    ` ${zoneName(obligation.timezone)}`
                   : obligation.deadline_at}
               </time>
             </p>

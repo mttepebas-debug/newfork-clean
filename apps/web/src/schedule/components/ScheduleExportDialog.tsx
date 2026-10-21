@@ -22,6 +22,7 @@ import {
   scheduleExportErrorMessage,
   scheduleExportFilenameFallback,
 } from "./scheduleExportDownload";
+import { firstLocationZone } from "../../lib/today";
 
 function defaultExportSettings(
   timeFormat: ScheduleReadModel["settings"]["time_format"],
@@ -227,6 +228,7 @@ export function ScheduleExportDialog({
           onCreate={onCreateScheduledExport}
           onToggle={onToggleScheduledExport}
           onDelete={onDeleteScheduledExport}
+          locationZone={firstLocationZone(locations.filter((item) => locationIds.includes(item.id))) ?? firstLocationZone(locations)}
         />
         <ScheduleExportRecentEvents events={recentExportEvents} />
         {preview ? <ScheduleExportPreviewDialog preview={preview} /> : null}

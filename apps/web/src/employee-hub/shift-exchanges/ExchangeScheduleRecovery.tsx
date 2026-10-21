@@ -8,6 +8,7 @@ import {
 } from "./exchange-data";
 import "./shift-exchanges.css";
 import { FieldNote } from "../../shell/FieldNote";
+import { zoneName } from "../../lib/today";
 
 export function ExchangeScheduleRecovery({
   workspaceId,
@@ -127,7 +128,7 @@ export function ExchangeScheduleRecovery({
                       {[
                         edited_job_name,
                         edited_shift_type_name,
-                        edited_timezone?.replaceAll("_", " "),
+                        edited_timezone && zoneName(edited_timezone),
                       ]
                         .filter(Boolean)
                         .join(" · ")}
@@ -142,7 +143,7 @@ export function ExchangeScheduleRecovery({
                     {current.shift_type_name && ` · ${current.shift_type_name}`}
                   </span>
                   <small>
-                    Approved time zone: {current.timezone.replaceAll("_", " ")}{" "}
+                    Approved time zone: {zoneName(current.timezone)}{" "}
                     · Unpaid break: {current.unpaid_break_minutes ?? 0} min
                   </small>
                 </li>

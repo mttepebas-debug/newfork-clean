@@ -33,8 +33,13 @@ export function useScheduleQuery(
  * names, else the device's; once it loads, a page whose location is a day ahead asks that day next.
  */
 export function useScheduleToday(workspaceId: string | null): string {
+  return todayIn(useScheduleZone(workspaceId));
+}
+
+/** The zone a loaded read names (its first location's), undefined before any. */
+export function useScheduleZone(workspaceId: string | null): string | undefined {
   const locations = useQueryClient()
     .getQueriesData<ScheduleReadModel>({ queryKey: ["schedule-read", workspaceId] })
     .find(([, data]) => data?.locations.length)?.[1]?.locations;
-  return todayIn(locations && firstLocationZone(locations));
+  return locations && firstLocationZone(locations);
 }

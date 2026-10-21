@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { clockIn, todayIn } from "./today";
+import { clockIn, deviceReadsOtherClock, todayIn, zoneName } from "./today";
+import { inDeviceZone } from "../employee-hub/device-zone.testing";
 
 // Sunday Oct 4, 2026, 11 pm in Los Angeles; UTC already reads Monday Oct 5.
 const sundayNightInLosAngeles = new Date("2026-10-05T06:00:00Z");
@@ -58,5 +59,27 @@ describe("clockIn", () => {
     const now = new Date("2026-10-14T01:05:00Z");
     expect(clockIn("America/Los_Angeles", now)).toBe("18:05");
     expect(clockIn("America/New_York", now)).toBe("21:05");
+  });
+});
+
+// S-226 (Mert 2026-10-20): a zone is written one way, in words; the device is named only when it differs.
+describe("zoneName", () => {
+  it("writes the zone's name, never its code or offset", () => {
+    expect(zoneName("America/Los_Angeles")).toBe("Pacific Time");
+    expect(zoneName("America/Chicago")).toBe("Central Time");
+    expect(zoneName("UTC")).toBe("UTC");
+    expect(zoneName("Not/A_Zone")).toBe("A Zone time");
+  });
+});
+
+describe("deviceReadsOtherClock", () => {
+  it("is true only when the device's clock reads another day or time than the location's", async () => {
+    await inDeviceZone("America/Los_Angeles", () => {
+      const now = new Date("2026-10-21T06:30:00Z");
+      expect(deviceReadsOtherClock("Europe/Istanbul", now)).toBe(true);
+      expect(deviceReadsOtherClock("America/Los_Angeles", now)).toBe(false);
+      // Another name for the same clock is the same clock.
+      expect(deviceReadsOtherClock("America/Vancouver", now)).toBe(false);
+    });
   });
 });

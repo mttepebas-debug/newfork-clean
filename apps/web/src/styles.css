@@ -13465,3 +13465,17 @@ button.workspace-switcher-item:hover:not(:disabled) {
     margin: 0;
   }
 }
+
+/* "Times in Pacific Time" (S-226): under a page's title when the device keeps another zone's clock. */
+.zone-note {
+  margin: 0 0 12px;
+  color: var(--theme-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+/* A phone's page top keeps its measured rhythm (phone-page-top.css): there the note is Home's, under the date. */
+@media (max-width: 720px) {
+  .zone-note:not(.dl-hero .zone-note) {
+    display: none;
+  }
+}

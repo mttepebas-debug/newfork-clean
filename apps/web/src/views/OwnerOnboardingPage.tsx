@@ -64,6 +64,7 @@ import {
 } from "../settings/organization-data";
 import { FieldNote, fieldNoteId } from "../shell/FieldNote";
 import { membershipClass } from "../auth/access";
+import { zoneName } from "../lib/today";
 
 type OwnerStep = 1 | 2 | 3 | 4;
 
@@ -1062,7 +1063,7 @@ export default function OwnerOnboardingPage() {
                               .join(", ")}
                           </span>
                         ) : null}
-                        <span>{location.timezone}</span>
+                        <span>{zoneName(location.timezone)}</span>
                       </>
                     }
                   >

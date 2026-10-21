@@ -1,3 +1,4 @@
+import { zoneName } from "../lib/today";
 export function timeOffWallParts(instant: string, zone: string) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
     timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit",
@@ -30,8 +31,8 @@ export function resolveTimeOffSplit(date: string, clock: string, zone: string, f
 }
 
 export function formatTimeOffInstant(value: string, zone: string, format: "12h" | "24h") {
-  return new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-    ...(new Date(value).getUTCSeconds() ? { second: "2-digit" as const } : {}), hour12: format === "12h", timeZoneName: "shortOffset" }).format(new Date(value));
+  return `${new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    ...(new Date(value).getUTCSeconds() ? { second: "2-digit" as const } : {}), hour12: format === "12h" }).format(new Date(value))} ${zoneName(zone, new Date(value))}`;
 }
 
 export function formatTimeOffDay(date: string) {
@@ -39,7 +40,7 @@ export function formatTimeOffDay(date: string) {
 }
 
 export function timeOffZoneName(zone: string) {
-  return `${zone.split("/").at(-1)!.replaceAll("_", " ")} time`;
+  return zoneName(zone);
 }
 
 // The decision deadline, as a person in the request's zone reads it (FB-6.3.8d).

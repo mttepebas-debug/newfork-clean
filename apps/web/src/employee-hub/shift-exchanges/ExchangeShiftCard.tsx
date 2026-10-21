@@ -2,6 +2,7 @@ import type { ExchangeShift } from "@newfork/shared";
 import { Clock3, MapPin } from "lucide-react";
 import { formatTimeRange } from "../../schedule/lib/scheduleDateTime";
 import { exchangeTimeDetails } from "./exchange-time-details";
+import { zoneName } from "../../lib/today";
 
 const shiftDateFormatter = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -55,7 +56,7 @@ export function ExchangeShiftCard({
         {shift.job_name}
       </p>
       <p className="sx-zone">
-        {(shift.time_timezone || shift.timezone).replaceAll("_", " ")}
+        {zoneName(shift.time_timezone || shift.timezone)}
         {(time
           ? time.endsNextDay
           : shift.end_time &&

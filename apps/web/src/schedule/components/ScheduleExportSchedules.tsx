@@ -5,6 +5,7 @@ import type {
 } from "@newfork/shared/schedule";
 import { CalendarClock, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { zoneName } from "../../lib/today";
 
 const dayLabels = [
   "Sunday",
@@ -37,6 +38,7 @@ export function ScheduleExportSchedules({
   onCreate,
   onToggle,
   onDelete,
+  locationZone,
 }: {
   readonly presets: readonly ScheduleExportPreset[];
   readonly schedules: readonly ScheduleExportSchedule[];
@@ -48,13 +50,15 @@ export function ScheduleExportSchedules({
   ) => Promise<unknown>;
   readonly onToggle: (scheduleId: string, enabled: boolean) => Promise<unknown>;
   readonly onDelete: (scheduleId: string) => Promise<unknown>;
+  readonly locationZone?: string;
 }) {
   const [name, setName] = useState("");
   const [presetId, setPresetId] = useState("");
   const [recipients, setRecipients] = useState("");
   const [dayOfWeek, setDayOfWeek] = useState(1);
   const [sendHour, setSendHour] = useState(8);
-  const [timezone, setTimezone] = useState(browserTimezone());
+  // The location's zone first (S-226): the email goes out on the restaurant's clock.
+  const [timezone, setTimezone] = useState(locationZone ?? browserTimezone());
   const recipientList = parseRecipients(recipients);
   const recipientError = recipients.trim()
     ? validateRecipients(recipientList)
@@ -95,7 +99,7 @@ export function ScheduleExportSchedules({
                     {schedule.preset_name ?? "Deleted preset"} -{" "}
                     {dayLabels[schedule.day_of_week]}{" "}
                     {formatScheduleHour(schedule.send_hour)} -{" "}
-                    {schedule.timezone}
+                    {zoneName(schedule.timezone)}
                   </small>
                   <small>{formatLastSent(schedule.last_sent_at)}</small>
                   {schedule.auto_disabled_at ? (
@@ -195,9 +199,9 @@ export function ScheduleExportSchedules({
             value={timezone}
             onChange={(event) => setTimezone(event.target.value)}
           >
-            {timezoneOptions.map((option) => (
+            {[...new Set([...(locationZone ? [locationZone] : []), ...timezoneOptions])].map((option) => (
               <option key={option} value={option}>
-                {option}
+                {zoneName(option)}
               </option>
             ))}
           </select>

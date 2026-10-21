@@ -1,4 +1,5 @@
 import { usePhoneWidth } from "../lib/usePhoneWidth";
+import { ZoneNote } from "../shell/ZoneNote";
 import type {
   ManagerHomeLocation,
   OwnerSetupChecklistItemId,
@@ -399,6 +400,7 @@ export function WorkspacePage() {
             <p className="dl-date">
               {new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: zone }).format(now)}
             </p>
+            {locations.length ? <ZoneNote zone={zone} now={now} /> : null}
             <h1 className="dl-greet" id="manager-home-title">
               <span>{greetingAt(minute)},</span> <span className="dl-nm">{firstName}.</span>
             </h1>

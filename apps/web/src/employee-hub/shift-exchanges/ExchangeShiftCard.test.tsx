@@ -95,7 +95,7 @@ describe("Exchange shift physical time", () => {
     render(
       <ExchangeShiftCard shift={{ ...shift, timezone: "America/New_York" }} />,
     );
-    expect(screen.getByText("America/Los Angeles")).toBeTruthy();
+    expect(screen.getByText("Pacific Time")).toBeTruthy();
     expect(screen.getByText("12:30 AM UTC-07:00")).toBeTruthy();
     expect(screen.queryByText(/New York/)).toBeNull();
   });

@@ -544,7 +544,7 @@ describe("OwnerOnboardingPage", () => {
     await screen.findByRole("heading", { name: "Where does your team work?" });
     expect(screen.getByText("MAIN")).toBeTruthy();
     expect(screen.getByText("Los Angeles, CA")).toBeTruthy();
-    expect(screen.getByText("America/Los_Angeles")).toBeTruthy();
+    expect(screen.getByText("Pacific Time")).toBeTruthy();
   });
 
   it("opens a saved US phone in the mask", async () => {

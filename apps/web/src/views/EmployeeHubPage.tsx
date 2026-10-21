@@ -1,4 +1,5 @@
 import { todayIn } from "../lib/today";
+import { ZoneNote } from "../shell/ZoneNote";
 import { homeZone } from "../employee-hub/dashboard-model";
 import { Button } from "@newfork/ui";
 import { timeOffSubmitInputSchema, type EmployeeHubReadModel } from "@newfork/shared";
@@ -191,13 +192,17 @@ export function EmployeeHubPage() {
         // 2026-10-17 ~8:30 AM); the shell's frozen top leaves it alone (data-frozen-own).
         <div className="employee-lineup-pin" data-frozen-own="">
           <CatalogPageHeader {...pageCopy["schedule/lineup"]!} titleId="employee-hub-title" />
+          <ZoneNote zone={zone} now={now} />
         </div>
       ) : (
-        <CatalogPageHeader
-          {...(pageCopy[path.startsWith("shift-hub") ? "shift-hub" : path] ??
-            fallbackCopy)}
-          titleId="employee-hub-title"
-        />
+        <>
+          <CatalogPageHeader
+            {...(pageCopy[path.startsWith("shift-hub") ? "shift-hub" : path] ??
+              fallbackCopy)}
+            titleId="employee-hub-title"
+          />
+          <ZoneNote zone={zone} now={now} />
+        </>
       )}
       {query.isError ? (
         <RefreshError

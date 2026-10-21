@@ -84,7 +84,7 @@ describe("ExchangeReview", () => {
     renderReview();
     expect(text(screen.getByRole("heading", { level: 2 }))).toBe("Shift pickup Needs decision");
     expect(document.querySelector(".rd-sub")!.textContent).toContain(
-      "Shift owner: Noah Garcia · Harbor & Vine Uptown · Expires Oct 11, 4:00 PM New York time");
+      "Shift owner: Noah Garcia · Harbor & Vine Uptown · Expires Oct 11, 4:00 PM Eastern Time");
     expect(screen.getByRole("link", { name: /Open in Schedule/ }).getAttribute("href"))
       .toBe(`/app/schedule?date=2026-10-11&view=day&locations=${uptown}`);
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Activity"]);

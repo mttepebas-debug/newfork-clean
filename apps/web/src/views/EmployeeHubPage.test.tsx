@@ -652,7 +652,7 @@ describe("EmployeeHubPage", () => {
     await waitFor(() => expect(document.querySelector("dialog.eh-sheet h2")?.textContent).toBe("Your shift"));
     expect(document.querySelector("dialog.eh-sheet")?.textContent).toContain("Main Dining · Server");
     // QA 60: the zone in words people use, not the raw "America/Los Angeles".
-    expect(document.querySelector("dialog.eh-sheet")?.textContent).toContain("Los Angeles time");
+    expect(document.querySelector("dialog.eh-sheet")?.textContent).toContain("Pacific Time");
     expect(document.querySelector("dialog.eh-sheet")?.textContent).not.toContain("America/");
     vi.useRealTimers();
   });
@@ -1205,7 +1205,7 @@ describe("EmployeeHubPage", () => {
     renderPage("/app/employee-hub/my-availability?section=time-off");
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
     expect(screen.queryByLabelText("Location")).toBeNull();
-    expect(screen.getByText("Hours use Los Angeles time.")).toBeTruthy();
+    expect(screen.getByText("Hours use Pacific Time.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
     await waitFor(() => expect(submitTimeOff).toHaveBeenCalledOnce());
     expect(vi.mocked(submitTimeOff).mock.calls[0]![1]).not.toHaveProperty("location_id");
@@ -1245,7 +1245,7 @@ describe("EmployeeHubPage", () => {
   it("asks in the primary location's zone the hub names", async () => {
     renderPageWithFixture({ ...fixture, time_off_timezone: "America/New_York" }, "/app/employee-hub/my-availability?section=time-off");
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
-    expect(screen.getByText("Hours use New York time.")).toBeTruthy();
+    expect(screen.getByText("Hours use Eastern Time.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
     await waitFor(() => expect(submitTimeOff).toHaveBeenCalledWith(workspaceId, expect.objectContaining({ expected_timezone: "America/New_York" })));
   });
@@ -1267,7 +1267,7 @@ describe("EmployeeHubPage", () => {
       await inDeviceZone(device, async () => {
         const view = renderPageWithFixture({ ...fixture, requests: [pending] }, "/app/employee-hub/my-availability?section=time-off");
         const line = await screen.findByText(/^Pending · Submitted .* · Decision by /);
-        expect(plain(line.textContent)).toMatch(/ · Decision by Jan 14, 8:00 PM Istanbul time$/);
+        expect(plain(line.textContent)).toMatch(/ · Decision by Jan 14, 8:00 PM (Türkiye|Turkey)( Standard)? Time$/);
         view.unmount();
       });
     }

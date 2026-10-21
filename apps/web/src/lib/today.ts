@@ -53,3 +53,25 @@ export function clockIn(zone?: string, now: Date = new Date()): string {
   }).formatToParts(now);
   return `${parts.find((part) => part.type === "hour")!.value}:${parts.find((part) => part.type === "minute")!.value}`;
 }
+
+/**
+ * A zone in words, one way everywhere (S-226, Mert 2026-10-20): "Pacific Time", "Eastern Time". A zone the
+ * browser has no word for keeps its city ("Kolkata time"); UTC is "UTC".
+ */
+export function zoneName(zone: string, at: Date = new Date()): string {
+  try {
+    const name = new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "longGeneric" })
+      .formatToParts(at)
+      .find((part) => part.type === "timeZoneName")?.value;
+    if (name && !name.startsWith("GMT")) return name;
+  } catch {
+    /* An unknown zone keeps its city below. */
+  }
+  return zone === "UTC" ? "UTC" : `${zone.split("/").at(-1)!.replaceAll("_", " ")} time`;
+}
+
+/** Whether the device's clock reads another day or time than the location's now (the "Times in …" note). */
+export function deviceReadsOtherClock(zone: string, now: Date = new Date()): boolean {
+  const device = validZone();
+  return dateInZone(now, device) !== dateInZone(now, validZone(zone)) || clockIn(device, now) !== clockIn(zone, now);
+}

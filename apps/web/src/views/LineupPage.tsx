@@ -7,7 +7,8 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { clockIn, todayIn } from "../lib/today";
 import { usePhoneWidth } from "../lib/usePhoneWidth";
-import { useScheduleQuery, useScheduleToday } from "../schedule/hooks/useScheduleQuery";
+import { useScheduleQuery, useScheduleZone } from "../schedule/hooks/useScheduleQuery";
+import { ZoneNote } from "../shell/ZoneNote";
 import { useScheduleRealtime } from "../schedule/hooks/useScheduleRealtime";
 import { lineupDay, unpublishedCount, type LineupLocation } from "../schedule/lineup";
 import { useLineupDay } from "../schedule/lineup-data";
@@ -47,7 +48,8 @@ function dayName(iso: string): string {
 export function LineupPage() {
   const { context } = useAuth();
   const workspaceId = context?.workspace.id ?? null;
-  const today = useScheduleToday(workspaceId);
+  const zone = useScheduleZone(workspaceId);
+  const today = todayIn(zone);
   const [params, setParams] = useSearchParams();
   const requested = params.get("date") ?? "";
   const date = isoDate.test(requested) ? requested : today;
@@ -167,12 +169,15 @@ export function LineupPage() {
     return (
       <PhoneLineupPage
         header={
-          <CatalogPageHeader
-            eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
-            title="Lineup"
-            titleId="lineup-title"
-            description="Today's lineups, live from the Schedule."
-          />
+          <>
+            <CatalogPageHeader
+              eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
+              title="Lineup"
+              titleId="lineup-title"
+              description="Today's lineups, live from the Schedule."
+            />
+            <ZoneNote zone={zone} />
+          </>
         }
         workspaceId={workspaceId}
         date={date}
@@ -237,13 +242,16 @@ export function LineupPage() {
   return (
     <DesktopLineupPage
       header={
-        <CatalogPageHeader
-          eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
-          title="Lineup"
-          titleId="lineup-title"
-          description="Today's lineups, live from the Schedule."
-          action={publishControl}
-        />
+        <>
+          <CatalogPageHeader
+            eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
+            title="Lineup"
+            titleId="lineup-title"
+            description="Today's lineups, live from the Schedule."
+            action={publishControl}
+          />
+          <ZoneNote zone={zone} />
+        </>
       }
       workspaceId={workspaceId}
       date={date}

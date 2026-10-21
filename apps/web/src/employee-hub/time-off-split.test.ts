@@ -6,15 +6,16 @@ describe("time-off decision deadline (FB-6.3.8d)", () => {
   it("is written in the request's zone with its name, the same on every device", async () => {
     for (const device of ["America/Los_Angeles", "Asia/Tokyo", "UTC"]) {
       await inDeviceZone(device, () => {
-        expect(plain(formatTimeOffDeadline("2035-10-09T02:04:00Z", "Europe/Istanbul", "12h"))).toBe("Oct 9, 5:04 AM Istanbul time");
-        expect(plain(formatTimeOffDeadline("2035-10-09T02:04:00Z", "Europe/Istanbul", "24h"))).toBe("Oct 9, 05:04 Istanbul time");
+        expect(plain(formatTimeOffDeadline("2035-10-09T02:04:00Z", "America/New_York", "12h"))).toBe("Oct 8, 10:04 PM Eastern Time");
+        expect(plain(formatTimeOffDeadline("2035-10-09T02:04:00Z", "America/New_York", "24h"))).toBe("Oct 8, 22:04 Eastern Time");
       });
     }
   });
-  it("names a zone by its city", () => {
-    expect(timeOffZoneName("America/New_York")).toBe("New York time");
-    expect(timeOffZoneName("America/Argentina/Buenos_Aires")).toBe("Buenos Aires time");
-    expect(timeOffZoneName("UTC")).toBe("UTC time");
+  // S-226 (Mert 2026-10-20): one way everywhere, the zone's name in words.
+  it("names a zone in words, as Pacific Time", () => {
+    expect(timeOffZoneName("America/New_York")).toBe("Eastern Time");
+    expect(timeOffZoneName("America/Los_Angeles")).toBe("Pacific Time");
+    expect(timeOffZoneName("UTC")).toBe("UTC");
   });
 });
 

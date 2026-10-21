@@ -1,4 +1,4 @@
-import { todayIn } from "../../lib/today";
+import { todayIn, zoneName } from "../../lib/today";
 import type {
   ExchangeApplication,
   ExchangeCase,
@@ -1061,7 +1061,7 @@ function CaseDetail({
           {new Date(item.expires_at).toLocaleString("en-US", {
             timeZone: item.shift.timezone,
           })}{" "}
-          · {item.shift.timezone}
+          {zoneName(item.shift.timezone)}
         </p>
       )}
       {item.is_owner ? (
