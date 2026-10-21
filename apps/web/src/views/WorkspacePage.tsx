@@ -269,15 +269,6 @@ export function WorkspacePage() {
                 />
               ))}
             </div>
-            {multi && !customizing ? (
-              <div className="mh-filter" role="group" aria-label="Location">
-                {[{ id: "all", name: "All locations" }, ...locations].map((item) => (
-                  <button type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => setChosen(item.id)}>
-                    {item.name}
-                  </button>
-                ))}
-              </div>
-            ) : null}
           </>
         )}
       </HomeSection>
@@ -461,6 +452,16 @@ export function WorkspacePage() {
               </span>
             ) : null}
           </div>
+          {/* The location chips sit under the heading and filter every section below. */}
+          {multi && !customizing && !hidden.has("operations") ? (
+            <div className="mh-filter" role="group" aria-label="Location">
+              {[{ id: "all", name: "All locations" }, ...locations].map((item) => (
+                <button type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => setChosen(item.id)}>
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {customizing ? (
             <p className="mh-note">
               {multi ? "Move your locations and the sections of your Home, or hide a section, then save." : "Move or hide the sections of your Home, then save."}{" "}

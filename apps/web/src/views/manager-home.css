@@ -271,7 +271,7 @@ button.mh-loc:hover {
   top: 54px;
   display: flex;
   gap: 6px;
-  margin: 22px calc(-1 * var(--dl-g)) 0;
+  margin: 4px calc(-1 * var(--dl-g)) 0;
   overflow-x: auto;
   padding: 8px var(--dl-g);
   background: color-mix(in srgb, var(--theme-page) 90%, transparent);
@@ -456,7 +456,7 @@ button.mh-loc:hover {
   }
   .mh-filter {
     top: 0;
-    margin-top: 8px;
+    margin-top: 4px;
   }
   .mh-head {
     margin-top: 18px;
