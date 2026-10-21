@@ -5,6 +5,7 @@ import { hubPath } from "../auth/resolveLanding";
 import { sessionExpiredStorageKey } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import { FieldNote } from "../shell/FieldNote";
+import { WelcomeBack, homeScreenFirstOpen } from "../phone-alerts/WelcomeBack";
 
 export function SignInPage() {
   const {
@@ -37,10 +38,14 @@ export function SignInPage() {
     shownOnce.current = true;
   }, [confirmationSentTo]);
   // Set when the server ended the session; the next sign-in clears it.
+  const [welcome] = useState(() => homeScreenFirstOpen());
   const [sessionExpired] = useState(
     () => window.sessionStorage.getItem(sessionExpiredStorageKey) === "1",
   );
 
+  // The Home Screen app's first open on iPhone has its own screen: sign in, then turn alerts on
+  // (TELEFON-TUR2, V3-A). It stays through the sign-in and leaves for the destination itself.
+  if (welcome && !inviteFlow && supabaseConfigured) return <WelcomeBack destination={destination} />;
   if (context) return <Navigate to={destination} replace />;
   if (authenticated && !error)
     return (
