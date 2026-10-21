@@ -53,26 +53,36 @@
 .ni-scrim {
   position: fixed;
   inset: 0;
-  z-index: 40;
-  background: transparent;
+  /* Over Schedule's sticky top bar (z-index 100), which hid the panel's title
+     and tabs; under the catalog drawers (240). */
+  z-index: 120;
+  background: var(--theme-scrim-soft);
 }
+/* A floating card 12 px from the menu and the window, with the menu's 3.2:1
+   edge; the hour's sky behind its title and tabs (Mert 2026-10-21, drawer
+   variants B and C). */
 .ni-panel {
   position: fixed;
-  top: 0;
-  bottom: 0;
-  left: var(--app-sidebar-width);
-  z-index: 50;
+  top: 12px;
+  bottom: 12px;
+  left: calc(var(--app-sidebar-width) + 12px);
+  z-index: 130;
   display: flex;
   width: 420px;
   flex-direction: column;
-  border-right: 1px solid var(--theme-border);
-  background: var(--theme-surface);
+  overflow: hidden;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 18px;
+  background-color: var(--theme-surface);
+  background-image: var(--drawer-sky, none);
+  background-repeat: no-repeat;
+  background-size: 100% 104px;
   box-shadow: 12px 0 32px color-mix(in srgb, var(--theme-text) 12%, transparent);
   outline: none;
   animation: ni-in 160ms ease-out;
 }
 .app-shell[data-sidebar-collapsed="true"] .ni-panel {
-  left: 64px;
+  left: 76px;
 }
 @keyframes ni-in {
   from { transform: translateX(-12px); opacity: 0; }
@@ -103,7 +113,8 @@
 }
 .ni-panel-foot {
   padding: 10px 18px;
-  border-top: 1px solid var(--theme-border);
+  border-top: 1px solid var(--theme-border-strong);
+  background: var(--theme-app-ground);
 }
 
 /* Tabs */
@@ -111,7 +122,7 @@
   display: flex;
   gap: 4px;
   padding: 6px 14px 10px;
-  border-bottom: 1px solid var(--theme-border);
+  border-bottom: 1px solid var(--theme-border-strong);
 }
 .ni-tabs button {
   display: inline-flex;

@@ -1804,7 +1804,7 @@
   z-index: 240;
   display: flex;
   justify-content: flex-end;
-  background: #14251b50;
+  background: var(--theme-scrim);
 }
 .jobs-settings-page.catalog-drawer {
   position: relative;
@@ -1827,6 +1827,17 @@
   line-height: 1.5;
   animation: catalog-drawer-enter 160ms ease-out;
 }
+/* On a desktop the drawer floats as a card 12 px in from the window, with the
+   menu's 3.2:1 edge (Mert 2026-10-21, drawer variant C). */
+@media (min-width: 721px) {
+  .jobs-settings-page.catalog-drawer {
+    height: calc(100dvh - 24px);
+    margin: 12px 12px 12px 0;
+    overflow: hidden;
+    border: 1px solid var(--theme-border-control);
+    border-radius: 18px;
+  }
+}
 .catalog-drawer .job-catalog-editor {
   display: flex;
   flex: 1;
@@ -1845,8 +1856,8 @@
 .catalog-drawer .job-drawer-header {
   flex: 0 0 auto;
   padding: 16px;
-  background: var(--job-bg);
-  border-bottom: 1px solid var(--job-border);
+  background: var(--drawer-sky, var(--job-bg));
+  border-bottom: 1px solid var(--theme-border-strong);
 }
 .catalog-drawer .job-editor-title h2 {
   font-size: 16px;
@@ -1894,8 +1905,8 @@
   flex: 0 0 auto;
   padding: 12px 16px max(12px, env(safe-area-inset-bottom));
   margin: 0;
-  border-top: 1px solid var(--job-border);
-  background: var(--job-bg);
+  border-top: 1px solid var(--theme-border-strong);
+  background: var(--theme-app-ground);
   max-height: 50dvh;
   overflow-y: auto;
 }

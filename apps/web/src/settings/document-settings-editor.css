@@ -1,11 +1,7 @@
+/* Height, edge and corner come from the shared drawer (a floating card on a desktop). */
 .jobs-settings-page.catalog-drawer.document-side-index {
   width: min(680px, 100vw);
-  height: 100dvh;
-  max-height: 100dvh;
   align-self: stretch;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
 }
 .document-side-index.catalog-drawer .document-side-index-form {
   height: 100%;
