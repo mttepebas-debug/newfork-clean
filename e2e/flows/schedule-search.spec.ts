@@ -14,11 +14,14 @@ function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
 }
 
+// The days and hours are the ones the specs before this one publish for Ali
+// and Emre; Ali Monday + Emre Tuesday 10-4 was refused in CI as a hard
+// publication blocker (run 39541999646).
 test("the Schedule search narrows the grid, keeps ?q= across weeks and says when no one matches", async ({ page }) => {
   sql(`
     select tests.publish_week('${run}', ${roundWeek(5)}, '[
-      {"label": "${roundLabel("search-ali")}", "person": "ali", "loc": "K", "job": "cook", "day": 0, "start": "09:00", "end": "15:00"},
-      {"label": "${roundLabel("search-emre")}", "person": "emre", "loc": "K", "job": "cook", "day": 1, "start": "10:00", "end": "16:00"}
+      {"label": "${roundLabel("search-ali")}", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
+      {"label": "${roundLabel("search-emre")}", "person": "emre", "loc": "K", "job": "cook", "day": 0, "start": "09:00", "end": "15:00"}
     ]');`);
   const monday = sql(`select tests.week(${roundWeek(5)});`);
   const besiktas = sql(`select tests.id('${run}:B');`);
