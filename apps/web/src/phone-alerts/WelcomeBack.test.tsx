@@ -39,11 +39,11 @@ function Probe() {
   return <output aria-label="Current path">{useLocation().pathname}</output>;
 }
 
-function open() {
+function open(from = "/app") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[{ pathname: "/sign-in", state: { from: "/app" } }]}>
+      <MemoryRouter initialEntries={[{ pathname: "/sign-in", state: { from } }]}>
         <Routes>
           <Route path="/sign-in" element={<SignInPage />} />
           <Route path="*" element={<Probe />} />
@@ -114,6 +114,13 @@ describe("Home Screen app's first open", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Not now" }));
     expect(screen.getByLabelText("Current path").textContent).toBe("/app");
     expect(window.localStorage.getItem("newfork.phoneAlerts.appFirstDone")).toBe("1");
+  });
+
+  it("an invite link keeps today's form, where the invited person can create their account", () => {
+    homeScreenApp();
+    open(`/invite/accept?token=${"a".repeat(64)}`);
+    expect(screen.queryByText("Welcome back. One last step.")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Create your employee account" })).toBeTruthy();
   });
 
   it("Safari, or a Home Screen app that was asked before, gets today's sign-in", () => {

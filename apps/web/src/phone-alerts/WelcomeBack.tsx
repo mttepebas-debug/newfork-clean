@@ -106,7 +106,9 @@ export function WelcomeBack({ destination }: { readonly destination: string }) {
       <ol className="wb-rows">
         <Row n={1} state="done" title="Added to your Home Screen" />
         {authenticated ? (
-          <Row n={2} state="done" title="Signed in" />
+          <Row n={2} state="done" title="Signed in">
+            {error ? <FieldNote id="wb-session" error={error} /> : null}
+          </Row>
         ) : (
           <Row n={2} state="open" title="Sign in">
             <form className="wb-form" onSubmit={submit}>
