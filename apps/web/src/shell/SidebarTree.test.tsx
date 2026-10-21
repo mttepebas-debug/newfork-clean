@@ -61,6 +61,11 @@ const group = (name: string) => link(name).closest(".nav-children");
 afterEach(cleanup);
 
 describe("the desktop left menu tree", () => {
+  it("shows a cut workspace name whole on hover (QA 50)", () => {
+    mount("/app/schedule");
+    expect(document.querySelector(".sidebar-workspace-name")?.getAttribute("title")).toBe("Meyhouse");
+  });
+
   it("puts Lineup under Schedule and Requests on its own row after it", () => {
     mount("/app/schedule");
     const order = within(primary())

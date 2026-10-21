@@ -345,7 +345,8 @@ export function AppShell() {
           {/* The name says where the person is; switching lives in the footer
               row above Settings (Mert 2026-10-13). */}
           {collapsed ? null : (
-            <strong className="sidebar-workspace-name">
+            // A long name is cut; hover shows it whole (QA 50).
+            <strong className="sidebar-workspace-name" title={context.workspace.name}>
               {context.workspace.name}
             </strong>
           )}
