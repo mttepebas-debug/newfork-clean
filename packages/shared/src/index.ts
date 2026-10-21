@@ -39,6 +39,7 @@ export * from "./communications";
 export * from "./notifications";
 export * from "./storage-access";
 export * from "./notification-settings";
+export * from "./onboarding-approval";
 export * from "./push-alerts";
 export * from "./lineup";
 export * from "./lineup-art";
