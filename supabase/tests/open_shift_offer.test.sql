@@ -115,6 +115,26 @@ select ok((select n.body like '% wants the open shift %' from public.person_noti
   and n.type_key = 'shift_changes.approval_needed' and n.user_id = tests.user('os:rachel')),
   'Rachel is asked to approve: Jake wants the open shift');
 insert into os select 'case:1', to_jsonb(c) from pg_temp.open_case(1, 3) c;
+-- Who may not take it reaches it no other way (nf-guvenlik, 2026-10-20).
+select throws_ok(format($$ select pg_temp.command('ece', jsonb_build_object('action', 'apply', 'shift_id', %L, 'case_id', %L)) $$,
+  pg_temp.shift(1, 3) ->> 'id', (pg_temp.open_case(1, 3)).id), 'P0001', 'You are not eligible for the full shift', 'Ece cannot ask for it');
+select throws_ok(format($$ select pg_temp.command('berk', jsonb_build_object('action', 'apply', 'shift_id', %L, 'case_id', %L)) $$,
+  pg_temp.shift(1, 3) ->> 'id', (pg_temp.open_case(1, 3)).id), 'P0001', 'You are not eligible for the full shift', 'nor can Berk');
+select throws_ok(format($$ select pg_temp.command('ece', jsonb_build_object('action', 'pass', 'shift_id', %L, 'case_id', %L)) $$,
+  pg_temp.shift(1, 3) ->> 'id', (pg_temp.open_case(1, 3)).id), '42501', null, 'Ece cannot pass on a card she is not shown');
+select throws_ok(format($$ select pg_temp.command('ece', jsonb_build_object('action', 'close', 'case_id', %L, 'expected_revision', %s)) $$,
+  (pg_temp.open_case(1, 3)).id, (pg_temp.open_case(1, 3)).revision), '42501', null, 'Ece cannot close it');
+select throws_ok(format($$ select pg_temp.command('jake', jsonb_build_object('action', 'close', 'case_id', %L, 'expected_revision', %s)) $$,
+  (pg_temp.open_case(1, 3)).id, (pg_temp.open_case(1, 3)).revision), '42501', null, 'nor can Jake, who asked for it');
+select ok(public.shift_exchanges_read_service(tests.user('os:ece'), tests.id('os'), false, tests.week(1), tests.week(1) + 6,
+  (pg_temp.open_case(1, 3)).id)::text not like '%' || (pg_temp.open_case(1, 3)).id::text || '%',
+  'a link straight to the offer shows Ece nothing of it');
+select ok(not has_function_privilege('authenticated', 'public.publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb,text)', 'execute')
+  and not has_function_privilege('anon', 'public.publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb,text)', 'execute')
+  and has_function_privilege('service_role', 'public.publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb,text)', 'execute'),
+  'only the API publishes');
+select ok(not has_function_privilege('authenticated', 'app_private.schedule_publication_open_shifts(jsonb)', 'execute'),
+  'and the browser cannot list a publish''s open shifts');
 insert into os select 'application:1', to_jsonb(a) from public.shift_exchange_applications a, os
   where os.key = 'case:1' and a.case_id = (os.value ->> 'id')::uuid and a.employee_id = tests.id('os:jake');
 select lives_ok($$ select pg_temp.command('rachel', jsonb_build_object('action', 'approve',
@@ -146,7 +166,13 @@ select tests.remember('os:draft:3', pg_temp.draft(3, 'blank', '[
   {"person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
   {"loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
 ]'));
+-- Another tab edits the same draft and moves the open shift: that change stays the edit's.
+select tests.remember('os:session:3', (public.acquire_schedule_edit_session_service(tests.user('os:owner'), tests.id('os'), tests.week(3),
+  'draft', tests.id('os:draft:3')) -> 'session' ->> 'id')::uuid);
+update public.schedule_edit_session_shifts set start_time = '10:00' where session_id = tests.id('os:session:3') and employee_id is null;
 select lives_ok($$ select pg_temp.publish(tests.id('os:draft:3'), 'delete') $$, 'Rachel publishes week 3 and deletes its open shift');
+select is((select count(*)::integer from public.schedule_edit_session_shifts where session_id = tests.id('os:session:3') and employee_id is null),
+  1, 'the open shift moved in the other edit stays there');
 select ok(pg_temp.shift(3, 2) is null, 'the open shift is not published');
 select ok(not exists(select 1 from public.schedule_draft_shifts d where d.draft_id = tests.id('os:draft:3') and d.employee_id is null),
   'nor left in the draft');
@@ -211,6 +237,10 @@ select tests.settle();
 select ok(pg_temp.shift(6, 2) ->> 'employee_id' is null and (pg_temp.open_case(6, 2)).id is not null, 'it is published open and offered');
 select ok(pg_temp.offered('jake', 6, 2), 'Jake finds it in Available Shifts');
 select ok(not pg_temp.offered('berk', 6, 2), 'Berk at Besiktas does not');
+select tests.remember('os:draft:6c', pg_temp.draft(6, 'published', '[]'));
+update public.schedule_draft_shifts set note = 'Grill' where draft_id = tests.id('os:draft:6c') and scheduled_date = tests.week(6) + 2;
+select pg_temp.publish(tests.id('os:draft:6c'), null);
+select ok((pg_temp.open_case(6, 2)).id is not null, 'a publish without a choice leaves the offer as it is');
 
 select * from finish();
 rollback;
