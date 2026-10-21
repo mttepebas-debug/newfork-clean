@@ -133,6 +133,17 @@ select is(
   (select count(*)::integer from public.employee_events ev
    where ev.employee_id = tests.id('ja:pia') and ev.action = 'employee.auto_activated'),
   1, 'the way finishing onboarding lets somebody in');
+select is(
+  (select array_agg(array[ev.actor_user_id::text, ev.target_type, ev.target_id, ev.metadata ->> 'source'])
+   from public.onboarding_events ev
+   where ev.employee_id = tests.id('ja:pia') and ev.action = 'onboarding.activate'),
+  array[array[pg_temp.u('ja:zeynep')::text, 'onboarding_case',
+    (select c.id::text from public.employee_onboarding_cases c where c.employee_id = tests.id('ja:pia')), 'approval_setting_off']],
+  'Pia''s onboarding history says she was let in, by whom, the way a manager''s Approve does');
+select is(
+  (select count(*)::integer from public.onboarding_events ev
+   where ev.workspace_id = tests.id('ja') and ev.action = 'onboarding.activate'),
+  1, 'one history line for each person let in, none for Dora');
 select is(pg_temp.membership('dora'), 'pending_activation', 'Dora still waits for her document');
 select is(pg_temp.waits('dora'), false, 'and only for it');
 select is(pg_temp.waits('can'), false, 'somebody still onboarding no longer waits for approval');
