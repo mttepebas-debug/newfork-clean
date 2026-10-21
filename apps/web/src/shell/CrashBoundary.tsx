@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { LoadError } from "./LoadState";
+import { staleChunkReloadPending } from "./stale-chunk-reload";
 
 /**
  * What the app shows when a page throws while it draws (BL-1075). Without it
@@ -38,8 +39,11 @@ class Boundary extends Component<BoundaryProps, BoundaryState> {
       this.setState({ failed: false });
   }
 
+  // A reload for a new build is on its way: nothing in the page's place
+  // rather than a card that flashes before the page comes back.
   override render(): ReactNode {
-    return this.state.failed ? this.props.fallback : this.props.children;
+    if (!this.state.failed) return this.props.children;
+    return staleChunkReloadPending() ? null : this.props.fallback;
   }
 }
 

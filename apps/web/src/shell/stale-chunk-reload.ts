@@ -13,6 +13,14 @@
 export const STALE_CHUNK_RELOAD_KEY = "nf.stale-chunk-reload-at";
 export const STALE_CHUNK_RELOAD_WINDOW_MS = 10_000;
 
+// True once this page has asked for its reload. The error card waits it out:
+// it only flashed before the page came back (Sentry JAVASCRIPT-REACT-T).
+let reloadPending = false;
+
+export function staleChunkReloadPending(): boolean {
+  return reloadPending;
+}
+
 type Options = {
   target?: EventTarget;
   storage?: () => Storage;
@@ -52,10 +60,14 @@ export function installStaleChunkReload({
     const last = readMark(storage);
     if (last !== null && at - last >= 0 && at - last < STALE_CHUNK_RELOAD_WINDOW_MS) return;
     reloading = true;
+    reloadPending = true;
     writeMark(storage, at);
     reload();
   };
 
   target.addEventListener("vite:preloadError", onPreloadError);
-  return () => target.removeEventListener("vite:preloadError", onPreloadError);
+  return () => {
+    target.removeEventListener("vite:preloadError", onPreloadError);
+    reloadPending = false;
+  };
 }

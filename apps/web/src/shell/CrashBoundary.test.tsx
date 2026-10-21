@@ -4,6 +4,7 @@ import { Link, MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppCrashBoundary, PageCrashBoundary } from "./CrashBoundary";
+import { installStaleChunkReload } from "./stale-chunk-reload";
 
 // BL-1075: a page that throws while it draws took the whole app off the
 // screen and left it white. Now the page's area shows the error card, the
@@ -119,6 +120,54 @@ describe("PageCrashBoundary", () => {
     expect(
       await screen.findByRole("heading", { name: "Something went wrong" }),
     ).toBeTruthy();
+  });
+});
+
+// After a deploy an old tab's page file is gone: the reload is already on its
+// way, so the card only flashed before the page came back (Sentry
+// JAVASCRIPT-REACT-T, 2026-10-21). A second failure after the reload is real.
+describe("while a stale-chunk reload is on its way", () => {
+  function startReload() {
+    const target = new EventTarget();
+    const reload = vi.fn();
+    const dispose = installStaleChunkReload({
+      target,
+      storage: () => new Map() as unknown as Storage,
+      reload,
+    });
+    target.dispatchEvent(new Event("vite:preloadError"));
+    return { reload, dispose };
+  }
+
+  it("shows no card in the page's place, and the menus stay", () => {
+    const { reload, dispose } = startReload();
+    renderShell("/app/broken");
+
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("heading", { name: "Something went wrong" })).toBeNull();
+    expect(screen.getByRole("navigation", { name: "Menu" })).toBeTruthy();
+    dispose();
+  });
+
+  it("shows no full-screen card either", () => {
+    const { dispose } = startReload();
+    render(
+      <MemoryRouter initialEntries={["/app"]}>
+        <AppCrashBoundary>
+          <Broken />
+        </AppCrashBoundary>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole("heading", { name: "Something went wrong" })).toBeNull();
+    dispose();
+  });
+
+  it("shows the card again once no reload is pending", () => {
+    startReload().dispose();
+    renderShell("/app/broken");
+
+    expect(screen.getByRole("heading", { name: "Something went wrong" })).toBeTruthy();
   });
 });
 
