@@ -145,7 +145,9 @@ export function useKeepScrollThroughDrag({
       // grid already has the days at their old widths.
       if (grabbed.columns && grabbed.columns !== "none") {
         grid.dataset[HOLD_ATTRIBUTE] = "true";
+        if (!ownColumns.has(grid)) ownColumns.set(grid, grid.style.getPropertyValue("grid-template-columns"));
         grid.style.setProperty("grid-template-columns", grabbed.columns, "important");
+        heldColumns.set(grid, grid.style.getPropertyValue("grid-template-columns"));
       }
       // Where the card was on screen as the drag began: where it was pressed,
       // moved by any scroll in between.
@@ -195,9 +197,23 @@ function holdSpace(grid: HTMLElement): HTMLElement | null {
   return grid.querySelector<HTMLElement>(":scope > .schedule-drag-hold-space");
 }
 
+// The grid's columns are React's inline style: React writes them only when
+// they change, so a drop that removed them left the grid with none and the
+// days wrapped onto new lines until a reload (Mert, 2026-10-21). The drop
+// puts React's value back, unless React wrote a newer one during the drag.
+const ownColumns = new WeakMap<HTMLElement, string>();
+const heldColumns = new WeakMap<HTMLElement, string>();
+
 function releaseGrid(grid: HTMLElement): void {
   delete grid.dataset[HOLD_ATTRIBUTE];
-  grid.style.removeProperty("grid-template-columns");
+  const own = ownColumns.get(grid);
+  const held = heldColumns.get(grid);
+  ownColumns.delete(grid);
+  heldColumns.delete(grid);
+  if (held !== undefined && grid.style.getPropertyValue("grid-template-columns") === held) {
+    if (own) grid.style.setProperty("grid-template-columns", own);
+    else grid.style.removeProperty("grid-template-columns");
+  }
   grid.style.removeProperty("padding-bottom");
   holdSpace(grid)?.style.removeProperty("height");
 }

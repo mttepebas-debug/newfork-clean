@@ -63,6 +63,20 @@ function GrabHarness({ active }: { readonly active: boolean }) {
   );
 }
 
+// The real grid: React writes its columns as an inline style.
+function ReactColumnsHarness({ active }: { readonly active: boolean }) {
+  const gridRef = useRef<HTMLDivElement>(null);
+  const { grab } = useKeepScrollThroughDrag({ active, gridRef });
+  return (
+    <div className="schedule-grid-scroll" data-testid="scroll">
+      <div ref={gridRef} data-testid="grid" style={{ gridTemplateColumns: "200px repeat(2, 150px)" }}>
+        <div className="schedule-drag-hold-space" data-testid="space" />
+        <button type="button" data-testid="card" onPointerDown={(event) => grab(event.currentTarget)} />
+      </div>
+    </div>
+  );
+}
+
 function placeCard(top: number, left = 500) {
   vi.spyOn(screen.getByTestId("card"), "getBoundingClientRect").mockReturnValue(
     { top, left, right: left + 120, bottom: top + 40, width: 120, height: 40, x: left, y: top, toJSON: () => ({}) } as DOMRect,
@@ -151,6 +165,28 @@ describe("useKeepScrollThroughDrag holding the picked-up card", () => {
     expect(screen.getByTestId("space").style.height).toBe("");
     expect(grid.style.paddingBottom).toBe("");
     expect(scroll.scrollTop).toBe(220);
+  });
+
+  // Mert, 2026-10-21: after a drag the grid came apart (days wrapped onto
+  // new lines) until a reload. The grid's own columns are React's; the drop
+  // took them away and React, seeing no change, never wrote them back.
+  it("gives the grid its own columns back after the drop", () => {
+    const { rerender } = render(<ReactColumnsHarness active={false} />);
+    const grid = screen.getByTestId("grid");
+    sizeScroll(3000, 800);
+    placeCard(300);
+    const style = window.getComputedStyle;
+    vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) =>
+      element === grid ? ({ gridTemplateColumns: "240px 151px 162px" } as CSSStyleDeclaration) : style(element, pseudo));
+    fireEvent.pointerDown(screen.getByTestId("card"));
+
+    rerender(<ReactColumnsHarness active />);
+    expect(grid.style.getPropertyValue("grid-template-columns")).toBe("240px 151px 162px");
+
+    rerender(<ReactColumnsHarness active={false} />);
+    expect(grid.dataset.scheduleDragHold).toBeUndefined();
+    expect(grid.style.getPropertyValue("grid-template-columns")).toBe("200px repeat(2, 150px)");
+    expect(grid.style.getPropertyPriority("grid-template-columns")).toBe("");
   });
 
   it("does nothing when no card was picked up", () => {
