@@ -87,6 +87,13 @@ jobs:
       - &start-db
         name: Start Supabase (database, auth, storage, realtime)
         run: |
+          # CI-STALE-STACK (2026-10-21): a run cut off before its Stop step (the PC
+          # shut down mid-run) leaves this runner's stack behind, and Docker brings
+          # it back on boot; `supabase start` then says "already running" and the
+          # tests run on that run's leftovers (run 39650219178: 23505 in pgTAP).
+          # Stop it first. Runs after the apart step, so config.toml names
+          # newfork-ci-pc<N>: never the shared newfork-clean stack.
+          supabase stop --no-backup || true
           sleep $(( (CI_RUNNER_INDEX - 1) * 8 ))
           for attempt in 1 2 3 4 5; do
             supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector && break
@@ -192,6 +199,13 @@ jobs:
       # load; the retries stay as a second line of defence.
       - name: Start Supabase (database, auth, gateway)
         run: |
+          # CI-STALE-STACK (2026-10-21): a run cut off before its Stop step (the PC
+          # shut down mid-run) leaves this runner's stack behind, and Docker brings
+          # it back on boot; `supabase start` then says "already running" and the
+          # tests run on that run's leftovers (run 39650219178: 23505 in pgTAP).
+          # Stop it first. Runs after the apart step, so config.toml names
+          # newfork-ci-pc<N>: never the shared newfork-clean stack.
+          supabase stop --no-backup || true
           sleep $(( (CI_RUNNER_INDEX - 1) * 8 ))
           for attempt in 1 2 3 4 5; do
             supabase start -x analytics,edge-runtime,functions,imgproxy,meta,studio,vector && break
