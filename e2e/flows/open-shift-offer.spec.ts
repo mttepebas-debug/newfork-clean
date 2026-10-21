@@ -63,7 +63,7 @@ const api = async (token: string, path: string) => {
 
 test("an open shift offered on publishing reaches who may take it, and a manager gives it", async ({ browser }) => {
   test.setTimeout(240_000);
-  const week = roundWeek(640);
+  const week = roundWeek(680);
   const monday = sql(`select tests.week(${week});`);
   const thursday = sql(`select tests.week(${week}) + 3;`);
   const name = draftName("Open shift week");
