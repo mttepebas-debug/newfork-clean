@@ -51,14 +51,15 @@ describe("main-menu pages hold still when the menu collapses (Mert 2026-10-18)",
   });
 
   // The open menu is 240 px (Mert 2026-10-19: drawn at 224 on Notifications,
-  // then "azıcık" wider with the same gap to the page); the
-  // panels that open beside it start at its edge.
-  it("opens the side panels at the open menu's edge", () => {
+  // then "azıcık" wider with the same gap to the page); the Schedule export
+  // panel starts at its edge, and the Notifications panel floats as a card
+  // 12 px from it (Mert 2026-10-21, drawer variant C).
+  it("opens the side panels from the open menu's edge", () => {
     const css = readFileSync("src/styles.css", "utf8") + readFileSync("src/notifications/notifications.css", "utf8");
-    for (const panel of ["schedule-export-panel", "ni-panel"]) {
-      const body = [...css.matchAll(new RegExp(`(^|})\\s*\\.${panel}\\s*\\{([^}]*)\\}`, "g"))].map((match) => match[2]).join(";");
-      expect(body).toMatch(/left:\s*var\(--app-sidebar-width\);/);
-    }
+    const left = (panel: string) =>
+      [...css.matchAll(new RegExp(`(^|})\\s*\\.${panel}\\s*\\{([^}]*)\\}`, "g"))].map((match) => match[2]).join(";");
+    expect(left("schedule-export-panel")).toMatch(/left:\s*var\(--app-sidebar-width\);/);
+    expect(left("ni-panel")).toMatch(/left:\s*calc\(var\(--app-sidebar-width\) \+ 12px\);/);
     expect(css).not.toMatch(/left:\s*288px/);
   });
 });
