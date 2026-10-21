@@ -4,8 +4,9 @@ import { fileURLToPath } from "node:url";
 import { expect, test } from "../fixtures/test";
 import { psql } from "../global-setup";
 
-// Phone alerts (BILDIRIM-15): after opening their schedule, an employee finds the card on Home, turns
-// alerts on, and Account → Notifications says this computer takes them; the device is theirs on the server.
+// Phone alerts (BILDIRIM-15, TELEFON-TUR2): on this device's first Home an employee finds the offer right
+// under "Your day", turns alerts on there and sees the answer inside it; Account → Notifications says this
+// computer takes them; the device is theirs on the server.
 // No real push service is touched: the browser's subscription is a stand-in with a Google-shaped address,
 // every push service host is blocked, and the API's push worker never runs here (no cron).
 
@@ -78,24 +79,18 @@ test("an employee turns phone alerts on from Home and Account says this computer
   // The browser itself must say alerts are allowed, or no card is right.
   expect(await page.evaluate(() => Notification.permission), "this browser reads granted notifications as").toBe("granted");
 
-  // The card waits until the person opened their schedule here.
+  // One entry per opening (K26): this device's first Home gets the offer under "Your day", not the block.
   await page.goto("/app/employee-hub");
   await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
-  await expect(page.getByRole("complementary", { name: /Get alerts on this/ })).toHaveCount(0);
-  await page.goto("/app/employee-hub/schedule");
-  // The schedule is seen once the signed-in app has drawn it here, not when the address loads: the device
-  // remembers it then (home-card-memory.ts).
-  await expect
-    .poll(() => page.evaluate(() => window.localStorage.getItem("newfork.phoneAlerts.scheduleSeen")), { timeout: 15_000 })
-    .toBe("1");
-  await page.goto("/app/employee-hub");
-  const card = page.getByRole("complementary", { name: "Get alerts on this computer" });
+  const card = page.getByRole("complementary", { name: /Your schedule is here\.|No shifts yet\./ });
   await expect(card).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Get shift alerts on this computer" })).toHaveCount(0);
   await page.screenshot({ path: `${shots}home-card-1440.png` });
 
-  await card.getByRole("button", { name: "Turn on" }).click();
-  await expect(page.getByText("Phone alerts are on.")).toBeVisible();
-  await expect(card).toHaveCount(0);
+  await card.getByRole("button", { name: "Turn on alerts" }).click();
+  // The answer stays in the card.
+  await expect(card.getByText("Alerts are on")).toBeVisible();
+  await expect(card.getByText(/Test alert sent · /)).toBeVisible();
   expect(sql(`select count(*) from public.notification_push_subscriptions where user_id = '${employeeId}' and endpoint = '${endpoint}' and revoked_at is null;`)).toBe("1");
 
   await page.goto("/account/preferences/notifications");
