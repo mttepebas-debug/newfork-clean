@@ -174,22 +174,31 @@
   opacity: 1;
 }
 
-/* Table frame: the soft ground shows under a short table. */
+/* Table frame: the soft ground shows under a short table. It is a Home card
+   (Daylight): no edge, the card's lift and corner (workspace-theme-sync). */
 .list-page.list-page :is(.job-catalog, .employee-table-wrap) {
-  border: 1px solid var(--theme-list-frame);
-  border-radius: 7px;
+  border: 0;
+  border-radius: 18px;
   background: var(--theme-surface-soft);
+  box-shadow: var(--theme-shadow-card);
+}
+/* On a phone each row is its own card, so the frame steps back. */
+@media (max-width: 720px) {
+  .list-page.list-page :is(.job-catalog, .employee-table-wrap) {
+    background: transparent;
+    box-shadow: none;
+  }
 }
 /* A row's "⋯" menu opens past the table's edge, so the table frame does not
    clip; its first and last rows round with the frame instead. */
 @media (min-width: 721px) {
   .list-page.list-page .job-catalog > :first-child {
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
   }
   .list-page.list-page .job-catalog > :last-child {
-    border-bottom-left-radius: 6px;
-    border-bottom-right-radius: 6px;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
   }
 }
 .list-page.list-page .employee-table {

@@ -105,6 +105,10 @@
   --theme-sky-evening: #f7e9ec;
   --theme-sky-night-glow: #d9def4;
   --theme-sky-night: #e8ebf5;
+  /* The page area's ground under every page, and the Home card's lift, which
+     the other pages' cards share (workspace-theme-sync). */
+  --theme-app-ground: #f6f7f5;
+  --theme-shadow-card: 0 1px 2px rgb(23 34 30 / 5%), 0 12px 32px -18px rgb(23 34 30 / 26%);
   /* Six soft avatar grounds for people without a photo; ink is --theme-text. */
   --theme-avatar-0: #ecd8c4;
   --theme-avatar-1: #cfe5da;
@@ -3723,7 +3727,39 @@ button.workspace-switcher-item:hover:not(:disabled) {
   min-width: 0;
   overflow: auto;
   scrollbar-gutter: stable;
-  background: #f6f7f5;
+  background: var(--theme-app-ground);
+}
+/* The Home sky for the part of the day (Daylight, Mert 2026-10-18): a glow and
+   a ground fading into the page. Home draws it behind its greeting; every other
+   page gets it at the top of the page area, scrolling with the page and fading
+   in beside the menu like Home's (workspace-theme-sync). */
+:is(.dl-home, .app-main)[data-slot="morning"] {
+  --dl-sky: radial-gradient(90% 60% at 88% 0%, var(--theme-sky-morning-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-morning) 0%, transparent 100%);
+}
+:is(.dl-home, .app-main)[data-slot="afternoon"] {
+  --dl-sky: radial-gradient(90% 60% at 80% -6%, var(--theme-sky-afternoon-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-afternoon) 0%, transparent 100%);
+}
+:is(.dl-home, .app-main)[data-slot="evening"] {
+  --dl-sky: radial-gradient(80% 55% at 12% 0%, var(--theme-sky-evening-rose) 0%, transparent 70%), radial-gradient(80% 60% at 92% 6%, var(--theme-sky-evening-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-evening) 0%, transparent 100%);
+}
+:is(.dl-home, .app-main)[data-slot="night"] {
+  --dl-sky: radial-gradient(90% 60% at 84% 0%, var(--theme-sky-night-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-night) 0%, transparent 100%);
+}
+.app-main[data-slot]:not(:has(.dl-home)) {
+  background-image: var(--dl-sky);
+  background-repeat: no-repeat;
+  background-size: 100% 470px;
+  background-attachment: local;
+}
+@media (min-width: 721px) {
+  .app-main[data-slot]:not(:has(.dl-home)) {
+    background-image: linear-gradient(90deg, var(--theme-app-ground) 0, transparent 96px), var(--dl-sky);
+  }
+}
+/* Pages that painted their own ground let the sky through. */
+.app-main[data-slot] > :is(.employees-page, .organization-settings, .schedule-page),
+.app-main[data-slot] > .schedule-page > :is(.schedule-topbar, .schedule-filter-command-strip) {
+  background: transparent;
 }
 /* A phone is a touch screen: no page, list, drawer or menu shows a scrollbar,
    and none keeps a stripe for one, so content reaches the 16 px gutter on both
@@ -11046,11 +11082,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   cursor: not-allowed;
   opacity: var(--settings-header-action-disabled-opacity);
 }
+/* A Home card (Daylight): no edge, the card's lift and corner (workspace-theme-sync). */
 .organization-form,
 .settings-empty {
-  border: 1px solid #d9dfdc;
-  border-radius: 7px;
+  border-radius: 22px;
   background: var(--theme-surface);
+  box-shadow: var(--theme-shadow-card);
 }
 .organization-form-row {
   display: grid;

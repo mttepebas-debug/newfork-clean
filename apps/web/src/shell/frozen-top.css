@@ -20,6 +20,12 @@
        in its size would scroll the page. */
     overflow-anchor: none;
   }
+  /* Under the sky (workspace-theme-sync) the top lets it through until the
+     content moves under it; then it takes the page background again. */
+  .app-main[data-slot]:not([data-frozen-scrolled], :has([data-frozen-scrolled])) [data-frozen-piece][data-frozen-piece] {
+    background-color: transparent;
+    box-shadow: none;
+  }
   [data-frozen-measuring] [data-frozen-piece][data-frozen-piece] {
     position: relative;
     top: auto;

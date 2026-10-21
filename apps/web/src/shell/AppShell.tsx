@@ -18,6 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { PullToRefreshMark, usePullToRefresh } from "./PullToRefresh";
 import { useFrozenTop } from "./useFrozenTop";
+import { useDaySlot } from "./useDaySlot";
 import { useListPhoneWidth, usePhoneWidth } from "../lib/usePhoneWidth";
 import { ManagementMobileNav } from "./ManagementMobileNav";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
@@ -232,6 +233,7 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const [main, setMain] = useState<HTMLElement | null>(null);
   useFrozenTop(main);
+  const daySlot = useDaySlot();
   const location = useLocation();
   // Only the open page's group is open: reaching a group opens it, going to
   // a page outside it closes it, a group opened by hand included. On the page
@@ -638,7 +640,7 @@ export function AppShell() {
         </div>
       </aside>
       {phoneBars ? <ManagerPhoneBar /> : null}
-      <main className="app-main" ref={setMain}>
+      <main className="app-main" ref={setMain} data-slot={daySlot}>
         {phoneBars ? <PullToRefreshMark state={pull.state} pull={pull.pull} /> : null}
         <PageCrashBoundary homeHref={noAccessHomePath(context, location.pathname)}>
           {/* A page's code on its way waits here, not above the shell: the

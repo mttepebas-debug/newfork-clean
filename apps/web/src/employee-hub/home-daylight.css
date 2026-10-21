@@ -37,7 +37,7 @@
   --dl-g: 16px;
   --dl-r: 22px;
   --dl-rs: 18px;
-  --dl-shadow: 0 1px 2px rgb(23 34 30 / 5%), 0 12px 32px -18px rgb(23 34 30 / 26%);
+  --dl-shadow: var(--theme-shadow-card);
   --dl-ln: var(--theme-border-subtle);
   --dl-ln2: var(--theme-border-strong);
   --dl-sf2: var(--theme-surface-muted);
@@ -62,18 +62,7 @@
   line-height: 1.4;
   letter-spacing: -0.006em;
 }
-.dl-home[data-slot="morning"] {
-  --dl-sky: radial-gradient(90% 60% at 88% 0%, var(--theme-sky-morning-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-morning) 0%, transparent 100%);
-}
-.dl-home[data-slot="afternoon"] {
-  --dl-sky: radial-gradient(90% 60% at 80% -6%, var(--theme-sky-afternoon-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-afternoon) 0%, transparent 100%);
-}
-.dl-home[data-slot="evening"] {
-  --dl-sky: radial-gradient(80% 55% at 12% 0%, var(--theme-sky-evening-rose) 0%, transparent 70%), radial-gradient(80% 60% at 92% 6%, var(--theme-sky-evening-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-evening) 0%, transparent 100%);
-}
-.dl-home[data-slot="night"] {
-  --dl-sky: radial-gradient(90% 60% at 84% 0%, var(--theme-sky-night-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-night) 0%, transparent 100%);
-}
+/* The sky for each part of the day (--dl-sky) is in styles.css: every page shares it. */
 .dl-home :is(h1, h2, h3, p, ul) {
   margin: 0;
 }
