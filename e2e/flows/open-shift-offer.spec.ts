@@ -35,7 +35,7 @@ async function shot(page: Page, name: string) {
 }
 
 // A week Ayse writes at Kadikoy with one open cook shift on its Thursday, saved as a draft.
-function draftWithOpenShift(week: number, label: string): string {
+function draftWithOpenShift(week: number, label: string, name = draftName("Open shift week")): string {
   return sql(`
     select tests.remember('${run}:session:${label}', (public.acquire_schedule_edit_session_service(tests.user('${run}:ayse'),
       tests.id('${run}'), tests.week(${week}), 'blank', null) -> 'session' ->> 'id')::uuid);
@@ -43,7 +43,14 @@ function draftWithOpenShift(week: number, label: string): string {
       '{"loc": "K", "job": "cook", "day": 3, "start": "16:00", "end": "22:00"}');
     select public.save_schedule_edit_session_service(tests.user('${run}:ayse'), tests.id('${run}'), tests.id('${run}:session:${label}'),
       (select revision from public.schedule_edit_sessions where id = tests.id('${run}:session:${label}')),
-      '${draftName("Open shift week")}', null, null) ->> 'id';`).split(/\r?\n/).at(-1)!;
+      '${name}', null, null) ->> 'id';`).split(/\r?\n/).at(-1)!;
+}
+
+// The saved draft on the grid, from the Schedules window: Publish acts on what is on screen.
+async function viewDraft(page: Page, name: string) {
+  await page.getByRole("button", { name: /^Draft selector:/ }).click();
+  await page.getByRole("dialog", { name: /^Schedules for / }).getByRole("button", { name: `View ${name}`, exact: true }).click();
+  await expect(page.getByRole("dialog", { name: /^Schedules for / })).toHaveCount(0);
 }
 
 const api = async (token: string, path: string) => {
@@ -59,13 +66,15 @@ test("an open shift offered on publishing reaches who may take it, and a manager
   const week = roundWeek(640);
   const monday = sql(`select tests.week(${week});`);
   const thursday = sql(`select tests.week(${week}) + 3;`);
-  draftWithOpenShift(week, roundLabel("open-offer"));
+  const name = draftName("Open shift week");
+  draftWithOpenShift(week, roundLabel("open-offer"), name);
   const sourceOf = () => sql(`select coalesce(max(s.source_shift_id::text), '') from public.schedule_published_shifts s
     join public.schedule_location_publications p on p.id = s.publication_id and p.status = 'current'
     where s.workspace_id = tests.id('${run}') and s.location_id = tests.id('${run}:K') and s.scheduled_date = '${thursday}';`);
 
   // Ayse publishes and is asked once about the open shift; offering it is the default.
   const ayse = await open(browser, "ayse", `/app/schedule?date=${monday}`);
+  await viewDraft(ayse, name);
   await ayse.getByRole("button", { name: "Publish", exact: true }).click();
   const dialog = ayse.getByRole("dialog");
   await dialog.getByRole("button", { name: "Next", exact: true }).click();
@@ -141,12 +150,16 @@ test("a published shift made open is asked about on the next publish and offered
   await ayse.getByRole("option", { name: /Make open shift/ }).click();
   await editor.getByRole("button", { name: "Save", exact: true }).click();
   await expect(editor).toHaveCount(0);
+  const madeOpen = draftName("Made open");
   await ayse.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).click();
-  await ayse.getByLabel("Draft name").fill(draftName("Made open"));
+  await ayse.getByLabel("Draft name").fill(madeOpen);
   await ayse.getByRole("button", { name: "Save As", exact: true }).click();
   await expect(ayse).not.toHaveURL(/mode=edit/);
+  await viewDraft(ayse, madeOpen);
 
-  await ayse.getByRole("button", { name: "Publish", exact: true }).click();
+  // The week is live: Publish sits under Published.
+  await ayse.getByRole("button", { name: "Published", exact: true }).click();
+  await ayse.getByRole("button", { name: "Publish another draft", exact: true }).click();
   const dialog = ayse.getByRole("dialog");
   await dialog.getByRole("button", { name: "Next", exact: true }).click();
   const question = dialog.getByRole("group", { name: "1 open shift: what happens when you publish?" });
