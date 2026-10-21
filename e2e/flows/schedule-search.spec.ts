@@ -14,16 +14,16 @@ function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
 }
 
-// The days and hours are the ones the specs before this one publish for Ali
-// and Emre; Ali Monday + Emre Tuesday 10-4 was refused in CI as a hard
-// publication blocker (run 39541999646).
+// Week 750 is this spec's own: it shared week 5 with
+// schedule-publish-approved-exchange, whose approved swap moves Ali's Tuesday
+// to Deniz, so publishing Ali there again is refused as a hard blocker.
 test("the Schedule search narrows the grid, keeps ?q= across weeks and says when no one matches", async ({ page }) => {
   sql(`
-    select tests.publish_week('${run}', ${roundWeek(5)}, '[
+    select tests.publish_week('${run}', ${roundWeek(750)}, '[
       {"label": "${roundLabel("search-ali")}", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
       {"label": "${roundLabel("search-emre")}", "person": "emre", "loc": "K", "job": "cook", "day": 0, "start": "09:00", "end": "15:00"}
     ]');`);
-  const monday = sql(`select tests.week(${roundWeek(5)});`);
+  const monday = sql(`select tests.week(${roundWeek(750)});`);
   const besiktas = sql(`select tests.id('${run}:B');`);
 
   await signIn(page, "zeynep");
