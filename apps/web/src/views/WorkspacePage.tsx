@@ -245,7 +245,7 @@ export function WorkspacePage() {
   const startCustomizing = () => {
     setCustomizing(true);
     // The button is at the end of the page; Customize starts at its top.
-    headElement?.scrollIntoView({ behavior: "smooth", block: "start" });
+    headElement?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
   const allHidden = !customizing && layout.widget_order.every((id) => hidden.has(id));
   const shown = layout.widget_order.filter((id) => !hidden.has(id));
