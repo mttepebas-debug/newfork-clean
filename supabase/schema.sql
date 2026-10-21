@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 573, last: 20261021120000_join_approval_switch.sql
--- fingerprint: sha256:1fbad059d120feeb01f95ece671fbe71a8d6d8f86656307f747d327960a7a6e5
+-- fingerprint: sha256:4e2bc04d962ff67f00faeeef0586b12ce176a3cf25f6781692603c50fbaf7b40
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -28443,7 +28443,7 @@ CREATE OR REPLACE FUNCTION "public"."set_onboarding_approval_service"("actor_use
     SET "search_path" TO ''
     AS $$
 declare
-  waiting uuid;
+  waiting record;
   activated integer := 0;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.organization.write');
@@ -28469,7 +28469,7 @@ begin
     -- Waiting for approval alone: finished (submitted), not in yet, and nothing activation asks for left
     -- (the same two checks app_private.activate_employee_onboarding_case makes before it lets anyone in).
     for waiting in
-      select c.id
+      select c.id, c.employee_id
       from public.employee_onboarding_cases c
       join public.workspace_memberships m on m.id = c.membership_id
       where c.workspace_id = target_workspace_id
@@ -28488,7 +28488,11 @@ begin
       order by c.id
       for update of c
     loop
-      perform app_private.activate_employee_onboarding_case(waiting, actor_user_id, 'employee.auto_activated');
+      perform app_private.activate_employee_onboarding_case(waiting.id, actor_user_id, 'employee.auto_activated');
+      insert into public.onboarding_events (workspace_id, employee_id, case_id, actor_user_id, action, target_type, target_id, metadata)
+      values (target_workspace_id, waiting.employee_id, waiting.id, actor_user_id,
+        'onboarding.activate', 'onboarding_case', waiting.id::text,
+        jsonb_build_object('source', 'approval_setting_off'));
       activated := activated + 1;
     end loop;
   end if;
