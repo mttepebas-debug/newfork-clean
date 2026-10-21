@@ -5,16 +5,18 @@ import type {
   NotificationPreferencesInput,
   NotificationTopicPreference,
 } from "@newfork/shared";
-import { Button } from "@newfork/ui";
+import { Button, useToast } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Inbox, Info, Mail, MessageSquare, Smartphone } from "lucide-react";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { AccountPageHeader } from "../account/components";
 import { useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { useNotificationChannels } from "../phone-alerts/channels-data";
-import { HomeScreenSteps } from "../phone-alerts/PhoneAlertsCard";
+import { GuideStrip, HomeScreenGuide, ReturnCard, useGuideFlow, type GuideBrowser } from "../phone-alerts/guide/HomeScreenGuide";
+import { isStandalone, phoneAlertsSupport, readInstallEnv } from "../phone-alerts/install-state";
+import { copySetupLink, markSetupAddress } from "../phone-alerts/setup-link";
 import { usePhoneAlerts } from "../phone-alerts/use-phone-alerts";
 import {
   loadNotificationPreferences,
@@ -246,12 +248,28 @@ function Channels({
  */
 function PhoneAlertsRow({ publicKey, devices }: { readonly publicKey: string; readonly devices: number }) {
   const alerts = usePhoneAlerts();
-  const [steps, setSteps] = useState(false);
+  const toast = useToast();
+  const guide = useGuideFlow();
   const opener = useRef<HTMLButtonElement | null>(null);
+  const support = useMemo(() => phoneAlertsSupport(readInstallEnv(window)), []);
+  const where: GuideBrowser | null = support.kind === "needs-install" ? { browser: support.browser, ios: support.ios } : null;
   const others = Math.max(0, devices - (alerts.state === "on" ? 1 : 0));
   const elsewhere = others === 0 ? "" : others === 1 ? " Also on 1 other device." : ` Also on ${others} other devices.`;
   const computer = !/Android|iPhone|iPad|Mobile/.test(window.navigator.userAgent);
+  const homeScreenApp = /iPhone|iPad/.test(window.navigator.userAgent) && isStandalone(window);
   const icon = <Smartphone size={17} />;
+
+  // A link with ?setup=alerts (Copy link, Open in Safari) opens the steps by itself; it never asks for permission.
+  const linked = useRef(new URLSearchParams(window.location.search).get("setup") === "alerts");
+  useEffect(() => {
+    if (alerts.state === "needs-install" && linked.current) {
+      linked.current = false;
+      guide.open(0);
+    }
+    // Another iPhone browser: its own Open in Safari takes the address as it is, so it carries the steps along.
+    if (alerts.state === "other") markSetupAddress();
+  }, [alerts.state, guide]);
+
   let row;
   switch (alerts.state) {
     case null:
@@ -264,7 +282,26 @@ function PhoneAlertsRow({ publicKey, devices }: { readonly publicKey: string; re
     case "unsupported":
       row = (
         <ChannelRow icon={icon} title="Phone alerts" control={<StatusPill>Not available</StatusPill>} off>
-          This browser can&rsquo;t show alerts.{elsewhere}
+          {/iPhone|iPad/.test(window.navigator.userAgent) ? "Alerts need iOS 16.4 or later on this iPhone." : "This browser can’t show alerts."}
+          {elsewhere}
+        </ChannelRow>
+      );
+      break;
+    case "other":
+      row = (
+        <ChannelRow
+          icon={icon}
+          title="Phone alerts"
+          control={
+            <Button
+              className="secondary-button"
+              onClick={() => void copySetupLink().then((copied) => (copied ? toast.success("Link copied. Open Safari, tap the address bar, paste, and go.") : toast.error("The link couldn’t be copied. Open newfork.app in Safari.")))}
+            >
+              Copy link
+            </Button>
+          }
+        >
+          Open Newfork in Safari to get alerts on this iPhone.{elsewhere}
         </ChannelRow>
       );
       break;
@@ -278,7 +315,7 @@ function PhoneAlertsRow({ publicKey, devices }: { readonly publicKey: string; re
               className="secondary-button"
               onClick={(event) => {
                 opener.current = event.currentTarget;
-                setSteps(true);
+                guide.open(0);
               }}
             >
               Show me how
@@ -292,7 +329,10 @@ function PhoneAlertsRow({ publicKey, devices }: { readonly publicKey: string; re
     case "blocked":
       row = (
         <ChannelRow icon={icon} title="Phone alerts" control={<StatusPill tone="warning">Blocked</StatusPill>} off>
-          Blocked in this browser&rsquo;s settings. Allow notifications for Newfork there to get alerts here.{elsewhere}
+          {homeScreenApp
+            ? "Alerts are off for this iPhone. Turn them on in Settings › Notifications › Newfork."
+            : "Blocked in this browser’s settings. Allow notifications for Newfork there to get alerts here."}
+          {elsewhere}
         </ChannelRow>
       );
       break;
@@ -322,21 +362,48 @@ function PhoneAlertsRow({ publicKey, devices }: { readonly publicKey: string; re
         </ChannelRow>
       );
   }
+  const notNow = (
+    <Button className="secondary-button" onClick={guide.dismiss}>
+      Not now
+    </Button>
+  );
   return (
     <>
       {row}
+      {where && guide.phase === "strip" ? (
+        <div className="ns-guide-slot">
+          <GuideStrip
+            where={where}
+            onOpen={guide.open}
+            actions={
+              <>
+                <Button className="secondary-button" onClick={() => guide.open(0)}>
+                  Show again
+                </Button>
+                {notNow}
+              </>
+            }
+          />
+        </div>
+      ) : null}
+      {where && guide.phase === "return" ? (
+        <div className="ns-guide-slot">
+          <ReturnCard where={where} compact={false} onAgain={() => guide.open(0)} onNotNow={guide.dismiss} />
+        </div>
+      ) : null}
       {alerts.failed ? (
         <p className="ns-inline-error" role="alert">
           Phone alerts couldn&rsquo;t be changed on this device. Try again.
         </p>
       ) : null}
-      {steps ? (
-        <HomeScreenSteps
+      {where && guide.openAt !== null ? (
+        <HomeScreenGuide
+          where={where}
+          startAt={guide.openAt}
           onClose={() => {
-            setSteps(false);
+            guide.close();
             opener.current?.focus();
           }}
-          onNotNow={() => setSteps(false)}
         />
       ) : null}
     </>

@@ -7,6 +7,7 @@ import {
   isStandalone,
   phoneAlertsSupport,
   readInstallEnv,
+  safariRelease,
   supportsPush,
   type InstallEnv,
 } from "./install-state";
@@ -26,6 +27,13 @@ const UA = {
     "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/138.0.7204.119 Mobile/15E148 Safari/604.1",
   iphoneHomeScreen:
     "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+  iphoneFirefox:
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/143.0 Mobile/15E148 Safari/605.1.15",
+  iphoneInstagram:
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 400.0.0.0",
+  // Gmail's own browser: a WebKit view that names no Safari.
+  iphoneMailView:
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
   ipadDesktop:
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15",
   androidChrome:
@@ -82,8 +90,10 @@ describe("isIPhoneSafari", () => {
     expect(isIPhoneSafari(env({ userAgent: UA.iphoneHomeScreen, maxTouchPoints: 5, standalone: true }))).toBe(false);
   });
 
-  it("is not Chrome on iPhone, which adds to the Home Screen from its own menu", () => {
+  it("is not Chrome on iPhone, which adds to the Home Screen from its own menu, nor an app's own browser", () => {
     expect(isIPhoneSafari(env({ userAgent: UA.iphoneChrome, maxTouchPoints: 5, ...noPush }))).toBe(false);
+    expect(isIPhoneSafari(env({ userAgent: UA.iphoneFirefox, maxTouchPoints: 5, ...noPush }))).toBe(false);
+    expect(isIPhoneSafari(env({ userAgent: UA.iphoneMailView, maxTouchPoints: 5, ...noPush }))).toBe(false);
   });
 
   it("is not Android or a computer", () => {
@@ -119,21 +129,33 @@ describe("supportsPush", () => {
   });
 });
 
+describe("safariRelease", () => {
+  it("picks the step set from Safari's Version", () => {
+    expect(safariRelease(UA.iphone27)).toBe(27);
+    expect(safariRelease(UA.iphone26)).toBe(26);
+    expect(safariRelease(UA.iphoneSafari)).toBe(18);
+    expect(safariRelease(UA.iphoneOld)).toBeNull();
+  });
+});
+
 describe("phoneAlertsSupport", () => {
-  it("asks iPhone Safari to add the app to the Home Screen first", () => {
-    expect(phoneAlertsSupport(env({ userAgent: UA.iphoneSafari, maxTouchPoints: 5, ...noPush }))).toEqual({
-      kind: "needs-install",
-      device: "phone",
-    });
+  const phone = (userAgent: string, more: Partial<InstallEnv> = {}) =>
+    phoneAlertsSupport(env({ userAgent, maxTouchPoints: 5, ...noPush, ...more }));
+
+  it("asks iPhone Safari to add the app to the Home Screen first, with its own release's steps", () => {
+    expect(phone(UA.iphone27)).toEqual({ kind: "needs-install", device: "phone", browser: "safari", ios: 27 });
+    expect(phone(UA.iphone26)).toEqual({ kind: "needs-install", device: "phone", browser: "safari", ios: 26 });
+    expect(phone(UA.iphoneSafari)).toEqual({ kind: "needs-install", device: "phone", browser: "safari", ios: 18 });
   });
 
-  it("asks iPhone Safari on iOS 26 and 27 the same way", () => {
-    for (const userAgent of [UA.iphone26, UA.iphone27]) {
-      expect(phoneAlertsSupport(env({ userAgent, maxTouchPoints: 5, ...noPush }))).toEqual({
-        kind: "needs-install",
-        device: "phone",
-      });
-    }
+  it("lets Chrome on iPhone add the app itself, without a release it cannot read", () => {
+    expect(phone(UA.iphoneChrome)).toEqual({ kind: "needs-install", device: "phone", browser: "chrome", ios: null });
+  });
+
+  it("sends every other iPhone tab to Safari: other browsers, apps' own browsers and email apps'", () => {
+    expect(phone(UA.iphoneFirefox)).toEqual({ kind: "other-browser", where: "browser" });
+    expect(phone(UA.iphoneInstagram)).toEqual({ kind: "other-browser", where: "inapp" });
+    expect(phone(UA.iphoneMailView)).toEqual({ kind: "other-browser", where: "mail" });
   });
 
   it("lets the Home Screen app on iPhone turn alerts on", () => {
@@ -156,17 +178,11 @@ describe("phoneAlertsSupport", () => {
 
   it("offers nothing where adding to the Home Screen would not help", () => {
     // iOS before 16.4 has no web push even from the Home Screen.
-    expect(phoneAlertsSupport(env({ userAgent: UA.iphoneOld, maxTouchPoints: 5, ...noPush }))).toEqual({
-      kind: "unsupported",
-    });
-    // Chrome on iPhone: no push in the browser, and the steps are Safari's.
-    expect(phoneAlertsSupport(env({ userAgent: UA.iphoneChrome, maxTouchPoints: 5, ...noPush }))).toEqual({
-      kind: "unsupported",
-    });
+    expect(phone(UA.iphoneOld)).toEqual({ kind: "unsupported" });
+    expect(phone(UA.iphoneChrome.replace("18_5", "16_3"))).toEqual({ kind: "unsupported" });
     // An old Home Screen app, or any page that is not https.
-    expect(
-      phoneAlertsSupport(env({ userAgent: UA.iphoneHomeScreen, maxTouchPoints: 5, standalone: true, ...noPush })),
-    ).toEqual({ kind: "unsupported" });
+    expect(phone(UA.iphoneHomeScreen, { standalone: true })).toEqual({ kind: "unsupported" });
+    expect(phone(UA.iphone27, { secure: false })).toEqual({ kind: "unsupported" });
     expect(phoneAlertsSupport(env({ userAgent: UA.androidChrome, maxTouchPoints: 5, secure: false }))).toEqual({
       kind: "unsupported",
     });

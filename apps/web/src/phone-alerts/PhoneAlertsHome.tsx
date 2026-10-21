@@ -35,8 +35,8 @@ export function PhoneAlertsHome({ audience }: { readonly audience: "employee" | 
   // The hook already read this device: off means the browser can ask now.
   const detected = phoneAlertsSupport(env);
   const support: PhoneAlertsSupport =
-    alerts.state === "needs-install"
-      ? { kind: "needs-install", device: "phone" }
+    alerts.state === "needs-install" && detected.kind === "needs-install"
+      ? detected
       : {
           kind: "ready",
           device: detected.kind === "ready" ? detected.device : /Android|iPhone|iPad|Mobile/.test(env.userAgent) ? "phone" : "computer",

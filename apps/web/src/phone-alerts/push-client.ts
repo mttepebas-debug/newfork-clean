@@ -9,8 +9,10 @@ import { phoneAlertsSupport, readInstallEnv, type InstallEnv } from "./install-s
 /** Where this device stands, read without asking anything. */
 export type PhoneAlertsState =
   | "unsupported"
-  /** iPhone Safari: alerts come only to the Home Screen app. */
+  /** iPhone Safari or Chrome: alerts come only to the Home Screen app. */
   | "needs-install"
+  /** Another iPhone browser, an app's own or an email app's: the way is through Safari. */
+  | "other"
   /** The person said no in the browser; a page cannot ask again. */
   | "blocked"
   | "off"
@@ -101,6 +103,7 @@ export async function readPhoneAlertsState(win: PushWindow = window): Promise<Ph
   const support = phoneAlertsSupport(readInstallEnv(win));
   if (support.kind === "unsupported") return "unsupported";
   if (support.kind === "needs-install") return "needs-install";
+  if (support.kind === "other-browser") return "other";
   const permission = win.Notification?.permission ?? "default";
   if (permission === "denied") return "blocked";
   if (permission !== "granted") return "off";

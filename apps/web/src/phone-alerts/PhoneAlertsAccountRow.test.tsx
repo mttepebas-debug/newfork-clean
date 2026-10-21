@@ -1,7 +1,7 @@
 import type { NotificationPreferences } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import NotificationPreferencesPage from "../notification-settings/NotificationPreferencesPage";
 import type { PhoneAlertsState } from "./push-client";
 
@@ -19,6 +19,22 @@ vi.mock("../auth/AuthContext", () => ({
 }));
 vi.mock("../lib/supabase", () => ({ supabaseClient: {}, apiRequest: api.apiRequest }));
 vi.mock("./use-phone-alerts", () => ({ usePhoneAlerts: () => alerts.current }));
+vi.mock("@newfork/ui", async (original) => ({ ...(await original<object>()), useToast: () => toast }));
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }));
+
+const IPHONE_27 =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.1 Mobile/15E148 Safari/604.1";
+function asIPhone(userAgent = IPHONE_27) {
+  vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue(userAgent);
+  // Phone alerts need https; jsdom's page is not a secure context.
+  Object.defineProperty(window, "isSecureContext", { value: true, configurable: true });
+}
+function visibility(state: "hidden" | "visible") {
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue(state);
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
 
 function preferences(devices: number, workspacePush = true): NotificationPreferences {
   return {
@@ -63,6 +79,11 @@ async function rowWith(text: RegExp | string) {
 }
 
 describe("Account > Notifications > Phone alerts", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.history.replaceState(null, "", "/");
+  });
+
   beforeEach(() => {
     api.apiRequest.mockReset();
     alerts.current = { state: "off", busy: false, failed: false, turnOn: vi.fn(), turnOff: vi.fn() };
@@ -96,20 +117,63 @@ describe("Account > Notifications > Phone alerts", () => {
     expect(alerts.current.turnOff).toHaveBeenCalled();
   });
 
-  it("an iPhone tab shows the Home Screen steps; a blocked browser says where to allow it", async () => {
+  it("an iPhone tab shows the Home Screen guide; the strip stays after it, and coming back shows the return card", async () => {
+    asIPhone();
     alerts.current.state = "needs-install";
     serve(0);
-    const { unmount } = renderPage();
-    const row = await rowWith(/Add Newfork to your Home Screen/);
+    renderPage();
+    const row = await rowWith("Add Newfork to your Home Screen to get alerts on this iPhone.");
     fireEvent.click(within(row).getByRole("button", { name: "Show me how" }));
-    expect(screen.getByRole("dialog", { name: "One step first on iPhone" })).toBeTruthy();
-    unmount();
+    const guide = screen.getByRole("dialog", { name: "Add Newfork to your Home Screen" });
+    fireEvent.click(within(guide).getByRole("button", { name: "Close guide" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const strip = screen.getByRole("region", { name: "Steps to add Newfork" });
+    expect(within(strip).getByText("Your turn")).toBeTruthy();
 
-    alerts.current = { ...alerts.current, state: "blocked" };
+    visibility("hidden");
+    visibility("visible");
+    expect(screen.getByRole("region", { name: "Added Newfork?" }).textContent).toContain("Open it from your Home Screen.");
+    fireEvent.click(screen.getByRole("button", { name: "Not now" }));
+    expect(screen.queryByRole("region", { name: "Added Newfork?" })).toBeNull();
+  });
+
+  it("the setup link opens the guide by itself, without asking for permission", async () => {
+    asIPhone();
+    window.history.replaceState(null, "", "/app/account/notifications?setup=alerts");
+    alerts.current.state = "needs-install";
     serve(0);
     renderPage();
+    expect(await screen.findByRole("dialog", { name: "Add Newfork to your Home Screen" })).toBeTruthy();
+    expect(alerts.current.turnOn).not.toHaveBeenCalled();
+  });
+
+  it("another iPhone browser copies the Safari link and carries it in its own address", async () => {
+    asIPhone("Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148");
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, "clipboard", { value: { writeText }, configurable: true });
+    alerts.current.state = "other";
+    serve(0);
+    renderPage();
+    const row = await rowWith("Open Newfork in Safari to get alerts on this iPhone.");
+    expect(window.location.search).toBe("?setup=alerts");
+    fireEvent.click(within(row).getByRole("button", { name: "Copy link" }));
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Link copied. Open Safari, tap the address bar, paste, and go."));
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/app/account/notifications?setup=alerts`);
+  });
+
+  it("a blocked browser says where to allow it; the Home Screen app points to iPhone Settings", async () => {
+    alerts.current = { ...alerts.current, state: "blocked" };
+    serve(0);
+    const { unmount } = renderPage();
     const blocked = await rowWith(/Blocked in this browser’s settings/);
     expect(within(blocked).queryByRole("button")).toBeNull();
+    unmount();
+
+    asIPhone("Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148");
+    vi.spyOn(window, "matchMedia").mockReturnValue({ matches: true } as MediaQueryList);
+    serve(0);
+    renderPage();
+    await rowWith("Alerts are off for this iPhone. Turn them on in Settings › Notifications › Newfork.");
   });
 
   it("a browser without alerts says so; a failed change says so", async () => {

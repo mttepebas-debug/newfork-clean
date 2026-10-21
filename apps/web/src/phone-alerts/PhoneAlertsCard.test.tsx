@@ -7,7 +7,7 @@ import type { PhoneAlertsSupport } from "./install-state";
 
 afterEach(cleanup);
 
-const iphoneSafari: PhoneAlertsSupport = { kind: "needs-install", device: "phone" };
+const iphoneSafari: PhoneAlertsSupport = { kind: "needs-install", device: "phone", browser: "safari", ios: 27 };
 const homeScreen: PhoneAlertsSupport = { kind: "ready", device: "phone", installed: true };
 const androidChrome: PhoneAlertsSupport = { kind: "ready", device: "phone", installed: false };
 
@@ -21,8 +21,7 @@ function setup(support: PhoneAlertsSupport, audience: "employee" | "manager" = "
 const card = () => screen.getByRole("complementary", { name: "Get alerts on this phone" });
 const turnOn = () => within(card()).getByRole("button", { name: "Turn on" });
 const notNow = () => within(card()).getByRole("button", { name: "Not now" });
-const sheet = () => screen.queryByRole("dialog", { name: "One step first on iPhone" });
-const tab = (shiftKey = false) => fireEvent.keyDown(document.activeElement ?? document.body, { key: "Tab", shiftKey });
+const sheet = () => screen.queryByRole("dialog", { name: "Add Newfork to your Home Screen" });
 
 describe("PhoneAlertsCard where the browser can ask (Android Chrome, the Home Screen app)", () => {
   for (const [name, support] of [
@@ -81,66 +80,21 @@ describe("PhoneAlertsCard where the browser can ask (Android Chrome, the Home Sc
 });
 
 describe("PhoneAlertsCard on iPhone Safari", () => {
-  it("shows the Home Screen steps instead of asking", () => {
+  it("opens the Home Screen guide instead of asking", () => {
     const { onTurnOn } = setup(iphoneSafari);
     fireEvent.click(turnOn());
     expect(onTurnOn).not.toHaveBeenCalled();
-    const steps = sheet()!;
-    expect(steps.getAttribute("aria-modal")).toBe("true");
-    const items = within(steps).getAllByRole("listitem").map((item) => item.textContent!.replace(/\s+/g, " "));
-    expect(items).toEqual([
-      // Share sits at the bottom on iOS 18, behind ••• on iOS 26 and behind the Page Menu on iOS 27.
-      "1In Safari, tap Share. Don't see it? Tap More or Page Menu first.",
-      "2Tap Add to Home Screen, then Add. Not in the list? Scroll down or tap View More.",
-      "3Open Newfork from your Home Screen, sign in, and tap Turn on again.",
-    ]);
-    expect(steps.textContent).toContain("iPhone shows alerts only for apps on the Home Screen.");
+    expect(sheet()!.getAttribute("aria-modal")).toBe("true");
   });
 
-  it("moves focus into the steps and keeps Tab inside them", () => {
-    setup(iphoneSafari);
-    turnOn().focus();
-    fireEvent.click(turnOn());
-    const steps = sheet()!;
-    expect(document.activeElement).toBe(steps);
-    const [gotIt, later] = within(steps).getAllByRole("button");
-    expect([gotIt!.textContent, later!.textContent]).toEqual(["Got it", "Not now"]);
-    tab();
-    expect(document.activeElement).toBe(gotIt);
-    // Between the two buttons the browser moves focus itself; only the ends wrap.
-    later!.focus();
-    tab();
-    expect(document.activeElement).toBe(gotIt);
-    tab(true);
-    expect(document.activeElement).toBe(later);
-  });
-
-  it("Got it closes the steps, keeps the card, and gives focus back to Turn on", () => {
+  it("Escape closes the guide, keeps the card, and gives focus back to Turn on", () => {
     const { onNotNow } = setup(iphoneSafari);
-    turnOn().focus();
-    fireEvent.click(turnOn());
-    fireEvent.click(within(sheet()!).getByRole("button", { name: "Got it" }));
-    expect(sheet()).toBeNull();
-    expect(onNotNow).not.toHaveBeenCalled();
-    expect(document.activeElement).toBe(turnOn());
-  });
-
-  it("Escape closes the steps like Got it", () => {
-    setup(iphoneSafari);
     turnOn().focus();
     fireEvent.click(turnOn());
     fireEvent.keyDown(sheet()!, { key: "Escape" });
     expect(sheet()).toBeNull();
+    expect(onNotNow).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(turnOn());
-  });
-
-  it("Not now in the steps dismisses the card", () => {
-    const { onNotNow, onTurnOn } = setup(iphoneSafari);
-    fireEvent.click(turnOn());
-    fireEvent.click(within(sheet()!).getByRole("button", { name: "Not now" }));
-    expect(sheet()).toBeNull();
-    expect(onNotNow).toHaveBeenCalledOnce();
-    expect(onTurnOn).not.toHaveBeenCalled();
   });
 });
 
@@ -152,10 +106,7 @@ it("is shown only by Home's card, Account → Notifications and the DEV gallery"
     .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.test\.tsx?$/.test(file))
     .filter((file) => /from\s+["'][^"']*PhoneAlertsCard["']/.test(readFileSync(`src/${file}`, "utf8")));
   expect(importers.length).toBeGreaterThan(0);
-  expect(importers.filter((file) => !file.startsWith("dev/")).sort()).toEqual([
-    "notification-settings/NotificationPreferencesPage.tsx",
-    "phone-alerts/PhoneAlertsHome.tsx",
-  ]);
+  expect(importers.filter((file) => !file.startsWith("dev/")).sort()).toEqual(["phone-alerts/PhoneAlertsHome.tsx"]);
 });
 
 it("draws nothing where phone alerts cannot work", () => {
@@ -206,21 +157,12 @@ function contrast(a: string, b: string): number {
 
 describe("PhoneAlertsCard colours meet WCAG 2.1 AA", () => {
   const surface = hex(declaration(css, ".phone-alerts-card", "background"));
-  const sheetSurface = hex(declaration(css, ".phone-alerts-sheet", "background"));
 
   it.each([
     ["card title", ".phone-alerts-card strong", surface],
     ["card text", ".phone-alerts-card p", surface],
-    ["steps title", ".phone-alerts-sheet h2", sheetSurface],
-    ["steps text", ".phone-alerts-sheet > p", sheetSurface],
-    ["step text", ".phone-alerts-steps", sheetSurface],
   ])("%s is at least 4.5:1", (_, selector, background) => {
     expect(contrast(hex(declaration(css, selector, "color")), background)).toBeGreaterThanOrEqual(4.5);
-  });
-
-  it("step numbers are at least 4.5:1 on their circle", () => {
-    const circle = ".phone-alerts-steps li > span";
-    expect(contrast(hex(declaration(css, circle, "color")), hex(declaration(css, circle, "background")))).toBeGreaterThanOrEqual(4.5);
   });
 
   it("the bell is at least 3:1 on its tile (a graphic, WCAG 1.4.11)", () => {

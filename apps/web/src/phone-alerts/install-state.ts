@@ -13,9 +13,18 @@ export type InstallEnv = {
   readonly notification: boolean;
 };
 
+/** The Safari step set an iPhone gets: 27 and 26 hide Share behind a menu, 18 keeps it in the bar. */
+export type SafariRelease = 27 | 26 | 18;
+
 export type PhoneAlertsSupport =
-  /** iPhone Safari: push only works once Newfork is on the Home Screen (iOS 16.4+). */
-  | { readonly kind: "needs-install"; readonly device: "phone" }
+  /**
+   * iPhone Safari or Chrome: push only works once Newfork is on the Home Screen (iOS 16.4+). Chrome on
+   * iPhone adds it from its own Share button and names no iOS release (its "OS 18_6" is frozen).
+   */
+  | { readonly kind: "needs-install"; readonly device: "phone"; readonly browser: "safari"; readonly ios: SafariRelease }
+  | { readonly kind: "needs-install"; readonly device: "phone"; readonly browser: "chrome"; readonly ios: null }
+  /** Another iPhone browser, an app's own browser or an email app's: alerts need Safari first. */
+  | { readonly kind: "other-browser"; readonly where: "browser" | "inapp" | "mail" }
   /** The browser can ask for permission now. */
   | { readonly kind: "ready"; readonly device: "phone" | "computer"; readonly installed: boolean }
   /** No web push here, and installing would not change that. */
@@ -59,10 +68,36 @@ export function iosVersion(userAgent: string): number | null {
   return match ? Number(match[1]) + Number(match[2] ?? 0) / 100 : null;
 }
 
+const OTHER_IOS_BROWSER = /FxiOS|EdgiOS|OPiOS|GSA\/|DuckDuckGo/;
+const IN_APP_BROWSER = /FBAN|FBAV|Instagram|LinkedInApp/;
+
 export function isIPhoneSafari(env: InstallEnv): boolean {
   if (!isIOS(env) || env.standalone) return false;
   // Every iOS browser is WebKit; the others name themselves.
-  return /Safari\//.test(env.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|DuckDuckGo/.test(env.userAgent);
+  return /Safari\//.test(env.userAgent) && !/CriOS/.test(env.userAgent) && !OTHER_IOS_BROWSER.test(env.userAgent) && !IN_APP_BROWSER.test(env.userAgent);
+}
+
+/** Safari's step set from its Version: 27 and later, 26, or 16.4 to 18 (null below 16.4, which has no web push). */
+export function safariRelease(userAgent: string): SafariRelease | null {
+  const version = iosVersion(userAgent) ?? 0;
+  if (version >= 27) return 27;
+  if (version >= 26) return 26;
+  return version >= 16.04 ? 18 : null;
+}
+
+/** Where an iPhone tab that is not Safari stands: Chrome can add Newfork itself; every other one sends the person to Safari. */
+function otherIPhoneTab(env: InstallEnv): PhoneAlertsSupport | null {
+  const ua = env.userAgent;
+  if (/CriOS/.test(ua)) {
+    const os = /OS (\d+)_(\d+)/.exec(ua);
+    const release = os ? Number(os[1]) + Number(os[2]) / 100 : 0;
+    return release >= 16.04 ? { kind: "needs-install", device: "phone", browser: "chrome", ios: null } : null;
+  }
+  if (OTHER_IOS_BROWSER.test(ua)) return { kind: "other-browser", where: "browser" };
+  if (IN_APP_BROWSER.test(ua)) return { kind: "other-browser", where: "inapp" };
+  // A WebKit view that names no Safari: most often the email app the invite was opened in.
+  if (!/Safari\//.test(ua)) return { kind: "other-browser", where: "mail" };
+  return null;
 }
 
 export function isAndroidChrome({ userAgent }: InstallEnv): boolean {
@@ -82,9 +117,11 @@ export function phoneAlertsSupport(env: InstallEnv): PhoneAlertsSupport {
   if (supportsPush(env)) {
     return { kind: "ready", device: phone ? "phone" : "computer", installed: env.standalone };
   }
+  if (!env.secure || !isIOS(env) || env.standalone) return { kind: "unsupported" };
   // Safari tabs have no push; the Home Screen app does from iOS 16.4.
-  if (env.secure && isIPhoneSafari(env) && (iosVersion(env.userAgent) ?? 0) >= 16.04) {
-    return { kind: "needs-install", device: "phone" };
+  if (isIPhoneSafari(env)) {
+    const ios = safariRelease(env.userAgent);
+    return ios ? { kind: "needs-install", device: "phone", browser: "safari", ios } : { kind: "unsupported" };
   }
-  return { kind: "unsupported" };
+  return otherIPhoneTab(env) ?? { kind: "unsupported" };
 }

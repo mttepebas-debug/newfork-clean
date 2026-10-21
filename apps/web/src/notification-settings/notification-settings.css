@@ -422,3 +422,9 @@
   font-size: 13px;
   line-height: 1.45;
 }
+
+/* The Home Screen steps' strip and return card, right under the Phone alerts row (TELEFON-TUR2). */
+.ns-guide-slot {
+  padding: 0 16px 16px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+}

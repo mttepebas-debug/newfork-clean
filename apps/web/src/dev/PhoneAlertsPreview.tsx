@@ -9,7 +9,7 @@ import type { PhoneAlertsSupport } from "../phone-alerts/install-state";
 export const phoneAlertStates = {
   "iphone-safari": {
     label: "iPhone Safari, not on the Home Screen",
-    support: { kind: "needs-install", device: "phone" },
+    support: { kind: "needs-install", device: "phone", browser: "safari", ios: 27 },
   },
   "iphone-home-screen": {
     label: "iPhone, opened from the Home Screen",
