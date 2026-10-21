@@ -2201,6 +2201,19 @@ function renderSection(
   return <HistorySection detail={detail} />;
 }
 
+/**
+ * Finished onboarding, and nothing that activation asks for is left: what is left is the approval
+ * (KATILIM-ONAY, S-231). The database decides again when Approve is pressed.
+ */
+function waitsForApproval(onboarding: EmployeeOnboardingManager | null | undefined): boolean {
+  return (
+    onboarding?.case_status === "submitted" &&
+    onboarding.requirements
+      .filter((requirement) => requirement.required && requirement.blocks_activation)
+      .every((requirement) => requirement.status === "completed")
+  );
+}
+
 function OnboardingReviewPanel({
   onboarding,
   loading,
@@ -2242,13 +2255,7 @@ function OnboardingReviewPanel({
   const requirements = onboarding.requirements.filter(
     (requirement) => requirement.kind === "profile",
   );
-  const activationReady =
-    onboarding.case_status === "submitted" &&
-    onboarding.requirements
-      .filter(
-        (requirement) => requirement.required && requirement.blocks_activation,
-      )
-      .every((requirement) => requirement.status === "completed");
+  const activationReady = waitsForApproval(onboarding);
   return (
     <div className="manager-onboarding-review">
       <div className="manager-onboarding-summary">
@@ -2315,7 +2322,7 @@ function OnboardingReviewPanel({
           disabled={reviewing}
           onClick={() => onReview("activate", null, "")}
         >
-          Activate employee access
+          Approve
         </Button>
       ) : null}
       <ConfirmDialog
@@ -2402,6 +2409,10 @@ function ProfileSection({
         requirement.requires_review &&
         requirement.status !== "completed",
     );
+  // Waiting only for approval, with no legal name to review first: Approve stands on its own
+  // (before, the button lived in the legal name panel alone, out of reach without one).
+  const approvalVisible =
+    !profileReviewVisible && canReview && waitsForApproval(onboarding);
   const identityReadOnly = readOnly || identityLocked;
   // Why a name cannot be typed into; read out, not printed under the field.
   const nameLockedReason = identityLocked
@@ -2414,6 +2425,21 @@ function ProfileSection({
     : draft.invitation_email;
   return (
     <div className="employee-profile-sections">
+      {approvalVisible ? (
+        <section className="employee-readonly-panel employee-approval-panel" aria-labelledby="employee-approval-title">
+          <h3 id="employee-approval-title">Waiting for approval</h3>
+          <p>
+            They finished their required details and documents. Approve them, and their schedule opens.
+          </p>
+          <Button
+            type="button"
+            disabled={reviewing}
+            onClick={() => onReview("activate", null, "")}
+          >
+            Approve
+          </Button>
+        </section>
+      ) : null}
       <ProfileGroup title="Identity">
         <div className="employee-form-grid">
           <div className="employee-name-grid">

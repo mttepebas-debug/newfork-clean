@@ -53,12 +53,14 @@ export function ChannelRow({
 
 /** An on/off switch: a real checkbox, so Space and the label work as usual. */
 export function Switch({
+  id,
   checked,
   label,
   onChange,
   disabled = false,
   describedBy,
 }: {
+  readonly id?: string;
   readonly checked: boolean;
   readonly label: string;
   readonly onChange: (checked: boolean) => void;
@@ -67,6 +69,7 @@ export function Switch({
 }) {
   return (
     <input
+      id={id}
       type="checkbox"
       role="switch"
       className="ns-switch"
