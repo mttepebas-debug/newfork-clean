@@ -45,6 +45,8 @@ import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { Tooltip } from "../shell/Tooltip";
 import { EmployeeDrawer } from "../employees/EmployeeDrawer";
 import { ScheduleFilterCommandStrip } from "../schedule/components/ScheduleFilterCommandStrip";
+import { ScheduleSearchEmpty } from "../schedule/components/ScheduleSearch";
+import { scheduleSearchTerm, searchScheduleModel } from "../schedule/lib/scheduleSearch";
 import {
   ScheduleCellContextMenu,
   ScheduleContextMenu,
@@ -264,6 +266,7 @@ const SCHEDULE_FILTER_QUERY_PARAMS = [
   "employees",
   "hideUnscheduled",
   "layout",
+  "q",
 ] as const;
 
 type DraftsAsk = {
@@ -693,10 +696,12 @@ export function SchedulePage({
       : shift), [projectedShifts, dropReview.optimisticOps, dropReview.savingState]);
   const visibleSelectableShiftIds = useMemo(() => {
     if (!query.data) return [];
-    const filtered = filterScheduleModel(
-      { ...query.data, shifts: effectiveShifts },
-      search,
-    );
+    // A shift the search took off the grid is not on screen to select.
+    const filtered = searchScheduleModel(
+      filterScheduleModel({ ...query.data, shifts: effectiveShifts }, search),
+      scheduleSearchTerm(search),
+      { day: view === "day" ? selectedDate : null },
+    ).model;
     // A removal hidden behind its replacement is not on screen to select.
     return withoutReplacedRemovedShifts(filtered.shifts)
       .filter(
@@ -2215,6 +2220,27 @@ export function SchedulePage({
     next.set("view", nextView);
     setSearch(next);
   };
+  // S-228 (3): the search narrows the grid (ScheduleGrid); here it says when
+  // no one is left, and whether someone is behind a filter.
+  const searchTerm = scheduleSearchTerm(search);
+  const searchDay = view === "day" ? selectedDate : null;
+  const searchFindsNoOne = Boolean(searchTerm) &&
+    searchScheduleModel(filterScheduleModel(sortedModel, search), searchTerm, { day: searchDay })
+      .model.employees.length === 0;
+  const searchMatchesOutsideFilters = searchFindsNoOne &&
+    searchScheduleModel(filterScheduleModel(sortedModel, new URLSearchParams()), searchTerm, { day: searchDay })
+      .model.employees.length > 0;
+  const setSearchQuery = (value: string) => {
+    setSearch(
+      (current) => withScheduleSearchValue(current, "q", value.trim() ? value : null),
+      { replace: true },
+    );
+  };
+  const showAllFilters = () => {
+    const next = new URLSearchParams(search);
+    for (const param of ["locations", "shiftTypes", "jobs", "employees"]) next.delete(param);
+    setSearch(next);
+  };
   const dismissOpenTopbarDropdown = (): boolean => {
     if (!topbarDropdownOpen) return false;
     setTopbarDropdownOpen(false);
@@ -2776,8 +2802,17 @@ export function SchedulePage({
         selectedEmployeeIds={selectedEmployeeIds}
         onEmployeeFilterChange={(ids) => setQueryIds("employees", ids)}
         actions={topBarActions}
+        search={{ value: search.get("q") ?? "", onChange: setSearchQuery }}
       />
       <ScheduleFilterCommandStrip chips={filterChips} />
+      {searchFindsNoOne ? (
+        <ScheduleSearchEmpty
+          term={searchTerm}
+          matchesOutsideFilters={searchMatchesOutsideFilters}
+          onClear={() => setSearchQuery("")}
+          onShowAllFilters={showAllFilters}
+        />
+      ) : null}
       {query.isError ? (
         <RefreshError
           message="This week's schedule didn't refresh. These are the last shifts that loaded."

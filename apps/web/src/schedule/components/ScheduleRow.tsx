@@ -57,6 +57,7 @@ import {
   type ScheduleCatalog,
 } from "../lib/scheduleCatalogNames";
 import { unassignedShiftStackKey } from "../lib/unassignedShiftStack";
+import { stackSearchMark, type ScheduleSearchMark } from "../lib/scheduleSearch";
 
 export interface ActiveScheduleEditorTarget {
   readonly locationId: string;
@@ -93,6 +94,7 @@ export function ScheduleRow({
   unassignedFrozen,
   selectedIds,
   focusedShiftId,
+  searchMarks,
   clipboard,
   pasteArmed,
   onSelect,
@@ -133,6 +135,8 @@ export function ScheduleRow({
   readonly unassignedFrozen: boolean;
   readonly selectedIds: readonly string[];
   readonly focusedShiftId: string | null;
+  /** The top bar search's card marks (S-228). */
+  readonly searchMarks?: ReadonlyMap<string, ScheduleSearchMark>;
   readonly clipboard: ShiftClipboardSnapshot | null;
   readonly pasteArmed: boolean;
   readonly onSelect: (id: string, additive: boolean) => void;
@@ -479,6 +483,7 @@ export function ScheduleRow({
                     )}
                     rowKey={rowKey}
                     badgeHeight={badgeHeight}
+                    searchMark={stackSearchMark(groupedShiftIds, searchMarks)}
                     dragging={draggedShiftId === shift.id}
                     publicationState={publicationStateForShift(shift)}
                     onSelect={onSelect}

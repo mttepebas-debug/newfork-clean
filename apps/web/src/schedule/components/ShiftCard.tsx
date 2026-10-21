@@ -27,6 +27,7 @@ import type { TimeFormat } from "../timeInput";
 import type { ScheduleShiftTypeLook } from "../lib/scheduleCatalogNames";
 import type { ShiftPublicationState } from "./ScheduleContextMenu";
 import type { EffectiveScheduleShift } from "../hooks/useEffectiveShifts";
+import type { ScheduleSearchMark } from "../lib/scheduleSearch";
 import "./schedule-shift-save.css";
 import { useShiftNoteCorner } from "./ShiftNoteCorner";
 import { useFirstLineMid } from "../hooks/useFirstLineMid";
@@ -66,6 +67,7 @@ export function ShiftCard({
   stackCount = 1,
   rowKey,
   badgeHeight,
+  searchMark,
   dragging,
   publicationState,
   onSelect,
@@ -95,6 +97,8 @@ export function ShiftCard({
   readonly stackCount?: number;
   readonly rowKey: string;
   readonly badgeHeight: number;
+  /** Framed or faded by the top bar search (S-228). */
+  readonly searchMark?: ScheduleSearchMark;
   readonly dragging?: boolean;
   readonly publicationState: ShiftPublicationState | null;
   readonly onSelect?: (id: string, additive: boolean) => void;
@@ -233,6 +237,7 @@ export function ShiftCard({
       data-has-note={note ? "true" : undefined}
       data-shift-badge="true"
       data-shift-id={shift.id}
+      data-search-mark={searchMark}
       disabled={shift.optimistic}
       aria-busy={shift.optimistic || undefined}
       data-save-state={shift.saving_state ?? undefined}

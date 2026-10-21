@@ -10,6 +10,8 @@ const SCHEDULE_FILTER_KEYS = [
   "shiftTypes",
   "jobs",
   "employees",
+  // The top bar search (S-228).
+  "q",
 ] as const;
 type ScheduleFilterKey = (typeof SCHEDULE_FILTER_KEYS)[number];
 

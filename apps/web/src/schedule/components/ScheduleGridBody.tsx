@@ -13,6 +13,7 @@ import {
 import type { ScheduleCellStateMap } from "../hooks/useCellState";
 import type { ShiftDragState } from "../hooks/useSingleShiftPointerDrag";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
+import type { ScheduleSearchMark } from "../lib/scheduleSearch";
 import type { ShiftClipboardSnapshot } from "../lib/shiftClipboard";
 import type { CellContextMenuTarget } from "./ScheduleContextMenu";
 import { ScheduleFillerRow } from "./ScheduleFillerRow";
@@ -44,6 +45,7 @@ export function ScheduleGridBody({
   employeeRowGroups,
   fillerRowCount,
   focusedShiftId,
+  searchMarks,
   locations,
   model,
   onCellContextMenu,
@@ -92,6 +94,7 @@ export function ScheduleGridBody({
   readonly employeeRowGroups: readonly ScheduleEmployeeGroup[];
   readonly fillerRowCount: number;
   readonly focusedShiftId: string | null;
+  readonly searchMarks?: ReadonlyMap<string, ScheduleSearchMark>;
   readonly locations: readonly ScheduleGridLocationGroup[];
   readonly model: ScheduleReadModel;
   readonly onCellContextMenu: (
@@ -183,6 +186,7 @@ export function ScheduleGridBody({
       unassignedFrozen={false}
       selectedIds={selectedIds}
       focusedShiftId={focusedShiftId}
+      searchMarks={searchMarks}
       clipboard={clipboard}
       pasteArmed={pasteArmed}
       onSelect={onSelect}
@@ -229,6 +233,7 @@ export function ScheduleGridBody({
           unassignedFrozen={unassignedFrozen}
           selectedIds={selectedIds}
           focusedShiftId={focusedShiftId}
+          searchMarks={searchMarks}
           clipboard={clipboard}
           pasteArmed={pasteArmed}
           onSelect={onSelect}

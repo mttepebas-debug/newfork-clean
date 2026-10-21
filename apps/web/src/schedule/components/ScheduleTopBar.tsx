@@ -23,6 +23,7 @@ import type { ReactNode } from "react";
 import { Tooltip } from "../../shell/Tooltip";
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
 import { MiniCalendar, type CalendarMarker } from "./MiniCalendar";
+import { ScheduleSearchField } from "./ScheduleSearch";
 import {
   ScheduleTopBarFilter,
   type ScheduleTopBarFilterGroup,
@@ -96,6 +97,14 @@ interface ScheduleTopBarProps {
   readonly selectedEmployeeIds: readonly string[];
   readonly onEmployeeFilterChange: (ids: string[]) => void;
   readonly actions?: ReactNode;
+  /**
+   * The manager Schedule's search (S-228): with it the filters, Hide
+   * Unscheduled and Settings move to a second row behind a search field.
+   */
+  readonly search?: {
+    readonly value: string;
+    readonly onChange: (value: string) => void;
+  };
 }
 
 export function ScheduleTopBar({
@@ -155,6 +164,7 @@ export function ScheduleTopBar({
   selectedEmployeeIds,
   onEmployeeFilterChange,
   actions,
+  search,
 }: ScheduleTopBarProps) {
   const lastDismissSignalRef = useRef(dropdownDismissSignal);
   const [openDropdownId, setOpenDropdownId] =
@@ -236,8 +246,149 @@ export function ScheduleTopBar({
   }, []);
   useCloseOnEscape(openDropdownId ? closeDropdownOnEscape : null);
 
+  const settingsMenu = (
+    <div className="schedule-command-menu">
+      <button
+        type="button"
+        className="schedule-command-menu-trigger"
+        aria-expanded={openDropdownId === "settings"}
+        title="Settings"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setDropdownOpen("settings", openDropdownId !== "settings");
+        }}
+      >
+        <SlidersHorizontal size={15} aria-hidden /> Settings
+      </button>
+      {openDropdownId === "settings" ? (
+        <SettingsMenuPanel
+          employeeSortMode={employeeSortMode}
+          showShiftType={showShiftType}
+          showShiftLabels={showShiftLabels}
+          showClockTimes={showClockTimes}
+          showPresetShiftBadges={showPresetShiftBadges}
+          showTotalHours={showTotalHours}
+          showRoleSeparators={showRoleSeparators}
+          showUnassignedShifts={showUnassignedShifts}
+          unassignedFrozen={unassignedFrozen}
+          onEmployeeSortModeChange={onEmployeeSortModeChange}
+          onToggleShiftType={onToggleShiftType}
+          onToggleShiftLabels={onToggleShiftLabels}
+          onToggleClockTimes={onToggleClockTimes}
+          onTogglePresetShiftBadges={onTogglePresetShiftBadges}
+          onToggleTotalHours={onToggleTotalHours}
+          onToggleRoleSeparators={onToggleRoleSeparators}
+          onToggleUnassignedShifts={onToggleUnassignedShifts}
+          onToggleUnassignedFrozen={onToggleUnassignedFrozen}
+          unassignedRowSettingsDisabled={unassignedRowSettingsDisabled}
+          showAvailability={showAvailability}
+          onToggleAvailability={onToggleAvailability}
+        />
+      ) : null}
+    </div>
+  );
+  const hideUnscheduledButton = (
+    <button
+      type="button"
+      className="schedule-hide-unscheduled"
+      aria-pressed={hideUnscheduled}
+      title={hideUnscheduled ? "Show Unscheduled" : "Hide Unscheduled"}
+      onClick={onToggleHideUnscheduled}
+    >
+      {hideUnscheduled ? (
+        <Eye size={15} aria-hidden />
+      ) : (
+        <EyeOff size={15} aria-hidden />
+      )}
+      {hideUnscheduled ? "Show Unscheduled" : "Hide Unscheduled"}
+    </button>
+  );
+  const filterMenus = (
+    <>
+      {locations.length > 0 ? (
+        <ScheduleTopBarFilter
+          filterId="locations"
+          allLabel="All locations"
+          singularLabel="location"
+          pluralLabel="locations"
+          summarySuffix={layout === "unified" ? "Merged" : "Separate"}
+          icon={<MapPin size={15} aria-hidden />}
+          items={locations.map((location) => ({
+            id: location.id,
+            label: location.name,
+          }))}
+          selectedIds={selectedLocationIds}
+          onChange={onLocationFilterChange}
+          open={openDropdownId === "locations"}
+          onOpenChange={(open) => setDropdownOpen("locations", open)}
+          topContent={
+            <ScheduleGridViewModeToggle
+              mode={layout}
+              onChange={onLayoutChange}
+            />
+          }
+        />
+      ) : null}
+      {shiftTypes.length > 0 ? (
+        <ScheduleTopBarFilter
+          filterId="shiftTypes"
+          allLabel="All shifts"
+          singularLabel="shift"
+          pluralLabel="shifts"
+          icon={<Clock3 size={15} aria-hidden />}
+          items={shiftTypes.map((shiftType) => ({
+            id: shiftType.id,
+            label: shiftType.name,
+            color: shiftType.color,
+          }))}
+          selectedIds={selectedShiftTypeIds}
+          onChange={onShiftTypeFilterChange}
+          open={openDropdownId === "shiftTypes"}
+          onOpenChange={(open) => setDropdownOpen("shiftTypes", open)}
+        />
+      ) : null}
+      {jobs.length > 0 ? (
+        <ScheduleTopBarFilter
+          filterId="jobs"
+          allLabel="All jobs"
+          singularLabel="job"
+          pluralLabel="jobs"
+          icon={<BriefcaseBusiness size={15} aria-hidden />}
+          items={flattenGroups(createJobGroups(jobs, departments))}
+          groups={createJobGroups(jobs, departments)}
+          selectedIds={selectedJobIds}
+          onChange={onJobFilterChange}
+          open={openDropdownId === "jobs"}
+          onOpenChange={(open) => setDropdownOpen("jobs", open)}
+        />
+      ) : null}
+      {employees.length > 0 ? (
+        <ScheduleTopBarFilter
+          filterId="employees"
+          allLabel="All employees"
+          singularLabel="employee"
+          pluralLabel="employees"
+          icon={<CalendarDays size={15} aria-hidden />}
+          items={employees.map((employee) => ({
+            id: employee.id,
+            label: employee.display_name,
+          }))}
+          selectedIds={selectedEmployeeIds}
+          onChange={onEmployeeFilterChange}
+          open={openDropdownId === "employees"}
+          onOpenChange={(open) => setDropdownOpen("employees", open)}
+        />
+      ) : null}
+    </>
+  );
+
   return (
-    <header className="schedule-topbar" data-schedule-top-bar>
+    <header
+      className="schedule-topbar"
+      data-schedule-top-bar
+      data-rows={search ? "2" : undefined}
+    >
       <div className="schedule-command-group" data-schedule-top-bar-main-row>
         <ScheduleViewModeControls
           viewModeLabel={viewModeLabel}
@@ -290,134 +441,25 @@ export function ScheduleTopBar({
         {onViewChange ? (
           <ScheduleViewSwitch view={view} onChange={onViewChange} />
         ) : null}
-        <div className="schedule-command-menu">
-          <button
-            type="button"
-            className="schedule-command-menu-trigger"
-            aria-expanded={openDropdownId === "settings"}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setDropdownOpen("settings", openDropdownId !== "settings");
-            }}
-          >
-            <SlidersHorizontal size={15} aria-hidden /> Settings
-          </button>
-          {openDropdownId === "settings" ? (
-            <SettingsMenuPanel
-              employeeSortMode={employeeSortMode}
-              showShiftType={showShiftType}
-              showShiftLabels={showShiftLabels}
-              showClockTimes={showClockTimes}
-              showPresetShiftBadges={showPresetShiftBadges}
-              showTotalHours={showTotalHours}
-              showRoleSeparators={showRoleSeparators}
-              showUnassignedShifts={showUnassignedShifts}
-              unassignedFrozen={unassignedFrozen}
-              onEmployeeSortModeChange={onEmployeeSortModeChange}
-              onToggleShiftType={onToggleShiftType}
-              onToggleShiftLabels={onToggleShiftLabels}
-              onToggleClockTimes={onToggleClockTimes}
-              onTogglePresetShiftBadges={onTogglePresetShiftBadges}
-              onToggleTotalHours={onToggleTotalHours}
-              onToggleRoleSeparators={onToggleRoleSeparators}
-              onToggleUnassignedShifts={onToggleUnassignedShifts}
-              onToggleUnassignedFrozen={onToggleUnassignedFrozen}
-              unassignedRowSettingsDisabled={unassignedRowSettingsDisabled}
-              showAvailability={showAvailability}
-              onToggleAvailability={onToggleAvailability}
-            />
-          ) : null}
-        </div>
-        <button
-          type="button"
-          className="schedule-hide-unscheduled"
-          aria-pressed={hideUnscheduled}
-          onClick={onToggleHideUnscheduled}
-        >
-          {hideUnscheduled ? (
-            <Eye size={15} aria-hidden />
-          ) : (
-            <EyeOff size={15} aria-hidden />
-          )}
-          {hideUnscheduled ? "Show Unscheduled" : "Hide Unscheduled"}
-        </button>
-        {locations.length > 0 ? (
-          <ScheduleTopBarFilter
-            filterId="locations"
-            allLabel="All locations"
-            singularLabel="location"
-            pluralLabel="locations"
-            summarySuffix={layout === "unified" ? "Merged" : "Separate"}
-            icon={<MapPin size={15} aria-hidden />}
-            items={locations.map((location) => ({
-              id: location.id,
-              label: location.name,
-            }))}
-            selectedIds={selectedLocationIds}
-            onChange={onLocationFilterChange}
-            open={openDropdownId === "locations"}
-            onOpenChange={(open) => setDropdownOpen("locations", open)}
-            topContent={
-              <ScheduleGridViewModeToggle
-                mode={layout}
-                onChange={onLayoutChange}
-              />
-            }
-          />
-        ) : null}
-        {shiftTypes.length > 0 ? (
-          <ScheduleTopBarFilter
-            filterId="shiftTypes"
-            allLabel="All shifts"
-            singularLabel="shift"
-            pluralLabel="shifts"
-            icon={<Clock3 size={15} aria-hidden />}
-            items={shiftTypes.map((shiftType) => ({
-              id: shiftType.id,
-              label: shiftType.name,
-              color: shiftType.color,
-            }))}
-            selectedIds={selectedShiftTypeIds}
-            onChange={onShiftTypeFilterChange}
-            open={openDropdownId === "shiftTypes"}
-            onOpenChange={(open) => setDropdownOpen("shiftTypes", open)}
-          />
-        ) : null}
-        {jobs.length > 0 ? (
-          <ScheduleTopBarFilter
-            filterId="jobs"
-            allLabel="All jobs"
-            singularLabel="job"
-            pluralLabel="jobs"
-            icon={<BriefcaseBusiness size={15} aria-hidden />}
-            items={flattenGroups(createJobGroups(jobs, departments))}
-            groups={createJobGroups(jobs, departments)}
-            selectedIds={selectedJobIds}
-            onChange={onJobFilterChange}
-            open={openDropdownId === "jobs"}
-            onOpenChange={(open) => setDropdownOpen("jobs", open)}
-          />
-        ) : null}
-        {employees.length > 0 ? (
-          <ScheduleTopBarFilter
-            filterId="employees"
-            allLabel="All employees"
-            singularLabel="employee"
-            pluralLabel="employees"
-            icon={<CalendarDays size={15} aria-hidden />}
-            items={employees.map((employee) => ({
-              id: employee.id,
-              label: employee.display_name,
-            }))}
-            selectedIds={selectedEmployeeIds}
-            onChange={onEmployeeFilterChange}
-            open={openDropdownId === "employees"}
-            onOpenChange={(open) => setDropdownOpen("employees", open)}
-          />
-        ) : null}
+        {search ? null : (
+          <>
+            {settingsMenu}
+            {hideUnscheduledButton}
+            {filterMenus}
+          </>
+        )}
       </div>
       {actions ? <div className="schedule-action-group">{actions}</div> : null}
+      {search ? (
+        // KARARLAR S-228 variant B: row 1 moves through time, row 2 narrows
+        // the grid; nothing hides in a menu, and both rows end on one edge.
+        <div className="schedule-topbar-filters" data-schedule-top-bar-filter-row>
+          <ScheduleSearchField value={search.value} onChange={search.onChange} />
+          {filterMenus}
+          {hideUnscheduledButton}
+          {settingsMenu}
+        </div>
+      ) : null}
       <h1 id="schedule-title" className="sr-only">
         Schedule
       </h1>

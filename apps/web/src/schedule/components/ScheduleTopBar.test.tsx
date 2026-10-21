@@ -472,3 +472,87 @@ describe("ScheduleTopBar", () => {
     expect(onCurrentViewPeriodClick).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("ScheduleTopBar search row (S-228 variant B)", () => {
+  const rowOf = (row: string) =>
+    document.querySelector<HTMLElement>(`[data-schedule-top-bar-${row}]`);
+  const controls = (element: HTMLElement | null) =>
+    [...(element?.children ?? [])].map(
+      (child) =>
+        child.getAttribute("data-filter-id") ??
+        child.getAttribute("aria-label") ??
+        child.className,
+    );
+
+  it("keeps one row without a search, as the employee's Team schedule has it", () => {
+    renderTopBar();
+    expect(rowOf("filter-row")).toBeNull();
+    expect(rowOf("main-row")?.querySelector("[data-filter-id='jobs']")).not.toBeNull();
+    expect(screen.queryByRole("searchbox")).toBeNull();
+  });
+
+  it("moves the search, every filter, Hide Unscheduled and Settings to a second row", () => {
+    renderTopBar({ onViewChange: vi.fn(), search: { value: "", onChange: vi.fn() } });
+    expect(document.querySelector("[data-schedule-top-bar]")?.getAttribute("data-rows")).toBe("2");
+    expect(controls(rowOf("main-row"))).toEqual([
+      "schedule-view-mode-controls",
+      "Schedule view",
+    ]);
+    expect(controls(rowOf("filter-row"))).toEqual([
+      "schedule-search",
+      "locations",
+      "jobs",
+      "employees",
+      "schedule-hide-unscheduled",
+      "schedule-command-menu",
+    ]);
+    expect(screen.getByRole("searchbox", { name: "Search the schedule" }).getAttribute("placeholder"))
+      .toBe("Search people, jobs, shifts");
+  });
+
+  it("names the filter buttons by their summary, so the icon-only tablet row still says what each is", () => {
+    renderTopBar({ search: { value: "", onChange: vi.fn() } });
+    expect(rowOf("filter-row")?.querySelector("[data-filter-id='jobs'] summary")?.getAttribute("title"))
+      .toBe("All jobs");
+    expect(screen.getByRole("button", { name: "Hide Unscheduled" }).getAttribute("title"))
+      .toBe("Hide Unscheduled");
+  });
+
+  it("sends the typed words after a short pause, focuses on /, and Esc clears then leaves", () => {
+    vi.useFakeTimers();
+    try {
+      const onChange = vi.fn();
+      renderTopBar({ search: { value: "", onChange } });
+      const field = screen.getByRole<HTMLInputElement>("searchbox");
+
+      fireEvent.keyDown(document.body, { key: "/" });
+      expect(document.activeElement).toBe(field);
+
+      fireEvent.change(field, { target: { value: "ali" } });
+      expect(onChange).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(200));
+      expect(onChange).toHaveBeenLastCalledWith("ali");
+
+      fireEvent.keyDown(field, { key: "Escape" });
+      expect(field.value).toBe("");
+      expect(onChange).toHaveBeenLastCalledWith("");
+      expect(document.activeElement).toBe(field);
+
+      fireEvent.keyDown(field, { key: "Escape" });
+      expect(document.activeElement).not.toBe(field);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("takes a search changed elsewhere, such as Clear search above the grid", () => {
+    const { rerender } = renderTopBar({ search: { value: "ali", onChange: vi.fn() } });
+    expect(screen.getByRole<HTMLInputElement>("searchbox").value).toBe("ali");
+    rerender(
+      <MemoryRouter>
+        <ScheduleTopBar {...buildTopBarProps({ search: { value: "", onChange: vi.fn() } })} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole<HTMLInputElement>("searchbox").value).toBe("");
+  });
+});

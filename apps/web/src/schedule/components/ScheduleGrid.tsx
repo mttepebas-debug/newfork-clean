@@ -36,6 +36,7 @@ import { useScheduleGridDragControllers } from "../hooks/useScheduleGridDragCont
 import { useScheduleGridSelectionClear } from "../hooks/useScheduleGridSelectionClear";
 import { addDays } from "../lib/scheduleDateTime";
 import { filterScheduleModel, parseIds } from "../lib/scheduleFilterModel";
+import { scheduleSearchTerm, searchScheduleModel } from "../lib/scheduleSearch";
 import {
   calculateScheduleDayColumnMinWidth,
   countScheduleGridColumns,
@@ -185,8 +186,15 @@ export function ScheduleGrid({
 }) {
   const gridRef = useRef<HTMLDivElement>(null);
   const showAvailabilityMarks = showAvailability && Boolean(session);
+  const searched = useMemo(
+    () =>
+      searchScheduleModel(filterScheduleModel(model, search), scheduleSearchTerm(search), {
+        day: view === "day" ? selectedDate : null,
+      }),
+    [model, search, selectedDate, view],
+  );
   const filtered = useMemo(() => {
-    const next = filterScheduleModel(model, search);
+    const next = searched.model;
     // The orange "!" shows only while editing with the switch on (KARARLAR Schedule,
     // 2026-10-06); time off stays. The rule box still reads the full model.
     return showAvailabilityMarks ? next : {
@@ -195,7 +203,7 @@ export function ScheduleGrid({
         ? { ...shift, warning_codes: shift.warning_codes.filter((code) => code !== "availability") }
         : shift),
     };
-  }, [model, search, showAvailabilityMarks]);
+  }, [searched, showAvailabilityMarks]);
   const days = createScheduleGridDays({
     selectedDate,
     view,
@@ -491,6 +499,7 @@ export function ScheduleGrid({
         employeeRowGroups={employeeRowGroups}
         fillerRowCount={fillerRowCount}
         focusedShiftId={focusedShiftId}
+        searchMarks={searched.marks}
         locations={locationGroups}
         model={model}
         onCellContextMenu={onCellContextMenu}

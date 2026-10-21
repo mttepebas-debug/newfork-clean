@@ -1,0 +1,170 @@
+/* Manager Schedule top bar, KARARLAR S-228 variant B: row 1 moves through
+   time, row 2 is the search and every filter. Both rows are 34 px controls
+   with 7 px gaps and end on one right edge; the bar is 86 px tall. */
+.schedule-topbar[data-rows="2"] {
+  container: schedule-topbar / inline-size;
+  flex-wrap: wrap;
+  row-gap: 0;
+  padding-bottom: 0;
+}
+/* Row 1 holds only the date and Week | Day now: it asks for their own width,
+   not the 680 px today's one-row bar keeps for its filters. */
+.schedule-topbar[data-rows="2"] > .schedule-command-group {
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+}
+.schedule-topbar-filters {
+  display: flex;
+  flex: 0 0 calc(100% + 32px);
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  margin: 4px -16px 0;
+  padding: 4px 16px;
+  border-top: 1px solid var(--theme-border-subtle);
+}
+.schedule-topbar-filters > * {
+  flex: 0 0 auto;
+}
+/* The menus at the right end would run off the page: every row 2 menu
+   opens from its button's right edge. */
+:root .schedule-topbar-filters .schedule-topbar-filter[data-filter-id] .schedule-topbar-filter-menu,
+.schedule-topbar-filters .schedule-command-menu-panel {
+  right: 0;
+  left: auto;
+  transform-origin: top right;
+}
+
+.schedule-topbar-filters > .schedule-search {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 160px;
+  height: 34px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 5px;
+  padding: 0 6px 0 10px;
+  background: var(--theme-surface);
+  color: var(--theme-muted-strong);
+  cursor: text;
+}
+.schedule-search:focus-within {
+  border-color: var(--theme-focus);
+  box-shadow: 0 0 0 3px var(--theme-focus-halo);
+}
+.schedule-search input {
+  height: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+.schedule-search input::placeholder {
+  color: var(--theme-muted);
+  font-weight: 600;
+}
+.schedule-search input::-webkit-search-cancel-button {
+  display: none;
+}
+.schedule-search-key {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 4px;
+  color: var(--theme-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+.schedule-search-clear {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  padding: 0;
+  background: transparent;
+  color: var(--theme-muted-strong);
+  cursor: pointer;
+}
+.schedule-search-clear:hover {
+  background: var(--theme-surface-muted);
+  color: var(--theme-text);
+}
+.schedule-search-clear:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 0;
+}
+
+/* Tablet (a 1180 px screen with the menu open): the row 2 buttons drop to
+   34 px icons; the words stay for screen readers (font-size 0) and show as
+   the title. The search takes the room. Measured on the bar, so a closed
+   menu keeps the words a little longer. */
+@container schedule-topbar (max-width: 940px) {
+  .schedule-topbar-filters .schedule-topbar-filter summary,
+  .schedule-topbar-filters .schedule-hide-unscheduled,
+  .schedule-topbar-filters .schedule-command-menu-trigger {
+    width: 34px;
+    min-width: 0;
+    gap: 0;
+    padding: 0;
+    font-size: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .schedule-topbar-filters {
+    flex-basis: calc(100% + 20px);
+    margin: 0 -10px;
+    padding: 7px 10px 0;
+    gap: 5px;
+  }
+  .schedule-topbar-filters > .schedule-search {
+    min-width: 96px;
+  }
+}
+
+/* The cards the search touches: framed when they match, faded beside one. */
+.schedule-page [data-search-mark="match"] {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 1px;
+}
+.schedule-page [data-search-mark="dim"] {
+  opacity: 0.32;
+}
+
+.schedule-search-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  max-width: 420px;
+  margin: 24px auto 0;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  background: var(--theme-surface);
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+  text-align: center;
+}
+.schedule-search-empty strong {
+  color: var(--theme-text);
+  font-size: 14px;
+}
+.schedule-search-empty-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}

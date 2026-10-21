@@ -75,6 +75,8 @@ export function ScheduleTopBarFilter({
         `1 ${singularLabel}`)
       : `${selectedIds.length} ${pluralLabel}`;
 
+  const summary = summarySuffix ? `${label} - ${summarySuffix}` : label;
+
   function normalizeSelection(ids: readonly string[]): string[] {
     const validIds = ids.filter((id) => itemIds.includes(id));
     return validIds.length === 0 || validIds.length === itemIds.length
@@ -194,6 +196,7 @@ export function ScheduleTopBarFilter({
     >
       <summary
         data-topbar-filter-trigger={filterId}
+        title={summary}
         onClick={
           onOpenChange
             ? (event) => {
@@ -205,7 +208,7 @@ export function ScheduleTopBarFilter({
         }
       >
         {icon}
-        {summarySuffix ? `${label} - ${summarySuffix}` : label}
+        {summary}
       </summary>
       <div
         className="schedule-topbar-filter-menu"

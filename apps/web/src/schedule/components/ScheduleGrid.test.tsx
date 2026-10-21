@@ -193,6 +193,31 @@ describe("ScheduleGrid", () => {
     expect(container.querySelector(".schedule-employee-cell[data-unassigned='true']") !== null).toBe(rowShows);
   });
 
+  it("narrows to ?q= and frames the matching cards, fading the rest (S-228)", () => {
+    const base = scheduleModel();
+    const shift = base.shifts[0]!;
+    const hostJob = { ...base.jobs[0]!, id: "33333333-3333-4333-8333-333333333334", name: "Host" };
+    const blair = { ...base.employees[0]!, id: "55555555-5555-4555-8555-555555555556", display_name: "Blair Chen", job_ids: [hostJob.id], primary_job_id: hostJob.id };
+    const model = scheduleModel({
+      jobs: [...base.jobs, hostJob],
+      employees: [...base.employees, blair],
+      shifts: [
+        shift,
+        { ...shift, id: "66666666-6666-4666-8666-666666666668", scheduled_date: "2026-08-18", shift_type_id: null },
+        { ...shift, id: "66666666-6666-4666-8666-666666666669", employee_id: blair.id, job_id: hostJob.id, shift_type_id: null },
+      ],
+    });
+    const { container } = renderGrid({ model, session: null, search: new URLSearchParams({ q: "dinner" }) });
+    const mark = (id: string) =>
+      container.querySelector(`[data-shift-id="${id}"]`)?.getAttribute("data-search-mark");
+
+    expect(mark(shift.id)).toBe("match");
+    expect(mark("66666666-6666-4666-8666-666666666668")).toBe("dim");
+    expect(container.querySelector('[data-shift-id="66666666-6666-4666-8666-666666666669"]')).toBeNull();
+    expect(container.textContent).toContain("Alex Rivera");
+    expect(container.textContent).not.toContain("Blair Chen");
+  });
+
   it.each([
     [true, true],
     [true, false],

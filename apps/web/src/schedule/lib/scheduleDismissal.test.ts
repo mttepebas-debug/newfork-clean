@@ -67,6 +67,18 @@ describe("dismissNextScheduleSearchLayer", () => {
     expect(dismiss(weekly?.search.toString() ?? "")).toBeNull();
   });
 
+  // S-228: the top bar search is a filter too, one step of the same cascade.
+  it("takes the search off as one step, in the order it was typed", () => {
+    let search = new URLSearchParams("date=2026-09-10");
+    search = withScheduleSearchValue(search, "jobs", "job-1");
+    search = withScheduleSearchValue(search, "q", "ali");
+
+    expect(newestScheduleFilterKey(search)).toBe("q");
+    const first = dismiss(search.toString());
+    expect(first?.search.has("q")).toBe(false);
+    expect(first?.search.get("jobs")).toBe("job-1");
+  });
+
   it("follows the order filters were applied in, not a fixed order", () => {
     let search = new URLSearchParams("date=2026-09-10");
     search = withScheduleSearchValue(search, "jobs", "job-1");
