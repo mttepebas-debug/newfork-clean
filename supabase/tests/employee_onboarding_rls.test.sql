@@ -56,8 +56,11 @@ insert into public.employee_profiles (
 );
 
 
+-- A workspace waits for approval unless it turned that off (KATILIM-ONAY, S-231): the first one lets
+-- people in when they finish, the second waits for approval.
 insert into public.employee_onboarding_settings (workspace_id, final_approval_required, updated_by)
-values ('27000000-0000-4000-8000-000000000002', true, '17000000-0000-4000-8000-000000000004');
+values ('27000000-0000-4000-8000-000000000001', false, '17000000-0000-4000-8000-000000000001'),
+       ('27000000-0000-4000-8000-000000000002', true, '17000000-0000-4000-8000-000000000004');
 
 insert into public.document_types (
   id, workspace_id, title, description, required_at_onboarding, requires_review,
