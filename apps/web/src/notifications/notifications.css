@@ -400,7 +400,11 @@
   margin: 0;
   padding: 0;
   border: 0;
-  background: var(--theme-surface);
+  /* The hour's sky behind the title and tabs, like the desktop panel. */
+  background-color: var(--theme-surface);
+  background-image: var(--drawer-sky, none);
+  background-repeat: no-repeat;
+  background-size: 100% 104px;
   outline: none;
   animation: ni-up 180ms ease-out;
 }
