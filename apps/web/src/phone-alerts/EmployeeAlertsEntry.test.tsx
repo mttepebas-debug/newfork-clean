@@ -129,6 +129,8 @@ describe("Employee Home's phone alerts entry", () => {
     expect(await within(band).findByText("Alerts are on")).toBeTruthy();
     expect(within(band).getByText(/Test alert sent · /)).toBeTruthy();
     expect(testAlert).toHaveBeenCalledWith("phone");
+    // The card keeps its name with the answer in it.
+    expect(within(screen.getByRole("complementary", { name: /Your schedule is here\./ })).getByText("Alerts are on")).toBeTruthy();
   });
 
   it("a no keeps the card with the way to turn it on; a question Chrome would not show says so", async () => {

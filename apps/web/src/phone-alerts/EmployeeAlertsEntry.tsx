@@ -161,7 +161,11 @@ export function EmployeeAlertsEntry({ place, hasShifts }: { readonly place: Plac
   if (place === "first") {
     return (
       <div className="pa-slot is-first">
-        <aside className="pa-band" aria-labelledby={titleId}>
+        {/* The card keeps its name while its answer replaces the question. */}
+        <aside
+          className="pa-band"
+          aria-label={hasShifts ? "Your schedule is here. Get an alert when it changes." : "No shifts yet. Get an alert when your schedule is posted."}
+        >
           <span className="pa-tile" aria-hidden>
             <Bell size={18} />
           </span>
@@ -189,7 +193,7 @@ export function EmployeeAlertsEntry({ place, hasShifts }: { readonly place: Plac
 
   return (
     <div className="pa-slot is-block">
-      <aside className="pa-block" aria-labelledby={titleId}>
+      <aside className="pa-block" aria-label={`Get shift alerts on this ${computer ? "computer" : "phone"}`}>
         {body ?? (
           <>
             <div className="pa-lock" aria-hidden>
