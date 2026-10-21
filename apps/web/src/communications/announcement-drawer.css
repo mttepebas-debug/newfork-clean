@@ -21,7 +21,8 @@
   display: grid;
   gap: 4px;
   padding: 14px 16px 0;
-  border-bottom: 1px solid var(--theme-border);
+  border-bottom: 1px solid var(--theme-border-strong);
+  background: var(--drawer-sky, var(--theme-surface));
 }
 /* The reader's header keeps its room; the editor's sits tighter over its tabs. */
 .announcement-drawer .annc-head-plain {
@@ -1427,8 +1428,8 @@
   display: grid;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid var(--theme-border);
-  background: var(--theme-surface);
+  border-top: 1px solid var(--theme-border-strong);
+  background: var(--theme-app-ground);
 }
 /* What happens to the shifts, over the buttons (Mert, 2026-10-12): yellow when
    one is removed, shortened or opened; only when a shift is reached. */

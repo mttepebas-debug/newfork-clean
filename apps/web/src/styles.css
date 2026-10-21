@@ -109,6 +109,9 @@
      the other pages' cards share (workspace-theme-sync). */
   --theme-app-ground: #f6f7f5;
   --theme-shadow-card: 0 1px 2px rgb(23 34 30 / 5%), 0 12px 32px -18px rgb(23 34 30 / 26%);
+  /* One dimming under every drawer, and a light one under the Notifications panel. */
+  --theme-scrim: rgb(23 34 30 / 32%);
+  --theme-scrim-soft: rgb(23 34 30 / 14%);
   /* Six soft avatar grounds for people without a photo; ink is --theme-text. */
   --theme-avatar-0: #ecd8c4;
   --theme-avatar-1: #cfe5da;
@@ -1749,13 +1752,24 @@
   width: 100%;
   height: 100%;
   border: 0;
-  background: rgb(17 24 21 / 42%);
+  background: var(--theme-scrim);
   cursor: default;
   animation: employee-fade-in 160ms ease-out;
 }
 .employee-drawer {
   width: min(100%, 880px);
   height: 100dvh;
+}
+/* On a desktop the drawer floats as a card 12 px in from the window, with the
+   menu's 3.2:1 edge (Mert 2026-10-21, drawer variant C). */
+@media (min-width: 721px) {
+  .employee-drawer {
+    top: 12px;
+    right: 12px;
+    height: calc(100dvh - 24px);
+    border: 1px solid var(--theme-border-control);
+    border-radius: 18px;
+  }
 }
 .employee-drawer {
   position: absolute;
@@ -1901,7 +1915,8 @@
   justify-content: space-between;
   gap: 16px;
   padding: 8px 22px 8px 26px;
-  border-bottom: 1px solid #dce1de;
+  border-bottom: 1px solid var(--theme-border-strong);
+  background: var(--drawer-sky, var(--theme-surface));
 }
 .employee-section-header h2 {
   margin: 0;
@@ -2429,8 +2444,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 20px;
-  border-top: 1px solid #d8ddda;
-  background: #f2f4f2;
+  border-top: 1px solid var(--theme-border-strong);
+  background: var(--theme-app-ground);
 }
 .employee-drawer-actions {
   display: flex;
@@ -3746,6 +3761,21 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 :is(.dl-home, .app-main, .account-shell)[data-slot="night"] {
   --dl-sky: radial-gradient(90% 60% at 84% 0%, var(--theme-sky-night-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-night) 0%, transparent 100%);
+}
+/* A drawer's header carries the hour's sky over white (Mert 2026-10-21, drawer
+   variant B's header on C's floating card). Drawers live outside the page area,
+   so the hour is read from the page area. */
+:root:has(:is(.app-main, .account-shell)[data-slot="morning"]) {
+  --drawer-sky: radial-gradient(70% 160% at 100% 0%, var(--theme-sky-morning-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-morning) 0%, var(--theme-surface) 100%);
+}
+:root:has(:is(.app-main, .account-shell)[data-slot="afternoon"]) {
+  --drawer-sky: radial-gradient(70% 160% at 100% 0%, var(--theme-sky-afternoon-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-afternoon) 0%, var(--theme-surface) 100%);
+}
+:root:has(:is(.app-main, .account-shell)[data-slot="evening"]) {
+  --drawer-sky: radial-gradient(70% 160% at 100% 0%, var(--theme-sky-evening-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-evening) 0%, var(--theme-surface) 100%);
+}
+:root:has(:is(.app-main, .account-shell)[data-slot="night"]) {
+  --drawer-sky: radial-gradient(70% 160% at 100% 0%, var(--theme-sky-night-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-night) 0%, var(--theme-surface) 100%);
 }
 .app-main[data-slot]:not(:has(.dl-home)) {
   background-image: var(--dl-sky);
