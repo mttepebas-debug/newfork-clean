@@ -98,8 +98,7 @@ export function DesktopLineupPage({
   held,
   waiting,
 }: {
-  /** The heading; `tools` (the date and location) sit in it, beside the title (Mert 2026-10-21). */
-  readonly header: (tools: ReactNode) => ReactNode;
+  readonly header: ReactNode;
   readonly workspaceId: string | null;
   readonly date: string;
   /** The day on the ticket: "Tue, Oct 13". */
@@ -129,8 +128,6 @@ export function DesktopLineupPage({
 }) {
   // The ticket shown when All locations has more than one: the arrows move it (Mert 2026-10-19 ~2:10 AM).
   const [at, setAt] = useState("");
-  // The heading's spot for the date and location.
-  const [toolsSlot, setToolsSlot] = useState<HTMLDivElement | null>(null);
   // Each location and shift keeps its own tab.
   const [segs, setSegs] = useState<Readonly<Record<string, Seg>>>({});
   const [folded, setFolded] = useState(readFolded);
@@ -195,9 +192,9 @@ export function DesktopLineupPage({
 
   return (
     <section className="lineup-page list-page lineup-desk-page" aria-labelledby="lineup-title">
-      {header(<div className="lineup-desk-tools" ref={setToolsSlot} />)}
+      {header}
       <div className="lineup-desk-top">
-        <LineupDayPicker date={date} today={today} onDate={onDate} days={15} waiting={waiting} barSlot={toolsSlot}>
+        <LineupDayPicker date={date} today={today} onDate={onDate} days={15} waiting={waiting}>
           <LineupLocationSelect
             loading={loading}
             locations={locations}

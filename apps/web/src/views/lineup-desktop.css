@@ -14,20 +14,17 @@
   padding: 30px 0 0;
 }
 
-/* The date and location sit in the heading, right of the title and before Publish, above its line
-   (Mert 2026-10-21). */
-.lineup-desk-tools .lineup-toolbar {
-  flex-wrap: nowrap;
-}
-.lineup-desk-tools .lineup-toolbar .lineup-location-select {
-  flex: 0 0 240px;
-}
-
-/* The 15-day wheel, the shift tabs. */
+/* The date and location, the 15-day wheel, the shift tabs. */
 .lineup-desk-top {
   display: grid;
   gap: 14px;
   padding-top: 4px;
+}
+.lineup-desk-top .lineup-toolbar {
+  flex-wrap: nowrap;
+}
+.lineup-desk-top .lineup-toolbar .lineup-location-select {
+  flex: 0 0 240px;
 }
 .lineup-desk-top .lineup-wheel,
 .lineup-desk-top .lineup-shift-tabs {
