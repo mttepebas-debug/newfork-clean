@@ -118,17 +118,22 @@ export function AddStaffButton({ department, onAdd }: { readonly department: str
 
 /**
  * The team's departments: editing, every department shows, so Add Staff reaches one with no one on it yet (the
- * design's teamPane); Other last.
+ * design's teamPane). The ones with people come first and the empty ones after them (Mert 2026-10-21); Other last
+ * among its own.
  */
 export function teamDepartments(shift: LineupShift, editing: LineupEditing | null): LineupShift["departments"] {
   if (!editing) return shift.departments;
+  const empty = (department: LineupShift["departments"][number]) => (department.jobs.length ? 0 : 1);
   return [
     ...shift.departments,
     ...editing.catalog.departments
       .filter((department) => !shift.departments.some((item) => item.id === department.id))
       .map((department) => ({ ...department, jobs: [] })),
   ].sort(
-    (a, b) => (a.id === null ? 1 : 0) - (b.id === null ? 1 : 0) || a.name.localeCompare(b.name, "en-US", { sensitivity: "base" }),
+    (a, b) =>
+      empty(a) - empty(b) ||
+      (a.id === null ? 1 : 0) - (b.id === null ? 1 : 0) ||
+      a.name.localeCompare(b.name, "en-US", { sensitivity: "base" }),
   );
 }
 
