@@ -4343,6 +4343,40 @@ describe("App", () => {
     expect(window.location.search).toContain("view=week");
   }, 20000);
 
+  // Mert 2026-10-21: on another week, a blank click after the filters were
+  // gone sent the page back to this week and closed the edit without a word;
+  // back on the edited week the page read view mode over an unlocked grid.
+  it("keeps the edited week and the edit when a blank click has no layer left to close", async () => {
+    vi.mocked(getScheduleReadModel).mockImplementation(async (_workspace, date) =>
+      scheduleFixtureForWeek(date >= "2026-09-07" ? "2026-09-07" : "2026-08-17"),
+    );
+    const acquired = makeDefaultEditAcquireResult();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...acquired,
+      session: { ...acquired.session, week_start: "2026-09-07" },
+    });
+    window.history.pushState({}, "", "/app/schedule?date=2026-09-07");
+    testAuth.role = "owner";
+    const { container } = render(<App />);
+    const app = within(container);
+    await openPublishedScheduleEditor(app);
+    expect(await app.findByRole("button", { name: "Discard" })).toBeTruthy();
+    const editBanner = container.querySelector<HTMLElement>(".schedule-edit-banner");
+
+    fireEvent.click(app.getByRole("button", { name: "Hide Unscheduled" }));
+    fireEvent.pointerDown(editBanner!);
+    expect(window.location.search).not.toContain("hideUnscheduled=true");
+
+    fireEvent.pointerDown(editBanner!);
+    fireEvent.pointerDown(editBanner!);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("date")).toBe("2026-09-07");
+    expect(params.get("mode")).toBe("edit");
+    expect(app.getByRole("button", { name: "Discard" })).toBeTruthy();
+  }, 20000);
+
+
   it("pastes onto hours the employee marked unavailable: availability never blocks (BL-186)", async () => {
     const unavailableFixture = {
       ...scheduleFixture,

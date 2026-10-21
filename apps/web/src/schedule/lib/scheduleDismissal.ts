@@ -57,6 +57,7 @@ export function dismissNextScheduleSearchLayer({
   currentWeekStart,
   today,
   focusedShift = false,
+  editing = false,
 }: {
   readonly search: URLSearchParams;
   readonly modelWeekStart: string;
@@ -64,6 +65,8 @@ export function dismissNextScheduleSearchLayer({
   readonly today: string;
   /** A badge is focused: its shift type and job filters are one step. */
   readonly focusedShift?: boolean;
+  /** An edit is open on this week; the press never takes the page off it. */
+  readonly editing?: boolean;
 }): ScheduleSearchDismissal | null {
   const next = new URLSearchParams(search);
 
@@ -80,7 +83,7 @@ export function dismissNextScheduleSearchLayer({
     next.set("view", "week");
     return { search: next, clearFocusedShift: false };
   }
-  if (modelWeekStart !== currentWeekStart) {
+  if (!editing && modelWeekStart !== currentWeekStart) {
     next.set("date", today);
     next.set("view", "week");
     return { search: next, clearFocusedShift: false };

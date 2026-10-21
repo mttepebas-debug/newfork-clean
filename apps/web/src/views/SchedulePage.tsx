@@ -2327,6 +2327,7 @@ export function SchedulePage({
       currentWeekStart: currentWeek,
       today,
       focusedShift: Boolean(focusedShiftId),
+      editing: Boolean(gridEditSession),
     });
     if (!dismissal) return false;
     setSearch(dismissal.search);
