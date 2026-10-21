@@ -3076,9 +3076,10 @@ select:focus-visible {
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  /* The menu sits on the page area's ground, no edge: the sky fades in beside
-     it and the open page's item is a Home card (workspace-theme-sync). */
-  background: var(--theme-app-ground);
+  /* A white menu with the Schedule controls' edge, 3.2:1 on the page ground,
+     so it never sinks into the sky (Mert 2026-10-21, variant D). */
+  border-right: 1px solid var(--theme-border-control);
+  background: var(--theme-surface);
   transition: width 180ms ease;
 }
 .app-shell[data-sidebar-collapsed="true"] .app-sidebar {
@@ -3279,11 +3280,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
     flex-basis: 44px;
   }
 }
-.icon-button:hover {
-  background: var(--theme-surface-muted);
-}
+.icon-button:hover,
 .nav-item:hover {
-  background: color-mix(in srgb, var(--theme-surface) 70%, transparent);
+  background: var(--theme-surface-muted);
 }
 .mini-calendar {
   width: 264px;
@@ -3526,8 +3525,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   flex: 0 0 auto;
 }
 .nav-item.active {
-  background: var(--theme-surface);
-  box-shadow: var(--theme-shadow-card);
+  background: var(--theme-selected);
   color: var(--theme-accent-strong);
 }
 .nav-item-has-children {
@@ -5022,11 +5020,15 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-radius: 0;
   background: var(--theme-surface);
 }
-/* On Schedule the grid is a Home card on the sky: no edge, the card's lift and
-   corner, in line with the bars above it (workspace-theme-sync). */
+/* On Schedule the grid is a card on the sky, in line with the bars above it,
+   with the Schedule controls' 3.2:1 edge and lines one step firmer, so it
+   neither glares nor sinks (Mert 2026-10-21, variant D). */
+.schedule-page {
+  --schedule-grid-line-color: var(--theme-border-strong);
+}
 .schedule-page > .schedule-grid-scroll {
-  border: 0;
-  border-radius: 18px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 12px;
   box-shadow: var(--theme-shadow-card);
 }
 @media (min-width: 721px) {
@@ -10960,9 +10962,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .settings-rail {
   min-height: 0;
   overflow: hidden;
-  /* Like the main menu: no edge or ground of its own, the open page's item a
-     Home card (workspace-theme-sync). */
-  background: transparent;
+  /* White, with a clear edge beside the page (Mert 2026-10-21, variant D). */
+  border-right: 1px solid var(--theme-border-strong);
+  background: var(--theme-surface);
   padding: 18px 10px;
 }
 .settings-rail-title {
@@ -11002,11 +11004,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   text-decoration: none;
 }
 .settings-nav-item:hover {
-  background: color-mix(in srgb, var(--theme-surface) 70%, transparent);
+  background: var(--theme-surface-muted);
 }
 .settings-nav-item.active {
-  background: var(--theme-surface);
-  box-shadow: var(--theme-shadow-card);
+  background: var(--theme-selected);
   color: var(--theme-accent-strong);
 }
 /* Settings' pages scroll here. Like .app-main it holds what a page places
