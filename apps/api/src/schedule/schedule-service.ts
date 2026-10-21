@@ -43,6 +43,7 @@ import {
   type ScheduleEditSource,
   type SchedulePublicationOverrideInput,
   type SchedulePublicationPreflightAck,
+  type ScheduleOpenShiftChoice,
   type SchedulePublicationPreview,
   type SchedulePublishResult,
   type ScheduleReadModel,
@@ -276,6 +277,7 @@ export interface ScheduleReadService {
     fingerprint: string;
     overrides: SchedulePublicationOverrideInput[];
     preflightAck?: SchedulePublicationPreflightAck;
+    openShifts?: ScheduleOpenShiftChoice;
   }): Promise<SchedulePublishResult>;
   previewUnpublish(input: {
     actorUserId: string;
@@ -852,6 +854,8 @@ export function createScheduleReadService(options: {
           expected_draft_revision: input.expectedDraftRevision,
           expected_fingerprint: input.fingerprint,
           override_decisions: input.preflightAck?.decisions ?? input.overrides,
+          // The open shifts' choice goes only when made: without it they stay open, as before.
+          ...(input.openShifts ? { open_shift_choice: input.openShifts } : {}),
           // target_notify_employee_ids is left out on purpose: it defaults to nobody, and leaving it
           // out keeps publish working once the notification teardown drops it (BILDIRIM-03, C1).
         },

@@ -1219,6 +1219,17 @@ describe("Shift Hub release", () => {
     expect(screen.getByText("Swipe right to take · left to pass · 2 left")).toBeTruthy();
   });
 
+  // Open shifts in the pool (Mert, 2026-10-20): an open shift the manager offered is nobody's yet.
+  it("shows an offered open shift as the manager's offer, with nobody to name", async () => {
+    model.employee_id = "blake";
+    model.cases = [];
+    model.opportunities = [{ ...released("open"), note: "", shift: { ...released("open").shift, employee_id: null, employee_name: null } }];
+    mount("/app/employee-hub/shift-hub?hub_view=available");
+    const top = await screen.findByRole("article", { name: /Your manager is offering this open shift/ });
+    expect(within(top).getByText("Offered by your manager")).toBeTruthy();
+    expect(within(top).queryByText(/teammate|can’t make/i)).toBeNull();
+  });
+
   it("passes on a card with Not for me", async () => {
     model.employee_id = "blake";
     model.cases = [];

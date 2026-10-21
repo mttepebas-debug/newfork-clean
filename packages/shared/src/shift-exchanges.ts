@@ -94,7 +94,8 @@ export const exchangeApplicationSchema = z.object({
 export const exchangeCaseSchema = z.object({
   id: z.string().uuid(),
   // TAKAS-RELEASE: a release is a cover asked of everyone eligible (audience
-  // eligible_pool); only a release reaches the open pool.
+  // eligible_pool). An open shift the manager offered on publishing is one too,
+  // and nobody owns it: owner_id is null (Mert, 2026-10-20).
   kind: z.enum(["cover", "swap"]),
   audience: z.enum(["eligible_pool", "direct"]),
   status: z.enum(["open", "completed", "cancelled", "expired", "invalidated"]),
@@ -108,7 +109,7 @@ export const exchangeCaseSchema = z.object({
   revision: z.number().int(),
   created_at: z.string(),
   expires_at: z.string(),
-  owner_id: z.string().uuid(),
+  owner_id: z.string().uuid().nullable(),
   owner_name: z.string().nullable(),
   shift: exchangeShiftSchema,
   requested_shift: exchangeShiftSchema.nullable(),

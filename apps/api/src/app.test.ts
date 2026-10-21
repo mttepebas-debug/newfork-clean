@@ -2281,6 +2281,47 @@ describe("api app", () => {
     expect(calls[0]).not.toHaveProperty("notifyEmployeeIds");
   });
 
+  // Open shifts in the pool (Mert, 2026-10-20): the publisher's one choice for the open shifts goes along.
+  it("passes the open shifts' choice to the publish and refuses an unknown one", async () => {
+    const calls: Array<{ openShifts?: string }> = [];
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleService: scheduleServiceMock({
+        publish: async (input) => {
+          calls.push(input);
+          return {
+            status: "published",
+            workspace_id: resolvedContext.workspace.id,
+            week_start: "2026-08-17",
+            draft_id: input.draftId,
+            draft_revision: input.expectedDraftRevision,
+            location_ids: input.locationIds,
+            publication_ids: ["86000000-0000-4000-8000-000000000001"],
+            published_shift_count: 1,
+            published_at: "2026-08-17T12:00:00.000Z",
+          };
+        },
+      }),
+    });
+    const publish = (open_shifts?: string) =>
+      app.inject({
+        method: "POST",
+        url: "/schedule/publish",
+        headers: { authorization: "Bearer owner-token" },
+        payload: {
+          draft_id: "85000000-0000-4000-8000-000000000001",
+          location_ids: ["11000000-0000-4000-8000-000000000001"],
+          expected_draft_revision: 1,
+          fingerprint: "a".repeat(64),
+          ...(open_shifts ? { open_shifts } : {}),
+        },
+      });
+    expect((await publish("offer")).statusCode).toBe(200);
+    expect((await publish()).statusCode).toBe(200);
+    expect((await publish("assign")).statusCode).toBe(400);
+    expect(calls.map((call) => call.openShifts)).toEqual(["offer", undefined]);
+  });
+
   // Availability asks nothing at publish (M9); a conflict still waiting for a decision does.
   it("says an unreviewed schedule conflict stops the publish", async () => {
     const app = buildApp({

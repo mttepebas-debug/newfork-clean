@@ -5,8 +5,9 @@ select plan(15);
 -- BL-199 (user, S1 (a), S-A (a), S-B (a)): a shift's note reaches the person
 -- working the shift and the managers, nobody else. Ali and Deniz both work at
 -- Kadikoy; Ayse manages it. On the screens an employee reads (the team
--- schedule and Employee Hub) Ali sees the note on his own shift and on the
--- open shift anyone there may pick up, not the one on Deniz's; the rule is the
+-- schedule and Employee Hub) Ali sees the note on his own shift, not the one on
+-- Deniz's, and no open shift at all (Mert, 2026-10-20: an open shift reaches
+-- an employee only offered, in Shift Hub); the rule is the
 -- same for Ayse there. Ayse reads every note on the Schedule.
 
 -- What one statement answers: its jsonb, or null when refused.
@@ -71,8 +72,10 @@ select ok(pg_temp.shows_deniz_without_note(pg_temp.board('ali'), 'shifts'),
 select ok(jsonb_path_exists(pg_temp.board('ali'),
     '$.shifts[*] ? (@.employee_id == $who && @.note == "")', jsonb_build_object('who', tests.id('sn:deniz'))),
   'Deniz''s shift is still there, with an empty note');
-select ok('Open: the new oven arrives' = any (pg_temp.notes(pg_temp.board('ali'))),
-  'the open shift anyone at Kadikoy may pick up keeps its note');
+select ok(jsonb_array_length(pg_temp.board('ali') -> 'shifts') = 2
+    and not jsonb_path_exists(pg_temp.board('ali'), '$.shifts[*] ? (@.id == $id)', jsonb_build_object('id', tests.id('sn:shift:open-thu')))
+    and not 'Open: the new oven arrives' = any (pg_temp.notes(pg_temp.board('ali'))),
+  'the open shift is not on Ali''s team schedule, nor its note');
 select ok(pg_temp.shows_deniz_without_note(pg_temp.board('ayse'), 'shifts'),
   'Ayse''s team schedule does not carry Deniz''s note either');
 
@@ -85,8 +88,8 @@ select ok(pg_temp.shows_deniz_without_note(pg_temp.hub('ali'), 'team_shifts'),
 select ok(jsonb_path_exists(pg_temp.hub('ali'),
     '$.team_shifts[*] ? (@.employee_id == $who && @.note == "")', jsonb_build_object('who', tests.id('sn:deniz'))),
   'Deniz''s shift is still there, with an empty note');
-select ok(jsonb_path_exists(pg_temp.hub('ali'), '$.open_shifts[*] ? (@.note == "Open: the new oven arrives")'),
-  'the open shift keeps its note');
+select ok(pg_temp.hub('ali') -> 'open_shifts' = '[]'::jsonb and not 'Open: the new oven arrives' = any (pg_temp.notes(pg_temp.hub('ali'))),
+  'nor in his Employee Hub');
 select ok(pg_temp.shows_deniz_without_note(pg_temp.hub('ayse'), 'team_shifts'),
   'Ayse''s Employee Hub does not carry Deniz''s note either');
 

@@ -311,7 +311,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("lists a closed shift change under the open requests with its outcome", async () => {
     const closedSwap = {
       id: "97500000-0000-4000-8000-000000000009", kind: "swap", audience: "eligible_pool", status: "completed", stage: "closed",
-      revision: 3, created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-05T09:00:00Z", owner_id: null, owner_name: "Emre Person",
+      revision: 3, created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-05T09:00:00Z", owner_id: "15000000-0000-4000-8000-0000000000e1", owner_name: "Emre Person",
       shift, requested_shift: null, applications: [], candidate_count: 0, can_manage: true, is_owner: false,
       history: [{ id: "97600000-0000-4000-8000-000000000001", action: "completed", created_at: "2035-01-04T09:00:00Z", message: "" }],
     };
@@ -327,7 +327,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const caseId = "97500000-0000-4000-8000-000000000002";
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [{
       id: caseId, kind: "cover", audience: "eligible_pool", status: "open", stage: "ready_for_manager", revision: 1,
-      created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
+      created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: "15000000-0000-4000-8000-0000000000e1", owner_name: "Emre Person",
       shift, requested_shift: null, applications: [], candidate_count: 1, can_manage: true, is_owner: false, history: [],
     }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     renderPage(undefined, undefined, ["/app/workspace"]);
@@ -339,7 +339,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   // Mert, 2026-10-11: a cover or an open shift opens its drawer over the list.
   const coverCase = {
     id: "97500000-0000-4000-8000-000000000007", kind: "cover", audience: "eligible_pool", status: "open", stage: "ready_for_manager", revision: 1,
-    created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
+    created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: "15000000-0000-4000-8000-0000000000e1", owner_name: "Emre Person",
     shift, requested_shift: null, applications: [], candidate_count: 0, can_manage: true, is_owner: false, history: [],
   };
   it("opens a cover in its drawer over the list, and closes it", async () => {
@@ -392,7 +392,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const swapId = "97500000-0000-4000-8000-000000000003";
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [{
       id: swapId, kind: "swap", audience: "direct", status: "open", stage: "ready_for_manager", revision: 1,
-      created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
+      created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: "15000000-0000-4000-8000-0000000000e1", owner_name: "Emre Person",
       shift, requested_shift: { ...shift, id: "22000000-0000-4000-8000-000000000005", employee_name: "Deniz Acar" },
       applications: [{ id: "97600000-0000-4000-8000-000000000003", employee_id: "15000000-0000-4000-8000-000000000003", employee_name: "Deniz Acar",
         status: "pending_manager", created_at: "2035-01-02T10:00:00Z", reason: "", eligibility: null }],
@@ -412,7 +412,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const swapId = "97500000-0000-4000-8000-000000000004";
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [{
       id: swapId, kind: "swap", audience: "direct", status: "open", stage: "ready_for_manager", revision: 1,
-      created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
+      created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: "15000000-0000-4000-8000-0000000000e1", owner_name: "Emre Person",
       shift, requested_shift: { ...shift, id: "22000000-0000-4000-8000-000000000006", employee_name: "Deniz Acar" },
       applications: [{ id: "97600000-0000-4000-8000-000000000004", employee_id: "15000000-0000-4000-8000-000000000003", employee_name: "Deniz Acar",
         status: "pending_manager", created_at: "2035-01-02T10:00:00Z", reason: "", eligibility: null }],

@@ -33,6 +33,18 @@ describe("exchangeSentence", () => {
     expect(text).toBe("Jake Miller and 2 others want to take over Maria Lopez’s 4:00 PM Server shift at Downtown on Fri, Oct 16.");
   });
 
+  // Open shifts in the pool (Mert, 2026-10-20): an offered open shift has no owner.
+  it("calls an offered open shift the open shift", () => {
+    const open = (applications: ReturnType<typeof person>[], change: Partial<ExchangeCase> = {}) =>
+      release(applications, { owner_id: null, owner_name: null, shift: { ...shift, employee_id: null, employee_name: null }, ...change } as Partial<ExchangeCase>);
+    expect(sentenceText(exchangeSentence(open([person("Jake Miller")]), "12h"))).toBe(
+      "Jake Miller wants the open 4:00 PM Server shift at Downtown on Fri, Oct 16.");
+    expect(sentenceText(exchangeSentence(open([person("Ana Torres", "approved")], { status: "completed", stage: "closed" }), "12h"))).toBe(
+      "Ana Torres took the open 4:00 PM Server shift at Downtown on Fri, Oct 16.");
+    expect(sentenceText(exchangeSentence(open([]), "12h"))).toBe(
+      "Open shift: 4:00 PM Server at Downtown on Fri, Oct 16, offered to eligible employees.");
+  });
+
   it("writes one or two names in full", () => {
     expect(sentenceText(exchangeSentence(release([person("Jake Miller")]), "12h"))).toBe(
       "Jake Miller wants to take over Maria Lopez’s 4:00 PM Server shift at Downtown on Fri, Oct 16.");

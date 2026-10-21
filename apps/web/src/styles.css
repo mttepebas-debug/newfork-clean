@@ -13479,3 +13479,48 @@ button.workspace-switcher-item:hover:not(:disabled) {
     display: none;
   }
 }
+/* The open shifts the publish asks about (Mert, 2026-10-20): a finding group with one choice. */
+fieldset.schedule-publish-open-shifts {
+  margin: 0;
+  min-width: 0;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+.schedule-publish-open-shifts > legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+.schedule-publish-open-shift-list {
+  clear: both;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.schedule-publish-open-shift-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+.schedule-publish-open-shift-option input {
+  margin: 2px 0 0;
+}
+.schedule-publish-open-shift-option span {
+  display: grid;
+  gap: 2px;
+}
+.schedule-publish-open-shift-option strong {
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.schedule-publish-open-shift-option small {
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  line-height: 1.45;
+}

@@ -739,6 +739,42 @@ describe("createScheduleReadService realtime invalidation", () => {
     );
   });
 
+  // Open shifts in the pool (Mert, 2026-10-20): the choice goes only when made, so a publish
+  // without one keeps the open shifts as before.
+  it("sends the open shifts' choice to the publish only when one is made", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: {
+        status: "published",
+        workspace_id: workspaceId,
+        week_start: "2026-08-17",
+        draft_id: draftId,
+        draft_revision: 2,
+        location_ids: [locationId],
+        publication_ids: ["86000000-0000-4000-8000-000000000001"],
+        published_shift_count: 1,
+        published_at: "2026-08-17T12:00:00.000Z",
+      },
+      error: null,
+    });
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+    const input = {
+      actorUserId,
+      workspaceId,
+      draftId,
+      locationIds: [locationId],
+      expectedDraftRevision: 2,
+      fingerprint: "a".repeat(64),
+      overrides: [],
+    };
+    await service.publish({ ...input, openShifts: "offer" });
+    await service.publish(input);
+    expect(mocks.rpc.mock.calls[0]?.[1]).toMatchObject({ open_shift_choice: "offer" });
+    expect(mocks.rpc.mock.calls[1]?.[1]).not.toHaveProperty("open_shift_choice");
+  });
+
   it("broadcasts draft-session invalidation after applying auto-fill", async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: {

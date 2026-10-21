@@ -9,6 +9,7 @@ import {
   scheduleExportSettingsSchema,
   updateSchedulePendingOpInputSchema,
   schedulePublicationPreflightAckSchema,
+  scheduleOpenShiftChoiceSchema,
   schedulePublicationOverrideInputSchema,
   scheduleShiftMutationInputSchema,
   updateScheduleExportScheduleInputSchema,
@@ -166,6 +167,7 @@ const publishBodySchema = publicationPreviewBodySchema.extend({
     .max(200)
     .default([]),
   preflight_ack: schedulePublicationPreflightAckSchema.optional(),
+  open_shifts: scheduleOpenShiftChoiceSchema.optional(),
 });
 const unpublishPreviewBodySchema = z.object({
   week_start: z.string().date(),
@@ -631,6 +633,7 @@ export function registerScheduleRoutes(
           fingerprint: body.data.fingerprint,
           overrides: body.data.overrides,
           preflightAck: body.data.preflight_ack,
+          openShifts: body.data.open_shifts,
         }),
       );
     } catch (error) {

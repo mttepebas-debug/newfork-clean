@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 570, last: 20261020234433_assignment_rule_and_owner_setup.sql
--- fingerprint: sha256:e43c0535c7d13bb3cd465af9cd068cf826fa5e34b18d116a8bc5f3bd0cb9789e
+-- migrations: 571, last: 20261021020000_open_shift_offer.sql
+-- fingerprint: sha256:888a3958c15754c84c745f7107a3cdefcc60426dec85752eb5962122e3a22461
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5140,7 +5140,7 @@ CREATE OR REPLACE FUNCTION "app_private"."employee_side_impact"("w" "uuid", "emp
       from public.shift_exchange_applications a
       join public.shift_exchange_cases c on c.id = a.case_id and c.workspace_id = a.workspace_id
       where a.workspace_id = w and a.employee_id = emp and a.status in ('invited', 'pending_manager')
-        and c.status = 'open' and c.owner_id <> emp),
+        and c.status = 'open' and c.owner_id is distinct from emp),
     'time_off_withdrawn', (
       select count(*)::integer from public.schedule_time_off_requests r
       where r.workspace_id = w and r.employee_id = emp and r.status = 'pending'),
@@ -8283,11 +8283,49 @@ CREATE OR REPLACE FUNCTION "app_private"."schedule_publication_changes_since_sta
         )
     )) order by position)
     from jsonb_array_elements(preview -> 'locations') with ordinality entry(item, position)
-  ), '[]'::jsonb)) end;
+  ), '[]'::jsonb))
+  -- The open shifts this publish asks about (Mert, 2026-10-20); the draft revision guards them.
+  || jsonb_build_object('open_shifts', app_private.schedule_publication_open_shifts(preview)) end;
 $$;
 
 
 ALTER FUNCTION "app_private"."schedule_publication_changes_since_start"("preview" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."schedule_publication_open_shifts"("preview" "jsonb") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', d.id, 'location_id', d.location_id, 'location_name', l.name, 'job_id', d.job_id,
+      'job_name', coalesce(j.name, 'Unassigned position'), 'scheduled_date', d.scheduled_date,
+      'start_time', to_char(d.start_time, 'HH24:MI'), 'end_time', to_char(d.end_time, 'HH24:MI'))
+    order by d.scheduled_date, d.start_time, l.name, d.id), '[]'::jsonb)
+  from public.schedule_draft_shifts d
+  join public.locations l on l.id = d.location_id
+  left join public.jobs j on j.id = d.job_id
+  where d.draft_id = (preview ->> 'draft_id')::uuid
+    and d.employee_id is null
+    and d.location_id in (select (x ->> 'location_id')::uuid from jsonb_array_elements(coalesce(preview -> 'locations', '[]'::jsonb)) x)
+    and public.schedule_shift_in_department_scope_service(d.job_id,
+      case when jsonb_typeof(preview -> 'department_ids') = 'array'
+        then array(select jsonb_array_elements_text(preview -> 'department_ids'))::uuid[] end,
+      coalesce((preview ->> 'include_no_department')::boolean, true))
+    and lower(app_private.shift_time_range(d.scheduled_date, d.start_time, d.end_time, coalesce(d.time_timezone, l.timezone)))
+      - interval '4 hours' > now()
+    and not exists (
+      select 1 from public.schedule_published_shifts p
+      join public.schedule_location_publications pub on pub.id = p.publication_id and pub.status = 'current'
+      where p.workspace_id = d.workspace_id and p.source_shift_id = d.id and p.employee_id is null
+        and p.job_id is not distinct from d.job_id and p.shift_type_id is not distinct from d.shift_type_id
+        and p.scheduled_date = d.scheduled_date and p.start_time is not distinct from d.start_time
+        and p.end_time is not distinct from d.end_time and p.time_basis is not distinct from d.time_basis
+        and p.time_snapshot is not distinct from d.time_snapshot and p.time_timezone is not distinct from d.time_timezone
+        and p.note is not distinct from d.note)
+$$;
+
+
+ALTER FUNCTION "app_private"."schedule_publication_open_shifts"("preview" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."schedule_referenced_catalog"("target_workspace_id" "uuid", "job_ids" "uuid"[], "shift_type_ids" "uuid"[]) RETURNS "jsonb"
@@ -8854,7 +8892,7 @@ CREATE TABLE IF NOT EXISTS "public"."shift_exchange_cases" (
     "status" "text" DEFAULT 'open'::"text" NOT NULL,
     "offered_source_id" "uuid" NOT NULL,
     "requested_source_id" "uuid",
-    "owner_id" "uuid" NOT NULL,
+    "owner_id" "uuid",
     "offered_snapshot" "jsonb" NOT NULL,
     "requested_snapshot" "jsonb",
     "consent_fingerprint" "text" NOT NULL,
@@ -8865,9 +8903,12 @@ CREATE TABLE IF NOT EXISTS "public"."shift_exchange_cases" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "teammate_note" "text" DEFAULT ''::"text" NOT NULL,
+    "open_shift_publication_id" "uuid",
     CONSTRAINT "shift_exchange_cases_audience_check" CHECK (("audience" = ANY (ARRAY['eligible_pool'::"text", 'direct'::"text"]))),
     CONSTRAINT "shift_exchange_cases_check" CHECK ((("kind" = 'swap'::"text") = ("requested_source_id" IS NOT NULL))),
     CONSTRAINT "shift_exchange_cases_kind_check" CHECK (("kind" = ANY (ARRAY['cover'::"text", 'swap'::"text"]))),
+    CONSTRAINT "shift_exchange_cases_open_shift_check" CHECK ((("owner_id" IS NULL) = ("open_shift_publication_id" IS NOT NULL))),
+    CONSTRAINT "shift_exchange_cases_open_shift_pool_check" CHECK ((("owner_id" IS NOT NULL) OR (("kind" = 'cover'::"text") AND ("audience" = 'eligible_pool'::"text")))),
     CONSTRAINT "shift_exchange_cases_private_note_check" CHECK (("length"("private_note") <= 1000)),
     CONSTRAINT "shift_exchange_cases_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'completed'::"text", 'cancelled'::"text", 'expired'::"text", 'invalidated'::"text"]))),
     CONSTRAINT "shift_exchange_cases_teammate_note_check" CHECK (("length"("teammate_note") <= 200))
@@ -8878,6 +8919,10 @@ ALTER TABLE "public"."shift_exchange_cases" OWNER TO "postgres";
 
 
 COMMENT ON COLUMN "public"."shift_exchange_cases"."teammate_note" IS 'A release''s note for teammates: everyone it reaches reads it (TAKAS-RELEASE).';
+
+
+
+COMMENT ON COLUMN "public"."shift_exchange_cases"."open_shift_publication_id" IS 'The publication that offered this open shift to eligible employees; set exactly when nobody owns the request (Mert, 2026-10-20).';
 
 
 
@@ -9083,6 +9128,8 @@ begin
     said := case when c.kind = 'swap'
       then owner_name || ' and ' || who_name || ' want to swap ' || app_private.shift_exchange_shift_text(c.workspace_id, c.offered_snapshot)
         || ' for ' || app_private.shift_exchange_shift_text(c.workspace_id, c.requested_snapshot)
+      -- An open shift a publish offered has nobody's name on it (Mert, 2026-10-20).
+      when c.owner_id is null then who_name || ' wants the open shift ' || app_private.shift_exchange_shift_text(c.workspace_id, c.offered_snapshot)
       else who_name || ' wants ' || owner_name || '''s ' || app_private.shift_exchange_shift_text(c.workspace_id, c.offered_snapshot) end;
     if now() >= c.expires_at - interval '4 hours' then
       if first_ask >= c.expires_at - interval '4 hours'
@@ -9183,6 +9230,8 @@ declare
   key text := 'case:' || cid::text;
   owner_user uuid;
   owner_name text;
+  whose text;
+  whose_day text;
   who_user uuid;
   who_name text;
   day text;
@@ -9207,6 +9256,9 @@ begin
   owner_user := app_private.shift_exchange_user(w, c.owner_id);
   owner_name := app_private.shift_exchange_name(w, c.owner_id);
   day := app_private.shift_exchange_shift_text(w, c.offered_snapshot);
+  -- An open shift a publish offered has nobody's name on it (Mert, 2026-10-20).
+  whose := case when c.owner_id is null then 'the open shift' else owner_name || '''s shift' end;
+  whose_day := case when c.owner_id is null then 'the open shift ' || day else owner_name || '''s ' || day end;
   day_only := to_char((c.offered_snapshot ->> 'date')::date, 'FMDy, FMMon FMDD');
   theirs := case when c.kind = 'swap' then app_private.shift_exchange_shift_text(w, c.requested_snapshot) end;
   pool := c.audience = 'eligible_pool';
@@ -9219,6 +9271,10 @@ begin
     || case when aid is not null then jsonb_build_object('application_id', aid) else '{}'::jsonb end;
 
   if act = 'cover_opened' then
+    -- An offered open shift waits in Shift Hub: nobody is told until the notification program starts.
+    if c.owner_id is null then
+      return 0;
+    end if;
     -- A release, to everyone it reaches (plan 04:51).
     return app_private.notify('shift_changes.open_shift_available', w, app_private.shift_exchange_pool(w, cid), key || ':open',
       'Extra shift available', owner_name || ' can''t make ' || day || '. Want it?', hub || '&hub_view=available', actor, 'shift_exchange_case', cid, facts);
@@ -9248,7 +9304,7 @@ begin
     return sent + app_private.notify('shift_changes.approval_needed', w, deciders, key || ':approval:' || aid::text,
       'Shift change needs your approval',
       case when c.kind = 'swap' then owner_name || ' and ' || who_name || ' want to swap ' || day || ' for ' || theirs
-        else who_name || ' wants ' || owner_name || '''s ' || day end,
+        else who_name || ' wants ' || whose_day end,
       desk, actor, 'shift_exchange_case', cid, facts);
 
   elsif act in ('peer_declined', 'application_withdrawn', 'application_closed') then
@@ -9330,7 +9386,7 @@ begin
   elsif act = 'case_closed' then
     askers := array(select app_private.shift_exchange_user(w, x.employee_id) from public.shift_exchange_applications x
       where x.case_id = cid and x.status = 'closed_case_cancelled');
-    if actor is not distinct from owner_user then
+    if c.owner_id is not null and actor is not distinct from owner_user then
       -- Taken back (plan §3 Release: "Maria kept this shift").
       sent := app_private.notify(case when pool then 'shift_changes.open_shift_kept' else 'shift_changes.closed' end, w, askers,
         key || ':closed', case when pool then owner_name || ' kept this shift' else owner_name || ' cancelled the request' end,
@@ -9339,7 +9395,7 @@ begin
       -- A manager's reason is for who asked, as a decline's is.
       sent := app_private.notify_rows(w, actor, (
         select coalesce(jsonb_agg(jsonb_build_object('type', 'shift_changes.closed', 'user_id', app_private.shift_exchange_user(w, x.employee_id),
-          'event_key', key || ':closed', 'title', 'A manager closed the request for ' || owner_name || '''s shift',
+          'event_key', key || ':closed', 'title', 'A manager closed the request for ' || whose,
           'body', coalesce(nullif(btrim(coalesce(x.reason, '')), ''), day || '. Your schedule has not changed.'),
           'url', hub, 'subject_type', 'shift_exchange_case', 'subject_id', cid, 'data', facts)), '[]'::jsonb)
         from public.shift_exchange_applications x where x.case_id = cid and x.status = 'closed_case_cancelled'))
@@ -9353,7 +9409,7 @@ begin
     -- One acceptance ended (refresh_weekly_exchange_terms: the new hours overlap the teammate's other shift);
     -- the request stays open: only that teammate hears it, and only their cards close.
     sent := app_private.notify('shift_changes.closed', w, array[who_user], key || ':ended:' || aid::text,
-      'Your request for ' || owner_name || '''s shift ended',
+      'Your request for ' || whose || ' ended',
       'The shift changed and now overlaps another of your shifts. Your schedule has not changed.',
       hub, actor, 'shift_exchange_case', cid, facts);
     perform app_private.shift_exchange_resolve(w, cid, null, 'shift_changed', actor, array[who_user]);
@@ -9370,7 +9426,7 @@ begin
     sent := app_private.notify('shift_changes.closed', w, array[owner_user], key || ':closed', 'Your shift change request closed',
         case when act = 'expired' then 'It closed 4 hours before the shift. ' else 'The shift changed, so it ended. ' end
         || 'You are still responsible for this shift.', hub, actor, 'shift_exchange_case', cid, facts)
-      + app_private.notify('shift_changes.closed', w, askers, key || ':closed', 'The request for ' || owner_name || '''s shift closed',
+      + app_private.notify('shift_changes.closed', w, askers, key || ':closed', 'The request for ' || whose || ' closed',
         case when act = 'expired' then 'It closed 4 hours before the shift. ' else 'The shift changed, so it ended. ' end
         || 'Your schedule has not changed.', hub, actor, 'shift_exchange_case', cid, facts);
     perform app_private.shift_exchange_resolve(w, cid, null, case when act = 'expired' then 'expired' else 'shift_changed' end, actor);
@@ -15519,21 +15575,9 @@ begin
       where shift.workspace_id=target_workspace_id and shift.employee_id=employee.id
         and shift.scheduled_date between target_from and target_to
     ),'[]'::jsonb),
-    'open_shifts', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id',shift.id,'location_id',shift.location_id,'location_name',location.name,'job_name',job.name,
-        'scheduled_date',shift.scheduled_date,'time_basis',shift.time_basis,'time_snapshot',shift.time_snapshot,'time_timezone',shift.time_timezone,'start_time',to_char(shift.start_time,'HH24:MI'),
-        'end_time',to_char(shift.end_time,'HH24:MI'),'note',shift.note,'employee_id',null
-      ) order by shift.scheduled_date,shift.start_time)
-      from public.schedule_published_shifts shift
-      join public.schedule_location_publications publication on publication.id=shift.publication_id and publication.status='current'
-      join public.locations location on location.id=shift.location_id
-      join public.jobs job on job.id=shift.job_id
-      where shift.workspace_id=target_workspace_id and shift.employee_id is null
-        and shift.scheduled_date between target_from and target_to
-        and exists(select 1 from public.employee_location_assignments assignment
-          where assignment.employee_id=employee.id and assignment.location_id=shift.location_id and assignment.ended_at is null)
-    ),'[]'::jsonb),
+    -- An open shift reaches an employee only offered, in Shift Hub, to who is eligible (Mert, 2026-10-20).
+    -- The field stays empty until the clients stop reading it (EKRAN 02 #47).
+    'open_shifts', '[]'::jsonb,
     'team_shifts', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id',shift.id,'location_id',shift.location_id,'location_name',location.name,'job_name',job.name,
@@ -15801,6 +15845,8 @@ begin
     from public.schedule_published_shifts shift
     join current_publications publication on publication.id = shift.publication_id
     where shift.scheduled_date between resolved_week_start and resolved_week_start + 6
+      -- An open shift is the manager's: offered, it reaches who may take it in Shift Hub (Mert, 2026-10-20).
+      and shift.employee_id is not null
   ), own_availability as materialized (
     -- The employee's own marks; the manager's private reminder never reaches here.
     select * from app_private.schedule_week_availability(
@@ -15877,7 +15923,7 @@ begin
         'crosses_midnight', shift.crosses_midnight,
         'unpaid_break_minutes', coalesce(shift.unpaid_break_minutes, 0),
         'hide_time_on_badge', coalesce(shift.hide_time_on_badge, false),
-        'note', case when shift.employee_id is null or shift.employee_id = actor.id then shift.note else '' end,
+        'note', case when shift.employee_id = actor.id then shift.note else '' end,
         'label_ids', to_jsonb(coalesce(shift.label_ids, '{}'::uuid[])),
         'label_names', to_jsonb(coalesce(shift.label_names, '{}'::text[])),
         'warning_codes', to_jsonb(array_remove(array[
@@ -22527,7 +22573,7 @@ $$;
 ALTER FUNCTION "public"."protect_published_signature_version"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb" DEFAULT '[]'::"jsonb", "open_shift_choice" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -22549,7 +22595,16 @@ declare
   published_at timestamptz := now();
   pairs jsonb := '[]'::jsonb;
   publish_event_id uuid;
+  asked uuid[];
+  source uuid;
+  other record;
+  offered jsonb;
+  offer public.shift_exchange_cases%rowtype;
 begin
+  -- The open shifts the publish brings (Mert, 2026-10-20): offer, keep, or delete. Nothing named keeps them.
+  if open_shift_choice is not null and open_shift_choice not in ('offer', 'keep', 'delete') then
+    raise exception 'Choose offer, keep or delete for the open shifts' using errcode = '22023';
+  end if;
   if cardinality(coalesce(target_location_ids, '{}'::uuid[])) = 0 then
     perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.publish', target_locations => '{}'::uuid[]);
   end if;
@@ -22611,6 +22666,23 @@ begin
   -- The one place that says which findings are recorded and with which
   -- sentence (BL-190); the publisher's id and the time go with each row.
   override_decisions:=public.weekly_publication_decisions(preview,override_decisions);
+  asked := array(select (x ->> 'id')::uuid from jsonb_array_elements(coalesce(preview -> 'open_shifts', '[]'::jsonb)) x);
+  if open_shift_choice = 'delete' and cardinality(asked) > 0 then
+    -- Deleted open shifts leave the draft and an edit of this draft holding them, as a removal on the
+    -- Schedule would. Another draft of the week keeps its own copy (drafts share shift ids).
+    with gone as (
+      delete from public.schedule_edit_session_shifts copy
+      where copy.workspace_id = target_workspace_id and copy.id = any(asked) and copy.employee_id is null
+        and copy.session_id in (select e.id from public.schedule_edit_sessions e where e.source_draft_id = target_draft.id)
+        and copy.pending_op_type is distinct from 'delete'
+      returning copy.session_id)
+    update public.schedule_edit_sessions set revision = revision + 1 where id in (select session_id from gone);
+    delete from public.schedule_draft_shifts shift
+    where shift.draft_id = target_draft.id and shift.id = any(asked) and shift.employee_id is null;
+    update public.schedule_drafts set revision = revision + 1, updated_at = now()
+    where id = target_draft.id returning * into target_draft;
+    perform app_private.schedule_edit_undo_barrier();
+  end if;
   perform set_config('newfork.schedule_publish_scope',jsonb_build_object('workspace_id',target_workspace_id,'draft_id',target_draft_id,
    '_publish_locations',(select jsonb_agg(x->'location_id') from jsonb_array_elements(preview->'locations') x),
    '_publish_departments',preview->'department_ids','_publish_no_department',coalesce((preview->>'include_no_department')::boolean,true))::text,true);
@@ -22680,6 +22752,49 @@ begin
 
   end loop;
 
+  -- What the publish asked about goes as the publisher chose; a request on it that the change
+  -- ended closes as Shift Hub would close it.
+  foreach source in array asked loop
+    for other in select x.id, public.shift_exchange_live_status(target_workspace_id, x.id) live_status
+      from public.shift_exchange_cases x where x.workspace_id = target_workspace_id and x.status = 'open' and x.offered_source_id = source
+    loop
+      if other.live_status <> 'open' then
+        update public.shift_exchange_cases set status = other.live_status, revision = revision + 1, updated_at = now() where id = other.id;
+        update public.shift_exchange_applications set status = other.live_status, updated_at = now()
+        where case_id = other.id and status in ('invited', 'pending_manager');
+        delete from public.shift_exchange_votes where case_id = other.id;
+        perform public.shift_exchange_emit(actor_user_id, target_workspace_id, other.id, null, other.live_status,
+          'This offer ended because the shift changed or started. Review the current schedule before making a new request.');
+      elsif open_shift_choice is distinct from 'offer' then
+        update public.shift_exchange_cases set status = 'cancelled', revision = revision + 1, updated_at = now() where id = other.id;
+        update public.shift_exchange_applications set status = 'closed_case_cancelled', updated_at = now()
+        where case_id = other.id and status in ('invited', 'pending_manager');
+        delete from public.shift_exchange_votes where case_id = other.id;
+        perform public.shift_exchange_emit(actor_user_id, target_workspace_id, other.id, null, 'case_closed',
+          'A manager closed this request. The owner keeps this shift.');
+      end if;
+    end loop;
+    if open_shift_choice = 'offer' and not exists (select 1 from public.shift_exchange_cases x
+      where x.workspace_id = target_workspace_id and x.status = 'open' and x.offered_source_id = source) then
+      offered := public.shift_exchange_shift(target_workspace_id, source);
+      if offered is not null and offered ->> 'employee_id' is null
+        and app_private.shift_exchange_deadline(offered, null) > clock_timestamp() then
+        insert into public.shift_exchange_cases (workspace_id, kind, audience, offered_source_id, owner_id, offered_snapshot,
+          consent_fingerprint, expires_at, created_by, open_shift_publication_id)
+        values (target_workspace_id, 'cover', 'eligible_pool', source, null, offered,
+          public.shift_exchange_fingerprint(target_workspace_id, offered, null), app_private.shift_exchange_deadline(offered, null),
+          actor_user_id, (select p.publication_id from public.schedule_published_shifts p where p.id = (offered ->> 'id')::uuid))
+        returning * into offer;
+        -- Its history starts here; nobody is told (the pool waits in Shift Hub).
+        insert into public.shift_exchange_events (workspace_id, case_id, application_id, actor_user_id, action, message, private_note)
+        values (target_workspace_id, offer.id, null, actor_user_id, 'cover_opened',
+          'Offered to eligible employees when the schedule was published.', '');
+        perform realtime.send(jsonb_build_object('workspace_id', target_workspace_id, 'case_id', offer.id, 'revision', offer.revision),
+          'changed', 'shift-exchanges:' || target_workspace_id::text, true);
+      end if;
+    end if;
+  end loop;
+
   select count(*)::integer into total_shift_count
   from public.schedule_published_shifts shift where shift.publication_id = any(publication_ids);
   insert into public.schedule_publication_events (
@@ -22727,7 +22842,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb") OWNER TO "postgres";
+ALTER FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb", "open_shift_choice" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."publish_signature_template_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_template_id" "uuid") RETURNS "void"
@@ -28248,6 +28363,15 @@ CREATE OR REPLACE FUNCTION "public"."shift_exchange_emit"("actor" "uuid", "w" "u
     SET "search_path" TO ''
     AS $$
 begin
+  if exists (select 1 from public.shift_exchange_cases c where c.id = cid and c.owner_id is null) then
+    msg := case act
+      when 'application_submitted' then 'A teammate asked for this open shift. A manager decides.'
+      when 'expired' then 'This offer closed 4 hours before the shift. The shift stays open.'
+      when 'invalidated' then 'The shift changed, so this offer ended. The shift stays open.'
+      when 'transfer_completed' then 'A manager approved. The teammate who asked now works this shift.'
+      when 'case_closed' then replace(msg, 'A manager closed this request. The owner keeps this shift.', 'A manager closed this offer. The shift stays open.')
+      else msg end;
+  end if;
   -- The case's history (Shift Hub, Requests): one row per step.
   insert into public.shift_exchange_events(workspace_id,case_id,application_id,actor_user_id,action,message,private_note)
   values(w,cid,aid,actor,act,msg,private_msg);
@@ -36863,6 +36987,11 @@ ALTER TABLE ONLY "public"."shift_exchange_cases"
 
 
 ALTER TABLE ONLY "public"."shift_exchange_cases"
+    ADD CONSTRAINT "shift_exchange_cases_open_shift_publication_fkey" FOREIGN KEY ("open_shift_publication_id", "workspace_id") REFERENCES "public"."schedule_location_publications"("id", "workspace_id");
+
+
+
+ALTER TABLE ONLY "public"."shift_exchange_cases"
     ADD CONSTRAINT "shift_exchange_cases_owner_id_workspace_id_fkey" FOREIGN KEY ("owner_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id");
 
 
@@ -38747,6 +38876,10 @@ REVOKE ALL ON FUNCTION "app_private"."schedule_publication_changes_since_start"(
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."schedule_publication_open_shifts"("preview" "jsonb") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."schedule_referenced_catalog"("target_workspace_id" "uuid", "job_ids" "uuid"[], "shift_type_ids" "uuid"[]) FROM PUBLIC;
 
 
@@ -40034,8 +40167,8 @@ REVOKE ALL ON FUNCTION "public"."protect_published_signature_version"() FROM PUB
 
 
 
-REVOKE ALL ON FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb", "open_shift_choice" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb", "open_shift_choice" "text") TO "service_role";
 
 
 

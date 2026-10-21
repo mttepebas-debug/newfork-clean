@@ -534,6 +534,42 @@ describe("PublishScheduleDialog", () => {
     );
   });
 
+  // Open shifts in the pool (Mert, 2026-10-20): one question for all the open shifts the publish
+  // brings; offering them is the default.
+  it("asks once what happens to the open shifts and publishes the choice", async () => {
+    const openPreview: SchedulePublicationPreview = {
+      ...preview,
+      open_shifts: [
+        { id: "81000000-0000-4000-8000-000000000001", location_id: location.id, location_name: location.name,
+          job_id: "66666666-6666-4666-8666-666666666666", job_name: "Server", scheduled_date: "2026-08-20", start_time: "16:00", end_time: "22:00" },
+        { id: "81000000-0000-4000-8000-000000000002", location_id: location.id, location_name: location.name,
+          job_id: "66666666-6666-4666-8666-666666666666", job_name: "Host", scheduled_date: "2026-08-21", start_time: "09:00", end_time: "15:00" },
+      ],
+    };
+    const onPublish = vi.fn().mockResolvedValue(undefined);
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()}
+      onPreview={vi.fn().mockResolvedValue(openPreview)} onPublish={onPublish} />);
+    await clickReadyNext();
+    const group = await screen.findByRole("group", { name: "2 open shifts: what happens when you publish?" });
+    expect(within(group).getByText("Thu, Aug 20 · 4p–10p · Server · Main Dining")).toBeTruthy();
+    expect(within(group).getByText("Fri, Aug 21 · 9a–3p · Host · Main Dining")).toBeTruthy();
+    const offer = within(group).getByRole("radio", { name: /Offer to eligible employees/ }) as HTMLInputElement;
+    expect(offer.checked).toBe(true);
+    expect(within(group).getByRole("radio", { name: /Keep as open shifts/ })).toBeTruthy();
+    fireEvent.click(within(group).getByRole("radio", { name: /Delete them/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Publish 1 location" }));
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
+    expect(onPublish.mock.calls[0]?.[4]).toBe("delete");
+  });
+
+  it("asks nothing about open shifts when the publish brings none", async () => {
+    const onPublish = vi.fn().mockResolvedValue(undefined);
+    await startPublication(onPublish);
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("group", { name: /open shift/ })).toBeNull();
+    expect(onPublish.mock.calls[0]).toHaveLength(4);
+  });
+
   it("says who published or unpublished a location after the draft was started", async () => {
     const at = "2026-08-18T14:05:00Z";
     const when = new Intl.DateTimeFormat("en-US", {

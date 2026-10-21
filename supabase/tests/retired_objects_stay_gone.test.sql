@@ -448,6 +448,10 @@ insert into retired (kind, name, step) values
 -- The account's security events say what happened (BILDIRIM-U1 review): the two-argument form goes.
 insert into retired (kind, name, step) values
   ('function_signature', 'public.record_account_security_event_service(uuid, text)', 'BILDIRIM-U1');
+-- Publishing asks what to do with its open shifts (open shifts in the pool, Mert 2026-10-20): the
+-- nine-argument form goes for the one that takes the choice.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.publish_schedule_draft_service(uuid, uuid, uuid, uuid[], uuid[], boolean, integer, text, jsonb)', 'ACIK-VARDIYA');
 -- The list pages by time and id (BILDIRIM-12): its form with time alone goes.
 insert into retired (kind, name, step) values
   ('function_signature', 'public.get_notification_feed_service(uuid, uuid, text, timestamptz, integer)', 'BILDIRIM-12');

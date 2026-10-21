@@ -147,7 +147,9 @@ export function homeNeeds(home: ManagerHome, cases: readonly ExchangeCase[], pho
       title:
         item.kind === "swap"
           ? `${item.owner_name ?? "Somebody"} wants to swap a shift`
-          : `${item.owner_name ?? "Somebody"} wants a shift covered`,
+          : item.owner_id === null
+            ? "Somebody asked for an open shift"
+            : `${item.owner_name ?? "Somebody"} wants a shift covered`,
       detail: `${shortDate(item.shift.scheduled_date)} · ${item.shift.job_name}`,
       cta: item.kind === "swap" ? "Review swap" : "Review cover",
       href: "/app/schedule/requests",

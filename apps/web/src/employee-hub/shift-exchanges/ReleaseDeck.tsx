@@ -177,6 +177,8 @@ function DeckCard({
   onPointerCancel?: () => void;
   onKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
 }) {
+  // An open shift the manager offered on publishing is nobody's yet (Mert, 2026-10-20).
+  const offered = !card.shift.employee_name;
   const owner = card.shift.employee_name ?? "A teammate";
   const warning = Boolean(card.eligibility.availability_warning);
   const top = interactive;
@@ -189,7 +191,7 @@ function DeckCard({
       style={{ zIndex: top ? 10 : 9 - depth, ...style }}
       tabIndex={top ? 0 : -1}
       aria-hidden={top ? undefined : true}
-      aria-label={top ? `${owner} can’t make this shift. Right arrow takes it, left arrow passes.` : undefined}
+      aria-label={top ? `${offered ? "Your manager is offering this open shift." : `${owner} can’t make this shift.`} Right arrow takes it, left arrow passes.` : undefined}
       {...handlers}
     >
       <span className="sx-verdict" data-verdict="take" style={{ opacity: verdict === "take" ? verdictStrength : 0 }} aria-hidden>
@@ -202,10 +204,10 @@ function DeckCard({
         <h3>Open shift</h3>
       </header>
       <p className="sx-w-names">
-        {owner} <i>can’t make it</i>
+        {offered ? <i>Offered by your manager</i> : <>{owner} <i>can’t make it</i></>}
       </p>
       <div className="sx-w-body">
-        <ShiftTicket shift={card.shift} hand={<Hand from={firstName(owner)} to="you" />} />
+        <ShiftTicket shift={card.shift} hand={<Hand from={offered ? "Open" : firstName(owner)} to="you" />} />
         {card.note ? (
           <p className="sx-q">
             <b>{firstName(owner)}</b>“{card.note}”

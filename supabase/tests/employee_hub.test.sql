@@ -76,7 +76,7 @@ create temp table hub_state(model jsonb,result jsonb,request_id uuid);
 insert into hub_state(model) values(public.get_employee_hub_service(tests.user('eh:alex'),tests.id('eh'),tests.week(1),tests.week(1)+42));
 select is(model->'employee'->>'id',tests.id('eh:alex')::text,'read model resolves actor employee server-side') from hub_state;
 select is(jsonb_array_length(model->'shifts'),2,'read model returns only actor published shifts') from hub_state;
-select is(jsonb_array_length(model->'open_shifts'),1,'read model exposes open shifts at assigned locations') from hub_state;
+select is(jsonb_array_length(model->'open_shifts'),0,'no open shift reaches the employee here: an offered one is in Shift Hub (Mert, 2026-10-20)') from hub_state;
 select is(model->'shifts'->0->>'shift_type_name','Dinner','a shift with a shift type says its name') from hub_state;
 select is((select (t->>'is_management')::boolean from jsonb_array_elements(model->'team_shifts') t where t->>'employee_name'='Mina Person'),true,'a teammate''s shift in a Management job says so') from hub_state;
 select is((select (t->>'is_management')::boolean from jsonb_array_elements(model->'team_shifts') t where t->>'employee_name'='Jordan Person'),false,'a teammate''s other shift does not') from hub_state;

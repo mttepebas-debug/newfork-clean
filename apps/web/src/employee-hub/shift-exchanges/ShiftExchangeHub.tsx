@@ -83,6 +83,8 @@ const caseStatusLabels: Record<ExchangeCase["status"], string> = {
 const isRelease = (item: ExchangeCase) => item.kind === "cover" && item.audience === "eligible_pool";
 function caseTitle(item: ExchangeCase) {
   if (item.kind === "swap") return "Shift swap";
+  // An open shift the manager offered on publishing has no owner (Mert, 2026-10-20).
+  if (isRelease(item) && item.owner_id === null) return "Open shift";
   if (isRelease(item)) return item.is_owner ? "Released shift" : `Released by ${item.owner_name ?? "a teammate"}`;
   return `Cover for ${item.owner_name ?? "a teammate"}`;
 }
@@ -99,14 +101,14 @@ function TimeOffBlockedCard({ opportunity }: { opportunity: ExchangeOpportunity 
   return (
     <article className="sx-card sx-card-time-off">
       <div className="sx-card-top">
-        <span className="sx-pill">Released shift</span>
+        <span className="sx-pill">{opportunity.shift.employee_name ? "Released shift" : "Open shift"}</span>
         <span className="sx-time-off">
           <CalendarX size={14} />
           On time off
         </span>
       </div>
       <ExchangeShiftCard shift={opportunity.shift} />
-      <p>Released by {opportunity.shift.employee_name ?? "a teammate"}</p>
+      <p>{opportunity.shift.employee_name ? `Released by ${opportunity.shift.employee_name}` : "Offered by your manager"}</p>
       <p className="sx-help">
         You have approved time off during this shift. To take it, ask to cancel
         those hours first.
@@ -669,7 +671,7 @@ export function ShiftExchangeHub({ workspaceId, zone }: { workspaceId: string; z
                             }).format(
                               new Date(`${opportunity.shift.scheduled_date}T12:00:00Z`),
                             )}{" "}
-                            · Released by {firstName(opportunity.shift.employee_name)}
+                            · {opportunity.shift.employee_name ? `Released by ${firstName(opportunity.shift.employee_name)}` : "Open shift"}
                           </span>
                           <span className="sx-pr-sub">
                             {opportunity.shift.location_name} · {opportunity.shift.job_name}

@@ -3465,13 +3465,12 @@ export function SchedulePage({
             overrides,
             preflightAck,
             departmentScope,
+            openShifts,
           ) =>
-            publishScheduleDraft(
-              context.workspace.id,
-              preview,
-              overrides,
-              preflightAck,
-              departmentScope,
+            // The open shifts' choice goes only when the publish asked it (Mert, 2026-10-20).
+            (openShifts
+              ? publishScheduleDraft(context.workspace.id, preview, overrides, preflightAck, departmentScope, openShifts)
+              : publishScheduleDraft(context.workspace.id, preview, overrides, preflightAck, departmentScope)
             ).then((result) => {
               if (result.status !== "published") {
                 throw new ScheduleRequestError(

@@ -4,6 +4,7 @@ import type {
   ScheduleLocation,
   SchedulePublicationOverrideInput,
   SchedulePublicationPreflightAck,
+  ScheduleOpenShiftChoice,
   SchedulePublicationPreview,
   ScheduleReadModel,
 } from "@newfork/shared/schedule";
@@ -35,6 +36,7 @@ import {
   countLabel,
 } from "./PublishPreflightPanel";
 import { formatShortDateTime } from "../lib/scheduleDateTime";
+import { PublishOpenShiftsChoice } from "./PublishOpenShiftsChoice";
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
 import { LinesOutline, LoadError } from "../../shell/LoadState";
 import { requestErrorText } from "../../lib/request-error";
@@ -120,6 +122,7 @@ export function PublishScheduleDialog({
     overrides: SchedulePublicationOverrideInput[],
     preflightAck?: SchedulePublicationPreflightAck,
     departmentScope?: SchedulePublicationDepartmentScope,
+    openShifts?: ScheduleOpenShiftChoice,
   ) => Promise<unknown>;
   readonly onReviewDocumentConflict?: (
     conflict: PublishDocumentScheduleConflictSummary,
@@ -134,6 +137,8 @@ export function PublishScheduleDialog({
   const restoredChoices = initialChoices?.draftId === initialDraftId ? initialChoices : null;
   const [draftId, setDraftId] = useState(initialDraftId);
   const [step, setStep] = useState<1 | 2>(1);
+  // One choice for every open shift the publish brings (Mert, 2026-10-20); offering is the default.
+  const [openShiftChoice, setOpenShiftChoice] = useState<ScheduleOpenShiftChoice>("offer");
   const allDepartmentKeys = useMemo(
     () =>
       departments.length
@@ -404,8 +409,11 @@ export function PublishScheduleDialog({
         const overrideDecisions = [...publishOverrideableBlockers(currentPreview), ...publishGatingRisks(currentPreview),
           ...publishNewAvailabilityFindings(currentPreview)].map((finding) => ({ finding_id: finding.id }));
         try {
-          await onPublish(currentPreview, overrideDecisions,
-            { fingerprint: currentPreview.fingerprint, decisions: overrideDecisions }, departmentScope);
+          const ack = { fingerprint: currentPreview.fingerprint, decisions: overrideDecisions };
+          // The open shifts' choice goes only when the publish asked it.
+          if (currentPreview.open_shifts?.length)
+            await onPublish(currentPreview, overrideDecisions, ack, departmentScope, openShiftChoice);
+          else await onPublish(currentPreview, overrideDecisions, ack, departmentScope);
           break;
         } catch (caught) {
           if (!isCurrent()) return;
@@ -731,6 +739,14 @@ export function PublishScheduleDialog({
                 }).finally(() => setReviewingShift(false));
               } : undefined}
             />
+            {preview.open_shifts?.length ? (
+              <PublishOpenShiftsChoice
+                shifts={preview.open_shifts}
+                choice={openShiftChoice}
+                disabled={pending || reviewingShift || isPublishing}
+                onChoose={setOpenShiftChoice}
+              />
+            ) : null}
             <div className="schedule-publication-diff">
               {preview.locations.map((location) => (
                 <section key={location.location_id}>

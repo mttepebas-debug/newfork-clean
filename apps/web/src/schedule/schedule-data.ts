@@ -49,6 +49,7 @@ import {
   type ScheduleEditSource,
   type SchedulePublicationOverrideInput,
   type SchedulePublicationPreflightAck,
+  type ScheduleOpenShiftChoice,
   type SchedulePublicationPreview,
   type SchedulePublicationStatus,
   type SchedulePublishResult,
@@ -497,6 +498,7 @@ export async function publishScheduleDraft(
     readonly departmentIds?: readonly string[];
     readonly includeNoDepartment?: boolean;
   } = {},
+  openShifts?: ScheduleOpenShiftChoice,
 ): Promise<SchedulePublishResult> {
   const ack = preflightAck ?? {
     fingerprint: preview.fingerprint,
@@ -519,6 +521,7 @@ export async function publishScheduleDraft(
           : {}),
         overrides,
         preflight_ack: ack,
+        ...(openShifts ? { open_shifts: openShifts } : {}),
       }),
     }),
   );

@@ -4,7 +4,8 @@ select * from no_plan();
 
 -- TAKAS-RELEASE (Mert, 2026-10-13/14, the shift change plan; first slice chosen
 -- 2026-10-17): a release puts one's own shift in the open pool. Only a release
--- reaches the pool: a published shift nobody holds stays the manager's to fill.
+-- reaches the pool from a teammate: a published shift nobody holds stays the manager's to fill unless the
+-- publish offered it (open_shift_offer.test.sql, Mert 2026-10-20).
 -- Every request closes 4 hours before the shift (the earlier one in a swap) and
 -- none opens after that. A teammate who says "Not for me" stops seeing the card;
 -- nobody else learns it. The owner takes a release back without a reason, and a
@@ -92,7 +93,7 @@ select throws_ok($$ insert into public.shift_exchange_cases(workspace_id, kind, 
   '{}', '', now() + interval '1 day', tests.user('rl:owner')) $$, '23514', null, 'an open pickup is no longer a kind of request');
 select throws_ok($$ insert into public.shift_exchange_cases(workspace_id, kind, offered_source_id, offered_snapshot, consent_fingerprint,
   expires_at, created_by) values (tests.id('rl'), 'cover', tests.id('rl:shift:open-sat'), '{}', '', now() + interval '1 day',
-  tests.user('rl:owner')) $$, '23502', null, 'and every request has an owner');
+  tests.user('rl:owner')) $$, '23514', null, 'and a request nobody owns is only one a publish offered');
 
 -- Not for me ---------------------------------------------------------------------------
 select pg_temp.command('jake', jsonb_build_object('action', 'pass', 'shift_id', tests.id('rl:shift:maria-mon'),

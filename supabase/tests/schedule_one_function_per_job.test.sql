@@ -278,7 +278,7 @@ select is(
   ),
   array['acquire_schedule_edit_session_service/7', 'apply_schedule_template_service/7', 'create_schedule_template_service/5',
         'get_schedule_edit_session_service/3', 'get_schedule_read_model_service/3', 'mutate_schedule_edit_shift_service/9',
-        'preview_schedule_publication_service/6', 'preview_schedule_unpublication_service/4', 'publish_schedule_draft_service/9',
+        'preview_schedule_publication_service/6', 'preview_schedule_unpublication_service/4', 'publish_schedule_draft_service/10',
         'save_schedule_edit_session_service/8', 'unpublish_schedule_service/5'],
   'each Schedule job is one function: read, edit, save, publish and the rest'
 );

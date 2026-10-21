@@ -33,7 +33,7 @@ function timeOff(id: string, decideBy: string | null, progress: Partial<NonNulla
 function exchange(id: string, kind: ExchangeCase["kind"], stage: ExchangeCase["stage"], expiresAt: string, extra: Partial<ExchangeCase> = {}): ExchangeCase {
   return {
     id, kind, audience: "eligible_pool", status: stage === "closed" ? "completed" : "open", stage, revision: 1,
-    created_at: "2026-10-01T09:00:00Z", expires_at: expiresAt, owner_id: null, owner_name: "Emre Person",
+    created_at: "2026-10-01T09:00:00Z", expires_at: expiresAt, owner_id: "15000000-0000-4000-8000-0000000000e1", owner_name: "Emre Person",
     shift: { location_id: kadikoy, employee_name: "Emre Person" }, requested_shift: null, applications: [],
     candidate_count: 0, can_manage: true, is_owner: false, history: [], ...extra,
   } as ExchangeCase;

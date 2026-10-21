@@ -1917,6 +1917,22 @@ export type SchedulePublicationLocationPreview = z.infer<
   typeof schedulePublicationLocationPreviewSchema
 >;
 
+// An open shift the publish brings, asked about before publishing (Mert, 2026-10-20).
+export const schedulePublicationOpenShiftSchema = z.object({
+  id: z.string().uuid(),
+  location_id: z.string().uuid(),
+  location_name: z.string(),
+  job_id: z.string().uuid().nullable(),
+  job_name: z.string(),
+  scheduled_date: z.string().date(),
+  start_time: z.string().nullable(),
+  end_time: z.string().nullable(),
+});
+export type SchedulePublicationOpenShift = z.infer<typeof schedulePublicationOpenShiftSchema>;
+// What happens to them: offered to eligible employees in Shift Hub, kept for managers, or deleted.
+export const scheduleOpenShiftChoiceSchema = z.enum(["offer", "keep", "delete"]);
+export type ScheduleOpenShiftChoice = z.infer<typeof scheduleOpenShiftChoiceSchema>;
+
 export const schedulePublicationPreviewSchema = z.object({
   status: z.enum([
     "publish_ready",
@@ -1931,6 +1947,7 @@ export const schedulePublicationPreviewSchema = z.object({
   fingerprint: z.string().min(32).max(128),
   locations: z.array(schedulePublicationLocationPreviewSchema),
   findings: z.array(schedulePublishFindingSchema),
+  open_shifts: z.array(schedulePublicationOpenShiftSchema).optional(),
 });
 export type SchedulePublicationPreview = z.infer<
   typeof schedulePublicationPreviewSchema

@@ -74,6 +74,12 @@ export function exchangeSentence(item: ExchangeCase, timeFormat: "12h" | "24h"):
   }
   const release = item.audience === "eligible_pool";
   const { names, decided } = takers(item);
+  // An open shift the manager offered on publishing has no owner (Mert, 2026-10-20).
+  if (item.owner_id === null) {
+    if (!names.length) return [{ strong: "Open shift" }, `: ${start}${shift.job_name}${where.slice(0, -1)}, offered to eligible employees.`];
+    const ask = decided ? "took" : item.status !== "open" ? "asked for" : names.length > 1 ? "want" : "wants";
+    return [...people(names), ` ${ask} the open ${start}${shift.job_name} shift${where}`];
+  }
   if (!names.length)
     return [{ strong: owner }, ` ${release ? "released" : "asked for cover on"} their ${start}${shift.job_name} shift${where}`];
   const many = names.length > 1;

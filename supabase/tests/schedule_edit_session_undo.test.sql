@@ -502,6 +502,8 @@ $$, array[
   -- not a step: the shifts an edit opens with; a swap, its restore or a closed day (schedule_edit_undo_barrier)
   'acquire_schedule_edit_session_service', 'shift_exchange_rebase_drafts', 'shift_exchange_schedule_recovery_service',
   'announcement_apply', 'announcement_bring_back',
+  -- not a step either: an open shift the publisher deleted on publishing (open shifts in the pool, 2026-10-20)
+  'publish_schedule_draft_service',
   -- the edit closes: its history goes
   'save_schedule_edit_session_service', 'discard_schedule_edit_session_service',
   -- Undo itself

@@ -21,14 +21,14 @@ select tests.person('dn', 'deniz', 'employee', array['K'], array['cook']);
 select is(
   array(select p.oid::regprocedure::text from pg_proc p
         where p.pronamespace = 'public'::regnamespace and p.proname = 'publish_schedule_draft_service'),
-  array['publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb)'],
-  '(a) publish has one form, and it names nobody to notify');
+  array['publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb,text)'],
+  '(a) publish has one form, and it names nobody to notify (its last argument is the open shifts'' choice)');
 select is((select pg_get_function_identity_arguments(p.oid) like '%target_notify_employee_ids%' from pg_proc p
            where p.oid = 'public.publish_schedule_draft_service'::regproc), false,
   '(a) target_notify_employee_ids is gone');
-select ok(has_function_privilege('service_role', 'public.publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb)', 'execute')
-  and not has_function_privilege('authenticated', 'public.publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb)', 'execute')
-  and not has_function_privilege('anon', 'public.publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb)', 'execute'),
+select ok(has_function_privilege('service_role', 'public.publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb,text)', 'execute')
+  and not has_function_privilege('authenticated', 'public.publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb,text)', 'execute')
+  and not has_function_privilege('anon', 'public.publish_schedule_draft_service(uuid,uuid,uuid,uuid[],uuid[],boolean,integer,text,jsonb,text)', 'execute'),
   '(a) only the API runs it, as before');
 -- The test world publishes through it.
 select tests.publish_week('dn', 1, '[

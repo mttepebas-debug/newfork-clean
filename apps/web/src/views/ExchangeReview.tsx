@@ -214,7 +214,8 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
       status={statusChip(item)}
       sub={
         <>
-          Shift owner: <b>{item.owner_name ?? "A teammate"}</b> · {item.shift.location_name}
+          {/* An open shift a publish offered has no owner (Mert, 2026-10-20). */}
+          {item.owner_id ? <>Shift owner: <b>{item.owner_name ?? "A teammate"}</b></> : <b>Open shift</b>} · {item.shift.location_name}
           {open ? ` · Expires ${timeOffDeadlineAt(item.expires_at, item.shift.timezone, timeFormat)} ${timeOffZoneName(item.shift.timezone)}` : ""}
         </>
       }
@@ -232,7 +233,7 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
               shift={item.shift}
               hand={
                 <Hand
-                  from={owner ?? "A teammate"}
+                  from={owner ?? (item.owner_id ? "A teammate" : "Open shift")}
                   to={
                     picked
                       ? firstName(picked.employee_name)
@@ -305,7 +306,7 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
                   </div>
                 );
               }) : (
-                <p className="rd-empty">Nobody has asked yet. {owner ?? "The owner"} keeps the shift until you approve someone.</p>
+                <p className="rd-empty">Nobody has asked yet. {owner ? `${owner} keeps the shift until you approve someone.` : "The shift stays open until you approve someone."}</p>
               )}
             </div>
             {refusals.length ? (

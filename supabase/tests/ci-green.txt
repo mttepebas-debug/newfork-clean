@@ -240,3 +240,4 @@ supabase/tests/scheduling_settings_shift_types_rls.test.sql
 supabase/tests/invitation_two_accesses.test.sql
 supabase/tests/notify_shift_exchange.test.sql
 supabase/tests/assignment_rule_and_owner_setup.test.sql
+supabase/tests/open_shift_offer.test.sql
