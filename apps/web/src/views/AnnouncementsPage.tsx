@@ -29,7 +29,7 @@ import {
   type SortKey,
   type TimeFormat,
 } from "../communications/announcement-model";
-import { employeeAnnouncementsPath, managementAnnouncementsPath } from "../communications/announcement-paths";
+import { employeeAnnouncementsPath, managementAnnouncementsPath } from "../shell/view-address";
 import { getAnnouncements } from "../communications/communications-data";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";

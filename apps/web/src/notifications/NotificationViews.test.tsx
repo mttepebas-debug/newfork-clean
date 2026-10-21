@@ -14,13 +14,20 @@ vi.mock("../lib/supabase", () => ({
   apiRequest: (...args: unknown[]) => apiRequest(...args),
   getTabWorkspaceId: () => null,
 }));
-const context = {
+const context: {
+  userId: string;
+  workspace: { id: string; name: string };
+  membership: { access: { employee: boolean; management: string | null } };
+  permissions: string[];
+  actions: string[];
+} = {
   userId: me,
   workspace: { id: w, name: "Harbor & Vine" },
   membership: { access: { employee: false, management: "manager" } },
   permissions: [],
   actions: ["notifications.read_own"],
 };
+const managerOnly = structuredClone(context);
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context, account: { userId: me } }) }));
 
 const getTimeOffQueue = vi.fn();
@@ -60,11 +67,11 @@ function Where() {
   return <output data-testid="where">{location.pathname + location.search}</output>;
 }
 
-function mount(ui: React.ReactNode) {
+function mount(ui: React.ReactNode, at = "/app/workspace") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/app/workspace"]}>
+      <MemoryRouter initialEntries={[at]}>
         <Routes>
           <Route path="*" element={<>{ui}<Where /></>} />
         </Routes>
@@ -82,7 +89,10 @@ beforeEach(() => {
   toast.success.mockReset();
   toast.error.mockReset();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  Object.assign(context, structuredClone(managerOnly));
+});
 
 describe("NotificationsPanel", () => {
   it("lists the rows by day with their counts and leaves the badge on opening", async () => {
@@ -156,6 +166,60 @@ describe("NotificationsPanel", () => {
     mount(<NotificationsPanel workspaceId={w} onClose={onClose} />);
     fireEvent.keyDown(screen.getByRole("dialog", { name: "Notifications" }), { key: "Escape" });
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+// A notice carries one address, the management page's; it opens where the person is (NOTICE-VIEW).
+describe("a notice opens in the person's view", () => {
+  const post = "a8200000-0000-4000-8000-000000000065";
+  const announcement = (url: string) =>
+    notice({ type: "announcements.published", area: "announcements", needs_action: false, subject_type: "announcement", subject_id: post, title: "Uniform policy", url });
+  const bothAccesses = () =>
+    Object.assign(context, {
+      membership: { access: { employee: true, management: "manager" } },
+      actions: ["notifications.read_own", "employee_hub.read", "settings.important_dates.read"],
+    });
+
+  it("in the employee view an announcement opens in the employee view", async () => {
+    bothAccesses();
+    answer({ all: feedPage([announcement(`/app/announcements/${post}`)]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={vi.fn()} />, "/app/employee-hub");
+    fireEvent.click(await screen.findByRole("button", { name: /^(Unread: )?Uniform policy$/ }));
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(`/app/employee-hub/announcements/${post}`));
+  });
+
+  it("an Important Date opens in the employee view as the post, not the Important Dates page", async () => {
+    bothAccesses();
+    answer({ all: feedPage([announcement(`/app/announcements/important-dates/${post}`)]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={vi.fn()} />, "/app/employee-hub/schedule");
+    fireEvent.click(await screen.findByRole("button", { name: /^(Unread: )?Uniform policy$/ }));
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(`/app/employee-hub/announcements/${post}`));
+  });
+
+  it("in the management view an Important Date opens on Important Dates for whoever reads them", async () => {
+    bothAccesses();
+    answer({ all: feedPage([announcement(`/app/announcements/important-dates/${post}`)]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={vi.fn()} />, "/app/schedule");
+    fireEvent.click(await screen.findByRole("button", { name: /^(Unread: )?Uniform policy$/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("where").textContent).toBe(`/app/announcements/important-dates/${post}`),
+    );
+  });
+
+  it("a manager who cannot read Important Dates gets the post itself", async () => {
+    answer({ all: feedPage([announcement(`/app/announcements/important-dates/${post}`)]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={vi.fn()} />, "/app/schedule");
+    fireEvent.click(await screen.findByRole("button", { name: /^(Unread: )?Uniform policy$/ }));
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(`/app/announcements/${post}`));
+  });
+
+  it("See all notifications stays in the employee view", async () => {
+    bothAccesses();
+    answer({ all: feedPage([]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={vi.fn()} />, "/app/employee-hub");
+    expect(screen.getByRole("link", { name: /See all notifications/ }).getAttribute("href")).toBe(
+      "/app/employee-hub/notifications",
+    );
   });
 });
 

@@ -5,11 +5,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { CatalogPageHeader } from "../views/CatalogPageHeader";
+import { managementNotificationsPath, useViewAddress } from "../shell/view-address";
 import { NotificationList, NotificationTabs } from "./NotificationList";
 import { useMarkNotificationsRead, useNotificationCounts } from "./notifications-data";
 import "./notifications.css";
 
-export const notificationsPath = "/app/notifications";
 /** A person's own notification choices (Account → Notifications). */
 export const notificationSettingsPath = "/account/preferences/notifications";
 
@@ -40,6 +40,8 @@ export function NotificationsPanel({
   const panel = useRef<HTMLElement>(null);
   const panelId = useId();
   const readAll = useReadAll(workspaceId);
+  // See all stays in the view on screen (NOTICE-VIEW).
+  const allNotices = useViewAddress()(managementNotificationsPath);
   useEffect(() => {
     panel.current?.focus();
   }, []);
@@ -78,7 +80,7 @@ export function NotificationsPanel({
           <NotificationList workspaceId={workspaceId} viewerId={context?.userId} filter={filter} panelId={panelId} onNavigate={onClose} />
         </div>
         <div className="ni-panel-foot">
-          <Link className="ni-link" to={notificationsPath} onClick={onClose}>
+          <Link className="ni-link" to={allNotices} onClick={onClose}>
             See all notifications <ArrowRight size={15} aria-hidden />
           </Link>
         </div>
@@ -135,7 +137,7 @@ export function NotificationsSheet({
   );
 }
 
-/** The full page (See all notifications), at /app/notifications. */
+/** The full page (See all notifications), at /app/notifications and in the employee view /app/employee-hub/notifications. */
 export function NotificationsPage() {
   const { context } = useAuth();
   const workspaceId = context?.workspace.id ?? "";

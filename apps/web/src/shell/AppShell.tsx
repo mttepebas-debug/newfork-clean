@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { PullToRefreshMark, usePullToRefresh } from "./PullToRefresh";
 import { useFrozenTop } from "./useFrozenTop";
 import { useDaySlot } from "./useDaySlot";
@@ -28,24 +28,22 @@ import { EmployeeMobileNav } from "../employee-hub/EmployeeMobileNav";
 import { useAuth } from "../auth/AuthContext";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { CurrentUserAvatar } from "../account/AccountAvatar";
-import { can } from "../auth/can";
 import { canOpenAnySettingsPage } from "../settings/settings-access";
 import { noAccessHomePath, workspaceLandingPathForRole } from "../auth/resolveLanding";
 import {
   EmployeeViewSidebarLink,
   employeeViewMobileLink,
-  isEmployeeViewPath,
 } from "./EmployeeViewSwitch";
 
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
 import { employeeDocumentsPath, managementDocumentsPath, useOwnDocuments } from "../documents/own-documents";
-import { employeeAnnouncementsPath, managementAnnouncementsPath } from "../communications/announcement-paths";
+import { employeeAnnouncementsPath, employeeViewAt, managementAnnouncementsPath, useViewAddress } from "./view-address";
 
 import { requestAppNavigation } from "./leave-guard";
 import { NotificationsNavEntry } from "../notifications/NotificationsNavEntry";
 import { ManagerPhoneBar } from "./ManagerPhoneBar";
 import { rememberAppPage } from "./last-app-page";
-import { hasEmployeeAccess, hasManagementAccess, membershipClass } from "../auth/access";
+import { membershipClass } from "../auth/access";
 import { PageCrashBoundary } from "./CrashBoundary";
 import { PageOutline } from "./LoadState";
 
@@ -189,7 +187,7 @@ const navItems: readonly NavItem[] = [
     section: "employee",
     roles: ["employee"],
   },
-  // Announcements has an address in each interface (announcement-paths.ts).
+  // Announcements has an address in each interface (view-address.tsx).
   {
     to: employeeAnnouncementsPath,
     label: "Announcements",
@@ -256,7 +254,10 @@ export function AppShell() {
     document.getElementById(`${navGroupId(group)}-toggle`)?.focus();
   }, [expandedNavGroups, collapsed]);
   const navigate = useNavigate();
-  usePhoneAlertsShell(account?.userId ?? null, location.pathname, navigate);
+  // A phone alert tapped with the app open opens in the view on screen (NOTICE-VIEW).
+  const viewAddress = useViewAddress();
+  const openAlert = useCallback((url: string) => void navigate(viewAddress(url)), [navigate, viewAddress]);
+  usePhoneAlertsShell(account?.userId ?? null, location.pathname, openAlert);
   // Account's "Back to workspace" returns here, in this view (ACCOUNT-BACK).
   const workspaceId = context?.workspace.id;
   const userId = account?.userId;
@@ -293,17 +294,7 @@ export function AppShell() {
     accountWaiting > 0 ? "/account/workspaces" : "/account/profile";
   const ownDocuments = useOwnDocuments();
   if (!context) return null;
-  const isEmployee = membershipClass(context.membership) === "employee";
-  // Owner, admin and manager who also hold the employee access switch to the
-  // employee view, which opens in the employee's own frame (FB-6.2.8; ROL-CIFT
-  // 6.2, design §4.1: both accesses, never one of them), when the core opens
-  // it (employee_hub.read): never a row that leads to a no-access card.
-  const canSwitchView =
-    hasEmployeeAccess(context.membership) &&
-    hasManagementAccess(context.membership) &&
-    can(context, "employee_hub.read");
-  const inEmployeeView = canSwitchView && isEmployeeViewPath(location.pathname);
-  const employeeShell = isEmployee || inEmployeeView;
+  const { canSwitchView, inEmployeeView, employeeShell } = employeeViewAt(context, location.pathname);
   const shellRole = employeeShell ? "employee" : membershipClass(context.membership);
   const managementHome = workspaceLandingPathForRole(membershipClass(context.membership));
   const visibleNavItems = navItems.filter(

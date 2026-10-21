@@ -29,7 +29,7 @@ import {
 } from "../schedule/lib/scheduleFilterModel";
 import { getEmployeeScheduleBoard } from "./employee-hub-data";
 import "./employee-schedule-board.css";
-import { employeeAnnouncementsPath } from "../communications/announcement-paths";
+import { employeeAnnouncementsPath } from "../shell/view-address";
 
 // The employee board is read-only by construction: no edit session, no drag,
 // no mutation handlers. The API returns published rows only.

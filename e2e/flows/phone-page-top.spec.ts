@@ -55,8 +55,8 @@ const PAGES: Record<"zeynep" | "emre", string[]> = {
     "/app/employee-hub/my-availability",
     "/app/employee-hub/documents",
     "/app/employee-hub/schedule/lineup",
-    "/app/notifications",
-    "/app/announcements",
+    "/app/employee-hub/notifications",
+    "/app/employee-hub/announcements",
     "/account/profile",
   ],
 };

@@ -52,7 +52,7 @@ import "./home-daylight.css";
 import { useHubOnline } from "./useHubClock";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { NotificationBell } from "../notifications/NotificationViews";
-import { employeeAnnouncementsPath } from "../communications/announcement-paths";
+import { employeeAnnouncementsPath } from "../shell/view-address";
 
 const base = "/app/employee-hub";
 
