@@ -414,6 +414,7 @@ export function LineupCard({
   joined,
   onFold,
   keepTabs = false,
+  factsInHead = false,
   edit,
   held,
   day,
@@ -434,6 +435,9 @@ export function LineupCard({
   readonly onFold?: () => void;
   /** The desktop's ticket: folded, it keeps its tabs on one line with its header (Mert 2026-10-21). */
   readonly keepTabs?: boolean;
+  /** The desktop's ticket: open, Shift · People · Hours sit on its header's line, with no line of their own under the
+   * torn edge (Mert 2026-10-21). */
+  readonly factsInHead?: boolean;
   /** Taking the lineup back to draft, for someone who may publish. */
   readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
   /** The Publish sheet is open over it: a lineup that goes out lights up once it closes. */
@@ -467,6 +471,25 @@ export function LineupCard({
     if (backToFold)
       (foldButton.current ?? tabs.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]'))?.focus();
   }, [backToFold]);
+  const facts = (
+    <dl className="lineup-card-facts">
+      <div>
+        <dt>Shift</dt>
+        <dd>
+          <i aria-hidden />
+          <span>{shift.name}</span>
+        </dd>
+      </div>
+      <div>
+        <dt>People</dt>
+        <dd>{shift.count}</dd>
+      </div>
+      <div>
+        <dt>Hours</dt>
+        <dd>{span ? range(span.firstIn, span.lastOut, timeFormat) : "—"}</dd>
+      </div>
+    </dl>
+  );
   const tap = (event: ReactMouseEvent<HTMLElement>) => {
     const target = event.target as Element;
     // Only a tap on the card itself: not its buttons or tabs, nor the Edit window (a portal, its events bubble here).
@@ -488,6 +511,7 @@ export function LineupCard({
           <span>{location.name}</span>
         </p>
         <p className="lineup-card-date">{dateLabel}</p>
+        {open && factsInHead ? facts : null}
         <div className="lineup-card-state">
           <p className={`lineup-card-status ${live ? "is-live" : "is-draft"}${lit}`} onAnimationEnd={() => {
               setFlash(false);
@@ -541,23 +565,7 @@ export function LineupCard({
       {open ? (
         <>
           <div className="lineup-card-perf" aria-hidden />
-          <dl className="lineup-card-facts">
-            <div>
-              <dt>Shift</dt>
-              <dd>
-                <i aria-hidden />
-                <span>{shift.name}</span>
-              </dd>
-            </div>
-            <div>
-              <dt>People</dt>
-              <dd>{shift.count}</dd>
-            </div>
-            <div>
-              <dt>Hours</dt>
-              <dd>{span ? range(span.firstIn, span.lastOut, timeFormat) : "—"}</dd>
-            </div>
-          </dl>
+          {factsInHead ? null : facts}
         </>
       ) : null}
       {open || keepTabs ? (

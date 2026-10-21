@@ -28,6 +28,7 @@ export function LineupDayPicker({
   wheelRef,
   days = 7,
   waiting = false,
+  barLast = false,
   children,
 }: {
   readonly date: string;
@@ -40,14 +41,29 @@ export function LineupDayPicker({
   readonly waiting?: boolean;
   readonly barRef?: RefObject<HTMLDivElement | null>;
   readonly wheelRef?: RefObject<HTMLDivElement | null>;
+  /** The date row after the wheel, not over it (the desktop Lineup: beside the shift tabs, Mert 2026-10-21). */
+  readonly barLast?: boolean;
   /** Beside the date: the location. */
   readonly children?: ReactNode;
 }) {
   const wheel = useRef<WheelControl | null>(null);
   const preview = useRef<((iso: string) => void) | null>(null);
   const ownBox = useRef<HTMLDivElement | null>(null);
+  const dayWheel = (
+    <DayWheel
+      boxRef={wheelRef ?? ownBox}
+      visible={days}
+      waiting={waiting}
+      date={date}
+      today={today}
+      engine={wheel}
+      onCommit={onDate}
+      onMiddle={(iso) => preview.current?.(iso)}
+    />
+  );
   return (
     <>
+      {barLast ? dayWheel : null}
       <div className="lineup-toolbar" ref={barRef}>
         <div className="lineup-date" role="group" aria-label="Day">
           <button
@@ -78,16 +94,7 @@ export function LineupDayPicker({
         </div>
         {children}
       </div>
-      <DayWheel
-        boxRef={wheelRef ?? ownBox}
-        visible={days}
-        waiting={waiting}
-        date={date}
-        today={today}
-        engine={wheel}
-        onCommit={onDate}
-        onMiddle={(iso) => preview.current?.(iso)}
-      />
+      {barLast ? null : dayWheel}
     </>
   );
 }

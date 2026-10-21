@@ -284,6 +284,51 @@ describe("LineupPage", () => {
     expect(timeOf("Chloe Davis").querySelector(".lineup-phone-changed")).toBeTruthy();
   });
 
+  // Mert 2026-10-21: the wheel on top, the date and location beside the shift tabs; the ticket's facts on its header's
+  // line; its half-moons open; a wheel turned anywhere on the page scrolls the list.
+  it("puts the date and location beside the shift tabs under the wheel, and Shift · People · Hours on the ticket's header", async () => {
+    renderPage();
+    const ticket = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    const top = document.querySelector(".lineup-desk-top")!;
+    expect([...top.children].map((child) => child.classList[0])).toEqual(["lineup-wheel", "lineup-toolbar", "catalog-toolbar"]);
+    const head = ticket.querySelector(".lineup-card-head")!;
+    const facts = head.querySelector(".lineup-card-facts")!;
+    expect([...facts.querySelectorAll("dt")].map((dt) => dt.textContent)).toEqual(["Shift", "People", "Hours"]);
+    expect(ticket.querySelectorAll(".lineup-card-facts")).toHaveLength(1);
+    expect(head.nextElementSibling?.classList.contains("lineup-card-perf")).toBe(true);
+    const desk = readFileSync("src/views/lineup-desktop.css", "utf8");
+    expect(desk).toMatch(/\.lineup-desk-top > \.lineup-wheel \{\s*grid-column: 1 \/ -1;/);
+    expect(desk).toMatch(/\.lineup-desk-top \.lineup-shift-tabs \.catalog-status-tabs \{\s*margin-left: auto;/);
+    expect(desk).toMatch(/"loc loc facts state fold"\s*"date date facts at \.";/);
+    // The half-moons: the card no longer hides what passes its edge; each shows its inner half over the frame.
+    expect(desk).not.toMatch(/\.lineup-desk-page \.lineup-card \{[^}]*overflow: hidden;/);
+    expect(desk).toMatch(/\.lineup-desk-page \.lineup-card-perf::before \{\s*clip-path: inset\(0 0 0 50%\);/);
+    expect(desk).toMatch(/\.lineup-desk-page \.lineup-card-perf::after \{\s*clip-path: inset\(0 50% 0 0\);/);
+  });
+
+  it("scrolls the list from a wheel turned anywhere on the page, but not from the day wheel or sideways", async () => {
+    renderPage();
+    const ticket = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    const list = screen.getByRole("tabpanel");
+    const turn = (on: Element, init: WheelEventInit) => {
+      const event = new WheelEvent("wheel", { bubbles: true, cancelable: true, ...init });
+      on.dispatchEvent(event);
+      return event;
+    };
+    expect(turn(ticket, { deltaY: 120 }).defaultPrevented).toBe(true);
+    expect(list.scrollTop).toBe(120);
+    turn(screen.getByRole("heading", { name: "Lineup" }), { deltaY: 3, deltaMode: 1 });
+    expect(list.scrollTop).toBe(168);
+    turn(ticket, { deltaY: -200 });
+    expect(list.scrollTop).toBe(-32);
+    list.scrollTop = 0;
+    // The list's own wheel, a sideways turn and the day wheel are left alone.
+    expect(turn(list, { deltaY: 50 }).defaultPrevented).toBe(false);
+    expect(turn(ticket, { deltaX: 80, deltaY: 10 }).defaultPrevented).toBe(false);
+    turn(document.querySelector(".lineup-wheel-track")!, { deltaY: 40 });
+    expect(list.scrollTop).toBe(0);
+  });
+
   // Mert 2026-10-21: the chosen shift reads at a glance, its line and its name, over the list page's own tab line.
   it("marks the chosen shift tab with a 3 px green line and its name in green, no tab moving", () => {
     const wheel = readFileSync("src/schedule/lineup-wheel.css", "utf8");

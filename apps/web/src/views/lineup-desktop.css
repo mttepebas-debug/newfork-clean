@@ -41,6 +41,37 @@
 .lineup-desk-top .lineup-shift-tabs {
   margin: 0;
 }
+/* The 15-day wheel on top; under it one line, the date and location on the left and the shift tabs on the right
+   (Mert 2026-10-21), over one grey line: the tabs' own, and the same under the date. The tabs that don't fit scroll
+   sideways from their start (margin, not justify-content, so none is cut off on the left). */
+.lineup-desk-top {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0;
+  padding-bottom: 16px;
+}
+/* The list page's 16 px under its tabs moves under the whole line, so the date's line and the tabs' meet. */
+.lineup-desk-page.list-page .lineup-desk-top > .lineup-shift-tabs.catalog-toolbar {
+  margin: 0;
+}
+.lineup-desk-top > .lineup-wheel {
+  grid-column: 1 / -1;
+}
+.lineup-desk-top > .lineup-toolbar {
+  grid-column: 1;
+  align-self: stretch;
+  padding-right: 24px;
+  border-bottom: 1px solid var(--theme-border);
+}
+.lineup-desk-top > :is(.lineup-shift-tabs, .lineup-phone-outline-tabs) {
+  grid-column: 2;
+  min-width: 0;
+}
+.lineup-desk-top .lineup-shift-tabs .catalog-status-tabs {
+  margin-left: auto;
+}
+.lineup-desk-top > .lineup-phone-outline-tabs {
+  justify-content: flex-end;
+}
 
 .lineup-desk {
   display: flex;
@@ -64,11 +95,44 @@
 .lineup-desk-page .lineup-card {
   position: relative;
   margin: 0;
-  overflow: hidden;
   border: 1px solid var(--theme-list-frame, var(--theme-border));
   border-radius: 16px;
   background: var(--theme-surface);
   cursor: pointer;
+}
+/* The torn edge's half-moons are open, as on a real ticket (Mert 2026-10-21): each sits on the frame's edge, covers
+   the frame's own line where it cuts in, and shows only its inner half (the card no longer hides what passes its
+   edge, so the half outside is clipped here). */
+.lineup-desk-page .lineup-card-perf::before {
+  clip-path: inset(0 0 0 50%);
+}
+.lineup-desk-page .lineup-card-perf::after {
+  clip-path: inset(0 50% 0 0);
+}
+/* Open, Shift · People · Hours sit on the header's line, centred on the ticket between the place and day on the
+   left and the state on the right; their own line under the torn edge is gone (Mert 2026-10-21). The header's two
+   outer columns are the same width (the chevron's 32 px, and 32 px before the place), so the middle is the middle. */
+.lineup-desk-page .lineup-card.is-open > .lineup-card-head {
+  grid-template-columns: 32px minmax(0, 1fr) auto minmax(0, 1fr) 32px;
+  grid-template-areas:
+    "loc loc facts state fold"
+    "date date facts at .";
+  padding: 15px 16px 14px;
+}
+.lineup-desk-page .lineup-card.is-open > .lineup-card-head > .lineup-card-fold {
+  margin-right: -8px;
+}
+/* Right under the torn edge now, Team · Notes · Read need no line of their own: the torn edge is it. */
+.lineup-desk-page .lineup-card-perf + .lineup-card-band {
+  border-top: 0;
+}
+.lineup-desk-page .lineup-card-head > .lineup-card-facts {
+  grid-area: facts;
+  grid-template-columns: repeat(3, auto);
+  align-self: center;
+  gap: 40px;
+  margin: 0 24px;
+  padding: 0;
 }
 /* Folded from its chevron (Mert 2026-10-21): one line, the place, day, state and when it went out, then the tabs, so
    more of the list shows. On a narrow ticket the day and "Published at" go; the place keeps room for its name. */

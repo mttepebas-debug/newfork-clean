@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Settings, Users } from "lucide-react";
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import {
   lineupCopyText,
@@ -36,7 +36,7 @@ import { LineupPersonCircle } from "./LineupPersonCircle";
 import "./lineup-desktop.css";
 
 // The desktop Lineup, F (Mert 2026-10-19 ~2:45 AM, "f harika"; mockup yapim/masaustu/desk.js): the phone's day
-// picker over the page (the date and location, a 15-day wheel, the shift tabs), then one location's ticket in the
+// picker over the page (a 15-day wheel, then the date and location beside the shift tabs), then one location's ticket in the
 // middle between two arrows as tall as it (none with one location), Team · Notes · Read in its foot. Only the list
 // under the ticket scrolls. The team is one list under column headings: person, position, label, in – out, section,
 // each heading centred on its column's content and Section the last column, by the list's right edge (Mert
@@ -68,6 +68,30 @@ function writeFolded(folded: boolean) {
 function range(start: string, end: string, format: ScheduleTimeFormat): string {
   if (!start || !end) return "";
   return `${formatTime(start, format, "long")} – ${formatTime(end, format, "long")}`;
+}
+
+/**
+ * The page holds still and only the list scrolls, so a wheel turned anywhere on the page (the heading, the day, the
+ * ticket, the margins) scrolls the list (Mert 2026-10-21). The list itself, the day wheel (it spins the days), a
+ * window over the page and a sideways turn keep their own.
+ */
+function useWheelScrollsList(page: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const area = page.current?.closest<HTMLElement>(".app-main") ?? page.current;
+    if (!area) return;
+    const onWheel = (event: WheelEvent) => {
+      const list = page.current?.querySelector<HTMLElement>(".lineup-desk-scroll");
+      const target = event.target as Element | null;
+      if (!list || !target || event.defaultPrevented || event.ctrlKey) return;
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+      if (list.contains(target) || target.closest(".lineup-wheel, [role='dialog'], .lineup-edit-layer")) return;
+      const step = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? list.clientHeight : 1;
+      event.preventDefault();
+      list.scrollTop += event.deltaY * step;
+    };
+    area.addEventListener("wheel", onWheel, { passive: false });
+    return () => area.removeEventListener("wheel", onWheel);
+  }, [page]);
 }
 
 /** "1 h 30 min", "45 min", "2 h". */
@@ -145,6 +169,8 @@ export function DesktopLineupPage({
   const current = lineups[index] ?? null;
   const many = lineups.length > 1;
   const closed = shown.filter((item) => item.closed);
+  const page = useRef<HTMLElement | null>(null);
+  useWheelScrollsList(page);
 
   let body: ReactNode;
   if (loading) body = <DesktopLineupOutline />;
@@ -191,10 +217,12 @@ export function DesktopLineupPage({
   }
 
   return (
-    <section className="lineup-page list-page lineup-desk-page" aria-labelledby="lineup-title">
+    <section ref={page} className="lineup-page list-page lineup-desk-page" aria-labelledby="lineup-title">
       {header}
+      {/* The 15-day wheel on top; under it the date and location on the left and the shift tabs on the right, one
+          line (Mert 2026-10-21). */}
       <div className="lineup-desk-top">
-        <LineupDayPicker date={date} today={today} onDate={onDate} days={15} waiting={waiting}>
+        <LineupDayPicker date={date} today={today} onDate={onDate} days={15} waiting={waiting} barLast>
           <LineupLocationSelect
             loading={loading}
             locations={locations}
@@ -283,6 +311,7 @@ function DesktopLineup({
           open={!folded}
           onFold={onFold}
           keepTabs
+          factsInHead
           joined={false}
           edit={edit}
           held={held}
@@ -588,17 +617,16 @@ function DesktopLineupOutline() {
           <div className="lineup-card-head">
             <Skeleton width={120} height={14} className="lineup-card-loc" />
             <Skeleton width={84} height={10} className="lineup-card-date" />
+            <div className="lineup-card-facts">
+              {[48, 30, 120].map((width) => (
+                <div key={width}>
+                  <Skeleton width={40} height={9} />
+                  <Skeleton width={width} height={14} />
+                </div>
+              ))}
+            </div>
             <Skeleton width={90} height={12} className="lineup-card-state" />
             <Skeleton width={110} height={10} className="lineup-card-at" />
-          </div>
-          <div className="lineup-card-perf" />
-          <div className="lineup-card-facts">
-            {[48, 30, 120].map((width) => (
-              <div key={width}>
-                <Skeleton width={40} height={9} />
-                <Skeleton width={width} height={14} />
-              </div>
-            ))}
           </div>
         </div>
       </div>
