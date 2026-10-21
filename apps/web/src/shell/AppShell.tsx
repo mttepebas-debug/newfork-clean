@@ -38,6 +38,7 @@ import {
 
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
 import { employeeDocumentsPath, managementDocumentsPath, useOwnDocuments } from "../documents/own-documents";
+import { employeeAnnouncementsPath, managementAnnouncementsPath } from "../communications/announcement-paths";
 
 import { requestAppNavigation } from "./leave-guard";
 import { NotificationsNavEntry } from "../notifications/NotificationsNavEntry";
@@ -187,12 +188,22 @@ const navItems: readonly NavItem[] = [
     section: "employee",
     roles: ["employee"],
   },
+  // Announcements has an address in each interface (announcement-paths.ts).
   {
-    to: "/app/announcements",
+    to: employeeAnnouncementsPath,
+    label: "Announcements",
+    icon: Megaphone,
+    anyOf: ["announcements.read"],
+    section: "employee",
+    roles: ["employee"],
+  },
+  {
+    to: managementAnnouncementsPath,
     label: "Announcements",
     icon: Megaphone,
     anyOf: ["announcements.read"],
     section: "shared",
+    roles: ["owner", "admin", "manager"],
   },
   // A child page of Announcements (EKRAN-08): one record, Important Dates among the posts.
   {
@@ -642,7 +653,7 @@ export function AppShell() {
       {employeeShell ? (
         <EmployeeMobileNav
           managementHome={inEmployeeView ? managementHome : null}
-          announcements={visibleNavItems.some((item) => item.to === "/app/announcements")}
+          announcements={visibleNavItems.some((item) => item.to === employeeAnnouncementsPath)}
           documentsWaiting={ownDocuments.waiting}
           onSignOut={signOutAfterAvailabilityCheck}
         />

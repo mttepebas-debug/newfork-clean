@@ -1058,6 +1058,31 @@ describe("What an employee reads (EKRAN-08)", () => {
     expect(screen.queryByRole("tab")).toBeNull();
   });
 
+  it("in the employee view a manager reads the employee's feed and opens a post there (EMPLOYEE-ANNOUNCEMENTS)", async () => {
+    const live = record({
+      id: "a8200000-0000-4000-8000-000000000065",
+      title: "Uniform policy",
+      status: "published",
+      display_status: "published",
+      published_at: "2026-10-10T16:00:00.000Z",
+    });
+    const draft = record({ id: "a8200000-0000-4000-8000-000000000066", title: "Patio menu" });
+    vi.mocked(getAnnouncements).mockResolvedValue(list({ can_manage: true, announcements: [live, draft] }));
+    renderAt("/app/employee-hub/announcements", <AnnouncementsPage view="employee" />, [
+      "/app/employee-hub/announcements",
+      "/app/employee-hub/announcements/:announcementId",
+    ]);
+    await screen.findByRole("list", { name: "Current announcements" });
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["Current 1"]);
+    expect(screen.queryByRole("button", { name: "New" })).toBeNull();
+    expect(screen.queryByText("Patio menu")).toBeNull();
+    const rows = document.querySelector<HTMLElement>('.announcement-reader-list[data-section="current"]')!;
+    fireEvent.click(within(rows).getByRole("button", { name: /Uniform policy/ }));
+    // The post opens at the employee view's own address, in the reader, not the manager's drawer.
+    expect(await screen.findByRole("dialog", { name: "Uniform policy" })).toBeTruthy();
+    expect(getAnnouncement).not.toHaveBeenCalled();
+  });
+
   it("acknowledges from the reader drawer", async () => {
     const id = "a8200000-0000-4000-8000-000000000071";
     vi.mocked(getAnnouncements).mockResolvedValue(

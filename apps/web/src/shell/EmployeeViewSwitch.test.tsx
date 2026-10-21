@@ -98,4 +98,18 @@ describe("employee view switch (FB-6.2.8)", () => {
     expect(sidebar().queryByRole("link", { name: /Settings/ })).toBeNull();
     expect(sidebar().getByRole("link", { name: /Management view/ }).getAttribute("href")).toBe("/app/workspace");
   });
+
+  it("in the employee view Announcements opens inside the employee view", () => {
+    current = { ...owner, permissions: [...owner.permissions, "announcements.read"] };
+    renderAt("/app/employee-hub");
+    const announcements = sidebar().getByRole("link", { name: /Announcements/ });
+    expect(announcements.getAttribute("href")).toBe("/app/employee-hub/announcements");
+  });
+
+  it("an announcement opened in the employee view keeps the employee's sidebar", () => {
+    current = { ...owner, permissions: [...owner.permissions, "announcements.read"] };
+    renderAt("/app/employee-hub/announcements/a9700000-0000-4000-8000-000000000021");
+    expect(sidebar().getByRole("link", { name: /Management view/ })).toBeTruthy();
+    expect(sidebar().queryByRole("link", { name: /Employees/ })).toBeNull();
+  });
 });

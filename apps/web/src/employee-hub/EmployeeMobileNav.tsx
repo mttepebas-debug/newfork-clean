@@ -2,6 +2,7 @@ import { ArrowLeftRight, CalendarDays, FileText, Home, LayoutDashboard, Megaphon
 import { CurrentUserAvatar } from "../account/AccountAvatar";
 import { PhoneNav, type PhoneNavLink } from "../shell/PhoneNav";
 import { employeeDocumentsPath } from "../documents/own-documents";
+import { employeeAnnouncementsPath } from "../communications/announcement-paths";
 import "./employee-dashboard.css";
 
 const bar: readonly PhoneNavLink[] = [
@@ -30,7 +31,7 @@ export function EmployeeMobileNav({
   const more: PhoneNavLink[] = [
     ...(managementHome ? [{ to: managementHome, label: "Management view", icon: LayoutDashboard }] : []),
     { to: "/app/employee-hub/my-availability", label: "My availability", icon: CalendarDays },
-    ...(announcements ? [{ to: "/app/announcements", label: "Announcements", icon: Megaphone }] : []),
+    ...(announcements ? [{ to: employeeAnnouncementsPath, label: "Announcements", icon: Megaphone }] : []),
     // Her documents, a page of their own (MY-DOCUMENTS, Mert 2026-10-19), no longer inside My account.
     { to: employeeDocumentsPath, label: "Documents", icon: FileText, count: documentsWaiting },
     { to: "/account/profile", label: "My account", icon: CurrentUserAvatar },

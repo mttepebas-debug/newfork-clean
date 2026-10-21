@@ -29,6 +29,7 @@ import {
   type SortKey,
   type TimeFormat,
 } from "../communications/announcement-model";
+import { employeeAnnouncementsPath, managementAnnouncementsPath } from "../communications/announcement-paths";
 import { getAnnouncements } from "../communications/communications-data";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
@@ -42,9 +43,11 @@ import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 /**
  * Announcements (EKRAN-08): one list of posts, Important Dates among them.
  * Whoever may write sees every status in Active and Past tables; everyone
- * else reads the ones sent to them.
+ * else reads the ones sent to them, and so does whoever opens it in the
+ * employee view (EMPLOYEE-ANNOUNCEMENTS).
  */
-export function AnnouncementsPage() {
+export function AnnouncementsPage({ view = "management" }: { readonly view?: "employee" | "management" }) {
+  const base = view === "employee" ? employeeAnnouncementsPath : managementAnnouncementsPath;
   const { context } = useAuth();
   const { announcementId } = useParams();
   const navigate = useNavigate();
@@ -69,14 +72,14 @@ export function AnnouncementsPage() {
   const looking = missing && (askedFor !== announcementId || query.isFetching);
   const close = () => {
     setAdding(false);
-    if (announcementId) navigate("/app/announcements", { replace: true, preventScrollReset: true });
+    if (announcementId) navigate(base, { replace: true, preventScrollReset: true });
   };
-  const open = (id: string) => navigate(`/app/announcements/${id}`, { preventScrollReset: true });
+  const open = (id: string) => navigate(`${base}/${id}`, { preventScrollReset: true });
 
   if (isNoAccess(query.error))
-    return <NoAccessState homeHref={noAccessHomePath(context, "/app/announcements")} />;
+    return <NoAccessState homeHref={noAccessHomePath(context, base)} />;
   const list = query.data;
-  const reader = list ? !list.can_manage : false;
+  const reader = list ? view === "employee" || !list.can_manage : false;
   return (
     <section
       className="settings-page jobs-settings-page announcements-page announcements-catalog-page list-page"

@@ -8,6 +8,7 @@ import {
   type TimeFormat,
 } from "../communications/announcement-model";
 import { getAnnouncements } from "../communications/communications-data";
+import { employeeAnnouncementsPath } from "../communications/announcement-paths";
 /** One read for both Home cards that show posts. */
 export function useHubAnnouncements(workspaceId: string) {
   const { context } = useAuth();
@@ -45,7 +46,7 @@ export function ComingUpDates({
     return (
       <Link
         className="eh-upcoming-row eh-upcoming-date"
-        to={`/app/announcements/${item.id}`}
+        to={`${employeeAnnouncementsPath}/${item.id}`}
         key={item.id}
       >
         <span className="eh-date-tile">

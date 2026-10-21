@@ -52,6 +52,7 @@ import "./home-daylight.css";
 import { useHubOnline } from "./useHubClock";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { NotificationBell } from "../notifications/NotificationViews";
+import { employeeAnnouncementsPath } from "../communications/announcement-paths";
 
 const base = "/app/employee-hub";
 
@@ -585,7 +586,7 @@ function Notices({ workspaceId, now }: { workspaceId: string; now: Date }) {
       name="notices"
       title="From your team"
       link={
-        <Link className="dl-lnk" to="/app/announcements" aria-label="All team notices">
+        <Link className="dl-lnk" to={employeeAnnouncementsPath} aria-label="All team notices">
           All <ChevronRight size={16} />
         </Link>
       }
@@ -609,7 +610,7 @@ function Notices({ workspaceId, now }: { workspaceId: string; now: Date }) {
       ) : query.isLoading ? (
         <LinesOutline label="Loading team notices" lines={3} />
       ) : items.length ? (
-        <HomeNoticeDeck notices={items} />
+        <HomeNoticeDeck notices={items} base={employeeAnnouncementsPath} />
       ) : (
         <p className="dl-empty">No new notices. Enjoy a little quiet.</p>
       )}
