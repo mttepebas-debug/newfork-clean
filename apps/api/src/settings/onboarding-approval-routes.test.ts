@@ -80,6 +80,35 @@ describe("onboarding approval routes", () => {
     await app.close();
   });
 
+  // A manager's context never lists settings.organization.write (the core gives it to the owner and admins).
+  it("lets a manager read it and refuses a manager's change with 403", async () => {
+    const service = serviceMock();
+    const manager: ActiveWorkspaceContext = {
+      ...contextWith(authzActionKeys.filter((key) => key !== "settings.organization.write")),
+      membership: { ...contextWith([]).membership, access: { employee: false, management: "manager" } },
+    };
+    const app = buildApp({ onboardingApprovalService: service, contextResolver: { resolve: async () => manager } });
+    const read = await app.inject({ method: "GET", url, headers: auth });
+    const change = await app.inject({ method: "PUT", url, headers: auth, payload: body });
+    expect(read.statusCode).toBe(200);
+    expect(change.statusCode).toBe(403);
+    expect(change.json()).toMatchObject({ reason: "authz.out_of_scope", detail: "settings.organization.write" });
+    expect(service.save).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  // Somebody from another workspace: the core resolves no context for them in this one.
+  it.each(routes)("%s answers another workspace's user with 404 authz.not_member", async (method, _action, payload) => {
+    const service = serviceMock();
+    const app = buildApp({ onboardingApprovalService: service, contextResolver: { resolve: async () => null } });
+    const response = await app.inject({ method, url, headers: auth, ...(payload ? { payload } : {}) });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ reason: "authz.not_member" });
+    expect(service.read).not.toHaveBeenCalled();
+    expect(service.save).not.toHaveBeenCalled();
+    await app.close();
+  });
+
   it("asks for a session before anything else", async () => {
     const app = buildApp({ onboardingApprovalService: serviceMock(), contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
     const response = await app.inject({ method: "GET", url });
