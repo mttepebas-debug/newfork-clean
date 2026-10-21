@@ -1,5 +1,5 @@
 {
- "sourceSha256": "bb3c52eae682b912061aa87d68c9e6a2ef2d4b8676a08f84cbe1a9be6f2e45a7",
+ "sourceSha256": "0daf1b76e9fc603fb3292f3c20449880e679179fe2c1cb59a216061acc3ebd48",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -1247,6 +1247,13 @@
    "targetKind": "workspace",
    "permission": null,
    "coreKey": "notifications.write_own",
+   "blank": "null"
+  },
+  {
+   "key": "onboarding.approval_setting",
+   "targetKind": "workspace",
+   "permission": null,
+   "coreKey": "settings.organization.write",
    "blank": "null"
   },
   {
@@ -40293,6 +40300,138 @@
   ],
   [
    "notifications.write_own",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "onboarding.approval_setting",
+   "ada",
+   "workspace",
+   "allow"
+  ],
+  [
+   "onboarding.approval_setting",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "ayse",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "can",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "derya",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "dora",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "ersin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "kaan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "onboarding.approval_setting",
+   "mehmet",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "mona",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "nil",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "onboarding.approval_setting",
+   "oya",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "onboarding.approval_setting",
    "zeynep",
    "workspace",
    "allow"
