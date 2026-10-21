@@ -2,18 +2,22 @@
    the manager Schedule. A catalog card edge (same border and radius as the
    announcements table) keeps its left side from reading as a hard cut. No
    overflow clipping here: top bar dropdowns must still overlay a short grid. */
+/* Like the manager's grid on the sky: the Schedule controls' 3.2:1 edge, a
+   card's lift and corner, lines one step firmer (Mert 2026-10-21, variant D). */
 .employee-schedule-board {
-  border: 1px solid #e1e7e3;
-  border-radius: 8px;
+  --schedule-grid-line-color: var(--theme-border-strong);
+  border: 1px solid var(--theme-border-control);
+  border-radius: 12px;
   background: var(--theme-surface);
+  box-shadow: var(--theme-shadow-card);
 }
 .employee-schedule-board .schedule-topbar {
-  border-radius: 8px 8px 0 0;
+  border-radius: 11px 11px 0 0;
 }
 .employee-schedule-board .schedule-grid-scroll {
   border: 0;
-  border-top: 1px solid #e1e7e3;
-  border-radius: 0 0 8px 8px;
+  border-top: 1px solid var(--theme-border-strong);
+  border-radius: 0 0 11px 11px;
 }
 
 /* Every screen keeps its top in place (Mert 2026-10-16, "header ve tableri

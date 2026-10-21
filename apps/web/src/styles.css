@@ -3789,7 +3789,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   }
 }
 /* Pages that painted their own ground let the sky through. */
-.app-main[data-slot] > :is(.employees-page, .organization-settings, .schedule-page, .availability-page, .important-dates-page, .announcements-page, .requests-page),
+.app-main[data-slot] > :is(.employees-page, .organization-settings, .schedule-page, .availability-page, .important-dates-page, .announcements-page, .requests-page, .employee-hub-page),
 .app-main[data-slot] > .schedule-page > :is(.schedule-topbar, .schedule-filter-command-strip) {
   background: transparent;
 }

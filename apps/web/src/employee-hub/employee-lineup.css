@@ -134,7 +134,7 @@
 .employee-lineup-sep { height: 0; margin: 28px -4px 24px; border: 0; border-top: 1px solid var(--theme-border-strong); }
 .employee-lineup-sep + .employee-lineup-view > .employee-lineup-head > .employee-lineup-ticket { margin-top: 0; }
 
-.employee-lineup-calm { display: grid; justify-items: center; gap: 6px; max-width: 560px; margin-top: 16px; padding: 26px 18px; border: 1px solid var(--theme-list-frame); border-radius: 12px; background: var(--theme-surface); text-align: center; }
+.employee-lineup-calm { display: grid; justify-items: center; gap: 6px; max-width: 560px; margin-top: 16px; padding: 26px 18px; border-radius: 22px; background: var(--theme-surface); box-shadow: var(--theme-shadow-card); text-align: center; }
 .employee-lineup-calm svg { margin-bottom: 4px; color: var(--theme-accent-deep); }
 .employee-lineup-calm b { color: var(--theme-text); font-size: 16px; }
 .employee-lineup-calm span { color: var(--theme-muted); font-size: 14px; line-height: 1.45; }
@@ -142,7 +142,10 @@
 /* The page header, pinned at the top of the main area at its full size; everything under it scrolls (Mert
    2026-10-17 ~8:30 AM, as on the manager's phone Lineup). The page has no top room on a desktop (Mert
    2026-10-19), so the header starts at the top itself; a phone reaches over its 16 px (below). */
-.employee-hub-page > .employee-lineup-pin { position: sticky; top: 0; z-index: 5; background: inherit; }
+/* The page lets the sky through: the pinned top is clear at rest and frosts
+   what passes under it once the page moves. */
+.employee-hub-page > .employee-lineup-pin { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--theme-app-ground) 70%, transparent); -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px); }
+.app-main:not([data-frozen-scrolled]) > .employee-hub-page > .employee-lineup-pin { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (max-width: 720px) {
   .employee-hub-page > .employee-lineup-pin { margin: -16px calc(-1 * var(--eh-gutter, 16px)) 0; padding: 16px var(--eh-gutter, 16px) 0; }
 }
