@@ -1,0 +1,699 @@
+/* Shared windows, menus and notices (Overlays.tsx). Every value comes from
+   the direction's own tokens: --surface, --ink, --line, --accent, --r-*, ... */
+:is(.dir-a, .dir-b, .dir-c) .pv-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 240px;
+  border-radius: var(--r-m);
+  padding: 6px;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  animation: pv-pop 180ms var(--ease) both;
+}
+:is(.dir-a, .dir-b, .dir-c) [data-proto-surface-trigger] .pv-panel {
+  right: 0;
+  left: auto;
+}
+:is(.dir-a, .dir-b, .dir-c) [data-proto-topmenu="settings"] .pv-panel {
+  right: 0;
+  left: auto;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-filter-list {
+  max-height: 340px;
+  overflow: auto;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-filter button,
+:is(.dir-a, .dir-b, .dir-c) .pv-filter-group > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-filter button:hover {
+  background: var(--sunk);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-filter button[data-indent] {
+  padding-left: 24px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-filter-all {
+  border-bottom: 1px solid var(--line) !important;
+  border-radius: 6px 6px 0 0 !important;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-check-box {
+  display: inline-grid;
+  width: 15px;
+  height: 15px;
+  flex: none;
+  place-items: center;
+  border: 1.5px solid var(--line-2);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+:is(.dir-a, .dir-b, .dir-c) [aria-checked="true"] > .pv-check-box,
+:is(.dir-a, .dir-b, .dir-c) [aria-checked="mixed"] > .pv-check-box {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-merge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+  color: var(--ink-2);
+}
+:is(.dir-a, .dir-b, .dir-c) [role="switch"] {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  background: var(--line-2);
+  cursor: pointer;
+  transition: background-color 180ms var(--ease);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-merge [role="switch"] > span,
+:is(.dir-a, .dir-b, .dir-c) .pv-switch > span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 180ms var(--ease);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-merge [aria-checked="true"] {
+  background: var(--accent);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-merge [aria-checked="true"] > span {
+  transform: translateX(12px);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-settings {
+  display: grid;
+  gap: 2px;
+  min-width: 260px;
+  padding: 10px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-label {
+  margin: 8px 2px 4px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-label:first-child {
+  margin-top: 0;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-setting {
+  display: flex !important;
+  width: 100% !important;
+  height: auto !important;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 6px !important;
+  padding: 7px 6px !important;
+  background: transparent !important;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-setting:hover:not(:disabled) {
+  background: var(--sunk) !important;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-setting:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-switch {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--line-2);
+  transition: background-color 180ms var(--ease);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-setting[aria-checked="true"] .pv-switch {
+  background: var(--accent);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-setting[aria-checked="true"] .pv-switch > span {
+  transform: translateX(12px);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-segment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--sunk);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-segment button {
+  flex: 1;
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-weight: 550;
+  white-space: nowrap;
+  transition: background-color 150ms var(--ease);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-segment button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(18, 20, 18, 0.12);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-calendar {
+  width: 264px;
+  padding: 12px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font: 600 13px/1 var(--display);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 8px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-calendar-dow {
+  padding: 4px 0;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-calendar-grid button {
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font: 500 12px/1 var(--mono);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-calendar-grid button:hover {
+  background: var(--sunk);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-calendar-grid button[data-outside] {
+  color: var(--ink-3);
+  opacity: 0.6;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-calendar-grid button[data-inweek] {
+  border-radius: 0;
+  background: var(--accent-wash);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-calendar-grid button[data-today] {
+  color: var(--accent-ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-calendar-grid button[data-picked] {
+  background: var(--accent);
+  color: #fff;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-surface {
+  display: grid;
+  gap: 8px;
+  width: 320px;
+  padding: 12px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-surface-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-surface-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  padding: 8px 10px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-surface-row div {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-surface-row small {
+  color: var(--ink-3);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-footnote,
+:is(.dir-a, .dir-b, .dir-c) .pv-muted {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-icon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink-2);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-icon:hover:not(:disabled) {
+  background: var(--sunk);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-icon:disabled {
+  opacity: 0.35;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-primary,
+:is(.dir-a, .dir-b, .dir-c) .pv-ghost,
+:is(.dir-a, .dir-b, .dir-c) .pv-danger,
+:is(.dir-a, .dir-b, .dir-c) .pv-danger-solid {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-s);
+  padding: 0 12px;
+  background: var(--surface);
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 150ms var(--ease);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-primary {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-primary:hover:not(:disabled) {
+  background: #2a2d2b;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-primary:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-danger {
+  border-color: transparent;
+  background: transparent;
+  color: var(--danger);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-danger:hover {
+  background: var(--danger-wash);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-danger-solid {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-wide {
+  width: 100%;
+}
+
+/* shift window */
+:is(.dir-a, .dir-b, .dir-c) .pv-window {
+  position: fixed;
+  z-index: 8000;
+  width: 360px;
+  overflow: hidden;
+  border-radius: var(--r-l);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop), 0 40px 80px -30px rgba(18, 20, 18, 0.35);
+  animation: pv-pop 200ms var(--ease) both;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-window-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 14px 10px 16px;
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-window-head h2 {
+  margin: 2px 0 0;
+  font: 600 16px/1.2 var(--display);
+  letter-spacing: -0.01em;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-kicker {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-window-body {
+  display: grid;
+  max-height: min(62vh, 520px);
+  gap: 12px;
+  overflow: auto;
+  padding: 14px 16px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-field {
+  display: grid;
+  gap: 6px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-field .pv-label {
+  margin: 0;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-times {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-3);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-times input,
+:is(.dir-a, .dir-b, .dir-c) .pv-field select,
+:is(.dir-a, .dir-b, .dir-c) .pv-field textarea {
+  min-width: 0;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-s);
+  padding: 7px 9px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  outline: none;
+  transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-times input {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-times input:focus,
+:is(.dir-a, .dir-b, .dir-c) .pv-field select:focus,
+:is(.dir-a, .dir-b, .dir-c) .pv-field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 123, 95, 0.14);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-field textarea {
+  resize: vertical;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-hint {
+  color: var(--ink-3);
+  font-size: 11.5px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-stepper {
+  display: inline-flex;
+  width: max-content;
+  align-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-s);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-stepper button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-stepper output {
+  min-width: 28px;
+  font-family: var(--mono);
+  text-align: center;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-check {
+  border-radius: var(--r-s);
+  padding: 8px 10px;
+  background: var(--warn-wash);
+  color: #6d4708;
+  font-size: 12px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-check[data-status="blocked"] {
+  background: var(--danger-wash);
+  color: #8e2b26;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-window-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-foot-right {
+  display: flex;
+  gap: 6px;
+}
+
+/* menu */
+:is(.dir-a, .dir-b, .dir-c) .pv-menu {
+  position: fixed;
+  z-index: 8500;
+  min-width: 200px;
+  border-radius: var(--r-m);
+  padding: 5px;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  animation: pv-pop 140ms var(--ease) both;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-menu button kbd {
+  margin-left: auto;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-menu button:hover:not(:disabled) {
+  background: var(--sunk);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-menu button:disabled {
+  opacity: 0.4;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-menu button[data-danger] {
+  color: var(--danger);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-menu hr {
+  margin: 4px 2px;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+/* drawer */
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer {
+  position: fixed;
+  z-index: 7000;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  width: 360px;
+  align-content: start;
+  gap: 16px;
+  overflow: auto;
+  border-radius: var(--r-l);
+  padding: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop), 0 40px 80px -30px rgba(18, 20, 18, 0.35);
+  animation: pv-slide 260ms var(--ease) both;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer header div {
+  flex: 1;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer h2 {
+  margin: 0;
+  font: 600 17px/1.2 var(--display);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer p {
+  margin: 2px 0 0;
+  color: var(--ink-3);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-avatar {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+  font-weight: 650;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer dt {
+  color: var(--ink-3);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer dd {
+  margin: 0;
+  text-align: right;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer-shifts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer-shifts li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  padding: 8px 10px;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer-shifts span {
+  color: var(--ink-3);
+  font: 500 11px/1 var(--mono);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer-shifts em {
+  color: var(--ink-2);
+  font: 500 11px/1 var(--mono);
+  font-style: normal;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-drawer-shifts small {
+  grid-column: 2 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ink-3);
+}
+
+/* dialogs */
+:is(.dir-a, .dir-b, .dir-c) .pv-scrim {
+  position: fixed;
+  z-index: 9500;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(18, 20, 18, 0.28);
+  backdrop-filter: blur(2px);
+  animation: pv-fade 160ms var(--ease) both;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-dialog {
+  width: min(420px, calc(100vw - 32px));
+  border-radius: var(--r-l);
+  padding: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  animation: pv-pop 200ms var(--ease) both;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-dialog h2 {
+  margin: 0 0 6px;
+  font: 600 17px/1.25 var(--display);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-dialog p {
+  margin: 0 0 8px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-reasons {
+  margin: 8px 0;
+  padding-left: 18px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* toasts */
+:is(.dir-a, .dir-b, .dir-c) .pv-toasts {
+  position: fixed;
+  z-index: 9800;
+  right: 20px;
+  bottom: 20px;
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-toast {
+  display: flex;
+  max-width: 360px;
+  align-items: flex-start;
+  gap: 10px;
+  border-radius: var(--r-m);
+  padding: 10px 8px 10px 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  animation: pv-toast-in 260ms var(--ease) both;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-toast strong {
+  font-weight: 600;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-toast p {
+  margin: 2px 0 0;
+  color: var(--ink-3);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-toast-mark {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-toast[data-tone="error"] .pv-toast-mark {
+  background: var(--danger);
+}
+:is(.dir-a, .dir-b, .dir-c) .pv-toast[data-tone="info"] .pv-toast-mark {
+  background: var(--ink);
+}
+
+
+@keyframes pv-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pv-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pv-slide {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pv-toast-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}

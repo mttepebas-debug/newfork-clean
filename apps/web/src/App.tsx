@@ -91,6 +91,10 @@ const ScheduleShiftDesignPage = import.meta.env.DEV
 const ScheduleShiftBadgeLabPage = import.meta.env.DEV
   ? lazy(() => import("./dev/ScheduleShiftBadgeLabPage"))
   : () => null;
+// Schedule from scratch prototype (task/schedule-from-scratch): DEV only.
+const ProtoSchedulePage = import.meta.env.DEV
+  ? lazy(() => import("./proto-schedule/ProtoSchedulePage"))
+  : () => null;
 const FeedbackGalleryPage = import.meta.env.DEV
   ? lazy(() => import("./dev/FeedbackGalleryPage"))
   : () => null;
@@ -179,6 +183,14 @@ export function App() {
                   <Route
                     path="/dev/schedule-shift-design"
                     element={<ScheduleShiftDesignPage />}
+                  />
+                  <Route
+                    path="/proto/schedule"
+                    element={
+                      <ProtectedRoute workspace="complete">
+                        <ProtoSchedulePage />
+                      </ProtectedRoute>
+                    }
                   />
                   <Route
                     path="/dev/feedback"

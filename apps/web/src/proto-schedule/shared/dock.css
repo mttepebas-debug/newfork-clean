@@ -1,0 +1,38 @@
+/* The prototype's direction switch. Not part of any design. */
+.proto-dock {
+  position: fixed;
+  z-index: 2147483000;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(17, 19, 18, 0.88);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  font: 500 11px/1.2 system-ui, sans-serif;
+  backdrop-filter: blur(8px);
+}
+.proto-dock button {
+  display: grid;
+  gap: 1px;
+  border: 0;
+  border-radius: 9px;
+  padding: 6px 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.proto-dock button small {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10px;
+}
+.proto-dock button[aria-pressed="true"] {
+  background: #fff;
+  color: #111312;
+}
+.proto-dock button[aria-pressed="true"] small {
+  color: #6b706d;
+}
