@@ -46,12 +46,30 @@ export interface ExportDocumentLayout {
   readonly measurements?: ExportRowMeasurement[];
 }
 
-export function createExportDocument(snapshot: ScheduleExportSnapshot, prefs: ExportPreferences, options: ExportDocumentLayout = {}): TDocumentDefinitions {
-  const print = prefs.destination === "print";
+function pageGroups(snapshot: ScheduleExportSnapshot, prefs: ExportPreferences) {
   // The output follows the grid: a unified grid always exports one combined table, even to print.
   const merged = snapshot.layout === "unified";
-  const separatePages = !merged && (print || !prefs.combineHorizontally);
+  const separatePages = !merged && (prefs.destination === "print" || !prefs.combineHorizontally);
   const groups = separatePages ? snapshot.locations.map(location => [location]) : [[...snapshot.locations]];
+  return { merged, separatePages, groups };
+}
+
+/** How the file splits into pages, in words, and the heading title of each location group (3P #62). */
+export function exportPagePlan(snapshot: ScheduleExportSnapshot, prefs: ExportPreferences): { readonly summary: string; readonly titles: readonly string[] } {
+  const { merged, separatePages, groups } = pageGroups(snapshot, prefs);
+  const count = snapshot.locations.length;
+  const across = count === 1 ? "1 location" : merged ? `All ${count} locations in one table` : separatePages ? "One location per page" : `${count} locations side by side`;
+  const down = prefs.destination !== "print" && prefs.combineVertically ? "one long page" : "rows continue onto more pages";
+  return { summary: `${across} · ${down}`, titles: groups.map(locations => exportTitleLines(snapshot, locations).title) };
+}
+/** Which group a rendered page belongs to: its repeated heading carries the group's title as its own line. */
+export function exportPageTitle(titles: readonly string[], lines: readonly string[]): string | null {
+  return titles.find(title => lines.some(line => line.trim() === title)) ?? null;
+}
+
+export function createExportDocument(snapshot: ScheduleExportSnapshot, prefs: ExportPreferences, options: ExportDocumentLayout = {}): TDocumentDefinitions {
+  const print = prefs.destination === "print";
+  const { merged, separatePages, groups } = pageGroups(snapshot, prefs);
   const dayColumns = snapshot.dates.length * (merged || separatePages ? 1 : snapshot.locations.length);
   const showTotals = snapshot.rows.some(row => row.total !== null);
   const paper = prefs.paper === "A4" ? { width: 841.89, height: 595.28 } : { width: 792, height: 612 };

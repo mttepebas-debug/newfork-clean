@@ -7,10 +7,9 @@ import type { ExportDownload } from "./files";
 import type { ExportPreferences } from "./preferences";
 import type { ScheduleExportSnapshot } from "./snapshot";
 
-export function ExportPreview({ target, snapshot, preferences, files: rendered, loading, error, onDownload, thumbnail = false }: {
+export function ExportPreview({ target, snapshot, preferences, files: rendered, loading, error, onDownload }: {
   readonly target: HTMLElement; readonly snapshot: ScheduleExportSnapshot | null; readonly preferences: ExportPreferences;
   readonly files: readonly ExportDownload[]; readonly loading: boolean; readonly error: string | null; readonly onDownload: () => void;
-  /** Hide the PDF viewer chrome when embedded as a small thumbnail. */ readonly thumbnail?: boolean;
 }) {
   // The last completed render may belong to the previous format; an XLSX blob in the PDF iframe would download instead of display.
   const files = rendered.filter(file => file.name.endsWith(`.${preferences.format}`));
@@ -30,7 +29,7 @@ export function ExportPreview({ target, snapshot, preferences, files: rendered, 
   const body = error ? <p role="alert" className="status error">{error}</p>
     : !snapshot ? <p className="status">Waiting for an available schedule preview.</p>
     : !files.length && preferences.format !== "xlsx" ? (loading ? <p role="status" className="status">Preparing the preview…</p> : null)
-    : preferences.format === "pdf" ? <iframe title="Schedule PDF" src={`${files[0]!.url}#view=FitH${thumbnail ? "&toolbar=0&navpanes=0" : ""}`} />
+    : preferences.format === "pdf" ? <iframe title="Schedule PDF" src={`${files[0]!.url}#view=FitH`} />
     : preferences.format === "png" ? <main className="images">
       {files.map((file, index) => <figure key={file.url}><img src={file.url} alt={file.name} /><figcaption>Page {index + 1} of {files.length}</figcaption></figure>)}
     </main>

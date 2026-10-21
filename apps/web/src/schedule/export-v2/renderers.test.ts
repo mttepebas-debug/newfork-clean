@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { createExportDocument } from "./document";
+import { createExportDocument, exportPagePlan, exportPageTitle } from "./document";
 import { createScheduleWorkbook, exportSheetName, renderScheduleExcel } from "./excel";
 import { renderSchedulePdf } from "./pdf";
 import { assertSafeExportCanvas, ExportImageTooLargeError } from "./png";
@@ -28,14 +28,14 @@ async function readPdf(blob: Blob) {
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const task = getDocument({ data: new Uint8Array(await blob.arrayBuffer()), useSystemFonts: false });
   const pdf = await task.promise;
-  const pages: { text: string; width: number; height: number; belowPage: boolean }[] = [];
+  const pages: { text: string; lines: string[]; width: number; height: number; belowPage: boolean }[] = [];
   try {
     for (let index = 1; index <= pdf.numPages; index++) {
       const page = await pdf.getPage(index);
       const viewport = page.getViewport({ scale: 1 });
       const content = await page.getTextContent();
       const items = content.items.filter(item => "str" in item);
-      pages.push({ text: items.map(item => item.str).join(" "), width: viewport.width, height: viewport.height,
+      pages.push({ text: items.map(item => item.str).join(" "), lines: items.map(item => item.str), width: viewport.width, height: viewport.height,
         belowPage: items.some(item => item.transform[5] < 0) });
     }
     return pages;
@@ -124,6 +124,28 @@ describe("Export v2 real output engines", () => {
     expect(table.table.body[2]![1]!.text).not.toContain("Merkez");
     expect(table.layout.vLineWidth(8)).toBeGreaterThan(1); expect(table.layout.vLineWidth(7)).toBeLessThan(1);
     expect(table.layout.vLineWidth(1)).toBeLessThan(1); expect(table.layout.vLineWidth(15)).toBeLessThan(1);
+  }, 30000);
+
+  it("says how a four-location week splits into pages and names every page after its own locations (3P #62)", async () => {
+    const base = fixture(14);
+    const locations = ["Merkez", "Sahil", "Moda", "Kadıköy"].map((name, index) => ({ id: String.fromCharCode(97 + index), name, shortName: name.slice(0, 3).toUpperCase() }));
+    const source: ScheduleExportSnapshot = { ...base, layout: "separate", locations,
+      shifts: base.shifts.map((shift, index) => ({ ...shift, locationId: locations[index % 4]!.id })) };
+    const print = { ...defaultExportPreferences, destination: "print" as const };
+    const plan = exportPagePlan(source, print);
+    expect(plan.summary).toBe("One location per page · rows continue onto more pages");
+    expect(plan.titles).toEqual(["Merkez", "Sahil", "Moda", "Kadıköy"]);
+    const pages = await readPdf(await renderSchedulePdf(source, print));
+    expect(pages.length).toBeGreaterThan(4);
+    const titles = pages.map(page => exportPageTitle(plan.titles, page.lines));
+    expect(new Set(titles)).toEqual(new Set(plan.titles));
+    for (const [index, page] of pages.entries()) expect(page.text).toContain(titles[index]!);
+    expect(exportPagePlan(source, defaultExportPreferences)).toEqual({ summary: "4 locations side by side · one long page", titles: ["Merkez + Sahil + Moda + Kadıköy"] });
+    expect(exportPagePlan({ ...source, layout: "unified" }, defaultExportPreferences).summary).toBe("All 4 locations in one table · one long page");
+    expect(exportPagePlan(source, { ...defaultExportPreferences, combineHorizontally: false, combineVertically: false }).summary)
+      .toBe("One location per page · rows continue onto more pages");
+    expect(exportPagePlan({ ...source, locations: [locations[0]!] }, defaultExportPreferences).summary).toBe("1 location · one long page");
+    expect(exportPageTitle(plan.titles, ["Örnek İşletme", "Employee"])).toBeNull();
   }, 30000);
 
   it("keeps every shift readable when one employee exceeds a print page", async () => {

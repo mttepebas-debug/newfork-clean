@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { Download, ExternalLink, FileImage, FileSpreadsheet, FileText, Printer } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, ExternalLink, FileImage, FileSpreadsheet, FileText, Maximize2, Printer } from "lucide-react";
 import { formatDateNumber } from "../lib/scheduleDateTime";
+import { exportPagePlan, exportPageTitle } from "./document";
 import type { ExportDownload } from "./files";
+import { renderPdfPreviewPages } from "./png";
 import type { ExportPreferences } from "./preferences";
 import type { SnapshotResult } from "./snapshot";
 import "./export-v2.css";
@@ -141,13 +143,26 @@ function LayoutControls({ result, preferences, onChange }: ExportSettingsPanelPr
   </div>;
 }
 
-/** Thumbnail of ExportPreview in an isolated iframe so the preview page's styles stay out of the app. */
+interface PreviewPage { readonly url: string; readonly width: number; readonly title: string | null }
+
+/**
+ * The file as it comes out (3P #62): one page at a time, whole, named after its
+ * locations, with how the week splits into pages; Actual size makes it readable.
+ * Excel keeps its sheet thumbnail: ExportPreview in an isolated iframe, so the
+ * preview page's styles stay out of the app.
+ */
 function InlinePreview({ result, preferences, files, loading, onTarget }: {
   readonly result: SnapshotResult; readonly preferences: ExportPreferences; readonly files: readonly ExportDownload[];
   readonly loading: boolean; readonly onTarget: (target: HTMLElement | null) => void;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
-  const [pages, setPages] = useState<number | null>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const [pages, setPages] = useState<readonly PreviewPage[] | null>(null);
+  const [index, setIndex] = useState(0);
+  const [zoomed, setZoomed] = useState(false);
+  const excel = preferences.format === "xlsx";
+  const plan = result.status === "ready" ? exportPagePlan(result.snapshot, preferences) : null;
+  const titles = JSON.stringify(plan?.titles ?? []);
   useEffect(() => {
     const doc = frame.current?.contentDocument;
     if (!doc) return;
@@ -158,25 +173,56 @@ function InlinePreview({ result, preferences, files, loading, onTarget }: {
   }, [onTarget]);
   useEffect(() => {
     setPages(null);
-    if (preferences.format === "png") { setPages(files.length || null); return; }
-    if (preferences.format === "xlsx" || !files[0]) return;
+    const own = files.filter(file => file.name.endsWith(`.${preferences.format}`));
+    if (excel || !own.length) return;
     let cancelled = false;
-    void pdfPageCount(files[0].blob).then(count => { if (!cancelled) setPages(count); }).catch(() => undefined);
-    return () => { cancelled = true; };
-  }, [files, preferences.format]);
-  const ready = result.status === "ready";
-  const count = preferences.format === "xlsx"
-    ? ready ? `${result.snapshot.locations.length + 2} sheets` : "Workbook"
-    : loading ? "Rendering…" : pages ? `${pages} ${pages === 1 ? "page" : "pages"}` : "—";
-  return <div className="export-v2-preview" aria-hidden="true">
-    <iframe ref={frame} title="Export thumbnail" tabIndex={-1} />
-    <span className="export-v2-thumb-status">{loading ? "Updating…" : `${formatLabel(preferences.format)} · ${count}`}</span>
+    const urls: string[] = [];
+    // One group (side by side, or all in one table): the summary already says it; no page title to repeat.
+    const named = (JSON.parse(titles) as string[]).filter((_, at, all) => all.length > 1);
+    const read = preferences.format === "pdf"
+      ? renderPdfPreviewPages(own[0]!.blob).then(rendered => rendered.map(page => ({ blob: page.blob, width: page.width, title: exportPageTitle(named, page.lines) })))
+      // A PNG has no text: a page is named only when there is exactly one page per location group.
+      : Promise.all(own.map(async (file, at) => ({ blob: file.blob, width: await pngWidth(file.blob), title: own.length === named.length ? named[at]! : null })));
+    void read.then(rendered => {
+      if (cancelled) return;
+      setPages(rendered.map(page => { const url = URL.createObjectURL(page.blob); urls.push(url); return { url, width: page.width, title: page.title }; }));
+      setIndex(at => Math.min(at, rendered.length - 1));
+    }).catch(() => { if (!cancelled) setPages([]); });
+    return () => { cancelled = true; for (const url of urls) URL.revokeObjectURL(url); };
+  }, [excel, files, preferences.format, titles]);
+  useEffect(() => { stage.current?.scrollTo?.({ top: 0, left: 0 }); }, [index, zoomed]);
+  if (excel) {
+    const count = result.status === "ready" ? `${result.snapshot.locations.length + 2} sheets` : "Workbook";
+    return <div className="export-v2-preview" aria-hidden="true">
+      <iframe ref={frame} title="Export thumbnail" tabIndex={-1} />
+      <span className="export-v2-thumb-status">{loading ? "Updating…" : `Excel · ${count}`}</span>
+    </div>;
+  }
+  const page = pages?.[index];
+  const label = page && pages ? `Page ${index + 1} of ${pages.length}${page.title ? ` · ${page.title}` : ""}` : loading || !pages ? "Rendering…" : "No preview";
+  return <div className="export-v2-preview export-v2-pages" role="group" aria-label="Export preview" data-zoomed={zoomed}>
+    {/* The thumbnail target stays mounted for Excel; ExportController renders into it only then. */}
+    <iframe ref={frame} title="Export thumbnail" tabIndex={-1} hidden />
+    <div className="export-v2-stage" ref={stage}>
+      {/* A click on the page zooms too; keyboard and screen readers use Actual size. */}
+      {page ? <div className="export-v2-page" onClick={() => setZoomed(value => !value)}>
+        <img src={page.url} alt={label} style={zoomed ? { width: `${page.width}px` } : undefined} />
+      </div> : null}
+      {loading ? <span className="export-v2-thumb-status">Updating…</span> : null}
+    </div>
+    <div className="export-v2-pager">
+      <button type="button" aria-label="Previous page" disabled={!pages || index === 0} onClick={() => setIndex(at => at - 1)}><ChevronLeft size={15} aria-hidden="true" /></button>
+      <button type="button" aria-label="Next page" disabled={!pages || index >= pages.length - 1} onClick={() => setIndex(at => at + 1)}><ChevronRight size={15} aria-hidden="true" /></button>
+      <span className="export-v2-pager-text"><b>{label}</b>{plan ? <small>{plan.summary}</small> : null}</span>
+      <button type="button" className="export-v2-zoom" aria-pressed={zoomed} disabled={!page} onClick={() => setZoomed(value => !value)}>
+        <Maximize2 size={13} aria-hidden="true" />Actual size
+      </button>
+    </div>
   </div>;
 }
 
-async function pdfPageCount(pdf: Blob): Promise<number> {
-  const [pdfjs, { default: workerUrl }] = await Promise.all([import("pdfjs-dist"), import("pdfjs-dist/build/pdf.worker.min.mjs?url")]);
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-  const task = pdfjs.getDocument({ data: new Uint8Array(await pdf.arrayBuffer()) });
-  try { return (await task.promise).numPages; } finally { await task.destroy(); }
+/** A preview PNG is drawn at 2.5x (png.ts); its actual size is 96 DPI. */
+async function pngWidth(png: Blob): Promise<number> {
+  const bitmap = await createImageBitmap(png);
+  try { return Math.round(bitmap.width / 2.5 * 4 / 3); } finally { bitmap.close(); }
 }

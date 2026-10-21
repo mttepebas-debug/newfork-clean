@@ -4,7 +4,8 @@
 .schedule-draft-menu { position: relative; }
 .new-schedule-window { position: absolute; top: calc(100% + 6px); right: 0; z-index: 90; display: flex; flex-direction: column; width: min(490px, calc(100vw - 24px)); max-height: min(700px, calc(100vh - 110px)); overflow: hidden; border-radius: 10px; background: var(--theme-surface); box-shadow: 0 0 0 1px rgb(15 23 42 / 6%), 0 16px 40px -12px rgb(15 23 42 / 28%); color: var(--theme-text); font-size: 13px; text-align: left; }
 /* Schedules and Templates share one width, so switching tabs never moves the window (Mert, 2026-10-12 17:00 PT). */
-.new-schedule-window[data-tab="export"] { width: min(980px, calc(100vw - 24px)); }
+/* Export is wide: it ends at the sidebar, not under it (the window opens leftward from New Schedule, ~144px from the edge). */
+.new-schedule-window[data-tab="export"] { width: min(980px, calc(100vw - var(--app-sidebar-width, 0px) - 168px)); }
 .new-schedule-window :is(button, input, select) { font: inherit; }
 .new-schedule-window :is(button, a, input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
 

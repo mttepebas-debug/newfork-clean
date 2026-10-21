@@ -150,7 +150,8 @@ export function ExportController({ userId, workspaceId, result, canManageLocatio
   };
   return <>
     <ExportSettingsPanel {...panelProps} onInlineTarget={onInlineTarget} inline={{ files: previewProps.files, loading: previewProps.loading }} />
-    {inlineTarget ? <ExportPreview target={inlineTarget} {...previewProps} thumbnail /> : null}
+    {/* PDF and Image pages are drawn by the panel itself (3P #62); the sheet thumbnail is for Excel. */}
+    {inlineTarget && preferences.format === "xlsx" ? <ExportPreview target={inlineTarget} {...previewProps} /> : null}
     {previewTarget ? <ExportPreview target={previewTarget} {...previewProps} /> : null}
   </>;
 }

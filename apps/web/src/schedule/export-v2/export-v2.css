@@ -1,5 +1,5 @@
 /* Export inside the New Schedule window. Light theme only; --theme-* tokens and the top bar's 12-13px type. */
-.schedule-export-v2 { display: flex; flex-direction: column; gap: 12px; color: var(--theme-text); }
+.schedule-export-v2 { display: flex; flex-direction: column; gap: 12px; color: var(--theme-text); container-type: inline-size; }
 .schedule-export-v2 :is(button, select) { font: inherit; color: inherit; }
 .schedule-export-v2 button:disabled { opacity: .5; cursor: not-allowed; }
 .schedule-export-v2 :is(button, input, select, a):focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
@@ -51,12 +51,32 @@
 .export-v2-secondary:not(:disabled):hover { background: var(--theme-surface-muted); }
 .export-v2-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; }
 
-/* Preview thumbnail: the real export, drawn at half size */
+/* Preview: the real export. Excel is its sheet drawn at half size; PDF and Image one whole page at a time (3P #62). */
 .export-v2-preview { position: relative; min-height: 340px; overflow: hidden; border: 1px solid var(--theme-border-strong); border-radius: 7px; background: var(--theme-surface-muted); }
 .export-v2-preview iframe { position: absolute; top: 0; left: 0; width: 200%; height: 200%; border: 0; background: var(--theme-surface); transform: scale(.5); transform-origin: 0 0; pointer-events: none; }
 .export-v2-thumb-status { position: absolute; left: 8px; bottom: 8px; padding: 3px 8px; border: 1px solid var(--theme-border); border-radius: 4px; background: var(--theme-surface); color: var(--theme-text-secondary); font-size: 11px; font-weight: 650; }
+/* As tall as the window allows next to its tabs and source line (~104px), the window being min(700px, 100vh - 110px). */
+.export-v2-pages { display: flex; flex-direction: column; height: clamp(300px, calc(min(700px, 100vh - 110px) - 104px), 596px); }
+.export-v2-stage { position: relative; flex: 1; min-height: 0; overflow: auto; }
+.export-v2-page { position: absolute; inset: 12px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.export-v2-page img { display: block; max-width: 100%; max-height: 100%; background: var(--theme-surface); box-shadow: 0 0 0 1px var(--theme-border-strong), 0 1px 4px rgb(15 23 42 / 12%); }
+.export-v2-pages[data-zoomed="true"] .export-v2-page { position: static; display: block; width: max-content; margin: 12px; cursor: zoom-out; }
+.export-v2-pages[data-zoomed="true"] .export-v2-page img { max-width: none; max-height: none; }
+.export-v2-stage .export-v2-thumb-status { position: sticky; top: 8px; left: 8px; bottom: auto; float: left; }
+.export-v2-pager { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--theme-border); background: var(--theme-surface); }
+.export-v2-pager button { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 5px; height: 28px; min-width: 28px; padding: 0 6px; border: 1px solid var(--theme-border-control); border-radius: 5px; background: var(--theme-surface); font-size: 12px; font-weight: 700; cursor: pointer; }
+.export-v2-pager button:not(:disabled):hover { background: var(--theme-surface-muted); }
+.export-v2-pager .export-v2-zoom { margin-left: auto; padding: 0 9px; }
+.export-v2-pager .export-v2-zoom[aria-pressed="true"] { border-color: var(--theme-accent); background: var(--theme-selected); }
+.export-v2-pager-text { display: grid; min-width: 0; gap: 1px; padding: 0 4px; }
+.export-v2-pager-text :is(b, small) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.export-v2-pager-text b { font-size: 12px; font-weight: 700; }
+.export-v2-pager-text small { color: var(--theme-muted); font-size: 11px; }
 
 /* Last generated files (controller footer) */
 .export-v2-downloads { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .export-v2-downloads p { margin: 0; color: var(--theme-muted); }
 .export-v2-downloads button { padding: 8px; border: 1px solid var(--theme-border); border-radius: 5px; background: transparent; overflow-wrap: anywhere; text-align: left; cursor: pointer; }
+
+/* A narrow window (tablet): the preview over the settings; the window body scrolls. */
+@container (max-width: 700px) { .export-v2-grid { grid-template-columns: minmax(0, 1fr); } .export-v2-pages { height: 340px; } }
