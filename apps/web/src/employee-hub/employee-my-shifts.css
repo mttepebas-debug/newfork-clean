@@ -54,5 +54,12 @@
 .ems-off a:hover { text-decoration: underline; }
 .ems-day:has(.ems-shift.flash) { animation: ems-flash 1.8s ease-out; }
 @keyframes ems-flash { 0%, 30% { box-shadow: inset 0 0 0 2px var(--theme-accent), 0 0 0 6px var(--theme-focus-halo); } 100% { box-shadow: inset 0 0 0 1px var(--theme-border-subtle), 0 0 0 0 transparent; } }
-@media (min-width: 721px) { .ems { max-width: 700px; } }
+/* Centred on the whole screen, as if the menu weren't there, like the desktop Lineup (Mert 2026-10-21). The page box
+   starts at the menu's width plus its gutter; where the screen is too narrow, the column keeps inside the page box. */
+@media (min-width: 721px) {
+  .ems { width: 100%; max-width: 700px; }
+  .app-shell[data-content-held="true"] > .app-main > .employee-hub-page > .ems {
+    margin-left: clamp(0px, 50vw - var(--app-sidebar-width) - var(--app-page-gutter-start) - 350px, 100% - 700px);
+  }
+}
 @media (prefers-reduced-motion: reduce) { .ems-seg-i, .ems-seg button, .ems-track { transition: none; } .ems-day { animation: none !important; } }
