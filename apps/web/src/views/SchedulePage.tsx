@@ -884,9 +884,9 @@ export function SchedulePage({
   useEffect(() => {
     const filters = focusFiltersRef.current;
     if (!focusedShiftId || !filters) return;
-    const holds = (key: string, id: string | null) =>
-      !id || (search.get(key)?.split(",") ?? []).includes(id);
-    // The address catches up after the click; only a filter that was there and left counts.
+    // Exactly the focus's own filter: one picked in the top bar on top of it goes off on its own.
+    const holds = (key: string, id: string | null) => !id || search.get(key) === id;
+    // The address catches up after the click; only a filter that was there and changed counts.
     if (holds("jobs", filters.jobs) && holds("shiftTypes", filters.shiftTypes)) {
       filters.seen = true;
       return;

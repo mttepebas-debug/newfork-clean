@@ -5209,6 +5209,61 @@ describe("App", () => {
     expect(after?.getAttribute("data-focused")).toBe("false");
   });
 
+  // Mert, 2026-10-21: a badge's focus goes off in one step, but a filter
+  // picked in the top bar goes off on its own, even on top of a focus.
+  it("takes a top bar filter added to a focus off alone, then the rest one by one", async () => {
+    const moreOfEach = {
+      ...scheduleFixture,
+      jobs: [
+        ...scheduleFixture.jobs,
+        { ...scheduleFixture.jobs[0]!, id: "33333333-3333-4333-8333-333333333334", name: "Host" },
+        { ...scheduleFixture.jobs[0]!, id: "33333333-3333-4333-8333-333333333335", name: "Busser" },
+      ],
+      shift_types: [
+        ...scheduleFixture.shift_types,
+        { ...scheduleFixture.shift_types[0]!, id: "44444444-4444-4444-8444-444444444445", name: "Lunch" },
+      ],
+    };
+    const readModelMock = vi.mocked(getScheduleReadModel);
+    readModelMock.mockReset();
+    readModelMock.mockResolvedValue(moreOfEach);
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    testAuth.role = "owner";
+    const { container } = render(<App />);
+
+    const badge = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>(
+        `.schedule-shift-badge[data-shift-id="${scheduleFixture.shifts[0]!.id}"]`,
+      );
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    fireEvent.click(badge);
+    await waitFor(() => expect(badge.getAttribute("data-focused")).toBe("true"));
+
+    fireEvent.click(container.querySelector("[data-topbar-filter-trigger='jobs']")!);
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Host" }));
+    await waitFor(() =>
+      expect(new URLSearchParams(window.location.search).get("jobs")).toBe(
+        `${scheduleFixture.jobs[0]!.id},33333333-3333-4333-8333-333333333334`,
+      ),
+    );
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() =>
+      expect(container.querySelector<HTMLDetailsElement>("details[data-filter-id='jobs']")?.open).toBe(false),
+    );
+    expect(window.location.search).toContain("jobs=");
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(window.location.search).not.toContain("jobs="));
+    expect(window.location.search).toContain(
+      `shiftTypes=${scheduleFixture.shift_types[0]!.id}`,
+    );
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(window.location.search).not.toContain("shiftTypes="));
+  });
+
   it("keeps the unassigned shifts row out of view mode and its settings passive, without hiding scheduled employees (BL-681)", async () => {
     const unassignedModel = {
       ...scheduleFixture,
