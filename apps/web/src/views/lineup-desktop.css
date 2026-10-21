@@ -14,6 +14,17 @@
   padding: 30px 0 0;
 }
 
+/* Centred on the whole screen, as if the menu weren't there, at the same width (Mert 2026-10-21). Where the screen
+   is too narrow for that, it stops at the usual 32 px from the menu rather than go under it. */
+@media (min-width: 721px) {
+  .app-shell[data-content-held="true"] > .app-main > .lineup-page.lineup-desk-page {
+    margin-left: max(
+      var(--app-page-gutter-start),
+      calc(50vw - var(--app-sidebar-width) - min(100% - var(--app-page-gutter-start) - var(--app-page-gutter-end), 1320px) / 2)
+    );
+  }
+}
+
 /* The date and location, the 15-day wheel, the shift tabs. */
 .lineup-desk-top {
   display: grid;

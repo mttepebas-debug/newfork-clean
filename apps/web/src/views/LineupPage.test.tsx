@@ -288,6 +288,11 @@ describe("LineupPage", () => {
     expect(desk).toMatch(/\.lineup-desk-cols \{[^}]*text-align: center;/);
     expect(desk).toMatch(/\.lineup-desk-cols > :nth-child\(2\) \{\s*text-align: left;/);
     expect(desk).toMatch(/\.lineup-desk-cell \{[^}]*text-align: center;/);
+    // Centred on the whole screen as if the menu weren't there, its width unchanged, never under the menu
+    // (Mert 2026-10-21).
+    expect(desk).toMatch(
+      /\.app-shell\[data-content-held="true"\] > \.app-main > \.lineup-page\.lineup-desk-page \{\s*margin-left: max\(\s*var\(--app-page-gutter-start\),\s*calc\(50vw - var\(--app-sidebar-width\) - min\(100% - var\(--app-page-gutter-start\) - var\(--app-page-gutter-end\), 1320px\) \/ 2\)\s*\);/,
+    );
     // Folded, the ticket's head and its tabs share one line.
     expect(desk).toMatch(/\.lineup-desk-page \.lineup-card:not\(\.is-open\) > \.lineup-card-head \{\s*display: contents;/);
   });
