@@ -11,6 +11,8 @@ from (values
  ('35200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000002','employee','active',true)) as legacy(id, workspace_id, user_id, role, status, all_locations);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,preferred_name,invitation_email,created_by)
 values('45200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000002','E-0001','Document','Employee','','bl052-2@example.test','15200000-0000-4000-8000-000000000001');
+-- This workspace lets people in when they finish (KATILIM-ONAY, S-231: a workspace waits for approval unless it turns that off).
+insert into public.employee_onboarding_settings(workspace_id,final_approval_required,updated_by) values('25200000-0000-4000-8000-000000000001',false,'15200000-0000-4000-8000-000000000001');
 insert into public.employee_onboarding_cases(id,workspace_id,employee_id,membership_id)
 values('55200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000001','35200000-0000-4000-8000-000000000002');
 insert into public.employee_onboarding_requirements(id,workspace_id,employee_id,case_id,kind,title,required,blocks_activation,requires_review,sort_order,source_snapshot,lifecycle_user_id,lifecycle_settings,deadline_at)

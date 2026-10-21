@@ -14,6 +14,8 @@ select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::pub
 from (select w,owner_id,'owner'::public.workspace_role,true,'active'::public.membership_status from wo_fixture
  union all select w,actor,'employee'::public.workspace_role,false,'pending_activation'::public.membership_status from wo_fixture) as legacy(workspace_id, user_id, role, all_locations, status);
 insert into public.workspace_scheduling_settings(workspace_id) select w from wo_fixture on conflict do nothing;
+-- This workspace lets people in when they finish (KATILIM-ONAY, S-231: a workspace waits for approval unless it turns that off).
+insert into public.employee_onboarding_settings(workspace_id,final_approval_required,updated_by) select w,false,owner_id from wo_fixture;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
  select emp,w,actor,'E-993437','Weekly','Onboarding',owner_id from wo_fixture;
 select lives_ok($$select public.initialize_employee_onboarding_service(actor) from wo_fixture$$,'pending employee initializes with weekly requirement');
