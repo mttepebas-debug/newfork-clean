@@ -560,6 +560,10 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
     if (!isFocused || !showSegmentHighlight) return;
 
     function captureWheel(event: globalThis.WheelEvent): void {
+      // Only a wheel over the field's own window turns the time; anywhere else the page scrolls as usual.
+      const input = inputRef.current;
+      const scope = input?.closest('[role="dialog"]') ?? input?.parentElement;
+      if (scope && !(event.target instanceof Node && scope.contains(event.target))) return;
       event.preventDefault();
       adjustActiveSegmentFromWheel(event.deltaY < 0 ? 1 : -1);
     }

@@ -272,8 +272,9 @@ describe("TimeInput", () => {
     const activeWheel = new WheelEvent("wheel", {
       deltaY: -100,
       cancelable: true,
+      bubbles: true,
     });
-    fireEvent(document, activeWheel);
+    fireEvent(input, activeWheel);
     expect(activeWheel.defaultPrevented).toBe(true);
 
     fireEvent.blur(input);
@@ -284,6 +285,36 @@ describe("TimeInput", () => {
     });
     fireEvent(document, inactiveWheel);
     expect(inactiveWheel.defaultPrevented).toBe(false);
+  });
+
+  it("leaves the wheel to the page when the pointer is outside the time input's window", () => {
+    const onChange = vi.fn();
+
+    render(
+      <>
+        <section role="dialog" aria-label="Add shift">
+          <TimeInput value="16:15" onChange={onChange} timeFormat="12h" ariaLabel="Shift start" />
+        </section>
+        <div data-testid="grid">Grid</div>
+      </>,
+    );
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    act(() => input.focus());
+    input.setSelectionRange(0, 0);
+    fireEvent.click(input);
+    onChange.mockClear();
+
+    const outsideWheel = new WheelEvent("wheel", { deltaY: -100, cancelable: true, bubbles: true });
+    fireEvent(screen.getByTestId("grid"), outsideWheel);
+    expect(outsideWheel.defaultPrevented).toBe(false);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(input.value).toBe("04:15 PM");
+
+    const insideWheel = new WheelEvent("wheel", { deltaY: -100, cancelable: true, bubbles: true });
+    fireEvent(screen.getByRole("dialog"), insideWheel);
+    expect(insideWheel.defaultPrevented).toBe(true);
+    expect(onChange).toHaveBeenCalled();
   });
 
   it("renders 24h times without an AM/PM segment", () => {
