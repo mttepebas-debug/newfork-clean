@@ -122,9 +122,11 @@
 }
 /* Open, Shift · People · Hours sit on the header's line, centred on the ticket between the place and day on the
    left and the state on the right; their own line under the torn edge is gone (Mert 2026-10-21). The header's two
-   outer columns are the same width (the chevron's 32 px, and 32 px before the place), so the middle is the middle. */
+   outer columns are the same width (the chevron's 32 px, and 32 px before the place), so the middle is the middle.
+   The state's side never goes under its own width ("Published at 8:10 AM" whole): on a narrow ticket the place
+   gives way first, with "…", and nothing runs into anything. */
 .lineup-desk-page .lineup-card.is-open > .lineup-card-head {
-  grid-template-columns: 32px minmax(0, 1fr) auto minmax(0, 1fr) 32px;
+  grid-template-columns: 32px minmax(0, 1fr) auto minmax(max-content, 1fr) 32px;
   grid-template-areas:
     "loc loc facts state fold"
     "date date facts at .";
@@ -133,6 +135,76 @@
 .lineup-desk-page .lineup-card.is-open > .lineup-card-head > .lineup-card-fold {
   margin-right: -8px;
 }
+/* The ticket's place is a menu of the places and its day opens the calendar (Mert 2026-10-21). Both read as the
+   plain name and day they were, with a small chevron and a calendar to say they open; a soft green on hover. */
+.lineup-card-loc > .lineup-card-place {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  margin: -2px 0 -2px -4px;
+  padding: 2px 6px 2px 4px;
+  border-radius: 6px;
+  overflow: visible;
+  cursor: pointer;
+}
+.lineup-card-place > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lineup-card-place > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--theme-text-secondary);
+}
+.lineup-card-place > select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.lineup-card-day > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: -2px 0 -2px -4px;
+  padding: 2px 6px 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--theme-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lineup-card-day > button svg {
+  width: 14px;
+  height: 14px;
+}
+.lineup-card-place:hover,
+.lineup-card-day > button:hover,
+.lineup-card-day > button[aria-expanded="true"] {
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+}
+.lineup-card-place:has(select:focus-visible),
+.lineup-card-day > button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 1px;
+}
+/* The day sits under the name's text, past the pin (the head's 22 px), as the plain day did. */
+.lineup-desk-page .lineup-card-date {
+  overflow: visible;
+}
+
 /* Right under the torn edge now, Team · Notes · Read need no line of their own: the torn edge is it. */
 .lineup-desk-page .lineup-card-perf + .lineup-card-band {
   border-top: 0;
@@ -144,6 +216,12 @@
   gap: 40px;
   margin: 0 24px;
   padding: 0;
+}
+@media (max-width: 1240px) {
+  .lineup-desk-page .lineup-card-head > .lineup-card-facts {
+    gap: 16px;
+    margin: 0 8px;
+  }
 }
 /* Folded from its chevron (Mert 2026-10-21): one line, the place, day, state and when it went out, then the tabs, so
    more of the list shows. On a narrow ticket the day and "Published at" go; the place keeps room for its name. */

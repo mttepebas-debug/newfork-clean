@@ -96,6 +96,53 @@ export function LineupDayPicker({
 }
 
 /**
+ * A calendar under a button (the app's MiniCalendar): open says whether it shows; Escape or a click outside the box
+ * closes it. The date row's button and the desktop ticket's day share it (Mert 2026-10-21).
+ */
+export function useDayCalendar() {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLSpanElement | null>(null);
+  useCloseOnEscape(open ? () => setOpen(false) : null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (event: PointerEvent) => {
+      if (!box.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [open]);
+  return { open, setOpen, box };
+}
+
+/** The calendar itself, under its button in a `.lineup-date-pick` box: a day picked closes it. */
+export function DayCalendar({
+  date,
+  today,
+  onPick,
+  onClose,
+}: {
+  readonly date: string;
+  readonly today: string;
+  readonly onPick: (iso: string) => void;
+  readonly onClose: () => void;
+}) {
+  return (
+    <div className="schedule-mini-calendar-panel lineup-date-calendar" role="dialog" aria-label="Pick a day">
+      <MiniCalendar
+        selectedDate={date}
+        weekStartDate={date}
+        weekStartDay="sunday"
+        today={today}
+        onDayPick={(iso) => {
+          onClose();
+          onPick(iso);
+        }}
+      />
+    </div>
+  );
+}
+
+/**
  * The date button over the wheel: the middle day as it spins, amber away from today; a tap brings today back. On
  * today it opens the app's calendar under it instead, and a day picked there turns the wheel to it (Mert
  * 2026-10-21); Escape or a click outside closes it.
@@ -116,8 +163,7 @@ function WheelDate({
   readonly onPick: (iso: string) => void;
 }) {
   const [shown, setShown] = useState(date);
-  const [calendar, setCalendar] = useState(false);
-  const box = useRef<HTMLSpanElement | null>(null);
+  const calendar = useDayCalendar();
   useEffect(() => {
     preview.current = setShown;
     return () => {
@@ -125,46 +171,26 @@ function WheelDate({
     };
   }, [preview]);
   useEffect(() => setShown(date), [date]);
-  useCloseOnEscape(calendar ? () => setCalendar(false) : null);
-  useEffect(() => {
-    if (!calendar) return;
-    const away = (event: PointerEvent) => {
-      if (!box.current?.contains(event.target as Node)) setCalendar(false);
-    };
-    document.addEventListener("pointerdown", away);
-    return () => document.removeEventListener("pointerdown", away);
-  }, [calendar]);
   const other = shown !== today;
   return (
-    <span className="lineup-date-pick" ref={box}>
+    <span className="lineup-date-pick" ref={calendar.box}>
       <button
         type="button"
         className="lineup-date-label"
         data-other-day={other ? "true" : undefined}
         aria-disabled={waiting || undefined}
         aria-haspopup={other ? undefined : "dialog"}
-        aria-expanded={other ? undefined : calendar}
+        aria-expanded={other ? undefined : calendar.open}
         title={other ? "Back to today" : "Pick a day"}
         onClick={() => {
           if (other) onToday();
-          else if (!waiting) setCalendar((open) => !open);
+          else if (!waiting) calendar.setOpen((open) => !open);
         }}
       >
         {wheelDateText(shown, today)}
       </button>
-      {calendar ? (
-        <div className="schedule-mini-calendar-panel lineup-date-calendar" role="dialog" aria-label="Pick a day">
-          <MiniCalendar
-            selectedDate={date}
-            weekStartDate={date}
-            weekStartDay="sunday"
-            today={today}
-            onDayPick={(iso) => {
-              setCalendar(false);
-              onPick(iso);
-            }}
-          />
-        </div>
+      {calendar.open ? (
+        <DayCalendar date={date} today={today} onPick={onPick} onClose={() => calendar.setOpen(false)} />
       ) : null}
     </span>
   );

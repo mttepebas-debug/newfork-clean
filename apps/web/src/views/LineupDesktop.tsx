@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Settings, Users } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Settings, Users } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import {
@@ -11,7 +11,13 @@ import {
   type LineupRow,
   type LineupShift,
 } from "../schedule/lineup";
-import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../schedule/lineup-wheel-view";
+import {
+  DayCalendar,
+  LineupDayPicker,
+  LineupLocationSelect,
+  LineupShiftTabs,
+  useDayCalendar,
+} from "../schedule/lineup-wheel-view";
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
 import {
@@ -213,6 +219,12 @@ export function DesktopLineupPage({
     );
   else {
     const segKey = `${current.location.id}:${current.shift.key}`;
+    // The ticket's place is a menu of the places (Mert 2026-10-21): on All locations one with this shift is the ticket
+    // the arrows would reach; any other is picked as the page's location.
+    const goTo = (id: string) => {
+      if (!picked && lineups.some(({ location }) => location.id === id)) setAt(id);
+      else onLocation(id);
+    };
     body = (
       <DesktopLineup
         key={segKey}
@@ -235,6 +247,10 @@ export function DesktopLineupPage({
           writeFolded(!folded);
           setFolded(!folded);
         }}
+        placePicker={
+          locations.length > 1 ? <TicketPlace locations={locations} value={current.location.id} onChange={goTo} /> : null
+        }
+        dayPicker={<TicketDay label={dateLabel} date={date} today={today} onPick={onDate} />}
       />
     );
   }
@@ -286,6 +302,8 @@ function DesktopLineup({
   onMove,
   folded,
   onFold,
+  placePicker,
+  dayPicker,
 }: {
   readonly location: LineupLocation;
   readonly shift: LineupShift;
@@ -304,6 +322,8 @@ function DesktopLineup({
   readonly onMove: (location: LineupLocation) => void;
   readonly folded: boolean;
   readonly onFold: () => void;
+  readonly placePicker: ReactNode;
+  readonly dayPicker: ReactNode;
 }) {
   const ids = useId();
   const panel = `${ids}panel`;
@@ -334,6 +354,8 @@ function DesktopLineup({
           onFold={onFold}
           keepTabs
           factsInHead
+          placePicker={placePicker}
+          dayPicker={dayPicker}
           joined={false}
           edit={edit}
           held={held}
@@ -392,6 +414,67 @@ function DesktopLineup({
         />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The ticket's place: its name, a menu of the places to go to (Mert 2026-10-21). The name is the text the ticket
+ * shows, at its own width; the browser's own menu lies over it, unseen, and opens from a click on it.
+ */
+function TicketPlace({
+  locations,
+  value,
+  onChange,
+}: {
+  readonly locations: readonly LineupLocation[];
+  readonly value: string;
+  readonly onChange: (id: string) => void;
+}) {
+  return (
+    <span className="lineup-card-place">
+      <span aria-hidden>{locations.find((location) => location.id === value)?.name}</span>
+      <ChevronDown aria-hidden />
+      <select aria-label="Go to location" value={value} onChange={(event) => onChange(event.target.value)}>
+        {locations.map((location) => (
+          <option key={location.id} value={location.id}>
+            {location.name}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
+/** The ticket's day: it opens the calendar under it, and a day picked there is the page's day (Mert 2026-10-21). */
+function TicketDay({
+  label,
+  date,
+  today,
+  onPick,
+}: {
+  readonly label: string;
+  readonly date: string;
+  readonly today: string;
+  readonly onPick: (iso: string) => void;
+}) {
+  const calendar = useDayCalendar();
+  return (
+    <span className="lineup-date-pick lineup-card-day" ref={calendar.box}>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={calendar.open}
+        aria-label={`${label}, pick a day`}
+        title="Pick a day"
+        onClick={() => calendar.setOpen((open) => !open)}
+      >
+        <CalendarDays aria-hidden />
+        {label}
+      </button>
+      {calendar.open ? (
+        <DayCalendar date={date} today={today} onPick={onPick} onClose={() => calendar.setOpen(false)} />
+      ) : null}
+    </span>
   );
 }
 

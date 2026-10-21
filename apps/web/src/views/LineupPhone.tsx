@@ -415,6 +415,8 @@ export function LineupCard({
   onFold,
   keepTabs = false,
   factsInHead = false,
+  placePicker,
+  dayPicker,
   edit,
   held,
   day,
@@ -438,6 +440,10 @@ export function LineupCard({
   /** The desktop's ticket: open, Shift · People · Hours sit on its header's line, with no line of their own under the
    * torn edge (Mert 2026-10-21). */
   readonly factsInHead?: boolean;
+  /** The desktop's ticket: the place's name is a menu of the other places, and the day opens the calendar (Mert
+   * 2026-10-21); in their places on the header, instead of the plain name and day. */
+  readonly placePicker?: ReactNode;
+  readonly dayPicker?: ReactNode;
   /** Taking the lineup back to draft, for someone who may publish. */
   readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
   /** The Publish sheet is open over it: a lineup that goes out lights up once it closes. */
@@ -492,8 +498,9 @@ export function LineupCard({
   );
   const tap = (event: ReactMouseEvent<HTMLElement>) => {
     const target = event.target as Element;
-    // Only a tap on the card itself: not its buttons or tabs, nor the Edit window (a portal, its events bubble here).
-    if (!event.currentTarget.contains(target) || target.closest("button, a, [role='tablist']")) return;
+    // Only a tap on the card itself: not its buttons, menus or tabs, nor a window over it (the Edit window is a portal,
+    // its events bubble here; the calendar opens inside it).
+    if (!event.currentTarget.contains(target) || target.closest("button, a, select, [role='tablist'], [role='dialog']")) return;
     onFold?.();
   };
   return (
@@ -506,11 +513,11 @@ export function LineupCard({
       onClick={onFold ? tap : undefined}
     >
       <div className="lineup-card-head">
-        <p className="lineup-card-loc">
+        <div className="lineup-card-loc">
           <MapPin aria-hidden />
-          <span>{location.name}</span>
-        </p>
-        <p className="lineup-card-date">{dateLabel}</p>
+          {placePicker ?? <span>{location.name}</span>}
+        </div>
+        <div className="lineup-card-date">{dayPicker ?? dateLabel}</div>
         {open && factsInHead ? facts : null}
         <div className="lineup-card-state">
           <p className={`lineup-card-status ${live ? "is-live" : "is-draft"}${lit}`} onAnimationEnd={() => {
