@@ -1093,8 +1093,10 @@ describe("App", () => {
       render(<App />);
       await waitFor(() => expect(screen.getByTestId("schedule-day-header-2026-08-17").getAttribute("data-today")).toBe("true"), { timeout: 5000 });
       expect(screen.queryByTestId("schedule-day-header-2026-08-16")).toBeNull();
-      // The week on screen is this week: its button switches views rather than jumping.
-      expect(document.querySelector('[title="Switch to daily view"]')).not.toBeNull();
+      // The week on screen is this week: its date opens the calendar rather than jumping (S-228).
+      expect(
+        document.querySelector('.schedule-view-mode:not(.schedule-date-calendar-trigger)[title="Open calendar"]'),
+      ).not.toBeNull();
       expect(document.querySelector('[title="Jump to this week"]')).toBeNull();
       fireEvent.click(screen.getByRole("button", { name: "Open schedule calendar" }));
       const calendar = await screen.findByRole("dialog", { name: "Schedule calendar" });
