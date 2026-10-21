@@ -85,16 +85,17 @@ select tests.id('hb'), c.id, c.employee_id, 'document', tests.id('hb:doc:type'),
 from public.employee_onboarding_cases c
 where c.employee_id in (select tests.id('hb:p' || n) from generate_series(1, 96) n where n % 3 = 0 and n % 4 <> 0);
 
--- Thirty people ask for a day off in the weeks ahead.
+-- Thirty people ask for a day off in the weeks ahead. Days count from each location's
+-- own today, not the server's: in Istanbul tomorrow starts at 21:00 UTC.
 select public.submit_time_off_service(tests.user('hb:p' || n), tests.id('hb'),
-  jsonb_build_array(jsonb_build_object('segment_date', current_date + 10 + n % 14)), 'Probe', loc.timezone, gen_random_uuid())
+  jsonb_build_array(jsonb_build_object('segment_date', (now() at time zone loc.timezone)::date + 10 + n % 14)), 'Probe', loc.timezone, gen_random_uuid())
 from generate_series(1, 30) n
 join public.employee_location_assignments a on a.employee_id = tests.id('hb:p' || n) and a.ended_at is null and a.is_primary
 join public.locations loc on loc.id = a.location_id;
 -- S-225: thirty more were off in the next two weeks, approved today: Updates and Coming up each read them.
 create temp table hb_off as
 select (public.submit_time_off_service(tests.user('hb:p' || n), tests.id('hb'),
-  jsonb_build_array(jsonb_build_object('segment_date', current_date + 1 + n % 13)), 'Probe', loc.timezone, gen_random_uuid()) ->> 'request_id')::uuid as id
+  jsonb_build_array(jsonb_build_object('segment_date', (now() at time zone loc.timezone)::date + 1 + n % 13)), 'Probe', loc.timezone, gen_random_uuid()) ->> 'request_id')::uuid as id
 from generate_series(31, 60) n
 join public.employee_location_assignments a on a.employee_id = tests.id('hb:p' || n) and a.ended_at is null and a.is_primary
 join public.locations loc on loc.id = a.location_id;
