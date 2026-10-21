@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 571, last: 20261021020000_open_shift_offer.sql
--- fingerprint: sha256:888a3958c15754c84c745f7107a3cdefcc60426dec85752eb5962122e3a22461
+-- fingerprint: sha256:95acb8edaabceecb32c2f31d76e62a35a4460ff26a3ab4f7ed5e7c11c61b8d22
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -22674,6 +22674,9 @@ begin
       delete from public.schedule_edit_session_shifts copy
       where copy.workspace_id = target_workspace_id and copy.id = any(asked) and copy.employee_id is null
         and copy.session_id in (select e.id from public.schedule_edit_sessions e where e.source_draft_id = target_draft.id)
+        -- Only a copy still as the draft has it: a change made in an open edit stays that edit's.
+        and exists (select 1 from public.schedule_draft_shifts d where d.draft_id = target_draft.id and d.id = copy.id
+          and public.shift_exchange_edit_matches(to_jsonb(copy), to_jsonb(d)))
         and copy.pending_op_type is distinct from 'delete'
       returning copy.session_id)
     update public.schedule_edit_sessions set revision = revision + 1 where id in (select session_id from gone);
@@ -22765,7 +22768,8 @@ begin
         delete from public.shift_exchange_votes where case_id = other.id;
         perform public.shift_exchange_emit(actor_user_id, target_workspace_id, other.id, null, other.live_status,
           'This offer ended because the shift changed or started. Review the current schedule before making a new request.');
-      elsif open_shift_choice is distinct from 'offer' then
+      -- Without a choice (an older screen) an offer that still holds is left as it is.
+      elsif open_shift_choice in ('keep', 'delete') then
         update public.shift_exchange_cases set status = 'cancelled', revision = revision + 1, updated_at = now() where id = other.id;
         update public.shift_exchange_applications set status = 'closed_case_cancelled', updated_at = now()
         where case_id = other.id and status in ('invited', 'pending_manager');
