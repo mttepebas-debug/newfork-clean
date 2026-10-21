@@ -21,10 +21,11 @@
   line-height: 1.35;
 }
 
+/* Home's card (Daylight): no edge, its lift and corner (workspace-theme-sync). */
 .ns-card {
-  border: 1px solid var(--theme-border);
-  border-radius: 10px;
+  border-radius: 22px;
   background: var(--theme-surface);
+  box-shadow: var(--theme-shadow-card);
 }
 
 /* A channel or an optional type: text on the left, its control on the right. */

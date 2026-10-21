@@ -3757,7 +3757,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   }
 }
 /* Pages that painted their own ground let the sky through. */
-.app-main[data-slot] > :is(.employees-page, .organization-settings, .schedule-page),
+.app-main[data-slot] > :is(.employees-page, .organization-settings, .schedule-page, .availability-page, .important-dates-page, .announcements-page, .requests-page),
 .app-main[data-slot] > .schedule-page > :is(.schedule-topbar, .schedule-filter-command-strip) {
   background: transparent;
 }
@@ -11376,11 +11376,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   flex: 0 0 auto;
   margin-top: 1px;
 }
+/* Home's card (Daylight): no edge, its lift and corner (workspace-theme-sync). */
 .support-panel {
   overflow: hidden;
-  border: 1px solid #d9dfdc;
-  border-radius: 7px;
+  border-radius: 22px;
   background: var(--theme-surface);
+  box-shadow: var(--theme-shadow-card);
 }
 .support-section {
   display: flex;
