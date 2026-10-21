@@ -477,7 +477,7 @@ describe("EmployeeHubPage", () => {
     });
     renderPage();
     const line = await screen.findByText("Main Dining closed · Thu, Nov 26");
-    expect(line.closest("a")?.getAttribute("href")).toBe(`/app/announcements/${thanksgiving.id}`);
+    expect(line.closest("a")?.getAttribute("href")).toBe(`/app/employee-hub/announcements/${thanksgiving.id}`);
     const notices = screen.getByRole("heading", { name: "From your team" }).closest("section")!;
     expect(notices.textContent).toContain("New coffee");
     expect(notices.textContent).not.toContain("Thanksgiving");

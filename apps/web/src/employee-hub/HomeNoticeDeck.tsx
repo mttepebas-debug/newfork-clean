@@ -17,7 +17,8 @@ export type DeckNotice = {
  * Team notices as a small deck: fling the top card sideways for the next one
  * (navigation only, nothing is changed), or use the arrows; a tap opens it.
  */
-export function HomeNoticeDeck({ notices }: { notices: DeckNotice[] }) {
+// A notice opens in the interface the deck sits in (EMPLOYEE-ANNOUNCEMENTS).
+export function HomeNoticeDeck({ notices, base }: { notices: DeckNotice[]; base: string }) {
   const [order, setOrder] = useState(() => notices.map((_, i) => i));
   const [drag, setDrag] = useState<{ dx: number; flying: number } | null>(null);
   const gesture = useRef<{ id: number; x: number; y: number; t: number; moved: boolean; axis: "x" | null } | null>(null);
@@ -129,7 +130,7 @@ export function HomeNoticeDeck({ notices }: { notices: DeckNotice[] }) {
             >
               <Link
                 className="dl-dk-in"
-                to={`/app/announcements/${item.id}`}
+                to={`${base}/${item.id}`}
                 tabIndex={isTop ? 0 : -1}
                 onClick={(event) => {
                   if (dragged.current) event.preventDefault();

@@ -396,6 +396,7 @@ export function WorkspacePage() {
       >
         {model.announcements.length ? (
           <HomeNoticeDeck
+            base="/app/announcements"
             notices={model.announcements.map((item) => ({
               id: item.id,
               title: item.title,

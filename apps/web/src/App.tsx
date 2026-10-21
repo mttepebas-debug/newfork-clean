@@ -451,6 +451,27 @@ export function App() {
                     </OwnDocumentsRoute>
                   }
                 />
+                {/* Announcements in the employee view: the employee's feed, in her frame (EMPLOYEE-ANNOUNCEMENTS). */}
+                <Route
+                  path="employee-hub/announcements"
+                  element={
+                    <EmployeeInterfaceRoute>
+                      <PermissionRoute anyOf={["announcements.read"]}>
+                        <AnnouncementsPage view="employee" />
+                      </PermissionRoute>
+                    </EmployeeInterfaceRoute>
+                  }
+                />
+                <Route
+                  path="employee-hub/announcements/:announcementId"
+                  element={
+                    <EmployeeInterfaceRoute>
+                      <PermissionRoute anyOf={["announcements.read"]}>
+                        <AnnouncementsPage view="employee" />
+                      </PermissionRoute>
+                    </EmployeeInterfaceRoute>
+                  }
+                />
                 <Route
                   path="employee-hub/*"
                   element={
