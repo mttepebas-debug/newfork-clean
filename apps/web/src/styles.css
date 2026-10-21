@@ -7274,6 +7274,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .app-confirm footer .nf-button[aria-busy="true"] {
   gap: 8px;
 }
+/* Schedule's small questions (leave or discard the edit, delete the
+   selection): the quiet style of the Publish and Templates windows. A title,
+   one sentence, and a footer whose filled button is the answer that matters. */
 .schedule-discard-layer {
   position: fixed;
   z-index: 170;
@@ -7286,7 +7289,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   position: fixed;
   inset: 0;
   border: 0;
-  background: rgba(15, 23, 42, 0.42);
+  background: rgb(15 23 42 / 28%);
   cursor: default;
 }
 .schedule-discard-dialog {
@@ -7295,68 +7298,71 @@ button.workspace-switcher-item:hover:not(:disabled) {
   display: grid;
   width: min(420px, calc(100vw - 28px));
   overflow: hidden;
-  border: 1px solid #d8c3a4;
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--theme-surface);
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.2);
+  box-shadow:
+    0 0 0 1px rgb(15 23 42 / 6%),
+    0 16px 40px -12px rgb(15 23 42 / 28%);
+  font-size: 13px;
 }
 .schedule-discard-dialog > header {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 12px;
-  padding: 20px 22px;
-}
-.schedule-discard-dialog > header > span {
-  display: inline-flex;
-  width: 38px;
-  height: 38px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #edcfa1;
-  border-radius: 7px;
-  background: var(--theme-warning-soft);
-  color: #a06412;
+  gap: 4px;
+  padding: 18px 18px 16px;
 }
 .schedule-discard-dialog h2 {
   margin: 0;
   color: var(--theme-text);
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 600;
 }
 .schedule-discard-dialog p {
-  margin: 6px 0 0;
-  color: #60716a;
+  margin: 0;
+  color: var(--theme-muted);
   font-size: 13px;
-  font-weight: 600;
   line-height: 1.45;
 }
 .schedule-discard-dialog > footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  border-top: 1px solid #eadcc8;
-  padding: 14px 18px;
-  background: #fbf7f0;
+  gap: 8px;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding: 12px 18px;
 }
 .schedule-discard-dialog > footer button {
   display: inline-flex;
-  min-height: 34px;
+  min-height: 32px;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  border: 1px solid #c8b695;
-  border-radius: 5px;
-  padding: 0 13px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 6px;
+  padding: 0 12px;
   background: var(--theme-surface);
-  color: #3d3428;
+  color: var(--theme-text);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
+  white-space: nowrap;
 }
 .schedule-discard-dialog > footer button:hover:not(:disabled) {
-  border-color: #9b7d4f;
-  background: #fff8ea;
+  background: var(--theme-surface-muted);
+}
+.schedule-discard-dialog > footer button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+/* Leaving keeps the work by default: "Discard and leave" is the quiet way out,
+   on its own at the start of the row. */
+.schedule-discard-dialog > footer button.leave {
+  margin-right: auto;
+  border-color: transparent;
+  padding: 0 8px;
+  color: var(--theme-danger);
+}
+.schedule-discard-dialog > footer button.leave:hover:not(:disabled) {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
 }
 .schedule-discard-dialog > footer button.danger {
   border-color: var(--theme-danger);
@@ -7364,8 +7370,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: var(--theme-on-accent);
 }
 .schedule-discard-dialog > footer button.danger:hover:not(:disabled) {
-  border-color: #96372d;
-  background: #96372d;
+  border-color: var(--theme-danger-strong);
+  background: var(--theme-danger-strong);
 }
 .schedule-discard-dialog > footer button.save {
   border-color: var(--theme-accent);
@@ -7378,7 +7384,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-discard-dialog > footer button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .schedule-dialog-layer {

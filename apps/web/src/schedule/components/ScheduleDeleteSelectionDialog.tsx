@@ -1,4 +1,3 @@
-import { AlertTriangle, Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 /** "Delete selected shifts?": the strip's Delete asks before removing the selection. */
@@ -57,26 +56,20 @@ export function ScheduleDeleteSelectionDialog({
         aria-describedby="schedule-delete-selection-description"
       >
         <header>
-          <span aria-hidden>
-            <AlertTriangle size={18} />
-          </span>
-          <div>
-            <h2 id="schedule-delete-selection-title">
-              Delete selected shifts?
-            </h2>
-            <p id="schedule-delete-selection-description">
-              {count === 1
-                ? "This removes the selected shift from the edit session."
-                : `This removes ${count} selected shifts from the edit session.`}
-            </p>
-          </div>
+          <h2 id="schedule-delete-selection-title">
+            Delete selected shifts?
+          </h2>
+          <p id="schedule-delete-selection-description">
+            {count === 1
+              ? "This removes the selected shift from the edit session."
+              : `This removes ${count} selected shifts from the edit session.`}
+          </p>
         </header>
         <footer>
-          <button type="button" onClick={onCancel}>
+          <button type="button" onClick={onCancel} autoFocus>
             Keep shifts
           </button>
           <button type="button" className="danger" onClick={onConfirm}>
-            <Trash2 size={15} aria-hidden />
             Delete
           </button>
         </footer>

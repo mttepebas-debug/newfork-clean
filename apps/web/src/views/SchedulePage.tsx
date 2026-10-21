@@ -14,7 +14,6 @@ import type {
 import { Button, useToast } from "@newfork/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   Check,
   ClipboardPaste,
   Eye,
@@ -154,6 +153,7 @@ import {
   type DraftsCacheSnapshot,
 } from "../schedule/lib/draftSaveFlow";
 import { isSameEditSession } from "../schedule/lib/scheduleMutationContext";
+import { useCloseOnEscape } from "../schedule/lib/useCloseOnEscape";
 import { followUpAfterUnpublish } from "../schedule/lib/scheduleUnpublishFollowUp";
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButton";
 import { formatSchedulePasteConflictContext } from "../schedule/lib/scheduleCatalogNames";
@@ -3611,6 +3611,8 @@ function ScheduleEditExitDialog({
 }) {
   const titleId = useId();
   const descriptionId = useId();
+  // Escape is Keep editing; the page's own Escape would close another layer.
+  useCloseOnEscape(open ? (busy && !leaving ? () => {} : onCancel) : null);
   return open ? (
     <div className="schedule-discard-layer" role="presentation">
       <button
@@ -3629,39 +3631,40 @@ function ScheduleEditExitDialog({
         aria-describedby={descriptionId}
       >
         <header>
-          <span aria-hidden>
-            <AlertTriangle size={18} />
-          </span>
-          <div>
-            <h2 id={titleId}>
-              {leaving ? "Save changes before leaving?" : "Discard unsaved changes?"}
-            </h2>
-            <p id={descriptionId}>
-              {leaving
-                ? "You have unsaved schedule changes. Save them as a draft, or discard them and leave."
-                : "This closes the edit session and returns to the live weekly schedule. Unsaved schedule changes will be removed."}
-            </p>
-          </div>
+          <h2 id={titleId}>
+            {leaving ? "Save changes before leaving?" : "Discard unsaved changes?"}
+          </h2>
+          <p id={descriptionId}>
+            {leaving
+              ? "You have unsaved schedule changes. Save them as a draft, or discard them and leave."
+              : "This closes the edit session and returns to the live weekly schedule. Unsaved schedule changes will be removed."}
+          </p>
         </header>
         <footer>
-          <button type="button" onClick={onCancel} disabled={busy && !leaving}>
-            Keep editing
-          </button>
-          <button
-            type="button"
-            className="danger"
-            onClick={onDiscard}
-            disabled={busy}
-          >
-            <X size={15} aria-hidden />
-            {leaving ? "Discard and leave" : busy ? "Discarding..." : "Discard"}
-          </button>
-          {leaving && onSave ? (
-            <button type="button" className="save" onClick={onSave} disabled={busy}>
-              <Save size={15} aria-hidden />
-              Save draft
+          {leaving ? (
+            <button type="button" className="leave" onClick={onDiscard} disabled={busy}>
+              Discard and leave
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy && !leaving}
+            autoFocus
+          >
+            Keep editing
+          </button>
+          {leaving ? (
+            onSave ? (
+              <button type="button" className="save" onClick={onSave} disabled={busy}>
+                Save draft
+              </button>
+            ) : null
+          ) : (
+            <button type="button" className="danger" onClick={onDiscard} disabled={busy}>
+              {busy ? "Discarding..." : "Discard"}
+            </button>
+          )}
         </footer>
       </section>
     </div>
