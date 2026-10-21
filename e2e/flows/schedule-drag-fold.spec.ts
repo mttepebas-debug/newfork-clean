@@ -17,13 +17,16 @@ function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
 }
 
+// Kadikoy's section of the grid: Besiktas has a row for the same people.
+let kadikoyId = "";
 const cell = (page: Page, employeeId: string, date: string) =>
-  page.locator(`.schedule-cell[data-employee-id="${employeeId}"][data-date="${date}"]`);
+  page.locator(`.schedule-cell[data-display-location-id="${kadikoyId}"][data-employee-id="${employeeId}"][data-date="${date}"]`);
 const card = (page: Page, employeeId: string, date: string) =>
   cell(page, employeeId, date).locator('[data-shift-badge]:not([data-ghost="true"])');
 const personRow = (page: Page, name: string) => page.getByRole("rowheader").filter({ hasText: name });
 
 async function pickUp(page: Page, employeeId: string, date: string) {
+  await card(page, employeeId, date).scrollIntoViewIfNeeded();
   const box = (await card(page, employeeId, date).boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -42,6 +45,7 @@ test("a dragged shift folds away only the people with no day for it, warns, land
     select tests.week(${week}) || ' ' || tests.id('${run}:emre') || ' ' || tests.id('${run}:ali') || ' ' || tests.id('${run}:ayse')
       || ' ' || tests.id('${run}:deniz') || ' ' || tests.id('${run}:K') || ' ' || tests.user('${run}:owner') || ' ' || tests.id('${run}');`,
   ).split(" ") as [string, string, string, string, string, string, string, string];
+  kadikoyId = kadikoy;
   const day = (n: number) => sql(`select ('${monday}'::date + ${n})::text;`);
   const [tuesday, wednesday, thursday] = [day(1), day(2), day(3)];
   // Emre's Monday cook shift at Kadikoy. Deniz is off the whole week, Ali on
