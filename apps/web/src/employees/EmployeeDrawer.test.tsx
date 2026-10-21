@@ -2070,6 +2070,77 @@ describe("EmployeeDrawer", () => {
     );
   });
 
+  // KATILIM-ONAY (S-231): somebody who finished onboarding and waits for approval is let in with Approve.
+  const waitingCase: EmployeeOnboardingManager = {
+    case_id: "aa000000-0000-4000-8000-000000000001",
+    employee_id: employeeId,
+    case_status: "submitted",
+    revision: 4,
+    submitted_at: "2026-09-02T19:00:00.000Z",
+    progress_completed: 1,
+    progress_total: 1,
+    ssn_present: false,
+    requirements: [],
+  };
+  it("does not offer Approve to somebody who may not review the onboarding", async () => {
+    renderDrawer("profile", { ...detail, allowed: { ...detail.allowed, onboarding_review: false } }, waitingCase);
+    expect(await screen.findByText("Identity")).toBeTruthy();
+    // The onboarding has loaded (its read answered) before Approve is looked for.
+    await waitFor(() => expect(getEmployeeOnboardingReview).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+  });
+  it("does not offer Approve while something activation asks for is still open", async () => {
+    renderDrawer("profile", detail, { ...waitingCase, case_status: "in_progress" });
+    expect(await screen.findByText("Identity")).toBeTruthy();
+    // The onboarding has loaded (its read answered) before Approve is looked for.
+    await waitFor(() => expect(getEmployeeOnboardingReview).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+  });
+  it("approves somebody who finished onboarding and waits for approval", async () => {
+    renderDrawer("profile", detail, {
+      case_id: "aa000000-0000-4000-8000-000000000001",
+      employee_id: employeeId,
+      case_status: "submitted",
+      revision: 4,
+      submitted_at: "2026-09-02T19:00:00.000Z",
+      progress_completed: 1,
+      progress_total: 1,
+      ssn_present: false,
+      requirements: [
+        {
+          id: "ab000000-0000-4000-8000-000000000001",
+          kind: "profile",
+          title: "Profile and privacy",
+          description: "",
+          status: "completed",
+          required: true,
+          blocks_activation: true,
+          requires_review: false,
+          sort_order: 10,
+          source_id: null,
+          accepted_formats: [],
+          content_text: null,
+          content_digest: null,
+          intent_statement: null,
+          rejection_reason: null,
+        },
+      ],
+    });
+    const approve = await screen.findByRole("button", { name: "Approve" });
+    expect(screen.queryByRole("button", { name: "Activate employee access" })).toBeNull();
+    fireEvent.click(approve);
+    await waitFor(() =>
+      expect(reviewEmployeeOnboarding).toHaveBeenCalledWith(workspaceId, employeeId, {
+        action: "activate",
+        requirementId: null,
+        reason: "",
+        revision: 4,
+      }),
+    );
+  });
+
   // FB-6.6 S1: a legal name typed in onboarding is approved by an owner or an
   // admin, one rank up, never one's own; a manager never. Activation stays
   // with onboarding review.

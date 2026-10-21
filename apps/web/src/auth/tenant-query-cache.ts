@@ -18,6 +18,7 @@ const tenantScopedQueryPrefixes = new Set([
   "notification-preferences",
   "notification-settings",
   "notifications",
+  "onboarding-approval",
   "organization-jobs",
   "organization-locations",
   "own-avatar",
