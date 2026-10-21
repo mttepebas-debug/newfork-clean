@@ -64,7 +64,7 @@ test("the employee's My shifts and Lineup: a swipe moves between the two pages; 
   await swipe(emre, emre.locator(".employee-hub-page"), -160);
   await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule\/lineup/);
   await expect(pages.getByRole("link", { name: "Lineup" })).toHaveAttribute("aria-current", "page");
-  // The day wheel turns the day; the page stays Lineup.
+  // The day wheel turns (it opens no day until one is tapped); the page stays Lineup.
   const wheel = emre.getByRole("group", { name: "Day. Swipe or use the arrow keys." });
   await expect(wheel).toBeVisible();
   await swipe(emre, wheel, 160);

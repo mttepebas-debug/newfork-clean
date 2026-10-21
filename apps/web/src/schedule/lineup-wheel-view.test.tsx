@@ -69,6 +69,36 @@ describe("LineupDayPicker", () => {
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Tuesday, October 13, 2026");
   });
 
+  // Mert 2026-10-21: turning the wheel only looks at other days; a day opens when it is tapped.
+  it("turns without opening the day it stops on, and opens a day only when it is tapped", async () => {
+    const box = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 390 });
+    try {
+      render(<Picker />);
+      const strip = wheel();
+      const before = (strip.firstElementChild as HTMLElement).style.transform;
+      // A finger drags the wheel two days along.
+      fireEvent.pointerDown(strip, { button: 0, clientX: 300, pointerId: 1 });
+      fireEvent.pointerMove(strip, { clientX: 200, pointerId: 1 });
+      fireEvent.pointerMove(strip, { clientX: 180, pointerId: 1 });
+      fireEvent.pointerUp(strip, { clientX: 180, pointerId: 1 });
+      // A touchpad swipe the same.
+      fireEvent.wheel(strip, { deltaX: 120 });
+      await new Promise((done) => setTimeout(done, 400));
+      expect((strip.firstElementChild as HTMLElement).style.transform).not.toBe(before);
+      expect(screen.getByTestId("day").textContent).toBe("2026-10-14");
+      expect(within(strip).getByRole("button", { name: "Wednesday, October 14, 2026" }).getAttribute("aria-pressed")).toBe("true");
+      expect(screen.getByRole("button", { name: "Wed, Oct 14" })).toBeTruthy();
+      // A tap on a day opens it.
+      const friday = within(strip).getByRole("button", { name: "Friday, October 16, 2026" });
+      fireEvent.pointerDown(friday, { button: 0, clientX: 250, pointerId: 2 });
+      fireEvent.pointerUp(friday, { clientX: 250, pointerId: 2 });
+      await waitFor(() => expect(screen.getByTestId("day").textContent).toBe("2026-10-16"));
+    } finally {
+      if (box) Object.defineProperty(HTMLElement.prototype, "clientWidth", box);
+    }
+  });
+
   // Mert 2026-10-17 ("çözünürlüğü düşük gibi"): a stopped strip sits on whole device pixels with a 2D move.
   it("rests the strip on whole device pixels", () => {
     Object.defineProperty(window, "devicePixelRatio", { value: 2, configurable: true });

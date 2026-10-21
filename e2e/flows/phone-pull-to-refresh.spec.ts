@@ -75,7 +75,7 @@ test("phone: a manager's Lineup keeps its day wheel, and Employees refreshes fro
   const mark = page.locator(".app-main > .pull-mark");
   await expect(mark).toHaveCount(1);
   const refreshes = await watchRefreshes(page);
-  // A drag that starts on the day wheel is the wheel's (it may change the day; it never refreshes).
+  // A drag that starts on the day wheel is the wheel's (it turns, opens no day and never refreshes).
   const wheel = await centre(page, ".lineup-wheel");
   await pullFrom(cdp, wheel.x, wheel.y, 220);
   await page.waitForTimeout(400);

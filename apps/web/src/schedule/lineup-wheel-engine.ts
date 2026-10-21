@@ -10,7 +10,8 @@ import {
 
 // The day wheel's motion (E · Çark tarih, Mert 2026-10-17; mockup v-e.js mount()). One float position, the day
 // index at the middle, drawn every frame while it moves: a drag follows the finger, a release spins on and
-// slows to a whole day, a tap or an arrow key turns to that day, a month change holds the wheel 60 ms. The
+// slows to a whole day, a tap or an arrow key turns to that day, a month change holds the wheel 60 ms. A drag or
+// a swipe only looks at other days: the chosen day stays chosen; a tap, a key or seek() chooses (Mert 2026-10-21). The
 // cells are the wheel's buttons in index order (-span … span). React renders them once; this moves them.
 
 export interface WheelEngine {
@@ -27,13 +28,21 @@ interface Options {
   readonly edges: readonly number[];
   /** How many days the strip shows at once: 7 on a phone, 15 on the desktop Lineup (F, Mert 2026-10-19). */
   readonly visible?: number;
-  /** The wheel stopped on a day. */
+  /** The wheel stopped on a day it was asked to turn to (a tap, a key, seek()). */
   readonly onStill: (index: number) => void;
-  /** The day at the middle changed while it moves. */
+  /** The day at the middle changed while it turns to a chosen day; on a drag, the chosen day again. */
   readonly onMiddle: (index: number) => void;
 }
 
-type Anim = { from: number; to: number; t0: number; T: number; ease: (t: number) => number; last: number | null };
+type Anim = {
+  from: number;
+  to: number;
+  t0: number;
+  T: number;
+  ease: (t: number) => number;
+  last: number | null;
+  chosen: boolean;
+};
 type Drag = {
   x0: number;
   x: number;
@@ -97,7 +106,7 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
       cell.style.setProperty("--s", (1 + 0.12 * Math.max(0, 1 - distance)).toFixed(3));
       cell.style.opacity = Math.max(0.3, 1 - 0.16 * Math.max(0, distance - 1)).toFixed(2);
     }
-    if (middle !== shown) {
+    if (middle !== shown && anim?.chosen) {
       shown = middle;
       onMiddle(middle);
     }
@@ -121,19 +130,28 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
     cell.tabIndex = 0;
   }
 
-  function still(index: number) {
+  function still(index: number, chosen = true) {
     pos = index;
     anim = null;
     box.classList.add("is-still");
-    mark(index);
+    if (chosen) mark(index);
+    else if (selected !== null) cells[selected + span]?.classList.add("is-selected");
     show(index);
-    onStill(index);
+    if (chosen) onStill(index);
   }
 
   function moving() {
     box.classList.remove("is-still");
     const cell = selected === null ? null : cells[selected + span];
     cell?.classList.remove("is-selected");
+  }
+
+  /** A drag or a swipe begins: what was turning to a day stops, and the date says the chosen day again. */
+  function browsing() {
+    anim = null;
+    moving();
+    shown = null;
+    if (selected !== null) onMiddle(selected);
   }
 
   function loop(now: number) {
@@ -161,7 +179,7 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
       pos = p;
       show(pos);
       if (t >= 1) {
-        still(Math.round(pos));
+        still(Math.round(pos), anim.chosen);
         return;
       }
     } else if (drag && now >= held) {
@@ -188,14 +206,14 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
     if (!raf && frame) raf = frame(loop);
   }
 
-  function animate(to: number, T: number, ease: (t: number) => number) {
+  function animate(to: number, T: number, ease: (t: number) => number, chosen: boolean) {
     to = clamp(to);
     if (reducedMotion() || !frame) {
-      still(to);
+      still(to, chosen);
       return;
     }
     moving();
-    anim = { from: pos, to, t0: performance.now(), T, ease, last: null };
+    anim = { from: pos, to, t0: performance.now(), T, ease, last: null, chosen };
     go();
   }
 
@@ -205,16 +223,16 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
       if (index !== selected) still(index);
       return;
     }
-    animate(index, seekDuration(index - pos), easeInOut);
+    animate(index, seekDuration(index - pos), easeInOut, true);
   }
 
   function fling(velocity: number) {
     const { to, duration } = flingTarget(pos, velocity, span);
     if (Math.abs(to - pos) < 0.02) {
-      still(to);
+      still(to, false);
       return;
     }
-    animate(to, duration, easeOut);
+    animate(to, duration, easeOut, false);
   }
 
   const onWheel = (event: WheelEvent) => {
@@ -225,8 +243,7 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
     if (event.deltaMode === 1) dx *= 16;
     else if (event.deltaMode === 2) dx *= box.clientWidth;
     if (!drag?.wheel) {
-      anim = null;
-      moving();
+      browsing();
       drag = { x0: 0, x: 0, pos0: pos, moved: true, caught: false, last: null, samples: [], target: null, wheel: true };
     }
     drag.x = Math.max((drag.pos0 - span) * width, Math.min((drag.pos0 + span) * width, drag.x - dx));
@@ -240,14 +257,13 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
       if (!drag?.wheel) return;
       const to = clamp(Math.round(drag.pos0 - drag.x / width));
       drag = null;
-      animate(to, Math.max(200, 160 * Math.abs(to - pos) + 160), easeOut);
+      animate(to, Math.max(200, 160 * Math.abs(to - pos) + 160), easeOut, false);
     }, WHEEL.wheelIdle);
   };
 
   const onDown = (event: PointerEvent) => {
     if (event.button) return;
-    anim = null;
-    moving();
+    browsing();
     drag = {
       x0: event.clientX,
       x: event.clientX,
@@ -281,7 +297,7 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
     drag = null;
     if (!ended.moved) {
       if (ended.target) seek(Number(ended.target.dataset.i));
-      else still(Math.round(pos));
+      else still(Math.round(pos), false);
       return;
     }
     fling(releaseVelocity(ended.samples, event.timeStamp, width));
