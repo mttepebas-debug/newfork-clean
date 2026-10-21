@@ -70,10 +70,11 @@
 }
 .bl051-roles .rp-panel {
   box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 7px;
+  /* Home's card (Daylight): no edge, its lift and corner (workspace-theme-sync). */
+  border-radius: 22px;
   padding: 0 0 24px;
   background: var(--surface);
+  box-shadow: var(--theme-shadow-card);
 }
 .bl051-roles .rp-editor {
   min-width: 0;

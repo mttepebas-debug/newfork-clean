@@ -188,6 +188,11 @@
     background: transparent;
     box-shadow: none;
   }
+  /* An empty list's note is then the card. */
+  .list-page.list-page :is(.job-catalog, .employee-table-wrap) > :is(.announcement-list-empty, .catalog-table-empty) {
+    border-radius: 18px;
+    box-shadow: var(--theme-shadow-card);
+  }
 }
 /* A row's "⋯" menu opens past the table's edge, so the table frame does not
    clip; its first and last rows round with the frame instead. */
