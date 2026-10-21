@@ -32,9 +32,12 @@ async function pickUp(page: Page, employeeId: string, date: string) {
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 15, box.y + box.height / 2 + 5, { steps: 3 });
   await expect(page.locator(".schedule-shift-drag-preview")).toBeVisible();
+  // The rows fold a frame after the lift; cells are measured after that.
+  await expect(page.locator(".schedule-grid-exact")).toHaveAttribute("data-schedule-drag-hold", "true");
 }
 
 async function over(page: Page, employeeId: string, date: string) {
+  await cell(page, employeeId, date).scrollIntoViewIfNeeded();
   const box = (await cell(page, employeeId, date).boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height - 8, { steps: 4 });
 }

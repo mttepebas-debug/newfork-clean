@@ -317,6 +317,8 @@ describe("useSingleShiftPointerDrag", () => {
     const onContextMenu = vi.fn();
     render(<Harness onDrop={onDrop} onContextMenu={onContextMenu} />);
     const shift = screen.getByRole("button", { name: "Shift" });
+    // jsdom has no layout: the lift looks for the cell under the finger.
+    Object.defineProperty(document, "elementFromPoint", { configurable: true, value: vi.fn(() => shift) });
     touch(shift, "pointerdown", 10, 10);
     await hold();
     // The browser's own long-press menu would land mid-hold: it is not this one.

@@ -71,6 +71,9 @@ test("a dropped preset offers its type's times and the picked one shows on the c
   await zeynep.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await zeynep.mouse.down();
   await zeynep.mouse.move(from.x + from.width / 2 + 16, from.y + from.height / 2 + 16, { steps: 4 });
+  // The rows that cannot take it fold a frame after the lift (atama-surukle B):
+  // measure the target once the grid has settled.
+  await expect(zeynep.locator(".schedule-grid-exact")).toHaveAttribute("data-schedule-drag-hold", "true");
   await target.evaluate((element) => element.scrollIntoView({ block: "end", inline: "end" }));
   const to = (await target.boundingBox())!;
   const drop = { x: to.x + to.width / 2, y: to.y + to.height / 2 };

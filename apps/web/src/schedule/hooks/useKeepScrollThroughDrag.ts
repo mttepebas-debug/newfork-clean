@@ -116,12 +116,18 @@ export function useKeepScrollThroughDrag({
     if (followRef.current !== null) window.cancelAnimationFrame(followRef.current);
     followRef.current = null;
     // Keeps one element at one place on screen while the rows fold or unfold.
+    // A scroll it did not make (the wheel, the drag's own edge scroll) ends it.
     const follow = (anchor: Anchor, done: () => void) => {
       const until = performance.now() + FOLLOW_MS;
       keepAt(grid, scroll, anchor);
+      let kept = { top: scroll.scrollTop, left: scroll.scrollLeft };
       const frame = () => {
-        if (!anchor.element.isConnected) return done();
+        if (!anchor.element.isConnected || scroll.scrollTop !== kept.top || scroll.scrollLeft !== kept.left) {
+          followRef.current = null;
+          return done();
+        }
         keepAt(grid, scroll, anchor);
+        kept = { top: scroll.scrollTop, left: scroll.scrollLeft };
         if (performance.now() < until) followRef.current = window.requestAnimationFrame(frame);
         else {
           followRef.current = null;
