@@ -17,6 +17,13 @@ function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
 }
 
+// The world is shared by every spec in the run: Ali's Wednesday mark below
+// would refuse later specs' Wednesday swaps and covers, so leave his week as
+// schedule-availability-warning does (Tuesday 6pm-10pm unavailable).
+test.afterAll(() => {
+  sql(`select tests.availability('${run}', 'ali', 2, '18:00', '22:00');`);
+});
+
 // Kadikoy's section of the grid: Besiktas has a row for the same people.
 let kadikoyId = "";
 const cell = (page: Page, employeeId: string, date: string) =>

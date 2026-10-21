@@ -63,7 +63,9 @@ const api = async (token: string, path: string) => {
 
 test("an open shift offered on publishing reaches who may take it, and a manager gives it", async ({ browser }) => {
   test.setTimeout(240_000);
-  const week = roundWeek(680);
+  // This file's weeks (690, 730, 740) are its own: a week another spec publishes
+  // turns Publish into Published (field-messages takes 680 + its screen).
+  const week = roundWeek(690);
   const monday = sql(`select tests.week(${week});`);
   const thursday = sql(`select tests.week(${week}) + 3;`);
   const name = draftName("Open shift week");
@@ -131,7 +133,7 @@ test("an open shift offered on publishing reaches who may take it, and a manager
 // is asked about on the next publish too.
 test("a published shift made open is asked about on the next publish and offered", async ({ browser }) => {
   test.setTimeout(240_000);
-  const week = roundWeek(660);
+  const week = roundWeek(730);
   const label = roundLabel("emre-made-open");
   sql(`select tests.publish_week('${run}', ${week}, '[
     {"label": "${label}", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "11:00", "end": "17:00"}
@@ -178,7 +180,7 @@ test("a published shift made open is asked about on the next publish and offered
 });
 
 test("an open shift kept on publishing reaches no employee", async () => {
-  const week = roundWeek(650);
+  const week = roundWeek(740);
   const thursday = sql(`select tests.week(${week}) + 3;`);
   const draft = draftWithOpenShift(week, roundLabel("open-keep"));
   const ayse = await tokenOf("ayse");
