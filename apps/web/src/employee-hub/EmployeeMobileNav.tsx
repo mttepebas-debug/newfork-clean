@@ -2,7 +2,7 @@ import { ArrowLeftRight, CalendarDays, FileText, Home, LayoutDashboard, Megaphon
 import { CurrentUserAvatar } from "../account/AccountAvatar";
 import { PhoneNav, type PhoneNavLink } from "../shell/PhoneNav";
 import { employeeDocumentsPath } from "../documents/own-documents";
-import { employeeAnnouncementsPath } from "../communications/announcement-paths";
+import { employeeAnnouncementsPath } from "../shell/view-address";
 import "./employee-dashboard.css";
 
 const bar: readonly PhoneNavLink[] = [

@@ -7620,14 +7620,18 @@ describe("App", () => {
   });
 
   // BILDIRIM-10: /app/notifications is the list's own page, behind notifications.read_own.
-  it.each(["owner", "employee"] as const)("opens the notification page for a %s who may read their own list", async (role) => {
+  // An employee's own address is the employee view's (NOTICE-VIEW).
+  it.each([
+    ["owner", "/app/notifications"],
+    ["employee", "/app/employee-hub/notifications"],
+  ] as const)("opens the notification page for a %s who may read their own list", async (role, address) => {
     window.history.pushState({}, "", "/app/notifications");
     render(<App />);
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
     await signInAs(role);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Notifications" })).toBeTruthy();
-    expect(window.location.pathname).toBe("/app/notifications");
+    expect(window.location.pathname).toBe(address);
   });
 
   it("takes the notification page's Settings to the person's own notification choices", async () => {

@@ -113,7 +113,7 @@ test("phone: an employee's Lineup keeps its day wheel, and Announcements refresh
   await pullFrom(cdp, top.x, top.y, 260);
   await expect.poll(lineupReads).toBeGreaterThan(0);
 
-  await page.goto("/app/announcements");
+  await page.goto("/app/employee-hub/announcements");
   await expect(page.locator("h1").filter({ visible: true }).first()).toBeVisible();
   const posts = countReads(page, /\/communications\/announcements$/);
   const heading = await centre(page, "h1");

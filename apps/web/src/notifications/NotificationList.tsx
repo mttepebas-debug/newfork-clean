@@ -29,6 +29,7 @@ import {
 import { useMarkNotificationsRead, useNotificationCounts, useNotificationFeed } from "./notifications-data";
 import { TimeOffDecision } from "./TimeOffDecision";
 import "./notifications.css";
+import { useViewAddress } from "../shell/view-address";
 
 const icons: Record<TileIcon, LucideIcon> = {
   clipboard: ClipboardCheck,
@@ -130,6 +131,7 @@ export function NotificationList({
   const feed = useNotificationFeed(workspaceId, filter);
   const read = useMarkNotificationsRead(workspaceId);
   const navigate = useNavigate();
+  const viewAddress = useViewAddress();
   const labelledBy = `${panelId}-tab-${filter}`;
 
   if (feed.isPending)
@@ -166,7 +168,8 @@ export function NotificationList({
     if (!item.read_at) read.mutate({ ids: [item.id] });
     if (item.url) {
       onNavigate?.();
-      void navigate(item.url);
+      // The notice's address opens in the view on screen (NOTICE-VIEW).
+      void navigate(viewAddress(item.url));
     }
   };
 

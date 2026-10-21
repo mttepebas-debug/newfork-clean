@@ -4,7 +4,8 @@ import { useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { useNotificationCounts } from "./notifications-data";
-import { NotificationsPanel, notificationsPath } from "./NotificationViews";
+import { employeeNotificationsPath, managementNotificationsPath } from "../shell/view-address";
+import { NotificationsPanel } from "./NotificationViews";
 import { useNotificationsRealtime } from "./useNotificationsRealtime";
 
 /**
@@ -22,7 +23,7 @@ export function NotificationsNavEntry({ collapsed }: { readonly collapsed: boole
   const trigger = useRef<HTMLButtonElement>(null);
   const { pathname } = useLocation();
   if (!allowed || !workspaceId) return null;
-  const active = open || pathname === notificationsPath;
+  const active = open || pathname === managementNotificationsPath || pathname === employeeNotificationsPath;
   const label = unread ? `Notifications, ${unread} unread` : "Notifications";
   return (
     <div className="sidebar-nav-entry">

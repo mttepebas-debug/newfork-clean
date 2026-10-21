@@ -1,7 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { act } from "react";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "./AppShell";
 
@@ -42,13 +43,18 @@ vi.mock("../auth/AuthContext", () => ({
 
 const sidebar = () => within(screen.getByRole("complementary", { name: "Application sidebar" }));
 
+function Where() {
+  const location = useLocation();
+  return <output data-testid="where">{location.pathname}</output>;
+}
+
 function renderAt(path: string) {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/app/*" element={<AppShell />}>
-            <Route path="*" element={<p>page</p>} />
+            <Route path="*" element={<Where />} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -111,5 +117,21 @@ describe("employee view switch (FB-6.2.8)", () => {
     renderAt("/app/employee-hub/announcements/a9700000-0000-4000-8000-000000000021");
     expect(sidebar().getByRole("link", { name: /Management view/ })).toBeTruthy();
     expect(sidebar().queryByRole("link", { name: /Employees/ })).toBeNull();
+  });
+
+  it("a phone alert tapped while the app is open opens in the view the person is in (NOTICE-VIEW)", () => {
+    const worker = new EventTarget();
+    Object.defineProperty(navigator, "serviceWorker", { value: worker, configurable: true });
+    try {
+      current = { ...owner, permissions: [...owner.permissions, "announcements.read"] };
+      renderAt("/app/employee-hub/schedule");
+      const post = "a9700000-0000-4000-8000-000000000021";
+      act(() => {
+        worker.dispatchEvent(new MessageEvent("message", { data: { type: "newfork:open", url: `/app/announcements/${post}` } }));
+      });
+      expect(screen.getByTestId("where").textContent).toBe(`/app/employee-hub/announcements/${post}`);
+    } finally {
+      Reflect.deleteProperty(navigator, "serviceWorker");
+    }
   });
 });

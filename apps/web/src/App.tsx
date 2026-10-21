@@ -21,6 +21,7 @@ import { SignInPage } from "./views/SignInPage";
 import "./styles.css";
 
 import { NotificationsPage } from "./notifications/NotificationViews";
+import { ViewAddressRoute } from "./shell/view-address";
 const AccountLayout = lazy(() => import("./account/AccountLayout"));
 const AccountRecoveryPage = lazy(() => import("./account/AccountRecoveryPage"));
 const ForgotPasswordPage = lazy(() => import("./views/ForgotPasswordPage"));
@@ -451,25 +452,27 @@ export function App() {
                     </OwnDocumentsRoute>
                   }
                 />
-                {/* Announcements in the employee view: the employee's feed, in her frame (EMPLOYEE-ANNOUNCEMENTS). */}
+                {/* Pages both views show have an address in each; ViewAddressRoute moves an
+                    address of the other view, or an Important Date the person cannot
+                    read, to the person's own (EMPLOYEE-ANNOUNCEMENTS, NOTICE-VIEW). */}
                 <Route
                   path="employee-hub/announcements"
                   element={
-                    <EmployeeInterfaceRoute>
+                    <ViewAddressRoute>
                       <PermissionRoute anyOf={["announcements.read"]}>
                         <AnnouncementsPage view="employee" />
                       </PermissionRoute>
-                    </EmployeeInterfaceRoute>
+                    </ViewAddressRoute>
                   }
                 />
                 <Route
                   path="employee-hub/announcements/:announcementId"
                   element={
-                    <EmployeeInterfaceRoute>
+                    <ViewAddressRoute>
                       <PermissionRoute anyOf={["announcements.read"]}>
                         <AnnouncementsPage view="employee" />
                       </PermissionRoute>
-                    </EmployeeInterfaceRoute>
+                    </ViewAddressRoute>
                   }
                 />
                 <Route
@@ -483,38 +486,47 @@ export function App() {
                     </EmployeeInterfaceRoute>
                   }
                 />
-                <Route path="notifications" element={<ActionRoute action="notifications.read_own"><NotificationsPage /></ActionRoute>} />
+                <Route path="notifications" element={<ViewAddressRoute><ActionRoute action="notifications.read_own"><NotificationsPage /></ActionRoute></ViewAddressRoute>} />
+                <Route path="employee-hub/notifications" element={<ViewAddressRoute><ActionRoute action="notifications.read_own"><NotificationsPage /></ActionRoute></ViewAddressRoute>} />
                 <Route
                   path="announcements"
                   element={
-                    <PermissionRoute anyOf={["announcements.read"]}>
-                      <AnnouncementsPage />
-                    </PermissionRoute>
+                    <ViewAddressRoute>
+                      <PermissionRoute anyOf={["announcements.read"]}>
+                        <AnnouncementsPage />
+                      </PermissionRoute>
+                    </ViewAddressRoute>
                   }
                 />
                 <Route
                   path="announcements/:announcementId"
                   element={
-                    <PermissionRoute anyOf={["announcements.read"]}>
-                      <AnnouncementsPage />
-                    </PermissionRoute>
+                    <ViewAddressRoute>
+                      <PermissionRoute anyOf={["announcements.read"]}>
+                        <AnnouncementsPage />
+                      </PermissionRoute>
+                    </ViewAddressRoute>
                   }
                 />
                 {/* Important Dates is a page under Announcements (EKRAN-08). */}
                 <Route
                   path="announcements/important-dates"
                   element={
-                    <ActionRoute action="settings.important_dates.read">
-                      <ImportantDatesPage />
-                    </ActionRoute>
+                    <ViewAddressRoute>
+                      <ActionRoute action="settings.important_dates.read">
+                        <ImportantDatesPage />
+                      </ActionRoute>
+                    </ViewAddressRoute>
                   }
                 />
                 <Route
                   path="announcements/important-dates/:announcementId"
                   element={
-                    <ActionRoute action="settings.important_dates.read">
-                      <ImportantDatesPage />
-                    </ActionRoute>
+                    <ViewAddressRoute>
+                      <ActionRoute action="settings.important_dates.read">
+                        <ImportantDatesPage />
+                      </ActionRoute>
+                    </ViewAddressRoute>
                   }
                 />
                 <Route

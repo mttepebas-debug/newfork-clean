@@ -8,7 +8,7 @@ import {
   type TimeFormat,
 } from "../communications/announcement-model";
 import { getAnnouncements } from "../communications/communications-data";
-import { employeeAnnouncementsPath } from "../communications/announcement-paths";
+import { employeeAnnouncementsPath } from "../shell/view-address";
 /** One read for both Home cards that show posts. */
 export function useHubAnnouncements(workspaceId: string) {
   const { context } = useAuth();
