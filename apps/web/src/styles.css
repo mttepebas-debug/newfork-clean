@@ -3076,8 +3076,9 @@ select:focus-visible {
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid #d9ddda;
-  background: var(--theme-surface);
+  /* The menu sits on the page area's ground, no edge: the sky fades in beside
+     it and the open page's item is a Home card (workspace-theme-sync). */
+  background: var(--theme-app-ground);
   transition: width 180ms ease;
 }
 .app-shell[data-sidebar-collapsed="true"] .app-sidebar {
@@ -3278,9 +3279,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
     flex-basis: 44px;
   }
 }
-.icon-button:hover,
-.nav-item:hover {
+.icon-button:hover {
   background: var(--theme-surface-muted);
+}
+.nav-item:hover {
+  background: color-mix(in srgb, var(--theme-surface) 70%, transparent);
 }
 .mini-calendar {
   width: 264px;
@@ -3523,7 +3526,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   flex: 0 0 auto;
 }
 .nav-item.active {
-  background: #e9f2ee;
+  background: var(--theme-surface);
+  box-shadow: var(--theme-shadow-card);
   color: var(--theme-accent-strong);
 }
 .nav-item-has-children {
@@ -3716,7 +3720,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .sidebar-footer {
   padding: 8px;
-  border-top: 1px solid #e2e5e3;
+  border-top: 1px solid var(--theme-border-subtle);
 }
 /* The page scrolls inside .app-main. It is the containing block for anything
    placed absolutely in a page (an .sr-only label too); otherwise such a label
@@ -3733,16 +3737,16 @@ button.workspace-switcher-item:hover:not(:disabled) {
    a ground fading into the page. Home draws it behind its greeting; every other
    page gets it at the top of the page area, scrolling with the page and fading
    in beside the menu like Home's (workspace-theme-sync). */
-:is(.dl-home, .app-main)[data-slot="morning"] {
+:is(.dl-home, .app-main, .account-shell)[data-slot="morning"] {
   --dl-sky: radial-gradient(90% 60% at 88% 0%, var(--theme-sky-morning-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-morning) 0%, transparent 100%);
 }
-:is(.dl-home, .app-main)[data-slot="afternoon"] {
+:is(.dl-home, .app-main, .account-shell)[data-slot="afternoon"] {
   --dl-sky: radial-gradient(90% 60% at 80% -6%, var(--theme-sky-afternoon-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-afternoon) 0%, transparent 100%);
 }
-:is(.dl-home, .app-main)[data-slot="evening"] {
+:is(.dl-home, .app-main, .account-shell)[data-slot="evening"] {
   --dl-sky: radial-gradient(80% 55% at 12% 0%, var(--theme-sky-evening-rose) 0%, transparent 70%), radial-gradient(80% 60% at 92% 6%, var(--theme-sky-evening-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-evening) 0%, transparent 100%);
 }
-:is(.dl-home, .app-main)[data-slot="night"] {
+:is(.dl-home, .app-main, .account-shell)[data-slot="night"] {
   --dl-sky: radial-gradient(90% 60% at 84% 0%, var(--theme-sky-night-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-night) 0%, transparent 100%);
 }
 .app-main[data-slot]:not(:has(.dl-home)) {
@@ -5018,6 +5022,19 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-radius: 0;
   background: var(--theme-surface);
 }
+/* On Schedule the grid is a Home card on the sky: no edge, the card's lift and
+   corner, in line with the bars above it (workspace-theme-sync). */
+.schedule-page > .schedule-grid-scroll {
+  border: 0;
+  border-radius: 18px;
+  box-shadow: var(--theme-shadow-card);
+}
+@media (min-width: 721px) {
+  .schedule-page > .schedule-grid-scroll {
+    width: auto;
+    margin: 0 16px 16px;
+  }
+}
 .schedule-grid-scroll::-webkit-scrollbar {
   display: none;
 }
@@ -5028,15 +5045,15 @@ button.workspace-switcher-item:hover:not(:disabled) {
   bottom: 0;
   left: 0;
   height: 17px;
-  border-top: 1px solid #cbd5e1;
-  background: #f1f1f1;
+  border-top: 1px solid var(--theme-border-subtle);
+  background: var(--theme-surface);
 }
 .schedule-horizontal-nav-track {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #f1f1f1;
+  background: transparent;
   cursor: default;
   outline: none;
   touch-action: none;
@@ -5055,25 +5072,24 @@ button.workspace-switcher-item:hover:not(:disabled) {
   left: 0;
   height: 1px;
   transform: translateY(-50%);
-  background: #d7d7d7;
+  background: var(--theme-border-subtle);
 }
 .schedule-horizontal-nav-thumb {
   position: absolute;
-  top: 1px;
-  height: 15px;
-  border: 1px solid #8d8d8d;
-  background: #c1c1c1;
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.55);
+  top: 4px;
+  height: 9px;
+  border-radius: 99px;
+  background: var(--theme-border-strong);
   cursor: default;
   touch-action: none;
   transition: background 0.12s ease;
   user-select: none;
 }
 .schedule-horizontal-nav-thumb:hover {
-  background: #a8a8a8;
+  background: var(--theme-border-hover);
 }
 .schedule-horizontal-nav-thumb:active {
-  background: #8f8f8f;
+  background: var(--theme-muted);
 }
 .schedule-grid-exact {
   position: relative;
@@ -10944,8 +10960,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .settings-rail {
   min-height: 0;
   overflow: hidden;
-  border-right: 1px solid #d9dfdc;
-  background: var(--theme-surface);
+  /* Like the main menu: no edge or ground of its own, the open page's item a
+     Home card (workspace-theme-sync). */
+  background: transparent;
   padding: 18px 10px;
 }
 .settings-rail-title {
@@ -10985,10 +11002,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   text-decoration: none;
 }
 .settings-nav-item:hover {
-  background: var(--theme-surface-muted);
+  background: color-mix(in srgb, var(--theme-surface) 70%, transparent);
 }
 .settings-nav-item.active {
-  background: #e8f1ed;
+  background: var(--theme-surface);
+  box-shadow: var(--theme-shadow-card);
   color: var(--theme-accent-strong);
 }
 /* Settings' pages scroll here. Like .app-main it holds what a page places

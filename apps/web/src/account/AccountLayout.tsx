@@ -12,6 +12,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PageOutline } from "../shell/LoadState";
 import { useFrozenTop } from "../shell/useFrozenTop";
+import { useDaySlot } from "../shell/useDaySlot";
 import { usePhonePageMenu } from "../shell/usePhonePageMenu";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -56,6 +57,7 @@ export default function AccountLayout() {
   }, []);
   // On a phone the whole document scrolls and the Account menu stays above the page too.
   useFrozenTop(content, grid);
+  const daySlot = useDaySlot();
   // On a phone the menu sits under the page heading's line and Back and Sign
   // out make the 56 px top bar (Mert 2026-10-17).
   const menuSlot = usePhonePageMenu(content);
@@ -116,7 +118,7 @@ export default function AccountLayout() {
   );
 
   return (
-    <div className="account-shell">
+    <div className="account-shell" data-slot={daySlot}>
       <div className="account-layout-grid" ref={setGrid}>
         <aside className="account-sidebar" aria-label="Account navigation">
         <div className="account-identity">
