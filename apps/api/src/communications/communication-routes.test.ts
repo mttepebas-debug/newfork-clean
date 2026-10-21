@@ -175,12 +175,15 @@ describe("communication routes", () => {
           widget_order: [
             "operations",
             "pending_requests",
+            "quick_actions",
+            "updates",
             "open_shifts",
             "announcements",
+            "coming_up",
             "todos",
-            "quick_actions",
           ],
           hidden_widget_ids: [],
+          location_order: [],
         },
         serviceMethod: "saveWorkspaceLayout",
       },
@@ -309,12 +312,15 @@ describe("communication routes", () => {
         widget_order: [
           "operations",
           "pending_requests",
+          "quick_actions",
+          "updates",
           "open_shifts",
           "announcements",
+          "coming_up",
           "todos",
-          "quick_actions",
         ],
         hidden_widget_ids: [],
+        location_order: [],
       },
     });
     expect(service.saveWorkspaceLayout).toHaveBeenCalledWith(
@@ -382,7 +388,7 @@ describe("communication routes", () => {
       ["home", "getWorkspace", "GET", `/v1/workspaces/${workspaceId}/workspace`, undefined],
       // The managers' Home, "Locations first" (YONETICI-HOME): the same gate, its own read.
       ["managers' Home", "getManagerHome", "GET", `/v1/workspaces/${workspaceId}/workspace/home`, undefined],
-      ["layout", "saveWorkspaceLayout", "PUT", `/v1/workspaces/${workspaceId}/workspace/layout`, { widget_order: ["operations", "pending_requests", "open_shifts", "announcements", "todos", "quick_actions"], hidden_widget_ids: [] }],
+      ["layout", "saveWorkspaceLayout", "PUT", `/v1/workspaces/${workspaceId}/workspace/layout`, { widget_order: ["operations", "pending_requests", "quick_actions", "updates", "open_shifts", "announcements", "coming_up", "todos"], hidden_widget_ids: [], location_order: [] }],
       ["new to-do", "createWorkspaceTodo", "POST", `/v1/workspaces/${workspaceId}/workspace/todos`, { title: "Follow up", body: "", employee_id: null, due_at: null }],
       ["to-do resolution", "resolveWorkspaceTodo", "POST", `/v1/workspaces/${workspaceId}/workspace/todos/${todoId}/resolve`, undefined],
     ] as const;

@@ -6,13 +6,15 @@ import { signIn, type Person } from "../fixtures/world";
 // S-210; YONETICI-HOME): the menu calls it Home; a card per location; a card or
 // a chip narrows the page to that location; "Needs you" is grouped by location
 // with whoever works without a required document on top (S-206); Customize
-// still hides and moves the sections and saves them for the person.
+// still hides and moves the sections and saves them for the person; it also
+// orders the location cards among themselves, the person's own order (S-220).
 //
 // The day itself (who is on now, the missing document, the time off) is fixed
 // here: the Home read is page.route'd to one known answer, so the page's
 // behaviour does not hang on the clock or on other specs' shifts. The read is
 // tested on the database (manager_home_reads_each_location.test.sql) and the
-// API (communication-service.test.ts); the layout save below is the real one.
+// API (communication-service.test.ts); the layout save below is the real one,
+// and the answer keeps the real read's layout so a saved one comes back.
 
 const PHONE = { width: 390, height: 844 };
 const DESKTOP = { width: 1440, height: 900 };
@@ -37,7 +39,7 @@ const place = (id: string, name: string) => ({
   missing_documents: [] as { employee_id: string; name: string; document: string }[],
 });
 
-function answer(workspaceId: string, both: boolean) {
+function answer(workspaceId: string, both: boolean, layout: unknown) {
   const besiktas = {
     ...place(BESIKTAS, "Besiktas"),
     today_shifts: [
@@ -54,6 +56,9 @@ function answer(workspaceId: string, both: boolean) {
     workspace_id: workspaceId,
     now: new Date().toISOString(),
     locations: both ? [besiktas, kadikoy] : [kadikoy],
+    layout,
+    updates: [],
+    coming_up: [],
     time_off: [
       { id: "e3000000-0000-4000-8000-000000000001", employee_id: "e2000000-0000-4000-8000-000000000002", employee_name: "Emre Demir",
         first_date: date(4), last_date: date(6), location_ids: [KADIKOY] },
@@ -64,9 +69,15 @@ function answer(workspaceId: string, both: boolean) {
 async function open(browser: Browser, person: Person, size: typeof DESKTOP, both: boolean): Promise<Page> {
   const phone = size.width < 700;
   const page = await (await browser.newContext({ viewport: size, hasTouch: phone, isMobile: phone })).newPage();
-  await page.route(/\/v1\/workspaces\/[^/]+\/workspace\/home$/, (route: Route) =>
-    route.fulfill({ json: answer(route.request().url().split("/workspaces/")[1]!.split("/")[0]!, both) }),
-  );
+  await page.route(/\/v1\/workspaces\/[^/]+\/workspace\/home$/, async (route: Route) => {
+    try {
+      const response = await route.fetch();
+      const real = (await response.json()) as { layout: unknown };
+      await route.fulfill({ json: answer(route.request().url().split("/workspaces/")[1]!.split("/")[0]!, both, real.layout) });
+    } catch {
+      // The page closed while a read was on its way: nothing to answer.
+    }
+  });
   // Other specs' swaps would wait on this manager too: this Home's list is the fixed day's alone.
   await page.route(/\/v1\/workspaces\/[^/]+\/shift-exchanges(\?.*)?$/, async (route: Route) => {
     try {
@@ -198,4 +209,74 @@ test("phone: Home leads the bottom bar; one location is one card and no chips (a
   // The page keeps the phone's 16 px edge.
   const left = await page.locator(".mh-loc").evaluate((card) => Math.round(card.getBoundingClientRect().left));
   expect(left).toBe(16);
+});
+
+// S-220 (1): the cards ordered among themselves are the person's own order, kept
+// on the server: the real Home read here (Besiktas and Kadikoy, by name at first).
+test("desktop: Customize orders the location cards, and the order is kept after a reload (zeynep)", async ({ browser }) => {
+  const page = await (await browser.newContext({ viewport: DESKTOP })).newPage();
+  await signIn(page, "zeynep");
+  await expect(page).not.toHaveURL(/\/sign-in/);
+  await page.goto("/app/workspace");
+  const names = () => page.locator(".mh-loc .mh-loc-h b").allTextContents();
+  await expect.poll(names).toEqual(["Besiktas", "Kadikoy"]);
+
+  await page.getByRole("button", { name: "Customize Home" }).click();
+  await expect(page.getByRole("button", { name: "Move Besiktas left" })).toBeDisabled();
+  await page.getByRole("button", { name: "Move Kadikoy left" }).click();
+  expect(await names()).toEqual(["Kadikoy", "Besiktas"]);
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(page.getByRole("button", { name: "Customize Home" })).toBeVisible();
+  expect(await names()).toEqual(["Kadikoy", "Besiktas"]);
+  await page.reload();
+  await expect.poll(names).toEqual(["Kadikoy", "Besiktas"]);
+
+  // Put it back for whoever opens this Home next.
+  await page.getByRole("button", { name: "Customize Home" }).click();
+  await page.getByRole("button", { name: "Move Besiktas left" }).click();
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(page.getByRole("button", { name: "Customize Home" })).toBeVisible();
+  await page.reload();
+  await expect.poll(names).toEqual(["Besiktas", "Kadikoy"]);
+});
+
+// S-220 (3): at 1440 the cards fill their rows and none is left alone on the
+// last one: four are two and two, five are three and two.
+test("desktop: four cards are two rows of two, five are three and two (zeynep)", async ({ browser }) => {
+  const page = await open(browser, "zeynep", DESKTOP, true);
+  const more = (count: number) => async (route: Route) => {
+    try {
+      const response = await route.fetch();
+      const real = (await response.json()) as { layout: unknown };
+      const base = answer(route.request().url().split("/workspaces/")[1]!.split("/")[0]!, true, real.layout);
+      const extra = ["Atasehir", "Uskudar", "Moda"].slice(0, count - 2).map((name, index) =>
+        place(`e1000000-0000-4000-8000-00000000001${index}`, name));
+      await route.fulfill({ json: { ...base, locations: [...base.locations, ...extra] } });
+    } catch {
+      // The page closed while a read was on its way: nothing to answer.
+    }
+  };
+  const rows = () =>
+    page.locator(".mh-loc").evaluateAll((cards) => {
+      const byRow = new Map<number, number[]>();
+      for (const card of cards) {
+        const box = card.getBoundingClientRect();
+        byRow.set(Math.round(box.top), [...(byRow.get(Math.round(box.top)) ?? []), Math.round(box.width)]);
+      }
+      return [...byRow.values()];
+    });
+  for (const [count, shape] of [
+    [4, [2, 2]],
+    [5, [3, 2]],
+  ] as const) {
+    await page.unroute(/\/v1\/workspaces\/[^/]+\/workspace\/home$/);
+    await page.route(/\/v1\/workspaces\/[^/]+\/workspace\/home$/, more(count));
+    await page.reload();
+    await expect(page.locator(".mh-loc")).toHaveCount(count);
+    const widths = await rows();
+    expect(widths.map((row) => row.length)).toEqual(shape);
+    // Each row fills the column: the cards of a row are one width, and a row of two is wider than one of three.
+    for (const row of widths) expect(new Set(row).size).toBe(1);
+    if (count === 5) expect(widths[1]![0]!).toBeGreaterThan(widths[0]![0]!);
+  }
 });

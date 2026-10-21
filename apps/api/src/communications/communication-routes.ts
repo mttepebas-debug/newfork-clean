@@ -3,7 +3,7 @@ import {
   announcementIntentSchema,
   announcementStateActionSchema,
   ownerSetupChecklistItemIdSchema,
-  workspaceLayoutInputSchema,
+  homeLayoutInputSchema,
   workspaceManualTodoInputSchema,
   type ActiveWorkspaceContext,
   type Permission,
@@ -254,7 +254,7 @@ export function registerCommunicationRoutes(
     "/v1/workspaces/:workspaceId/workspace/layout",
     async (request, reply) => {
       const params = workspaceParams.safeParse(request.params);
-      const body = workspaceLayoutInputSchema.safeParse(request.body);
+      const body = homeLayoutInputSchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)

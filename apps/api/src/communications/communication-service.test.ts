@@ -157,11 +157,34 @@ describe("communication service", () => {
     });
   });
 
+  // S-220: Customize saves the eight sections and the person's own order of the location cards.
+  it("saves the Home layout with the location order through the five-argument service", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { status: "saved" }, error: null });
+    const service = createCommunicationServiceWithClient({ rpc });
+    const order = ["operations", "pending_requests", "quick_actions", "updates", "open_shifts", "announcements", "coming_up", "todos"] as const;
+    const locationId = "20409979-fe36-4ee6-8461-1ba62eb4dbac";
+
+    await service.saveWorkspaceLayout({
+      actorUserId: userId,
+      workspaceId,
+      layout: { widget_order: [...order], hidden_widget_ids: ["todos"], location_order: [locationId] },
+    });
+
+    expect(rpc).toHaveBeenCalledWith("save_workspace_layout_service", {
+      actor_user_id: userId,
+      target_workspace_id: workspaceId,
+      target_widget_order: [...order],
+      target_hidden_widget_ids: ["todos"],
+      target_location_order: [locationId],
+    });
+  });
+
   // YONETICI-HOME: the managers' Home reads one service. The answer is a real
-  // one, from a rolled-back run of manager_home_reads_each_location.test.sql (Ayse).
+  // one, from a rolled-back run of manager_home_order_updates_coming_up.test.sql (Ayse):
+  // her layout, Updates and Coming up too (S-220, S-225).
   it("reads the managers' Home from its one service and keeps its shape", async () => {
     const answer = JSON.parse(
-      '{"now": "2026-10-20T04:43:32.075078+00:00", "time_off": [{"id": "7d882f38-2421-4bf0-90b3-fcd0b00913c8", "last_date": "2026-10-30", "first_date": "2026-10-30", "employee_id": "db37ec6e-d3b2-42c4-8045-d8533c17a4d2", "location_ids": ["20409979-fe36-4ee6-8461-1ba62eb4dbac"], "employee_name": "Emre Person"}], "locations": [{"id": "20409979-fe36-4ee6-8461-1ba62eb4dbac", "name": "Kadikoy", "week": [{"date": "2026-10-20", "open": 1, "shifts": 3, "published": true}, {"date": "2026-10-21", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-22", "open": 1, "shifts": 1, "published": true}, {"date": "2026-10-23", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-24", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-25", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-26", "open": 0, "shifts": 0, "published": true}], "today": "2026-10-20", "timezone": "Europe/Istanbul", "open_shifts": [{"date": "2026-10-20", "ends_at": "2026-10-20T14:00:00+00:00", "job_name": "Server", "starts_at": "2026-10-20T06:00:00+00:00"}, {"date": "2026-10-22", "ends_at": "2026-10-22T14:00:00+00:00", "job_name": "Server", "starts_at": "2026-10-22T06:00:00+00:00"}], "today_shifts": [{"open": true, "ends_at": "2026-10-20T14:00:00+00:00", "starts_at": "2026-10-20T06:00:00+00:00"}, {"open": false, "ends_at": "2026-10-20T14:00:00+00:00", "starts_at": "2026-10-20T06:00:00+00:00"}, {"open": false, "ends_at": "2026-10-20T14:00:00+00:00", "starts_at": "2026-10-20T06:00:00+00:00"}], "floor_managers": [{"name": "Ayse Person", "ends_at": "2026-10-20T14:00:00+00:00", "starts_at": "2026-10-20T06:00:00+00:00"}], "missing_documents": [{"name": "Emre Person", "document": "Food handler card", "employee_id": "db37ec6e-d3b2-42c4-8045-d8533c17a4d2"}]}], "workspace_id": "f7f9131e-5ae4-4d2d-9fd0-d4284e5b8eaa"}',
+      '{"now": "2026-10-21T04:45:15.185072+00:00", "layout": {"widget_order": ["updates", "operations", "pending_requests", "quick_actions", "open_shifts", "announcements", "coming_up", "todos"], "hidden_widget_ids": []}, "updates": [{"at": "2026-10-21T04:45:15.185072+00:00", "by": "Bora Person", "id": "05604630-43e8-4250-9247-abc4e0c12315", "kind": "swap", "person": "Emre Person", "approved": false, "last_date": "2026-10-25", "first_date": "2026-10-25", "location_ids": ["c4afe605-602b-418e-9598-b046202a79fe"]}, {"at": "2026-10-21T04:45:15.185072+00:00", "id": "43df3a12-fd42-4aa1-8b06-caa61e04630d", "kind": "joined", "person": "Emre Person", "location_ids": ["c4afe605-602b-418e-9598-b046202a79fe"]}, {"at": "2026-10-21T04:45:15.185072+00:00", "by": "Olcay Owner", "id": "8524a466-f2ca-4061-9f84-87d2fddb4daf", "kind": "published", "shifts": 0, "last_date": "2026-10-27", "first_date": "2026-10-21", "location_ids": ["c4afe605-602b-418e-9598-b046202a79fe"]}, {"at": "2026-10-21T04:45:15.185072+00:00", "by": "Olcay Owner", "id": "a2cd076e-4e00-444c-a6b8-815c323ac702", "kind": "time_off", "person": "Emre Person", "approved": true, "last_date": "2026-10-26", "first_date": "2026-10-24", "location_ids": ["c4afe605-602b-418e-9598-b046202a79fe"]}, {"at": "2026-10-21T04:45:15.185072+00:00", "by": "Ayse Person", "id": "fd3e28e7-86fa-4ee9-8fe3-bd6632b7bb12", "kind": "cover", "person": "Emre Person", "approved": true, "last_date": "2026-10-23", "first_date": "2026-10-23", "location_ids": ["c4afe605-602b-418e-9598-b046202a79fe"]}], "time_off": [], "coming_up": [{"id": "a0717425-0c6b-4bca-99aa-8a57313973dd", "kind": "time_off", "person": "Emre Person", "last_date": "2026-10-26", "first_date": "2026-10-24", "location_ids": ["c4afe605-602b-418e-9598-b046202a79fe"]}, {"id": "c4afe605-602b-418e-9598-b046202a79fe:2026-10-28", "kind": "unpublished", "last_date": "2026-11-03", "first_date": "2026-10-28", "location_ids": ["c4afe605-602b-418e-9598-b046202a79fe"]}, {"id": "0bc6eb01-db89-4494-b1b4-a67ec977b9ca", "kind": "closed", "name": "Republic Day", "last_date": "2026-10-30", "first_date": "2026-10-30", "location_ids": ["c4afe605-602b-418e-9598-b046202a79fe"]}], "locations": [{"id": "c4afe605-602b-418e-9598-b046202a79fe", "name": "Kadikoy", "week": [{"date": "2026-10-21", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-22", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-23", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-24", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-25", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-26", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-27", "open": 0, "shifts": 0, "published": true}], "today": "2026-10-21", "timezone": "Europe/Istanbul", "open_shifts": [], "today_shifts": [], "floor_managers": [], "missing_documents": []}], "workspace_id": "daa7b7d5-f57b-4fd0-bb2d-554cb3942ab3"}',
     );
     const rpc = vi.fn().mockResolvedValue({ data: answer, error: null });
     const service = createCommunicationServiceWithClient({ rpc });

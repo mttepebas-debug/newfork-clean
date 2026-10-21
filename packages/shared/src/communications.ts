@@ -530,10 +530,84 @@ export const managerHomeLocationSchema = z.object({
 });
 export type ManagerHomeLocation = z.infer<typeof managerHomeLocationSchema>;
 
+/**
+ * The managers' Home sections a person arranges in Customize: the six of the
+ * Workspace dashboard and Updates and Coming up (S-225). A key is only where
+ * the choice is stored ("quick_actions" holds "Next 7 days").
+ */
+export const homeSectionIdSchema = z.enum([...workspaceWidgetIdSchema.options, "updates", "coming_up"]);
+export type HomeSectionId = z.infer<typeof homeSectionIdSchema>;
+const homeSectionCount = homeSectionIdSchema.options.length;
+
+/**
+ * What Customize saves: the sections' order and which are hidden, and the
+ * person's own order of the location cards (S-220), apart from the sections.
+ * Only this person sees it.
+ */
+export const homeLayoutInputSchema = z
+  .object({
+    widget_order: z.array(homeSectionIdSchema).length(homeSectionCount),
+    hidden_widget_ids: z.array(homeSectionIdSchema).max(homeSectionCount),
+    location_order: z.array(z.string().uuid()).max(500),
+  })
+  .superRefine((value, issue) => {
+    if (new Set(value.widget_order).size !== homeSectionCount)
+      issue.addIssue({ code: "custom", path: ["widget_order"], message: "Each Home section must appear exactly once" });
+    if (new Set(value.location_order).size !== value.location_order.length)
+      issue.addIssue({ code: "custom", path: ["location_order"], message: "Each location must appear once" });
+  });
+export type HomeLayoutInput = z.infer<typeof homeLayoutInputSchema>;
+
+const homeRangeSchema = {
+  first_date: homeDateSchema,
+  last_date: homeDateSchema,
+};
+
+/**
+ * Updates (S-225): the last seven days, newest first. A published week, a
+ * request somebody decided, a person who joined.
+ */
+export const managerHomeUpdateSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("published"), id: z.string(), at: homeMomentSchema, location_ids: z.array(z.string().uuid()), by: z.string().nullable(), ...homeRangeSchema, shifts: z.coerce.number().int().nonnegative() }),
+  z.object({
+    kind: z.enum(["time_off", "swap", "cover"]),
+    id: z.string(),
+    at: homeMomentSchema,
+    location_ids: z.array(z.string().uuid()),
+    approved: z.boolean(),
+    person: z.string(),
+    by: z.string().nullable(),
+    // Null where a request has no day left on record: the line still reads, without its dates.
+    first_date: homeDateSchema.nullable(),
+    last_date: homeDateSchema.nullable(),
+  }),
+  z.object({ kind: z.literal("joined"), id: z.string(), at: homeMomentSchema, location_ids: z.array(z.string().uuid()), person: z.string() }),
+]);
+export type ManagerHomeUpdate = z.infer<typeof managerHomeUpdateSchema>;
+
+/**
+ * Coming up (S-225): the next fourteen days, soonest first. A closed day,
+ * approved time off, days not published yet past the next seven (those are
+ * in "Needs you").
+ */
+export const managerHomeComingSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("closed"), id: z.string(), location_ids: z.array(z.string().uuid()), name: z.string(), ...homeRangeSchema }),
+  z.object({ kind: z.literal("time_off"), id: z.string(), location_ids: z.array(z.string().uuid()), person: z.string(), ...homeRangeSchema }),
+  z.object({ kind: z.literal("unpublished"), id: z.string(), location_ids: z.array(z.string().uuid()), ...homeRangeSchema }),
+]);
+export type ManagerHomeComing = z.infer<typeof managerHomeComingSchema>;
+
 export const managerHomeSchema = z.object({
   workspace_id: z.string().uuid(),
   now: homeMomentSchema,
+  // In the person's own order (S-220); a location they do not order yet comes last.
   locations: z.array(managerHomeLocationSchema),
+  layout: z.object({
+    widget_order: z.array(homeSectionIdSchema).length(homeSectionCount),
+    hidden_widget_ids: z.array(homeSectionIdSchema).max(homeSectionCount),
+  }),
+  updates: z.array(managerHomeUpdateSchema),
+  coming_up: z.array(managerHomeComingSchema),
   time_off: z.array(
     z.object({
       id: z.string().uuid(),

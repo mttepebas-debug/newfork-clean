@@ -1,30 +1,35 @@
 import { usePhoneWidth } from "../lib/usePhoneWidth";
 import { ZoneNote } from "../shell/ZoneNote";
 import type {
+  HomeLayoutInput,
+  HomeSectionId,
   ManagerHomeLocation,
   OwnerSetupChecklistItemId,
   WorkspaceDashboard,
-  WorkspaceLayoutInput,
   WorkspaceTodo,
-  WorkspaceWidgetId,
 } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowLeftRight,
   ArrowRight,
   ArrowUp,
+  CalendarCheck,
   CalendarDays,
+  CalendarOff,
   CalendarX,
   Check,
   CheckCircle2,
   ChevronRight,
   CircleCheck,
+  CircleX,
   Eye,
   EyeOff,
   MapPin,
   Settings2,
   TriangleAlert,
+  UserPlus,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -58,6 +63,8 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { membershipClass } from "../auth/access";
 import {
   HOME_SECTIONS,
+  cardsInPairs,
+  comingLines,
   groupNeeds,
   homeNeeds,
   homeSubline,
@@ -67,7 +74,10 @@ import {
   managerOnFloor,
   needsAt,
   onNow,
+  moveLocation,
   openToday,
+  updateLines,
+  type HomeLine,
   type ManagerNeed,
 } from "./manager-home-model";
 import { validZone } from "../lib/today";
@@ -97,8 +107,9 @@ export function WorkspacePage() {
   const root = useMemo(() => ({ current: rootElement }), [rootElement]);
   const far = useHomeScroll(root);
   const [customizing, setCustomizing] = useState(false);
-  const [draft, setDraft] = useState<WorkspaceLayoutInput | null>(null);
+  const [draft, setDraft] = useState<HomeLayoutInput | null>(null);
   const [chosen, setChosen] = useState("all");
+  const [headElement, setHeadElement] = useState<HTMLDivElement | null>(null);
   const [now, setNow] = useState(() => new Date());
   const workspaceId = context?.workspace.id ?? "";
   const query = useQuery({
@@ -129,8 +140,9 @@ export function WorkspacePage() {
     refetchInterval: 60_000,
   });
   const saveMutation = useMutation({
-    mutationFn: (layout: WorkspaceLayoutInput) => saveWorkspaceLayout(workspaceId, layout),
+    mutationFn: (layout: HomeLayoutInput) => saveWorkspaceLayout(workspaceId, layout),
     onSuccess: async () => {
+      // The Home read is under the dashboard's key: both are read again.
       await client.invalidateQueries({ queryKey: ["workspace-dashboard", workspaceId] });
       setDraft(null);
       setCustomizing(false);
@@ -177,9 +189,16 @@ export function WorkspacePage() {
     );
   }
   const model = query.data;
-  const layout = draft ?? model.layout;
+  const day = home.data ?? null;
+  // The Home read holds the person's layout (S-220); without it, every section in its first place.
+  const saved: HomeLayoutInput = {
+    widget_order: day?.layout.widget_order ?? (Object.keys(HOME_SECTIONS) as HomeSectionId[]),
+    hidden_widget_ids: day?.layout.hidden_widget_ids ?? [],
+    location_order: (day?.locations ?? []).map((item) => item.id),
+  };
+  const layout = draft ?? saved;
   const hidden = new Set(layout.hidden_widget_ids);
-  const move = (id: WorkspaceWidgetId, offset: number) => {
+  const move = (id: HomeSectionId, offset: number) => {
     const index = layout.widget_order.indexOf(id);
     const target = index + offset;
     if (target < 0 || target >= layout.widget_order.length) return;
@@ -187,14 +206,16 @@ export function WorkspacePage() {
     [order[index], order[target]] = [order[target]!, order[index]!];
     setDraft({ ...layout, widget_order: order });
   };
-  const toggle = (id: WorkspaceWidgetId) =>
+  const moveCard = (id: string, offset: number) => setDraft({ ...layout, location_order: moveLocation(layout.location_order, id, offset) });
+  const toggle = (id: HomeSectionId) =>
     setDraft({
       ...layout,
       hidden_widget_ids: hidden.has(id) ? layout.hidden_widget_ids.filter((item) => item !== id) : [...layout.hidden_widget_ids, id],
     });
 
-  const day = home.data ?? null;
-  const locations = day?.locations ?? [];
+  // The cards in the person's own order; while Customize is open, in the order being made.
+  const rank = new Map(layout.location_order.map((id, index) => [id, index]));
+  const locations = [...(day?.locations ?? [])].sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
   const multi = locations.length > 1;
   // The page narrows to one location while its cards are on the page (a state, not a setting).
   const selected = multi && !hidden.has("operations") && locations.some((item) => item.id === chosen) ? chosen : "all";
@@ -221,11 +242,18 @@ export function WorkspacePage() {
     </button>
   );
   const phoneSlot = typeof document === "undefined" ? null : document.getElementById("mm-top-mid");
+  const startCustomizing = () => {
+    setCustomizing(true);
+    // The button is at the end of the page; Customize starts at its top.
+    headElement?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const allHidden = !customizing && layout.widget_order.every((id) => hidden.has(id));
   const shown = layout.widget_order.filter((id) => !hidden.has(id));
   const setupAfter = shown.includes("pending_requests") ? "pending_requests" : shown[shown.length - 1];
 
-  const parts: Record<WorkspaceWidgetId, () => ReactNode> = {
+  const inView = (ids: readonly string[]) => selected === "all" || ids.includes(selected);
+  const pairs = cardsInPairs(locations.length);
+  const parts: Record<HomeSectionId, () => ReactNode> = {
     operations: () => (
       <HomeSection name="locs" bare>
         {home.isError && !day ? (
@@ -242,14 +270,21 @@ export function WorkspacePage() {
         ) : (
           <>
             <div className={`mh-locs${multi ? "" : " is-one"}`} data-own-drag="">
-              {locations.map((item) => (
+              {locations.map((item, index) => (
                 <LocationCard
                   key={item.id}
                   location={item}
                   now={now}
                   needs={needs}
+                  pair={pairs[index]}
                   pressed={multi ? selected === item.id : undefined}
                   onPick={multi && !customizing ? () => setChosen(selected === item.id ? "all" : item.id) : undefined}
+                  // S-220 (1): in Customize the cards are ordered among themselves.
+                  order={
+                    customizing && multi
+                      ? { first: index === 0, last: index === locations.length - 1, onMove: (offset) => moveCard(item.id, offset) }
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -335,6 +370,20 @@ export function WorkspacePage() {
         </HomeSection>
       );
     },
+    updates: () => (
+      <HomeSection name="updates" title="Updates">
+        <HomeLines lines={updateLines((day?.updates ?? []).filter((item) => inView(item.location_ids)), locations)} empty="Nothing new in the last 7 days." />
+      </HomeSection>
+    ),
+    coming_up: () => (
+      <HomeSection name="coming" title="Coming up">
+        <HomeLines
+          lines={comingLines((day?.coming_up ?? []).filter((item) => inView(item.location_ids)), locations)}
+          empty="Nothing in the next 14 days."
+          dated
+        />
+      </HomeSection>
+    ),
     announcements: () => (
       <HomeSection
         name="notices"
@@ -406,8 +455,8 @@ export function WorkspacePage() {
             </h1>
             {day ? <p className="dl-sub">{homeSubline(people, locations, needs.length)}</p> : null}
           </section>
-          <div className="mh-head">
-            <h2>{hidden.has("operations") && !customizing ? "Your Home" : multi ? "Your locations" : "Your location"}</h2>
+          <div className={`mh-head${customizing ? " is-customizing" : ""}`} ref={setHeadElement}>
+            <h2>{customizing ? "Customize Home" : hidden.has("operations") ? "Your Home" : multi ? "Your locations" : "Your location"}</h2>
             {customizing ? (
               <span className="mh-tools">
                 <button
@@ -424,13 +473,14 @@ export function WorkspacePage() {
                   {saveMutation.isPending ? "Saving..." : "Save layout"}
                 </button>
               </span>
-            ) : (
-              <button className="nf-button secondary-button mh-customize" type="button" onClick={() => setCustomizing(true)}>
-                <Settings2 size={16} aria-hidden /> Customize
-              </button>
-            )}
+            ) : null}
           </div>
-          {customizing ? <p className="mh-note">Move or hide the sections of your Home, then save. Only you see this layout.</p> : null}
+          {customizing ? (
+            <p className="mh-note">
+              {multi ? "Move your locations and the sections of your Home, or hide a section, then save." : "Move or hide the sections of your Home, then save."}{" "}
+              Only you see this layout.
+            </p>
+          ) : null}
           {saveMutation.error ? (
             <p className="workspace-error" role="alert">
               {requestErrorText(saveMutation.error)}
@@ -475,7 +525,7 @@ export function WorkspacePage() {
                   </div>
                   {/* BL-813: a hidden section in Customize is a preview, not a form.
                       One wrapper either way, so Hide / Show keeps what was typed. */}
-                  <div className="mh-cz-prev" inert={off}>
+                  <div className={`mh-cz-prev${id === "operations" && multi && !off ? " is-whole" : ""}`} inert={off}>
                     {parts[id]()}
                   </div>
                 </div>
@@ -488,6 +538,12 @@ export function WorkspacePage() {
             </span>
             <p>That’s everything for now</p>
             <small>Pull down at the top to refresh</small>
+            {/* S-220 (2): small and out of the way, at the end of the page. */}
+            {!customizing && day ? (
+              <button className="mh-customize" type="button" onClick={startCustomizing}>
+                <Settings2 size={14} aria-hidden /> Customize Home
+              </button>
+            ) : null}
           </footer>
         </div>
       </div>
@@ -522,15 +578,21 @@ function LocationCard({
   location,
   now,
   needs,
+  pair,
   pressed,
   onPick,
+  order,
 }: {
   location: ManagerHomeLocation;
   now: Date;
   needs: readonly ManagerNeed[];
+  /** In a row of two (S-220 (3)). */
+  pair?: boolean;
   /** Undefined with one location: there is nothing to narrow to. */
   pressed?: boolean;
   onPick?: () => void;
+  /** Customize: the card moves a place earlier or later among the cards. */
+  order?: { first: boolean; last: boolean; onMove: (offset: number) => void };
 }) {
   const bars = hourBars(location);
   const top = Math.max(1, ...bars.map((bar) => bar.count));
@@ -543,10 +605,21 @@ function LocationCard({
       <span className="mh-loc-h">
         <MapPin size={16} aria-hidden />
         <b>{location.name}</b>
-        <span className={`mh-badge is-${badge.tone}`} aria-label={badge.label}>
-          {badge.tone === "danger" ? <TriangleAlert size={13} aria-hidden /> : badge.tone === "ok" ? <Check size={13} aria-hidden /> : null}
-          {badge.text}
-        </span>
+        {order ? (
+          <span className="mh-loc-move">
+            <button className="icon-button" type="button" aria-label={`Move ${location.name} left`} disabled={order.first} onClick={() => order.onMove(-1)}>
+              <ArrowLeft size={15} aria-hidden />
+            </button>
+            <button className="icon-button" type="button" aria-label={`Move ${location.name} right`} disabled={order.last} onClick={() => order.onMove(1)}>
+              <ArrowRight size={15} aria-hidden />
+            </button>
+          </span>
+        ) : (
+          <span className={`mh-badge is-${badge.tone}`} aria-label={badge.label}>
+            {badge.tone === "danger" ? <TriangleAlert size={13} aria-hidden /> : badge.tone === "ok" ? <Check size={13} aria-hidden /> : null}
+            {badge.text}
+          </span>
+        )}
       </span>
       <span className="mh-loc-n">
         {onNow(location, now)}
@@ -580,17 +653,55 @@ function LocationCard({
       </span>
     </>
   );
-  if (!onPick) return <div className="mh-loc">{body}</div>;
+  const shape = `mh-loc${pair ? " is-pair" : ""}`;
+  if (!onPick) return <div className={shape}>{body}</div>;
   return (
     <button
       type="button"
-      className={`mh-loc${pressed ? " is-sel" : ""}`}
+      className={`${shape}${pressed ? " is-sel" : ""}`}
       aria-pressed={pressed}
       aria-label={`${location.name}: ${onNow(location, now)} on now. ${badge.label}. Show only ${location.name}`}
       onClick={onPick}
     >
       {body}
     </button>
+  );
+}
+
+const LINE_ICONS: Record<HomeLine["icon"], ReactNode> = {
+  published: <CalendarCheck size={18} aria-hidden />,
+  approved: <CircleCheck size={18} aria-hidden />,
+  declined: <CircleX size={18} aria-hidden />,
+  joined: <UserPlus size={18} aria-hidden />,
+  closed: <CalendarX size={18} aria-hidden />,
+  off: <CalendarOff size={18} aria-hidden />,
+  draft: <CalendarDays size={18} aria-hidden />,
+};
+
+/** Updates and Coming up (S-225): a line each, Coming up's on a date tile. */
+function HomeLines({ lines, empty, dated }: { lines: readonly HomeLine[]; empty: string; dated?: boolean }) {
+  if (!lines.length) return <p className="dl-empty">{empty}</p>;
+  return (
+    <ul className="dl-rows">
+      {lines.slice(0, 5).map((line) => (
+        <li key={line.id}>
+          <div className="dl-row">
+            {dated ? (
+              <span className={`mh-tile is-${line.icon}`} aria-hidden>
+                <small>{line.month}</small>
+                <b>{line.day}</b>
+              </span>
+            ) : (
+              <span className={`dl-ri mh-ri-${line.icon}`}>{LINE_ICONS[line.icon]}</span>
+            )}
+            <span className="dl-rt">
+              <b>{line.title}</b>
+              <small>{line.detail}</small>
+            </span>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

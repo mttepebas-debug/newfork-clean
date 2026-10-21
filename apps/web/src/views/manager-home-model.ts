@@ -1,26 +1,49 @@
 // The managers' Home, "Locations first" (YONETICI-HOME; KARARLAR S-210): what
 // the page draws, worked out from the one Home read (each location's day) and
 // the Shift Hub cases waiting for a manager. Pure: no React, no clock of its own.
-import type { ExchangeCase, ManagerHome, ManagerHomeLocation, WorkspaceWidgetId } from "@newfork/shared";
+import type { ExchangeCase, HomeSectionId, ManagerHome, ManagerHomeComing, ManagerHomeLocation, ManagerHomeUpdate } from "@newfork/shared";
 
 /** 6 AM to midnight, an hour a bar (the employee's Home draws the same day). */
 export const HOME_HOURS = 18;
 const FIRST_HOUR = 6;
 
 /**
- * The sections a manager arranges in Customize. Their keys are the six the
- * layout save accepts today (save_workspace_layout_service); a key is only
- * where the choice is stored: "quick_actions" holds where "Next 7 days" goes.
- * New keys need that service's body changed (a risky migration, its own job).
+ * The sections a manager arranges in Customize. A key is only where the
+ * choice is stored (save_workspace_layout_service): "quick_actions" holds
+ * where "Next 7 days" goes.
  */
-export const HOME_SECTIONS: Record<WorkspaceWidgetId, string> = {
+export const HOME_SECTIONS: Record<HomeSectionId, string> = {
   operations: "Your locations",
   pending_requests: "Needs you",
   quick_actions: "Next 7 days",
+  updates: "Updates",
   open_shifts: "Open shifts",
   announcements: "From your team",
+  coming_up: "Coming up",
   todos: "Todos",
 };
+
+/**
+ * S-220 (3): the location cards fill their rows, three to a row, and no card
+ * is left alone on the last one: four are two and two, seven are three, two
+ * and two. True for a card in a row of two.
+ */
+export function cardsInPairs(count: number): boolean[] {
+  if (count <= 1) return Array.from({ length: count }, () => false);
+  if (count === 2) return [true, true];
+  const pairs = count % 3 === 1 ? 4 : count % 3 === 2 ? 2 : 0;
+  return Array.from({ length: count }, (_, index) => index >= count - pairs);
+}
+
+/** Customize: one location a place earlier (-1) or later (1) in the person's order. */
+export function moveLocation(order: readonly string[], id: string, offset: number): string[] {
+  const index = order.indexOf(id);
+  const target = index + offset;
+  if (index < 0 || target < 0 || target >= order.length) return [...order];
+  const next = [...order];
+  [next[index], next[target]] = [next[target]!, next[index]!];
+  return next;
+}
 
 /** Minutes from the location's own midnight on `today` to the moment, on its wall clock. */
 export function minutesFromToday(iso: string, zone: string, today: string): number {
@@ -217,4 +240,58 @@ export function homeSubline(people: number, locations: readonly { name: string }
   const where = locations.length === 1 ? `at ${locations[0]!.name}` : `across ${plural(locations.length, "location")}`;
   const floor = `${plural(people, "person", "people")} on the floor ${where}.`;
   return needs ? `${floor} ${plural(needs, "thing")} ${needs === 1 ? "needs" : "need"} you.` : `${floor} Nothing needs you right now.`;
+}
+
+export type HomeLine = {
+  readonly id: string;
+  readonly icon: "published" | "approved" | "declined" | "joined" | "closed" | "off" | "draft";
+  readonly title: string;
+  readonly detail: string;
+  /** Coming up's date tile. */
+  readonly month?: string;
+  readonly day?: string;
+};
+
+const placeNames = (ids: readonly string[], locations: readonly { id: string; name: string }[]) => {
+  const names = locations.filter((location) => ids.includes(location.id)).map((location) => location.name);
+  return names.length && names.length === locations.length && locations.length > 1 ? "All locations" : names.join(", ");
+};
+const joined = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(" · ");
+const requestNoun = { time_off: "time off", swap: "swap", cover: "cover request" } as const;
+
+/** Updates (S-225), one line each; the location shows only where there is more than one. */
+export function updateLines(updates: readonly ManagerHomeUpdate[], locations: readonly { id: string; name: string }[]): HomeLine[] {
+  const multi = locations.length > 1;
+  const where = (ids: readonly string[]) => (multi ? placeNames(ids, locations) : "");
+  return updates.map((item): HomeLine => {
+    if (item.kind === "published")
+      return {
+        id: item.id,
+        icon: "published",
+        title: multi ? `Schedule published · ${placeNames(item.location_ids, locations)}` : "Schedule published",
+        detail: joined(dateRange(item.first_date, item.last_date), plural(item.shifts, "shift"), item.by ? `by ${item.by}` : null),
+      };
+    if (item.kind === "joined")
+      return { id: item.id, icon: "joined", title: `${item.person} joined${multi ? ` ${placeNames(item.location_ids, locations)}` : ""}`, detail: "Accepted the invitation" };
+    return {
+      id: item.id,
+      icon: item.approved ? "approved" : "declined",
+      title: `${item.person}’s ${requestNoun[item.kind]} was ${item.approved ? "approved" : "declined"}`,
+      detail: joined(dateRange(item.first_date, item.last_date), where(item.location_ids), item.by ? `by ${item.by}` : null),
+    };
+  });
+}
+
+/** Coming up (S-225), one line each with the first day on its tile. */
+export function comingLines(coming: readonly ManagerHomeComing[], locations: readonly { id: string; name: string }[]): HomeLine[] {
+  const multi = locations.length > 1;
+  return coming.map((item): HomeLine => {
+    const tile = new Date(`${item.first_date}T12:00:00Z`);
+    const month = tile.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+    const day = String(tile.getUTCDate());
+    const where = placeNames(item.location_ids, locations);
+    if (item.kind === "closed") return { id: item.id, icon: "closed", title: `Closed · ${item.name}`, detail: joined(dateRange(item.first_date, item.last_date), multi ? where : null), month, day };
+    if (item.kind === "time_off") return { id: item.id, icon: "off", title: `${item.person} is off`, detail: joined(dateRange(item.first_date, item.last_date), multi ? where : null), month, day };
+    return { id: item.id, icon: "draft", title: "Not published yet", detail: joined(dateRange(item.first_date, item.last_date), multi ? where : null), month, day };
+  });
 }

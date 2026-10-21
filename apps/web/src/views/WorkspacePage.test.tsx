@@ -97,11 +97,18 @@ const kadikoy = {
   open_shifts: [],
   missing_documents: [],
 };
+const homeLayout: ManagerHome["layout"] = {
+  widget_order: ["operations", "pending_requests", "quick_actions", "updates", "open_shifts", "announcements", "coming_up", "todos"],
+  hidden_widget_ids: [],
+};
 const managerHome = {
   workspace_id: workspaceId,
   now: "2026-10-20T12:00:00Z",
   locations: [kadikoy],
   time_off: [],
+  layout: homeLayout,
+  updates: [],
+  coming_up: [],
 } satisfies ManagerHome;
 const greeting = { name: /^(Good morning|Good afternoon|Good evening|Up late), Meyhouse\.$/ };
 
@@ -275,7 +282,7 @@ describe("WorkspacePage setup checklist", () => {
   // BILDIRIM-06 (KARARLAR S-123, S-96): the old notification system is gone,
   // and with it the Notifications card: six sections, on the page and in
   // Customize, under Home's names (YONETICI-HOME, S-210 (a)).
-  it("has six sections and no Notifications section, also in Customize", async () => {
+  it("has eight sections and no Notifications section, also in Customize", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "Todos" });
     expect(screen.queryByRole("heading", { name: "Notifications" })).toBeNull();
@@ -283,10 +290,12 @@ describe("WorkspacePage setup checklist", () => {
     expect(screen.getAllByRole("button", { name: /^Hide / }).map((button) => button.getAttribute("aria-label"))).toEqual([
       "Hide Your locations",
       "Hide Needs you",
+      "Hide Next 7 days",
+      "Hide Updates",
       "Hide Open shifts",
       "Hide From your team",
+      "Hide Coming up",
       "Hide Todos",
-      "Hide Next 7 days",
     ]);
     expect(screen.queryByRole("button", { name: "Hide Notifications" })).toBeNull();
   });
@@ -294,10 +303,7 @@ describe("WorkspacePage setup checklist", () => {
   // BL-813 (E5-13): a hidden card in Customize is a preview, not a form; six
   // hidden cards leave a line saying so; the eye icons are decoration.
   it("keeps a hidden card's content out of reach and its eye icons decorative", async () => {
-    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
-      ...dashboard,
-      layout: { ...dashboard.layout, hidden_widget_ids: ["todos"] },
-    });
+    vi.mocked(getManagerHome).mockResolvedValue({ ...managerHome, layout: { ...homeLayout, hidden_widget_ids: ["todos"] } });
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: /Customize/ }));
     const todos = screen.getByRole("heading", { name: "Todos" }).closest(".mh-cz")!;
@@ -316,10 +322,7 @@ describe("WorkspacePage setup checklist", () => {
     ).toBe("true");
   });
   it("says every card is hidden instead of an empty page", async () => {
-    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
-      ...dashboard,
-      layout: { ...dashboard.layout, hidden_widget_ids: [...dashboard.layout.widget_order] },
-    });
+    vi.mocked(getManagerHome).mockResolvedValue({ ...managerHome, layout: { ...homeLayout, hidden_widget_ids: [...homeLayout.widget_order] } });
     renderPage();
     expect(
       await screen.findByText("Every card is hidden. Use Customize to show them again."),

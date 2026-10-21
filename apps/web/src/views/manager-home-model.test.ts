@@ -1,6 +1,8 @@
 import type { ExchangeCase, ManagerHome, ManagerHomeLocation } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
 import {
+  cardsInPairs,
+  comingLines,
   groupNeeds,
   homeNeeds,
   homeSubline,
@@ -9,9 +11,11 @@ import {
   locationBadge,
   managerOnFloor,
   minutesFromToday,
+  moveLocation,
   needsAt,
   onNow,
   openToday,
+  updateLines,
 } from "./manager-home-model";
 
 const K = "20409979-fe36-4ee6-8461-1ba62eb4dbac";
@@ -49,6 +53,12 @@ const home: ManagerHome = {
     { id: "8d882f38-2421-4bf0-90b3-fcd0b00913c8", employee_id: "eb37ec6e-d3b2-42c4-8045-d8533c17a4d2", employee_name: "Remy Remote",
       first_date: "2026-11-02", last_date: "2026-11-02", location_ids: [] },
   ],
+  layout: {
+    widget_order: ["operations", "pending_requests", "quick_actions", "updates", "open_shifts", "announcements", "coming_up", "todos"],
+    hidden_widget_ids: [],
+  },
+  updates: [],
+  coming_up: [],
 };
 const swap = {
   id: "c1000000-0000-4000-8000-000000000001",
@@ -132,5 +142,58 @@ describe("the managers' Home model", () => {
       "16 people on the floor across 3 locations. 5 things need you.",
     );
     expect(homeSubline(1, [{ name: "Downtown" }], 0)).toBe("1 person on the floor at Downtown. Nothing needs you right now.");
+  });
+
+  // S-220 (3): no card alone on the last row.
+  it("puts the cards three to a row with no card left alone on the last", () => {
+    const rows = (count: number) => {
+      const pairs = cardsInPairs(count);
+      return [pairs.filter((pair) => !pair).length, pairs.filter(Boolean).length];
+    };
+    expect(cardsInPairs(1)).toEqual([false]);
+    expect(rows(2)).toEqual([0, 2]);
+    expect(rows(3)).toEqual([3, 0]);
+    expect(rows(4)).toEqual([0, 4]);
+    expect(rows(5)).toEqual([3, 2]);
+    expect(rows(7)).toEqual([3, 4]);
+    // The pairs are the last cards.
+    expect(cardsInPairs(5)).toEqual([false, false, false, true, true]);
+  });
+
+  it("moves a location a place among the locations, and not past either end", () => {
+    expect(moveLocation([K, B], B, -1)).toEqual([B, K]);
+    expect(moveLocation([K, B], K, -1)).toEqual([K, B]);
+    expect(moveLocation([K, B], "missing", 1)).toEqual([K, B]);
+  });
+
+  // S-225: Updates and Coming up in a line each; the location only with more than one.
+  it("words Updates and Coming up", () => {
+    const places = [downtown, harbor];
+    expect(
+      updateLines(
+        [
+          { kind: "published", id: "1", at: "2026-10-20T18:00:00Z", location_ids: [B], by: "Ayşe Kaya", first_date: "2026-10-26", last_date: "2026-11-01", shifts: 74 },
+          { kind: "time_off", id: "2", at: "2026-10-19T18:00:00Z", location_ids: [K], approved: false, person: "Maria Gomez", by: null, first_date: "2026-11-02", last_date: "2026-11-02" },
+          { kind: "joined", id: "3", at: "2026-10-19T17:00:00Z", location_ids: [K], person: "Jordan Lee" },
+        ],
+        places,
+      ).map((line) => [line.icon, line.title, line.detail]),
+    ).toEqual([
+      ["published", "Schedule published · Harbor", "Mon, Oct 26 – Sun, Nov 1 · 74 shifts · by Ayşe Kaya"],
+      ["declined", "Maria Gomez’s time off was declined", "Mon, Nov 2 · Downtown"],
+      ["joined", "Jordan Lee joined Downtown", "Accepted the invitation"],
+    ]);
+    expect(
+      comingLines(
+        [
+          { kind: "closed", id: "4", location_ids: [K, B], name: "Thanksgiving", first_date: "2026-11-26", last_date: "2026-11-26" },
+          { kind: "unpublished", id: "5", location_ids: [B], first_date: "2026-10-27", last_date: "2026-11-02" },
+        ],
+        [downtown],
+      ).map((line) => [line.month, line.day, line.title, line.detail]),
+    ).toEqual([
+      ["Nov", "26", "Closed · Thanksgiving", "Thu, Nov 26"],
+      ["Oct", "27", "Not published yet", "Tue, Oct 27 – Mon, Nov 2"],
+    ]);
   });
 });

@@ -23,7 +23,7 @@ import {
   type OwnerSetupChecklistProgress,
   type WorkspaceDashboard,
   type ManagerHome,
-  type WorkspaceLayoutInput,
+  type HomeLayoutInput,
   type WorkspaceManualTodoInput,
   type WorkspaceTodo,
 } from "@newfork/shared";
@@ -76,7 +76,7 @@ export interface CommunicationService {
   /** The managers' Home, "Locations first" (YONETICI-HOME). */
   getManagerHome(input: ActorInput): Promise<ManagerHome>;
   saveWorkspaceLayout(
-    input: ActorInput & { layout: WorkspaceLayoutInput },
+    input: ActorInput & { layout: HomeLayoutInput },
   ): Promise<z.infer<typeof savedResultSchema>>;
   createWorkspaceTodo(
     input: ActorInput & { todo: WorkspaceManualTodoInput },
@@ -201,6 +201,7 @@ export function createCommunicationServiceWithClient(
           ...actorArgs(input),
           target_widget_order: input.layout.widget_order,
           target_hidden_widget_ids: input.layout.hidden_widget_ids,
+          target_location_order: input.layout.location_order,
         }),
       );
     },

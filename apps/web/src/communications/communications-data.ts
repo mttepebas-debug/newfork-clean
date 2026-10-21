@@ -18,7 +18,7 @@ import {
   type AnnouncementStateAction,
   type OwnerSetupChecklistItemId,
   type WorkspaceManualTodoInput,
-  type WorkspaceLayoutInput,
+  type HomeLayoutInput,
 } from "@newfork/shared";
 import {
   getApiAccessToken,
@@ -67,7 +67,7 @@ export async function getManagerHome(workspaceId: string) {
 }
 export async function saveWorkspaceLayout(
   workspaceId: string,
-  layout: WorkspaceLayoutInput,
+  layout: HomeLayoutInput,
 ) {
   return communicationSavedResultSchema.parse(
     await request(workspaceId, "/workspace/layout", {

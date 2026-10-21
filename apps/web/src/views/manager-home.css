@@ -41,7 +41,6 @@
   font-weight: 650;
   letter-spacing: -0.012em;
 }
-.mh-head .mh-customize,
 .mh-head .mh-tools {
   margin-left: auto;
 }
@@ -49,10 +48,36 @@
   display: flex;
   gap: 8px;
 }
+/* While Customize is open its Cancel and Save stay in reach as the page scrolls. */
+.mh-head.is-customizing {
+  position: sticky;
+  z-index: 4;
+  /* Under the Home bar (76 px, employee-dashboard.css). */
+  top: 76px;
+  scroll-margin-top: 76px;
+  margin: 22px calc(-1 * var(--dl-g)) 0;
+  padding: 8px var(--dl-g);
+  background: color-mix(in srgb, var(--theme-page) 90%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+/* S-220 (2): Customize is a small quiet button at the end of the page. */
 .mh-customize {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  height: 32px;
+  margin-top: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--dl-ln2);
+  border-radius: 99px;
+  background: var(--theme-surface);
+  color: var(--dl-tx2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.mh-customize:hover {
+  color: var(--theme-text);
 }
 .mh-note {
   margin-top: 8px;
@@ -72,14 +97,31 @@
   margin-top: 12px;
 }
 
-/* A card per location. */
+/* A card per location, three to a row; rows of two fill the width, and no
+   card is left alone on the last row (S-220 (3); cardsInPairs). */
 .mh-locs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
+}
+.mh-locs > .mh-loc {
+  grid-column: span 2;
+}
+.mh-locs > .mh-loc.is-pair {
+  grid-column: span 3;
 }
 .mh-locs.is-one {
   grid-template-columns: minmax(0, 1fr);
+}
+.mh-locs.is-one > .mh-loc {
+  grid-column: auto;
+}
+/* Customize: a card moves among the cards from its own corner. */
+.mh-loc-move {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  margin: -8px -8px -8px auto;
 }
 .mh-loc {
   position: relative;
@@ -337,11 +379,65 @@ button.mh-loc:hover {
   -webkit-mask-image: linear-gradient(180deg, var(--theme-text) 70%, transparent);
   mask-image: linear-gradient(180deg, var(--theme-text) 70%, transparent);
 }
+/* The location cards are ordered here: all of them show, not a preview's top. */
+.mh-cz-prev.is-whole {
+  max-height: none;
+  overflow: visible;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
 .mh-cz-prev .dl-sec {
   --p: 1 !important;
 }
 .mh-cz-prev .dl-sh {
   display: none;
+}
+
+/* Updates' icons; Coming up's day on a tile. */
+.mh-ri-published,
+.mh-ri-joined {
+  background: var(--dl-info-soft);
+  color: var(--dl-info);
+}
+.mh-ri-approved {
+  background: var(--dl-ok-soft);
+  color: var(--dl-ok);
+}
+.mh-ri-declined {
+  background: var(--dl-off-soft);
+  color: var(--dl-off);
+}
+.mh-tile {
+  display: flex;
+  flex: none;
+  width: 38px;
+  height: 42px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--dl-sf2);
+  line-height: 1;
+}
+.mh-tile small {
+  color: var(--dl-mu);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mh-tile b {
+  margin-top: 3px;
+  color: var(--theme-text);
+  font-size: 16px;
+  font-weight: 720;
+}
+.mh-tile.is-closed {
+  background: var(--dl-off-soft);
+}
+.mh-tile.is-closed small,
+.mh-tile.is-closed b {
+  color: var(--dl-off);
 }
 
 /* Phone: the cards slide sideways under the thumb. */
@@ -372,6 +468,10 @@ button.mh-loc:hover {
   .mh-head .nf-button {
     height: 36px;
     padding: 0 12px;
+  }
+  .mh-head.is-customizing {
+    top: 0;
+    scroll-margin-top: 0;
   }
 }
 
