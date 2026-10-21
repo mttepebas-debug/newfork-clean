@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 572, last: 20261021060000_open_shift_offer.sql
--- fingerprint: sha256:09018304ea7a550d02d6f8950512938f5ce26f1180aeb99624e86d450a194a9d
+-- migrations: 573, last: 20261021120000_join_approval_switch.sql
+-- fingerprint: sha256:1fbad059d120feeb01f95ece671fbe71a8d6d8f86656307f747d327960a7a6e5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -14547,7 +14547,7 @@ CREATE OR REPLACE FUNCTION "public"."employee_onboarding_final_approval_required
     select setting.final_approval_required
     from public.employee_onboarding_settings setting
     where setting.workspace_id = target_workspace_id
-  ), false);
+  ), true);
 $$;
 
 
@@ -16941,6 +16941,21 @@ $$;
 
 
 ALTER FUNCTION "public"."get_notification_workspace_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_onboarding_approval_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'workspace.read');
+  return jsonb_build_object(
+    'final_approval_required', public.employee_onboarding_final_approval_required(target_workspace_id));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_onboarding_approval_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
@@ -28423,6 +28438,73 @@ $_$;
 ALTER FUNCTION "public"."set_employee_document_timezone_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_employee_revision" integer, "reference_timezone" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."set_onboarding_approval_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval_required" boolean) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  waiting uuid;
+  activated integer := 0;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.organization.write');
+  if approval_required is null then
+    raise exception 'Choose whether new people wait for approval' using errcode = '22023';
+  end if;
+
+  -- The row is the lock: two changes of one workspace's setting run one after the other.
+  insert into public.employee_onboarding_settings as setting (workspace_id, final_approval_required, updated_by, updated_at)
+  values (target_workspace_id, approval_required, actor_user_id, now())
+  on conflict (workspace_id) do update
+    set final_approval_required = excluded.final_approval_required,
+        updated_by = excluded.updated_by,
+        updated_at = excluded.updated_at;
+
+  update public.employee_onboarding_cases c
+  set final_approval_required = approval_required, updated_at = now()
+  where c.workspace_id = target_workspace_id
+    and c.status <> 'approved'::public.employee_onboarding_case_status
+    and c.final_approval_required is distinct from approval_required;
+
+  if not approval_required then
+    -- Waiting for approval alone: finished (submitted), not in yet, and nothing activation asks for left
+    -- (the same two checks app_private.activate_employee_onboarding_case makes before it lets anyone in).
+    for waiting in
+      select c.id
+      from public.employee_onboarding_cases c
+      join public.workspace_memberships m on m.id = c.membership_id
+      where c.workspace_id = target_workspace_id
+        and c.status = 'submitted'::public.employee_onboarding_case_status
+        and m.status = 'pending_activation'
+        and not exists (
+          select 1 from public.employee_onboarding_requirements r
+          where r.case_id = c.id and app_private.document_activation_blocked(r))
+        and not exists (
+          select 1 from public.employee_onboarding_requirements r
+          where r.case_id = c.id
+            and (r.kind <> 'document' or (r.publication_paused_at is null and not r.lifecycle_exempt
+                 and r.lifecycle_closed_at is null and r.status <> 'superseded'))
+            and r.required and r.blocks_activation
+            and r.status <> 'completed'::public.employee_onboarding_requirement_status)
+      order by c.id
+      for update of c
+    loop
+      perform app_private.activate_employee_onboarding_case(waiting, actor_user_id, 'employee.auto_activated');
+      activated := activated + 1;
+    end loop;
+  end if;
+
+  insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id, metadata)
+  values (target_workspace_id, actor_user_id, 'onboarding.approval_setting_changed', 'workspace', target_workspace_id::text,
+    jsonb_build_object('final_approval_required', approval_required, 'activated', activated));
+
+  return jsonb_build_object('final_approval_required', approval_required);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_onboarding_approval_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval_required" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."set_owner_setup_checklist_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "should_close" boolean) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -32532,7 +32614,7 @@ ALTER TABLE "public"."employee_offboarding_shift_actions" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."employee_onboarding_settings" (
     "workspace_id" "uuid" NOT NULL,
-    "final_approval_required" boolean DEFAULT false NOT NULL,
+    "final_approval_required" boolean DEFAULT true NOT NULL,
     "updated_by" "uuid",
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
@@ -40010,6 +40092,11 @@ GRANT ALL ON FUNCTION "public"."get_notification_workspace_settings_service"("ac
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_onboarding_approval_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_onboarding_approval_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."get_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
 
@@ -40912,6 +40999,11 @@ GRANT ALL ON FUNCTION "public"."set_employee_document_exemption_service"("actor_
 
 REVOKE ALL ON FUNCTION "public"."set_employee_document_timezone_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_employee_revision" integer, "reference_timezone" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_employee_document_timezone_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_employee_revision" integer, "reference_timezone" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."set_onboarding_approval_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval_required" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."set_onboarding_approval_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval_required" boolean) TO "service_role";
 
 
 
