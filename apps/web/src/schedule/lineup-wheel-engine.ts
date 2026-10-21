@@ -28,6 +28,9 @@ interface Options {
   readonly edges: readonly number[];
   /** How many days the strip shows at once: 7 on a phone, 15 on the desktop Lineup (F, Mert 2026-10-19). */
   readonly visible?: number;
+  /** Where the chosen day stands: the strip's middle, or the screen's (the desktop Lineup, Mert 2026-10-21) as far
+   * as the strip reaches. */
+  readonly middle?: "strip" | "screen";
   /** The wheel stopped on a day it was asked to turn to (a tap, a key, seek()). */
   readonly onStill: (index: number) => void;
   /** The day at the middle changed while it turns to a chosen day; on a drag, the chosen day again. */
@@ -68,8 +71,17 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
   // the chosen day off the middle.
   const stripWidth = () => box.getBoundingClientRect().width || box.clientWidth;
   const dayWidth = () => cells[0]?.getBoundingClientRect().width || stripWidth() / visible;
+  // The chosen day's middle, in pixels from the strip's left edge.
+  const middleAt = () => {
+    const half = stripWidth() / 2;
+    if (options.middle !== "screen") return half;
+    const screen = document.documentElement.clientWidth / 2 - box.getBoundingClientRect().left;
+    const day = dayWidth();
+    return screen > 0 ? Math.max(day / 2, Math.min(2 * half - day / 2, screen)) : half;
+  };
   let strip = stripWidth();
   let width = dayWidth();
+  let centre = middleAt();
   let pos = options.start;
   let raf = 0;
   let anim: Anim | null = null;
@@ -95,9 +107,9 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
   function show(p: number) {
     // On whole device pixels and a 2D move: a stopped strip half a pixel off draws its days soft.
     const ratio = window.devicePixelRatio || 1;
-    // The day's middle on the strip's middle, however many days show (7 on a phone, fewer in the desktop's narrow
-    // wheel).
-    track.style.transform = `translateX(${Math.round((strip / 2 - width / 2 - (p + span) * width) * ratio) / ratio}px)`;
+    // The day's middle on the strip's middle (or the screen's), however many days show (7 on a phone, fewer in the
+    // desktop's narrow wheel).
+    track.style.transform = `translateX(${Math.round((centre - width / 2 - (p + span) * width) * ratio) / ratio}px)`;
     const middle = Math.round(p);
     for (let index = Math.max(-span, middle - 6); index <= Math.min(span, middle + 6); index++) {
       const cell = cells[index + span];
@@ -329,9 +341,11 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
     ? new ResizeObserver(() => {
         const next = dayWidth();
         const nextStrip = stripWidth();
-        if (next && (Math.abs(next - width) > 0.001 || Math.abs(nextStrip - strip) > 0.001)) {
+        const nextCentre = middleAt();
+        if (next && (Math.abs(next - width) > 0.001 || Math.abs(nextStrip - strip) > 0.001 || Math.abs(nextCentre - centre) > 0.001)) {
           width = next;
           strip = nextStrip;
+          centre = nextCentre;
           show(pos);
         }
       })

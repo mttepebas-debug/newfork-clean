@@ -136,6 +136,35 @@ describe("LineupDayPicker", () => {
   });
 });
 
+// Mert 2026-10-21: on the desktop the chosen day sits in the middle of the screen, not of the wheel's own box.
+describe("LineupDayPicker on the screen's middle", () => {
+  it("puts the day under the screen's middle, inside the wheel", () => {
+    const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this === document.documentElement ? 1000 : 600;
+      },
+    });
+    // The wheel from 300 to 900 px on a 1000 px screen: the screen's middle is 200 px into it.
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const box = this.classList.contains("lineup-wheel") ? { left: 300, width: 600 } : { left: 0, width: 600 / 15 };
+      return { ...box, top: 0, right: box.left + box.width, bottom: 46, height: 46, x: box.left, y: 0, toJSON: () => box } as DOMRect;
+    };
+    try {
+      render(<LineupDayPicker date="2026-10-14" today="2026-10-14" onDate={() => undefined} days={15} middle="screen" />);
+      const track = wheel().firstElementChild as HTMLElement;
+      const x = Number(/^translateX\((-?[\d.]+)px\)$/.exec(track.style.transform)?.[1]);
+      const at = [...track.children].findIndex((child) => child.getAttribute("aria-pressed") === "true");
+      expect(x + at * 40 + 20).toBeCloseTo(200, 0);
+    } finally {
+      if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
+      HTMLElement.prototype.getBoundingClientRect = rect;
+    }
+  });
+});
+
 describe("LineupShiftTabs", () => {
   it("draws one tab per shift with its head count, the chosen one pressed", () => {
     const chosen: string[] = [];

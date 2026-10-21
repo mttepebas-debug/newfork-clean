@@ -285,6 +285,7 @@ export function DesktopLineupPage({
           onDate={onDate}
           waiting={waiting}
           days={days}
+          middle="screen"
           wheelRef={wheelBox}
           bar={false}
         />

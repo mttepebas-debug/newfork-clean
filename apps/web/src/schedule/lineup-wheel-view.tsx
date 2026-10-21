@@ -29,6 +29,7 @@ export function LineupDayPicker({
   barRef,
   wheelRef,
   days = 7,
+  middle = "strip",
   waiting = false,
   bar = true,
   children,
@@ -38,6 +39,8 @@ export function LineupDayPicker({
   readonly onDate: (iso: string) => void;
   /** Days the wheel shows at once: 7, on a phone and between the location and the shift tabs on the desktop. */
   readonly days?: number;
+  /** Where the chosen day stands: the wheel's middle, or the screen's (the desktop Lineup, Mert 2026-10-21). */
+  readonly middle?: "strip" | "screen";
   /** The day waits (the desktop's Publish window is publishing): ‹ › and the date say so and do nothing; the wheel
    * is inert. */
   readonly waiting?: boolean;
@@ -89,6 +92,7 @@ export function LineupDayPicker({
       <DayWheel
         boxRef={wheelRef ?? ownBox}
         visible={days}
+        middle={middle}
         waiting={waiting}
         date={date}
         today={today}
@@ -208,6 +212,7 @@ function WheelDate({
 function DayWheel({
   boxRef,
   visible,
+  middle,
   waiting,
   date,
   today,
@@ -217,6 +222,7 @@ function DayWheel({
 }: {
   readonly boxRef: RefObject<HTMLDivElement | null>;
   readonly visible: number;
+  readonly middle: "strip" | "screen";
   readonly waiting: boolean;
   readonly date: string;
   readonly today: string;
@@ -270,6 +276,7 @@ function DayWheel({
       start: wheelIndex(anchor, latest.current.date),
       span,
       visible,
+      middle,
       edges: monthEdges(anchor, span),
       onStill: (index) => {
         const iso = wheelIso(anchor, index);
@@ -285,7 +292,7 @@ function DayWheel({
       if (engine.current === control) engine.current = null;
       seekRef.current = null;
     };
-  }, [anchor, cells, span, visible, boxRef, engine]);
+  }, [anchor, cells, span, visible, middle, boxRef, engine]);
 
   // A date from outside: turn the wheel there (it stops on it, so nothing is committed twice).
   useEffect(() => {
