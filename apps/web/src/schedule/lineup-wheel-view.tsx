@@ -2,6 +2,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 
 import { Skeleton } from "../shell/LoadState";
+import { MiniCalendar } from "./components/MiniCalendar";
+import { useCloseOnEscape } from "./lib/useCloseOnEscape";
 import { mountWheel } from "./lineup-wheel-engine";
 import { WHEEL, monthEdges, wheelCell, wheelDateText, wheelIndex, wheelIso } from "./lineup-wheel";
 import "./lineup-wheel.css";
@@ -28,42 +30,26 @@ export function LineupDayPicker({
   wheelRef,
   days = 7,
   waiting = false,
-  barLast = false,
   children,
 }: {
   readonly date: string;
   readonly today: string;
   readonly onDate: (iso: string) => void;
-  /** Days the wheel shows at once: 7 on a phone, 15 on the desktop Lineup. */
+  /** Days the wheel shows at once: 7, on a phone and between the location and the shift tabs on the desktop. */
   readonly days?: number;
   /** The day waits (the desktop's Publish window is publishing): ‹ › and the date say so and do nothing; the wheel
    * is inert. */
   readonly waiting?: boolean;
   readonly barRef?: RefObject<HTMLDivElement | null>;
   readonly wheelRef?: RefObject<HTMLDivElement | null>;
-  /** The date row after the wheel, not over it (the desktop Lineup: beside the shift tabs, Mert 2026-10-21). */
-  readonly barLast?: boolean;
   /** Beside the date: the location. */
   readonly children?: ReactNode;
 }) {
   const wheel = useRef<WheelControl | null>(null);
   const preview = useRef<((iso: string) => void) | null>(null);
   const ownBox = useRef<HTMLDivElement | null>(null);
-  const dayWheel = (
-    <DayWheel
-      boxRef={wheelRef ?? ownBox}
-      visible={days}
-      waiting={waiting}
-      date={date}
-      today={today}
-      engine={wheel}
-      onCommit={onDate}
-      onMiddle={(iso) => preview.current?.(iso)}
-    />
-  );
   return (
     <>
-      {barLast ? dayWheel : null}
       <div className="lineup-toolbar" ref={barRef}>
         <div className="lineup-date" role="group" aria-label="Day">
           <button
@@ -81,6 +67,7 @@ export function LineupDayPicker({
             preview={preview}
             waiting={waiting}
             onToday={() => !waiting && wheel.current?.seekIso(today)}
+            onPick={(iso) => !waiting && wheel.current?.seekIso(iso)}
           />
           <button
             type="button"
@@ -94,26 +81,43 @@ export function LineupDayPicker({
         </div>
         {children}
       </div>
-      {barLast ? null : dayWheel}
+      <DayWheel
+        boxRef={wheelRef ?? ownBox}
+        visible={days}
+        waiting={waiting}
+        date={date}
+        today={today}
+        engine={wheel}
+        onCommit={onDate}
+        onMiddle={(iso) => preview.current?.(iso)}
+      />
     </>
   );
 }
 
-/** The date button over the wheel: the middle day as it spins, amber away from today; a tap brings today back. */
+/**
+ * The date button over the wheel: the middle day as it spins, amber away from today; a tap brings today back. On
+ * today it opens the app's calendar under it instead, and a day picked there turns the wheel to it (Mert
+ * 2026-10-21); Escape or a click outside closes it.
+ */
 function WheelDate({
   date,
   today,
   preview,
   waiting,
   onToday,
+  onPick,
 }: {
   readonly date: string;
   readonly today: string;
   readonly preview: RefObject<((iso: string) => void) | null>;
   readonly waiting: boolean;
   readonly onToday: () => void;
+  readonly onPick: (iso: string) => void;
 }) {
   const [shown, setShown] = useState(date);
+  const [calendar, setCalendar] = useState(false);
+  const box = useRef<HTMLSpanElement | null>(null);
   useEffect(() => {
     preview.current = setShown;
     return () => {
@@ -121,18 +125,48 @@ function WheelDate({
     };
   }, [preview]);
   useEffect(() => setShown(date), [date]);
+  useCloseOnEscape(calendar ? () => setCalendar(false) : null);
+  useEffect(() => {
+    if (!calendar) return;
+    const away = (event: PointerEvent) => {
+      if (!box.current?.contains(event.target as Node)) setCalendar(false);
+    };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [calendar]);
   const other = shown !== today;
   return (
-    <button
-      type="button"
-      className="lineup-date-label"
-      data-other-day={other ? "true" : undefined}
-      aria-disabled={waiting || undefined}
-      title={other ? "Back to today" : undefined}
-      onClick={onToday}
-    >
-      {wheelDateText(shown, today)}
-    </button>
+    <span className="lineup-date-pick" ref={box}>
+      <button
+        type="button"
+        className="lineup-date-label"
+        data-other-day={other ? "true" : undefined}
+        aria-disabled={waiting || undefined}
+        aria-haspopup={other ? undefined : "dialog"}
+        aria-expanded={other ? undefined : calendar}
+        title={other ? "Back to today" : "Pick a day"}
+        onClick={() => {
+          if (other) onToday();
+          else if (!waiting) setCalendar((open) => !open);
+        }}
+      >
+        {wheelDateText(shown, today)}
+      </button>
+      {calendar ? (
+        <div className="schedule-mini-calendar-panel lineup-date-calendar" role="dialog" aria-label="Pick a day">
+          <MiniCalendar
+            selectedDate={date}
+            weekStartDate={date}
+            weekStartDay="sunday"
+            today={today}
+            onDayPick={(iso) => {
+              setCalendar(false);
+              onPick(iso);
+            }}
+          />
+        </div>
+      ) : null}
+    </span>
   );
 }
 

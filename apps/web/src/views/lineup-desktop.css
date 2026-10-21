@@ -25,46 +25,40 @@
   }
 }
 
-/* The date and location, the 15-day wheel, the shift tabs. */
+/* One line (Mert 2026-10-21): the date and location on the left, a narrow seven-day wheel in the middle, the shift
+   tabs on the right, over one grey line. All three stand on it: the wheel's and the tabs' green marks fall on the
+   line, and the date row sits in the middle of the tabs' 40 px. The location is narrower, a long name ends in "…".
+   Tabs that don't fit scroll sideways from their start (margin, not justify-content, so none is cut off). */
 .lineup-desk-top {
   display: grid;
-  gap: 14px;
+  grid-template-columns: auto minmax(240px, 1fr) minmax(0, auto);
+  align-items: end;
+  column-gap: 24px;
+  margin-bottom: 16px;
   padding-top: 4px;
+  border-bottom: 1px solid var(--theme-border);
 }
 .lineup-desk-top .lineup-toolbar {
   flex-wrap: nowrap;
+  margin-bottom: 3px;
 }
 .lineup-desk-top .lineup-toolbar .lineup-location-select {
-  flex: 0 0 240px;
+  flex: 0 0 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.lineup-desk-top .lineup-wheel,
-.lineup-desk-top .lineup-shift-tabs {
+.lineup-desk-top .lineup-wheel {
   margin: 0;
+  border-bottom: 0;
 }
-/* The 15-day wheel on top; under it one line, the date and location on the left and the shift tabs on the right
-   (Mert 2026-10-21), over one grey line: the tabs' own, and the same under the date. The tabs that don't fit scroll
-   sideways from their start (margin, not justify-content, so none is cut off on the left). */
-.lineup-desk-top {
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 0;
-  padding-bottom: 16px;
-}
-/* The list page's 16 px under its tabs moves under the whole line, so the date's line and the tabs' meet. */
+/* The list page's tabs bring their own line and 16 px under it; here the whole line has them. */
 .lineup-desk-page.list-page .lineup-desk-top > .lineup-shift-tabs.catalog-toolbar {
+  min-width: 0;
   margin: 0;
 }
-.lineup-desk-top > .lineup-wheel {
-  grid-column: 1 / -1;
-}
-.lineup-desk-top > .lineup-toolbar {
-  grid-column: 1;
-  align-self: stretch;
-  padding-right: 24px;
-  border-bottom: 1px solid var(--theme-border);
-}
-.lineup-desk-top > :is(.lineup-shift-tabs, .lineup-phone-outline-tabs) {
-  grid-column: 2;
-  min-width: 0;
+.lineup-desk-page.list-page .lineup-desk-top .catalog-toolbar-status-row {
+  border-bottom: 0;
 }
 .lineup-desk-top .lineup-shift-tabs .catalog-status-tabs {
   margin-left: auto;

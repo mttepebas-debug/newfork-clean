@@ -11,7 +11,9 @@ import { getScheduleReadModel } from "../schedule/schedule-data";
 import type { LineupDayLineup } from "@newfork/shared";
 import { apiRequest } from "../lib/supabase";
 import { aisha, chloe, cook, day, dayRead, dinner, downtown, foh, hannah, host, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
-import { LINEUP_BUSY_MS } from "../schedule/lineup";
+import { LINEUP_BUSY_MS, type LineupShift } from "../schedule/lineup";
+import type { LineupEditing } from "./LineupDesktopEdit";
+import { teamDepartments } from "./LineupDesktopStaff";
 import { LineupPage } from "./LineupPage";
 
 // Lineup, read-only first stage (Mert 2026-10-13): the day's live Schedule
@@ -241,11 +243,12 @@ describe("LineupPage", () => {
     await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(""));
   });
 
-  it("shows fifteen days on the desktop's wheel", async () => {
+  // Mert 2026-10-21: the wheel sits narrow between the location and the shift tabs, a week in view.
+  it("shows seven days on the desktop's wheel", async () => {
     renderPage();
     await screen.findByRole("region", { name: "Downtown, Lunch" });
     const track = document.querySelector<HTMLElement>(".lineup-wheel-track")!;
-    expect(track.style.getPropertyValue("--lineup-wheel-visible")).toBe("15");
+    expect(track.style.getPropertyValue("--lineup-wheel-visible")).toBe("7");
     const wheel = readFileSync("src/schedule/lineup-wheel.css", "utf8");
     expect(wheel).toMatch(/\.lineup-wheel-track \{[^}]*width: calc\(100% \/ var\(--lineup-wheel-visible, 7\) \* var\(--lineup-wheel-days\)\);/);
   });
@@ -284,26 +287,54 @@ describe("LineupPage", () => {
     expect(timeOf("Chloe Davis").querySelector(".lineup-phone-changed")).toBeTruthy();
   });
 
-  // Mert 2026-10-21: the wheel on top, the date and location beside the shift tabs; the ticket's facts on its header's
-  // line; its half-moons open; a wheel turned anywhere on the page scrolls the list.
-  it("puts the date and location beside the shift tabs under the wheel, and Shift · People · Hours on the ticket's header", async () => {
+  // Mert 2026-10-21: the date and location, a narrow wheel and the shift tabs on one line; the ticket's facts on its
+  // header's line; its half-moons open; a wheel turned anywhere on the page scrolls the list.
+  it("puts the date and location, the wheel and the shift tabs on one line, and Shift · People · Hours on the ticket's header", async () => {
     renderPage();
     const ticket = await screen.findByRole("region", { name: "Downtown, Lunch" });
     const top = document.querySelector(".lineup-desk-top")!;
-    expect([...top.children].map((child) => child.classList[0])).toEqual(["lineup-wheel", "lineup-toolbar", "catalog-toolbar"]);
+    expect([...top.children].map((child) => child.classList[0])).toEqual(["lineup-toolbar", "lineup-wheel", "catalog-toolbar"]);
     const head = ticket.querySelector(".lineup-card-head")!;
     const facts = head.querySelector(".lineup-card-facts")!;
     expect([...facts.querySelectorAll("dt")].map((dt) => dt.textContent)).toEqual(["Shift", "People", "Hours"]);
     expect(ticket.querySelectorAll(".lineup-card-facts")).toHaveLength(1);
     expect(head.nextElementSibling?.classList.contains("lineup-card-perf")).toBe(true);
     const desk = readFileSync("src/views/lineup-desktop.css", "utf8");
-    expect(desk).toMatch(/\.lineup-desk-top > \.lineup-wheel \{\s*grid-column: 1 \/ -1;/);
+    expect(desk).toMatch(/\.lineup-desk-top \{[^}]*grid-template-columns: auto minmax\(240px, 1fr\) minmax\(0, auto\);[^}]*align-items: end;[^}]*border-bottom: 1px solid var\(--theme-border\);/);
+    // The location is narrower; a long name ends in "…".
+    expect(desk).toMatch(/\.lineup-location-select \{\s*flex: 0 0 180px;\s*overflow: hidden;\s*text-overflow: ellipsis;/);
     expect(desk).toMatch(/\.lineup-desk-top \.lineup-shift-tabs \.catalog-status-tabs \{\s*margin-left: auto;/);
     expect(desk).toMatch(/"loc loc facts state fold"\s*"date date facts at \.";/);
     // The half-moons: the card no longer hides what passes its edge; each shows its inner half over the frame.
     expect(desk).not.toMatch(/\.lineup-desk-page \.lineup-card \{[^}]*overflow: hidden;/);
     expect(desk).toMatch(/\.lineup-desk-page \.lineup-card-perf::before \{\s*clip-path: inset\(0 0 0 50%\);/);
     expect(desk).toMatch(/\.lineup-desk-page \.lineup-card-perf::after \{\s*clip-path: inset\(0 50% 0 0\);/);
+  });
+
+  // Mert 2026-10-21: on today the date opens the calendar; away from today it still brings today back.
+  it("opens the calendar from the date on today, and a day picked there turns the wheel to it", async () => {
+    renderPage();
+    await screen.findByRole("region", { name: "Downtown, Lunch" });
+    const date = screen.getByRole("button", { name: "Tue, Oct 13" });
+    expect(date.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(date);
+    const calendar = screen.getByRole("dialog", { name: "Pick a day" });
+    expect(date.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Pick a day" })).toBeNull();
+    fireEvent.click(date);
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("dialog", { name: "Pick a day" })).toBeNull();
+    fireEvent.click(date);
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Pick a day" })).getByRole("gridcell", { name: "October 16, 2026" }));
+    expect(calendar.isConnected).toBe(false);
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-16"));
+    // Away from today the date takes you back, with no calendar.
+    const away = screen.getByRole("button", { name: "Fri, Oct 16" });
+    expect(away.getAttribute("aria-expanded")).toBeNull();
+    fireEvent.click(away);
+    expect(screen.queryByRole("dialog", { name: "Pick a day" })).toBeNull();
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(""));
   });
 
   it("scrolls the list from a wheel turned anywhere on the page, but not from the day wheel or sideways", async () => {
@@ -2266,6 +2297,15 @@ describe("LineupPage, calling off, adding and replacing on the desktop", () => {
     const kitchen = await screen.findByRole("region", { name: "Kitchen" });
     expect(within(kitchen).getByText("No one in Kitchen yet.")).toBeTruthy();
     expect(within(kitchen).getByRole("button", { name: "Add Staff to Kitchen" })).toBeTruthy();
+  });
+
+  // Mert 2026-10-21: the departments with people stay on top, the empty ones go under them.
+  it("puts the empty departments under the ones with people", () => {
+    const job = { id: "j", name: "Cook", color: null, rows: [{}] };
+    const shift = { departments: [{ id: "k", name: "Kitchen", jobs: [job] }, { id: null, name: "Other", jobs: [job] }] };
+    const editing = { catalog: { departments: [{ id: "a", name: "Bar" }, { id: "k", name: "Kitchen" }, { id: "m", name: "Management" }] } };
+    const order = teamDepartments(shift as unknown as LineupShift, editing as unknown as LineupEditing).map((item) => item.name);
+    expect(order).toEqual(["Kitchen", "Other", "Bar", "Management"]);
   });
 
   it("replaces a person from her name: the place's hours, then who took it at the foot with Undo", async () => {

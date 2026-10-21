@@ -35,6 +35,18 @@
   padding: 0;
 }
 
+/* The date button and, on today, the calendar it opens under it. */
+.lineup-date-pick {
+  position: relative;
+  display: inline-flex;
+}
+.lineup-date-pick > .lineup-date-label {
+  flex: 1;
+}
+.lineup-date-calendar {
+  max-width: calc(100vw - 32px);
+}
+
 .lineup-date-label {
   min-width: 118px;
   padding: 0 12px;

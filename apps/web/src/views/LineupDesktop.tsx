@@ -36,7 +36,7 @@ import { LineupPersonCircle } from "./LineupPersonCircle";
 import "./lineup-desktop.css";
 
 // The desktop Lineup, F (Mert 2026-10-19 ~2:45 AM, "f harika"; mockup yapim/masaustu/desk.js): the phone's day
-// picker over the page (a 15-day wheel, then the date and location beside the shift tabs), then one location's ticket in the
+// picker over the page (one line: the date and location, a seven-day wheel, the shift tabs), then one location's ticket in the
 // middle between two arrows as tall as it (none with one location), Team · Notes · Read in its foot. Only the list
 // under the ticket scrolls. The team is one list under column headings: person, position, label, in – out, section,
 // each heading centred on its column's content and Section the last column, by the list's right edge (Mert
@@ -219,10 +219,9 @@ export function DesktopLineupPage({
   return (
     <section ref={page} className="lineup-page list-page lineup-desk-page" aria-labelledby="lineup-title">
       {header}
-      {/* The 15-day wheel on top; under it the date and location on the left and the shift tabs on the right, one
-          line (Mert 2026-10-21). */}
+      {/* One line (Mert 2026-10-21): the date and location, a narrow seven-day wheel, the shift tabs. */}
       <div className="lineup-desk-top">
-        <LineupDayPicker date={date} today={today} onDate={onDate} days={15} waiting={waiting} barLast>
+        <LineupDayPicker date={date} today={today} onDate={onDate} waiting={waiting}>
           <LineupLocationSelect
             loading={loading}
             locations={locations}
