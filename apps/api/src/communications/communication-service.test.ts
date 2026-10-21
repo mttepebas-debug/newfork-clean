@@ -48,34 +48,6 @@ describe("communication service", () => {
     expect(saved.recipient_count).toBe(2);
   });
 
-  it("routes owner setup checklist progress through service RPCs", async () => {
-    const rpc = vi.fn().mockResolvedValue({
-      data: {
-        workspace_id: workspaceId,
-        user_id: userId,
-        completed_item_ids: ["schedule"],
-        closed_at: null,
-      },
-      error: null,
-    });
-    const service = createCommunicationServiceWithClient({ rpc });
-
-    await service.markOwnerSetupChecklistItem({
-      actorUserId: userId,
-      workspaceId,
-      itemId: "schedule",
-    });
-
-    expect(rpc).toHaveBeenCalledWith(
-      "mark_owner_setup_checklist_item_service",
-      {
-        actor_user_id: userId,
-        target_workspace_id: workspaceId,
-        target_item_id: "schedule",
-      },
-    );
-  });
-
   it("routes manual Workspace todo creation through the service RPC", async () => {
     const todoId = "a9700000-0000-4000-8000-000000000011";
     const rpc = vi.fn().mockResolvedValue({

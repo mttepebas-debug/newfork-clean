@@ -8,15 +8,12 @@ import {
   communicationSavedResultSchema,
   importantDateListSchema,
   managerHomeSchema,
-  ownerSetupChecklistItemIdSchema,
-  ownerSetupChecklistProgressSchema,
   workspaceDashboardSchema,
   workspaceManualTodoInputSchema,
   workspaceTodoSchema,
   type AnnouncementDraft,
   type AnnouncementIntent,
   type AnnouncementStateAction,
-  type OwnerSetupChecklistItemId,
   type WorkspaceManualTodoInput,
   type HomeLayoutInput,
 } from "@newfork/shared";
@@ -94,35 +91,6 @@ export async function resolveWorkspaceTodo(
   return workspaceTodoSchema.parse(
     await request(workspaceId, `/workspace/todos/${todoId}/resolve`, {
       method: "POST",
-    }),
-  );
-}
-export async function getOwnerSetupChecklistProgress(workspaceId: string) {
-  return ownerSetupChecklistProgressSchema.parse(
-    await request(workspaceId, "/workspace/setup-checklist"),
-  );
-}
-export async function markOwnerSetupChecklistItem(
-  workspaceId: string,
-  itemId: OwnerSetupChecklistItemId,
-) {
-  return ownerSetupChecklistProgressSchema.parse(
-    await request(workspaceId, "/workspace/setup-checklist", {
-      method: "PATCH",
-      body: JSON.stringify({
-        itemId: ownerSetupChecklistItemIdSchema.parse(itemId),
-      }),
-    }),
-  );
-}
-export async function setOwnerSetupChecklistClosed(
-  workspaceId: string,
-  closed: boolean,
-) {
-  return ownerSetupChecklistProgressSchema.parse(
-    await request(workspaceId, "/workspace/setup-checklist", {
-      method: "PATCH",
-      body: JSON.stringify({ closed }),
     }),
   );
 }

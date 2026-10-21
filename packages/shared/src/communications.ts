@@ -429,28 +429,6 @@ export const workspaceLayoutInputSchema = z
   });
 export type WorkspaceLayoutInput = z.infer<typeof workspaceLayoutInputSchema>;
 
-export const ownerSetupChecklistItemIdSchema = z.enum([
-  "app_tour",
-  "scheduling_preferences",
-  "employees",
-  "documents",
-  "schedule",
-  "billing",
-]);
-export type OwnerSetupChecklistItemId = z.infer<
-  typeof ownerSetupChecklistItemIdSchema
->;
-
-export const ownerSetupChecklistProgressSchema = z.object({
-  workspace_id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  completed_item_ids: z.array(ownerSetupChecklistItemIdSchema),
-  closed_at: z.string().datetime({ offset: true }).nullable(),
-});
-export type OwnerSetupChecklistProgress = z.infer<
-  typeof ownerSetupChecklistProgressSchema
->;
-
 export const workspaceTodoSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),

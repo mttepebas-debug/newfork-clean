@@ -85,9 +85,6 @@ function communicationServiceMock(): CommunicationService {
     saveWorkspaceLayout: vi.fn(),
     createWorkspaceTodo: vi.fn(),
     resolveWorkspaceTodo: vi.fn(),
-    getOwnerSetupChecklistProgress: vi.fn(),
-    markOwnerSetupChecklistItem: vi.fn(),
-    setOwnerSetupChecklistClosed: vi.fn(),
   };
 }
 
@@ -102,6 +99,26 @@ describe("communication routes", () => {
       { notification_id: "a8300000-0000-4000-8000-000000000001", action: "read" },
     ],
   ] as const)("no longer serves the retired notification paths: %s %s", async (method, url, payload) => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => activeContext },
+      communicationService: communicationServiceMock(),
+    });
+    const response = await app.inject({
+      method,
+      url,
+      headers: { authorization: "Bearer owner-token" },
+      payload,
+    });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "Not found" });
+  });
+
+  // Mert 2026-10-21: the owner setup checklist is removed; its endpoints are gone.
+  it.each([
+    ["GET", `/v1/workspaces/${workspaceId}/workspace/setup-checklist`, undefined],
+    ["PATCH", `/v1/workspaces/${workspaceId}/workspace/setup-checklist`, { itemId: "schedule" }],
+    ["PATCH", `/v1/workspaces/${workspaceId}/workspace/setup-checklist`, { closed: true }],
+  ] as const)("no longer serves the setup checklist: %s %s %j", async (method, url, payload) => {
     const app = buildApp({
       contextResolver: { resolve: async () => activeContext },
       communicationService: communicationServiceMock(),
@@ -203,23 +220,6 @@ describe("communication routes", () => {
         url: `/v1/workspaces/${workspaceId}/workspace/todos/${todoId}/resolve`,
         serviceMethod: "resolveWorkspaceTodo",
       },
-      {
-        method: "GET",
-        url: `/v1/workspaces/${workspaceId}/workspace/setup-checklist`,
-        serviceMethod: "getOwnerSetupChecklistProgress",
-      },
-      {
-        method: "PATCH",
-        url: `/v1/workspaces/${workspaceId}/workspace/setup-checklist`,
-        payload: { itemId: "schedule" },
-        serviceMethod: "markOwnerSetupChecklistItem",
-      },
-      {
-        method: "PATCH",
-        url: `/v1/workspaces/${workspaceId}/workspace/setup-checklist`,
-        payload: { closed: true },
-        serviceMethod: "setOwnerSetupChecklistClosed",
-      },
     ] as const;
 
     for (const route of routes) {
@@ -265,18 +265,6 @@ describe("communication routes", () => {
       due_at: null,
       action_url: null,
       created_at: "2026-09-06T12:00:00.000Z",
-    });
-    vi.mocked(service.markOwnerSetupChecklistItem).mockResolvedValue({
-      workspace_id: workspaceId,
-      user_id: userId,
-      completed_item_ids: ["schedule"],
-      closed_at: null,
-    });
-    vi.mocked(service.setOwnerSetupChecklistClosed).mockResolvedValue({
-      workspace_id: workspaceId,
-      user_id: userId,
-      completed_item_ids: [],
-      closed_at: "2026-09-06T12:00:00.000Z",
     });
     const app = buildApp({
       contextResolver: { resolve: async () => activeContext },
@@ -342,34 +330,6 @@ describe("communication routes", () => {
       },
     });
     expect(service.createWorkspaceTodo).toHaveBeenCalledWith(
-      expect.objectContaining({ actorUserId: userId, workspaceId }),
-    );
-
-    await app.inject({
-      method: "PATCH",
-      url: `/v1/workspaces/${workspaceId}/workspace/setup-checklist`,
-      headers: { authorization: "Bearer owner-token" },
-      payload: {
-        actorUserId: spoofedActorUserId,
-        workspaceId: otherWorkspaceId,
-        itemId: "schedule",
-      },
-    });
-    expect(service.markOwnerSetupChecklistItem).toHaveBeenCalledWith(
-      expect.objectContaining({ actorUserId: userId, workspaceId }),
-    );
-
-    await app.inject({
-      method: "PATCH",
-      url: `/v1/workspaces/${workspaceId}/workspace/setup-checklist`,
-      headers: { authorization: "Bearer owner-token" },
-      payload: {
-        actorUserId: spoofedActorUserId,
-        workspaceId: otherWorkspaceId,
-        closed: true,
-      },
-    });
-    expect(service.setOwnerSetupChecklistClosed).toHaveBeenCalledWith(
       expect.objectContaining({ actorUserId: userId, workspaceId }),
     );
   });

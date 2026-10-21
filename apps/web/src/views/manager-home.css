@@ -84,10 +84,6 @@
   color: var(--dl-tx2);
   font-size: 13.5px;
 }
-/* The owner's setup list, after "Needs you" with a section's gap. */
-.mh-home .owner-setup-checklist {
-  margin-top: 26px;
-}
 .mh-allhidden {
   margin-top: 16px;
 }
