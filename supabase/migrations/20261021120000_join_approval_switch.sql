@@ -61,8 +61,10 @@ $$;
 
 -- Turned off, the people waiting only for approval are let in at once, through the same activation the
 -- person's own Submit uses (employee.auto_activated), with whoever turned it off as the one who let them in
--- (so the person hears they are in). Somebody whose required document is still in review is not: the
--- document's approval lets them in. Turned on, the cases still open wait for approval too.
+-- (so the person hears they are in). Each one let in gets the onboarding history line a manager's Approve
+-- writes (onboarding.activate, review_employee_onboarding_service), marked as coming from this change.
+-- Somebody whose required document is still in review is not: the document's approval lets them in.
+-- Turned on, the cases still open wait for approval too.
 create function public.set_onboarding_approval_service(actor_user_id uuid, target_workspace_id uuid, approval_required boolean)
 returns jsonb
 language plpgsql
@@ -70,7 +72,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  waiting uuid;
+  waiting record;
   activated integer := 0;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.organization.write');
@@ -96,7 +98,7 @@ begin
     -- Waiting for approval alone: finished (submitted), not in yet, and nothing activation asks for left
     -- (the same two checks app_private.activate_employee_onboarding_case makes before it lets anyone in).
     for waiting in
-      select c.id
+      select c.id, c.employee_id
       from public.employee_onboarding_cases c
       join public.workspace_memberships m on m.id = c.membership_id
       where c.workspace_id = target_workspace_id
@@ -115,7 +117,11 @@ begin
       order by c.id
       for update of c
     loop
-      perform app_private.activate_employee_onboarding_case(waiting, actor_user_id, 'employee.auto_activated');
+      perform app_private.activate_employee_onboarding_case(waiting.id, actor_user_id, 'employee.auto_activated');
+      insert into public.onboarding_events (workspace_id, employee_id, case_id, actor_user_id, action, target_type, target_id, metadata)
+      values (target_workspace_id, waiting.employee_id, waiting.id, actor_user_id,
+        'onboarding.activate', 'onboarding_case', waiting.id::text,
+        jsonb_build_object('source', 'approval_setting_off'));
       activated := activated + 1;
     end loop;
   end if;
