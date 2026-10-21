@@ -481,27 +481,24 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
       }
 
       const current = { ...segmentBuffersRef.current };
-      const nextPeriod = period;
+      let nextPeriod = period;
       let overrides: SegmentDisplayOverrides = {};
 
       if (activeSegment === "hour") {
-        const nextHour = current.hour
-          ? getWrappedWheelValue(
-              getVisibleSegmentNumber(
-                "hour",
-                current.hour,
-                segmentDisplayOverrides.hour,
-                timeFormat,
-              ),
-              1,
-              timeFormat === "12h" ? 12 : 24,
-              delta,
-            )
+        const visibleHour = current.hour
+          ? getVisibleSegmentNumber("hour", current.hour, segmentDisplayOverrides.hour, timeFormat)
+          : null;
+        const nextHour = visibleHour !== null
+          ? getWrappedWheelValue(visibleHour, 1, timeFormat === "12h" ? 12 : 24, delta)
           : delta > 0
             ? 1
             : timeFormat === "12h"
               ? 12
               : 24;
+        // Like a clock face: passing between 11 and 12 crosses noon or midnight.
+        const crossesNoonOrMidnight =
+          (visibleHour === 11 && nextHour === 12) || (visibleHour === 12 && nextHour === 11);
+        if (timeFormat === "12h" && crossesNoonOrMidnight) nextPeriod = period === "AM" ? "PM" : "AM";
         current.hour = mapWheelHourToCanonical(nextHour, timeFormat);
         overrides = getWheelDisplayOverrides("hour", nextHour, timeFormat);
         if (!current.minute) current.minute = "00";

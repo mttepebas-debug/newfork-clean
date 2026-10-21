@@ -252,6 +252,32 @@ describe("TimeInput", () => {
     expect(onChange).toHaveBeenLastCalledWith("01:00");
   });
 
+  it("turns the 12h hour like a clock, crossing noon and midnight between 11 and 12", () => {
+    const onChange = vi.fn();
+
+    render(<TimeInput value="11:00" onChange={onChange} timeFormat="12h" ariaLabel="Shift start" />);
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    act(() => input.focus());
+    input.setSelectionRange(0, 0);
+    fireEvent.click(input);
+
+    fireEvent.wheel(input, { deltaY: -100 });
+    expect(input.value).toBe("12:00 PM");
+    expect(onChange).toHaveBeenLastCalledWith("12:00");
+
+    fireEvent.wheel(input, { deltaY: 100 });
+    expect(input.value).toBe("11:00 AM");
+    expect(onChange).toHaveBeenLastCalledWith("11:00");
+
+    fireEvent.change(input, { target: { value: "11:00 PM" } });
+    input.setSelectionRange(0, 0);
+    fireEvent.click(input);
+    fireEvent.wheel(input, { deltaY: -100 });
+    expect(input.value).toBe("12:00 AM");
+    expect(onChange).toHaveBeenLastCalledWith("00:00");
+  });
+
   it("blocks page wheel scrolling while a segment selection is active", () => {
     const onChange = vi.fn();
 
