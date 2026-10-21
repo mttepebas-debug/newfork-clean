@@ -643,11 +643,15 @@
 }
 
 /* The Sections window: one centred window over the page. */
+/* One row and one column the layer's own size: the window's height is a share of its row, and an auto row grew to
+   the window's whole list (Replace with 26 people), the window in the middle of that, half off the screen (Mert
+   2026-10-21). The phone's sheet stands at the foot of the same row. */
 .lineup-edit-layer {
   position: fixed;
   inset: 0;
   z-index: 90;
   display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
 }
 .lineup-edit-scrim {

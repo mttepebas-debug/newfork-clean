@@ -404,6 +404,16 @@ describe("LineupPage", () => {
     expect(list.scrollTop).toBe(0);
   });
 
+  // Mert 2026-10-21 (his screenshot): Replace opened in the middle, then slid half off the screen once its 26 people
+  // came. The window's height is a share of the layer's one grid row; an auto row grew to the list's full height and
+  // the window sat in the middle of that. The row is the layer's own height, so the window stays where it opened.
+  it("keeps a window over the Lineup on the screen however long its list is", () => {
+    const desk = readFileSync("src/views/lineup-desktop.css", "utf8");
+    expect(desk).toMatch(
+      /\.lineup-edit-layer \{[^}]*display: grid;[^}]*grid-template: minmax\(0, 1fr\) \/ minmax\(0, 1fr\);[^}]*place-items: center;/,
+    );
+  });
+
   // Mert 2026-10-21: the chosen shift reads at a glance, its line and its name, over the list page's own tab line.
   it("marks the chosen shift tab with a 3 px green line and its name in green, no tab moving", () => {
     const wheel = readFileSync("src/schedule/lineup-wheel.css", "utf8");
