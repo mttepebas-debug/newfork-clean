@@ -327,7 +327,7 @@ export function DayTrack({
                 <>
                   <span className="shift-window-avatar shift-window-avatar-small" data-open aria-hidden><UsersRound size={12} /></span>
                   <span className="shift-window-lane-text">
-                    <b>{editor.count > 1 ? `${editor.count} open shifts` : "Open"}</b>
+                    <b>{editor.count > 1 ? `${editor.count} open shifts` : editor.openLabel}</b>
                     <small>anyone qualified</small>
                   </span>
                 </>

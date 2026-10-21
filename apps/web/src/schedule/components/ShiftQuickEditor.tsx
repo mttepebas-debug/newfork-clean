@@ -507,7 +507,7 @@ function FormLayout(props: LayoutProps) {
   const changes = useChanges(editor, model, timeFormat);
   const people = usePeople(model, editor.value, editor.shiftId, editor.showEmployeePicker ? editor.eligibleEmployees : []);
   const employeeOptions: FieldOption[] = [
-    { value: "", label: "Open", hint: "anyone qualified" },
+    { value: "", label: editor.openLabel, hint: "anyone qualified" },
     ...[...people].sort(byAvailability).map((person) => ({
       value: person.employee.id,
       label: person.employee.display_name,

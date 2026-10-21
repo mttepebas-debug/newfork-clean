@@ -1764,3 +1764,119 @@ describe("ShiftQuickEditor styles", () => {
     expect(bodyOf(windowCss, ".shift-window-track")).toContain("overflow: clip");
   });
 });
+
+// 3rd party test #61 (Mert, 2026-10-20): an assigned shift's window offers the
+// same people list as an open shift's, the current person chosen, plus
+// "Make open shift"; the count is for adding open shifts only.
+describe("ShiftQuickEditor reassign", () => {
+  const dora = {
+    ...model.employees[0]!,
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    employee_code: "NF-002",
+    display_name: "Dora Lane",
+  };
+  const shift: ScheduleEditableShift = {
+    id: "77777777-7777-4777-8777-777777777777",
+    location_id: model.locations[0]!.id,
+    employee_id: model.employees[0]!.id,
+    job_id: model.jobs[0]!.id,
+    shift_type_id: model.shift_types[0]!.id,
+    scheduled_date: model.week_start,
+    start_time: "16:00",
+    end_time: "22:00",
+    crosses_midnight: false,
+    unpaid_break_minutes: 0,
+    hide_time_on_badge: false,
+    label_ids: [],
+    label_names: [],
+    note: "",
+    warning_codes: [],
+    revision: 1,
+  };
+  // Dora already works eight hours on Tuesday.
+  const doraTuesday = {
+    ...shift,
+    id: "88888888-8888-4888-8888-888888888888",
+    employee_id: dora.id,
+    scheduled_date: "2026-08-18",
+    start_time: "09:00",
+    end_time: "17:00",
+  };
+  const reassignModel = { ...model, employees: [model.employees[0]!, dora], shifts: [shift, doraTuesday] } as ScheduleReadModel;
+  function renderEdit(editModel: ScheduleReadModel = reassignModel, editShift: ScheduleEditableShift = shift) {
+    const onSubmit = vi.fn().mockResolvedValue("saved" as const);
+    render(
+      <ShiftQuickEditor
+        model={editModel}
+        state={{ mode: "edit", shift: editShift }}
+        timeFormat="12h"
+        formatTime={(value) => value}
+        addDays={(value) => value}
+        scheduleClosureCoversDate={() => false}
+        onClose={vi.fn()}
+        onReload={vi.fn()}
+        onDelete={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+    return onSubmit;
+  }
+  const dialog = () => screen.getByRole("dialog", { name: "Edit shift" });
+
+  it("lists the qualified people with the current one chosen, and no count", () => {
+    renderEdit();
+    const picker = screen.getByRole("combobox", { name: "Employee" });
+    expect(picker.textContent).toContain("Alex Rivera");
+    fireEvent.click(picker);
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      expect.stringContaining("Make open shift"),
+      expect.stringContaining("Alex Rivera"),
+      expect.stringContaining("Dora Lane"),
+    ]);
+    expect(screen.getByRole("option", { name: /Alex Rivera/ }).getAttribute("aria-selected")).toBe("true");
+    expect(within(dialog()).queryByRole("group", { name: /How many/ })).toBeNull();
+    expect(within(dialog()).queryByRole("button", { name: /more open shifts|Increase/i })).toBeNull();
+  });
+
+  it("gives the shift to someone else, the week line and header following the new person", async () => {
+    const onSubmit = renderEdit();
+    expect(dialog().textContent).toContain("Week 0h → 6h");
+    fireEvent.click(screen.getByRole("combobox", { name: "Employee" }));
+    fireEvent.click(screen.getByRole("option", { name: /Dora Lane/ }));
+    expect(dialog().textContent).toContain("Week 8h → 14h");
+    expect(dialog().textContent).toContain("Dora Lane · Mon, Aug 17 · Main Dining");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]![0]).toMatchObject({ employee_id: dora.id });
+  });
+
+  it("makes the shift open", async () => {
+    const onSubmit = renderEdit();
+    fireEvent.click(screen.getByRole("combobox", { name: "Employee" }));
+    fireEvent.click(screen.getByRole("option", { name: /Make open shift/ }));
+    expect(dialog().textContent).toContain("Open shift · Mon, Aug 17 · Main Dining");
+    expect(dialog().textContent).not.toContain("Week ");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]![0]).toMatchObject({ employee_id: null });
+  });
+
+  it("keeps a person who no longer qualifies on their shift until the manager picks someone else", () => {
+    const moved = { ...model.employees[0]!, is_excluded_from_schedule: true };
+    renderEdit({ ...reassignModel, employees: [moved, dora] } as ScheduleReadModel);
+    expect(screen.getByRole("combobox", { name: "Employee" }).textContent).toContain("Alex Rivera");
+    expect(dialog().textContent).toContain("Alex Rivera · Mon, Aug 17");
+    expect(screen.getByRole("button", { name: "Save" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("offers the same people as rows on the time line", async () => {
+    const onSubmit = renderEdit();
+    fireEvent.click(screen.getByRole("radio", { name: "Timeline" }));
+    const people = screen.getByRole("radiogroup", { name: "Who works this shift" });
+    expect(within(people).getByRole("radio", { name: /^Alex Rivera/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(within(people).getByRole("radio", { name: /^Make open shift/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]![0]).toMatchObject({ employee_id: null });
+  });
+});

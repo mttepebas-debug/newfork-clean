@@ -118,7 +118,10 @@ export function useShiftEditor(props: ShiftEditorProps) {
     ? JSON.stringify(value) !== JSON.stringify(initialValue) || count !== 1
     : false;
   const shiftId = state.mode === "edit" ? state.shift.id : null;
-  const eligibleEmployees = getShiftEditorEligibleEmployees({
+  // The person the shift had when the window opened stays on the list even if
+  // they no longer qualify: opening the window never takes the shift off them.
+  const ownerId = state.mode === "edit" ? state.shift.employee_id : null;
+  const qualified = getShiftEditorEligibleEmployees({
     employees: model.employees,
     locationId: value.location_id,
     jobId: value.job_id,
@@ -127,6 +130,10 @@ export function useShiftEditor(props: ShiftEditorProps) {
     value,
     excludeShiftId: shiftId,
   });
+  const owner = ownerId && !qualified.some((employee) => employee.id === ownerId)
+    ? model.employees.find((employee) => employee.id === ownerId)
+    : undefined;
+  const eligibleEmployees = owner ? [owner, ...qualified] : qualified;
   const eligibleJobs = getShiftEditorEligibleJobs({
     jobs: model.jobs,
     selectedEmployee,
@@ -250,8 +257,9 @@ export function useShiftEditor(props: ShiftEditorProps) {
     targetEmployeeId: state.mode === "create" ? state.employeeId : null,
     valueEmployeeId: value.employee_id,
   });
-  const showEmployeePicker = (state.mode === "create" && state.employeeId === null) ||
-    (state.mode === "edit" && state.shift.employee_id === null);
+  // Every shift being edited can change hands (3rd party test #61, Mert
+  // 2026-10-20); a new shift on a person's cell stays theirs.
+  const showEmployeePicker = (state.mode === "create" && state.employeeId === null) || state.mode === "edit";
   const employeePickerDisabled = shouldDisableShiftEditorEmployeePicker({ showCountStepper, count });
   const updateCount = (nextCount: number) => setCount(clampShiftEditorCount(nextCount));
   useEffect(() => {
@@ -330,6 +338,8 @@ export function useShiftEditor(props: ShiftEditorProps) {
     stale,
     showCountStepper,
     showEmployeePicker,
+    // The list's no-one choice: an assigned shift is made open, an open one stays open.
+    openLabel: ownerId ? "Make open shift" : "Open",
     employeePickerDisabled,
     eligibleEmployees,
     eligibleJobs,
