@@ -84,6 +84,26 @@ describe("LineupDayPicker", () => {
       if (box) Object.defineProperty(HTMLElement.prototype, "clientWidth", box);
     }
   });
+
+  // Mert 2026-10-21: the desktop's narrow wheel shows fewer days than seven; the day still sits in its middle.
+  it("puts the day in the middle of the strip however many days it shows", () => {
+    const box = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 300 });
+    try {
+      for (const days of [3, 5, 7]) {
+        const { unmount } = render(<LineupDayPicker date="2026-10-14" today="2026-10-14" onDate={() => undefined} days={days} />);
+        const track = wheel().firstElementChild as HTMLElement;
+        const x = Number(/^translateX\((-?[\d.]+)px\)$/.exec(track.style.transform)?.[1]);
+        const cell = 300 / days;
+        const at = [...track.children].findIndex((child) => child.getAttribute("aria-pressed") === "true");
+        // The pressed day's middle is the strip's middle.
+        expect(x + at * cell + cell / 2).toBeCloseTo(150, 0);
+        unmount();
+      }
+    } finally {
+      if (box) Object.defineProperty(HTMLElement.prototype, "clientWidth", box);
+    }
+  });
 });
 
 describe("LineupShiftTabs", () => {

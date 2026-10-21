@@ -25,18 +25,30 @@
   }
 }
 
-/* One line (Mert 2026-10-21): the date and location on the left, a narrow seven-day wheel in the middle, the shift
+/* One line (Mert 2026-10-21): the date and location on the left, a narrow wheel in the middle, the shift
    tabs on the right, over one grey line. All three stand on it: the wheel's and the tabs' green marks fall on the
    line, and the date row sits in the middle of the tabs' 40 px. The location is narrower, a long name ends in "…".
-   Tabs that don't fit scroll sideways from their start (margin, not justify-content, so none is cut off). */
+   The tabs keep their width; the wheel takes what is left and shows as many days as fit (LineupDesktop.tsx). The
+   line sits right under the heading's line, no list page's 18 px between, and the wheel is low (46 px), so the
+   ticket and the list start that much higher (Mert 2026-10-21: "o boşluğu kaldır, içeriği yukarı taşı"). */
+.lineup-desk-page.list-page.list-page > .catalog-page-header {
+  margin-bottom: 0;
+}
 .lineup-desk-top {
   display: grid;
-  grid-template-columns: auto minmax(240px, 1fr) minmax(0, auto);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: end;
   column-gap: 24px;
   margin-bottom: 16px;
-  padding-top: 4px;
   border-bottom: 1px solid var(--theme-border);
+}
+.lineup-desk-top .lineup-wheel {
+  height: 46px;
+  margin: 0;
+  border-bottom: 0;
+}
+.lineup-desk-top .lineup-wheel-day.is-today::before {
+  top: 0;
 }
 .lineup-desk-top .lineup-toolbar {
   flex-wrap: nowrap;
@@ -47,10 +59,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.lineup-desk-top .lineup-wheel {
-  margin: 0;
-  border-bottom: 0;
 }
 /* The list page's tabs bring their own line and 16 px under it; here the whole line has them. */
 .lineup-desk-page.list-page .lineup-desk-top > .lineup-shift-tabs.catalog-toolbar {
@@ -65,6 +73,15 @@
 }
 .lineup-desk-top > .lineup-phone-outline-tabs {
   justify-content: flex-end;
+}
+/* A narrower window: tighter gaps and a narrower location, so the wheel keeps a few days. */
+@media (max-width: 1240px) {
+  .lineup-desk-top {
+    column-gap: 16px;
+  }
+  .lineup-desk-top .lineup-toolbar .lineup-location-select {
+    flex-basis: 150px;
+  }
 }
 
 .lineup-desk {

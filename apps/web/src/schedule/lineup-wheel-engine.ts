@@ -54,7 +54,13 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
   const cells = track.children as HTMLCollectionOf<HTMLElement>;
   const frame = typeof requestAnimationFrame === "function" ? requestAnimationFrame : null;
   const visible = options.visible ?? 7;
-  let width = box.clientWidth / visible;
+  // The strip's and a day's real widths, fractions and all, as the browser laid them out: clientWidth is rounded,
+  // and a fraction of a pixel per day grows to tens of pixels by the day a hundred and ninety days along the track,
+  // the chosen day off the middle.
+  const stripWidth = () => box.getBoundingClientRect().width || box.clientWidth;
+  const dayWidth = () => cells[0]?.getBoundingClientRect().width || stripWidth() / visible;
+  let strip = stripWidth();
+  let width = dayWidth();
   let pos = options.start;
   let raf = 0;
   let anim: Anim | null = null;
@@ -80,7 +86,9 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
   function show(p: number) {
     // On whole device pixels and a 2D move: a stopped strip half a pixel off draws its days soft.
     const ratio = window.devicePixelRatio || 1;
-    track.style.transform = `translateX(${Math.round((3 * width - (p + span) * width) * ratio) / ratio}px)`;
+    // The day's middle on the strip's middle, however many days show (7 on a phone, fewer in the desktop's narrow
+    // wheel).
+    track.style.transform = `translateX(${Math.round((strip / 2 - width / 2 - (p + span) * width) * ratio) / ratio}px)`;
     const middle = Math.round(p);
     for (let index = Math.max(-span, middle - 6); index <= Math.min(span, middle + 6); index++) {
       const cell = cells[index + span];
@@ -303,9 +311,11 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
   // A day stays its share of the strip when the window changes (a phone turned, a browser narrowed).
   const resized = typeof ResizeObserver === "function"
     ? new ResizeObserver(() => {
-        const next = box.clientWidth / visible;
-        if (next && Math.abs(next - width) > 0.5) {
+        const next = dayWidth();
+        const nextStrip = stripWidth();
+        if (next && (Math.abs(next - width) > 0.001 || Math.abs(nextStrip - strip) > 0.001)) {
           width = next;
+          strip = nextStrip;
           show(pos);
         }
       })

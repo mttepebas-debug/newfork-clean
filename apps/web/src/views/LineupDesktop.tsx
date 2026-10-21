@@ -36,7 +36,7 @@ import { LineupPersonCircle } from "./LineupPersonCircle";
 import "./lineup-desktop.css";
 
 // The desktop Lineup, F (Mert 2026-10-19 ~2:45 AM, "f harika"; mockup yapim/masaustu/desk.js): the phone's day
-// picker over the page (one line: the date and location, a seven-day wheel, the shift tabs), then one location's ticket in the
+// picker over the page (one line: the date and location, a narrow wheel, the shift tabs), then one location's ticket in the
 // middle between two arrows as tall as it (none with one location), Team · Notes · Read in its foot. Only the list
 // under the ticket scrolls. The team is one list under column headings: person, position, label, in – out, section,
 // each heading centred on its column's content and Section the last column, by the list's right edge (Mert
@@ -92,6 +92,27 @@ function useWheelScrollsList(page: RefObject<HTMLElement | null>) {
     area.addEventListener("wheel", onWheel, { passive: false });
     return () => area.removeEventListener("wheel", onWheel);
   }, [page]);
+}
+
+/**
+ * The days the narrow wheel between the location and the shift tabs shows: as many 48 px days as fit in it, an odd
+ * number so the day sits in the middle, 3 to 7 (Mert 2026-10-21: the tabs never scroll for it).
+ */
+function useWheelDays(box: RefObject<HTMLDivElement | null>): number {
+  const [days, setDays] = useState(7);
+  useLayoutEffect(() => {
+    const wheel = box.current;
+    if (!wheel || typeof ResizeObserver !== "function") return;
+    const fit = () => {
+      const count = Math.max(3, Math.min(7, Math.floor(wheel.clientWidth / 48)));
+      setDays(count % 2 ? count : count - 1);
+    };
+    fit();
+    const watch = new ResizeObserver(fit);
+    watch.observe(wheel);
+    return () => watch.disconnect();
+  }, [box]);
+  return days;
 }
 
 /** "1 h 30 min", "45 min", "2 h". */
@@ -171,6 +192,8 @@ export function DesktopLineupPage({
   const closed = shown.filter((item) => item.closed);
   const page = useRef<HTMLElement | null>(null);
   useWheelScrollsList(page);
+  const wheelBox = useRef<HTMLDivElement | null>(null);
+  const days = useWheelDays(wheelBox);
 
   let body: ReactNode;
   if (loading) body = <DesktopLineupOutline />;
@@ -219,9 +242,9 @@ export function DesktopLineupPage({
   return (
     <section ref={page} className="lineup-page list-page lineup-desk-page" aria-labelledby="lineup-title">
       {header}
-      {/* One line (Mert 2026-10-21): the date and location, a narrow seven-day wheel, the shift tabs. */}
+      {/* One line (Mert 2026-10-21): the date and location, a narrow wheel, the shift tabs. */}
       <div className="lineup-desk-top">
-        <LineupDayPicker date={date} today={today} onDate={onDate} waiting={waiting}>
+        <LineupDayPicker date={date} today={today} onDate={onDate} waiting={waiting} days={days} wheelRef={wheelBox}>
           <LineupLocationSelect
             loading={loading}
             locations={locations}

@@ -300,7 +300,11 @@ describe("LineupPage", () => {
     expect(ticket.querySelectorAll(".lineup-card-facts")).toHaveLength(1);
     expect(head.nextElementSibling?.classList.contains("lineup-card-perf")).toBe(true);
     const desk = readFileSync("src/views/lineup-desktop.css", "utf8");
-    expect(desk).toMatch(/\.lineup-desk-top \{[^}]*grid-template-columns: auto minmax\(240px, 1fr\) minmax\(0, auto\);[^}]*align-items: end;[^}]*border-bottom: 1px solid var\(--theme-border\);/);
+    // The tabs keep their width and never scroll for the wheel; the wheel takes what is left.
+    expect(desk).toMatch(/\.lineup-desk-top \{[^}]*grid-template-columns: auto minmax\(0, 1fr\) auto;[^}]*align-items: end;[^}]*border-bottom: 1px solid var\(--theme-border\);/);
+    // No gap between the heading's line and this one: the list page's 18 px is gone, the wheel is 46 px.
+    expect(desk).toMatch(/\.lineup-desk-page\.list-page\.list-page > \.catalog-page-header \{\s*margin-bottom: 0;/);
+    expect(desk).toMatch(/\.lineup-desk-top \.lineup-wheel \{\s*height: 46px;/);
     // The location is narrower; a long name ends in "…".
     expect(desk).toMatch(/\.lineup-location-select \{\s*flex: 0 0 180px;\s*overflow: hidden;\s*text-overflow: ellipsis;/);
     expect(desk).toMatch(/\.lineup-desk-top \.lineup-shift-tabs \.catalog-status-tabs \{\s*margin-left: auto;/);
