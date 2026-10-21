@@ -267,7 +267,7 @@ button.hsg-chip::before { content: ""; position: absolute; inset: -8px; }
 .hsg-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 14px; border: 1px solid var(--theme-border); border-radius: 16px; background: var(--theme-surface); }
 .hsg-strip-label { color: var(--theme-accent); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .hsg-strip-chips { display: flex; gap: 16px; }
-.hsg-strip-actions { display: flex; width: 100%; justify-content: space-between; gap: 12px; }
+.hsg-strip-actions { display: grid; width: 100%; grid-template-columns: 1fr 1fr; gap: 12px; }
 .hsg-strip-actions .nf-button { min-height: 44px; }
 
 .hsg-ret { padding: 16px; border: 1px solid var(--theme-border); border-radius: 16px; background: var(--theme-surface); }

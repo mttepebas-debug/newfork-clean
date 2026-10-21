@@ -1,7 +1,8 @@
 // The way from another iPhone browser to Safari (TELEFON-TUR2, §5.0 item 19): Account → Notifications with
 // ?setup=alerts opens the Home Screen steps once the person is signed in there, and asks nothing (K5).
 
-export const SETUP_PATH = "/app/account/notifications?setup=alerts";
+/** Account → Notifications (notificationSettingsPath in notifications/NotificationViews) with the steps open. */
+export const SETUP_PATH = "/account/preferences/notifications?setup=alerts";
 
 export function setupLink(win: Window = window): string {
   return `${win.location.origin}${SETUP_PATH}`;

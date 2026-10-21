@@ -161,3 +161,26 @@ export async function syncPhoneAlerts(server: PushServer, publicKey: string, win
     // The next start tries again.
   }
 }
+
+/**
+ * The test alert right after turning on (TELEFON-TUR2, Mert 20 October 2026): this device shows it itself,
+ * through the service worker, so the person sees what an alert looks like. No server send. False when
+ * the worker could not show it.
+ */
+export async function showTestAlert(device: "iphone" | "phone" | "computer", win: Window = window): Promise<boolean> {
+  try {
+    const worker = await win.navigator.serviceWorker.getRegistration("/");
+    if (!worker) return false;
+    await worker.showNotification("You\u2019re all set", {
+      body: `Newfork alerts will look like this on this ${device}.`,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      lang: "en-US",
+      tag: "newfork-test-alert",
+      data: { url: "/app" },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}

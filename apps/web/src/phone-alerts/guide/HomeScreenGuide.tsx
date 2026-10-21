@@ -397,9 +397,9 @@ export type GuidePhase = "none" | "strip" | "return";
  * One host's guide: open on a step, the strip after it closes, and the return card once the person comes
  * back to this tab from elsewhere (visibilitychange), since that is all a page can see.
  */
-export function useGuideFlow() {
+export function useGuideFlow(initial: GuidePhase = "none") {
   const [openAt, setOpenAt] = useState<number | null>(null);
-  const [phase, setPhase] = useState<GuidePhase>("none");
+  const [phase, setPhase] = useState<GuidePhase>(initial);
   const left = useRef(false);
 
   useEffect(() => {

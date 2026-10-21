@@ -45,7 +45,7 @@ import { usePickupShifts } from "./shift-exchanges/pickup";
 import { loadWeeklyPreferences } from "../availability/availability-data";
 import { OwnAvailabilityFlag } from "./OwnAvailabilityFlag";
 import { ownAvailabilityClash } from "./own-availability";
-import { PhoneAlertsHome } from "../phone-alerts/PhoneAlertsHome";
+import { EmployeeAlertsEntry } from "../phone-alerts/EmployeeAlertsEntry";
 import "./employee-dashboard.css";
 import "./home-daylight.css";
 import { useHubOnline } from "./useHubClock";
@@ -229,6 +229,10 @@ export function EmployeeDashboard({
           ) : null}
         </section>
         <div className="dl-secs">
+          {/* Phone alerts' first offer, right under "Your day" on this device's first Home (TELEFON-TUR2, K26). */}
+          <HomeSection name="alerts-first" bare>
+            <EmployeeAlertsEntry place="first" hasShifts={week.some((day) => day.shifts.length > 0)} />
+          </HomeSection>
           <HomeSection name="needs" title="Needs you" count={data.needs.length}>
             <NeedsList needs={data.needs} unknown={data.needsUnknown} />
           </HomeSection>
@@ -237,9 +241,9 @@ export function EmployeeDashboard({
           <HomeSection name="updates" title="Updates">
             <UpdatesList updates={data.updates} now={now} />
           </HomeSection>
-          {/* Phone alerts' one ask, on Home only (variant A, KARARLAR S-123); in the list since Daylight (Mert 2026-10-18). */}
+          {/* Phone alerts' block after the first Home: one entry per opening (TELEFON-TUR2, K26). */}
           <HomeSection name="alerts" bare>
-            <PhoneAlertsHome audience="employee" />
+            <EmployeeAlertsEntry place="block" hasShifts={week.some((day) => day.shifts.length > 0)} />
           </HomeSection>
           <HomeSection
             name="week"

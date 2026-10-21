@@ -139,7 +139,7 @@ describe("Account > Notifications > Phone alerts", () => {
 
   it("the setup link opens the guide by itself, without asking for permission", async () => {
     asIPhone();
-    window.history.replaceState(null, "", "/app/account/notifications?setup=alerts");
+    window.history.replaceState(null, "", "/account/preferences/notifications?setup=alerts");
     alerts.current.state = "needs-install";
     serve(0);
     renderPage();
@@ -158,7 +158,7 @@ describe("Account > Notifications > Phone alerts", () => {
     expect(window.location.search).toBe("?setup=alerts");
     fireEvent.click(within(row).getByRole("button", { name: "Copy link" }));
     await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Link copied. Open Safari, tap the address bar, paste, and go."));
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/app/account/notifications?setup=alerts`);
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/account/preferences/notifications?setup=alerts`);
   });
 
   it("a blocked browser says where to allow it; the Home Screen app points to iPhone Settings", async () => {
@@ -196,4 +196,10 @@ describe("Account > Notifications > Phone alerts", () => {
     renderPage();
     await rowWith("Harbor & Vine turned phone alerts off.");
   });
+});
+
+it("the setup link is the address Account → Notifications really has", async () => {
+  const { SETUP_PATH } = await import("./setup-link");
+  const { notificationSettingsPath } = await import("../notifications/NotificationViews");
+  expect(SETUP_PATH).toBe(`${notificationSettingsPath}?setup=alerts`);
 });
