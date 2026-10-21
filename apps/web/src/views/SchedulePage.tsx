@@ -24,6 +24,7 @@ import {
   Undo2,
   WandSparkles,
   X,
+  Pencil,
 } from "lucide-react";
 import {
   useCallback,
@@ -617,6 +618,20 @@ export function SchedulePage({
     session && query.data && session.week_start === query.data.week_start
       ? session
       : null;
+  // KK-164 keeps the edit open on its own week while another week is viewed;
+  // the page says where it is and goes back in one press (Mert, 2026-10-21).
+  const editElsewhere =
+    session && query.data && session.week_start !== query.data.week_start ? session : null;
+  const editElsewhereLabel = editElsewhere
+    ? formatPeriod(editElsewhere.week_start, editElsewhere.week_start, "week").replace(/, \d{4}$/, "")
+    : "";
+  const backToEditWeek = () => {
+    if (!editElsewhere) return;
+    const next = new URLSearchParams(search);
+    next.set("date", editElsewhere.week_start);
+    next.set("view", "week");
+    setSearch(next);
+  };
   useEffect(() => {
     if (!gridEditSession) setPresetPick(null);
   }, [gridEditSession]);
@@ -2328,6 +2343,7 @@ export function SchedulePage({
       today,
       focusedShift: Boolean(focusedShiftId),
       editing: Boolean(gridEditSession),
+      editWeekStart: editElsewhere?.week_start ?? null,
     });
     if (!dismissal) return false;
     setSearch(dismissal.search);
@@ -2867,6 +2883,19 @@ export function SchedulePage({
               ? "Someone is editing this schedule"
               : "Viewing this schedule"}
           </small>
+        </div>
+      ) : null}
+      {editElsewhere ? (
+        <div className="schedule-edit-banner schedule-edit-elsewhere" role="status">
+          <p>
+            <Pencil size={14} aria-hidden />
+            <span>
+              You're editing <strong>{editElsewhereLabel}</strong>. This week is view only.
+            </span>
+          </p>
+          <button type="button" className="schedule-edit-elsewhere-back" onClick={backToEditWeek}>
+            Back to editing
+          </button>
         </div>
       ) : null}
       {gridEditSession ? (
