@@ -280,7 +280,9 @@ export function readMeasuredHeight(
 export const CORNER_MARK_GAP_PX = 6;
 
 // A short card grows until its top corner mark and NEW sit apart (Mert,
-// 2026-10-13: the "!" and NEW touched on a short card). The top marks sit
+// 2026-10-13: the "!" and NEW touched on a short card). With two lines or
+// more they sit beside the first and the last line and never meet (Mert,
+// 2026-10-21); only a one-line card keeps NEW in its corner. The top marks sit
 // centred on the first line (useFirstLineMid), so they end half their height
 // below their layout top. Layout heights, so a "!" growing under the mouse
 // does not move the row.
@@ -288,6 +290,7 @@ function cornerMarksHeight(badge: HTMLElement): number {
   const top = badge.querySelector<HTMLElement>(".schedule-shift-badge-markers");
   const bottom = badge.querySelector<HTMLElement>(".schedule-shift-new-mark");
   if (!top || !bottom || !top.offsetHeight || !bottom.offsetHeight) return 0;
+  if ((badge.querySelector("[data-shift-badge-content]")?.childElementCount ?? 0) > 1) return 0;
   const px = (value: string) => {
     const parsed = Number.parseFloat(value);
     return Number.isFinite(parsed) ? parsed : 0;
@@ -299,7 +302,8 @@ function cornerMarksHeight(badge: HTMLElement): number {
       top.offsetHeight / 2 +
       CORNER_MARK_GAP_PX +
       bottom.offsetHeight +
-      px(getComputedStyle(bottom).bottom) +
+      // NEW's middle sits at its "bottom" (translateY(50%)).
+      px(getComputedStyle(bottom).bottom) - bottom.offsetHeight / 2 +
       px(card.borderBottomWidth),
   );
 }

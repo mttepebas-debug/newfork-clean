@@ -88,25 +88,32 @@ function measureCardNeeds(grid: HTMLElement): ScheduleCardNeeds | null {
         content.getBoundingClientRect().width -
         (Number.parseFloat(badgeStyle?.paddingLeft ?? "") || 0) -
         (Number.parseFloat(badgeStyle?.paddingRight ?? "") || 0);
-      // Reading, the first line keeps clear of the marks beside it: each
-      // side's reach less the card's padding and the words' own 2px. While
-      // editing, the marks have a row of their own.
-      const reading = content.closest(".schedule-cell")?.getAttribute("data-editing") !== "true";
+      // The first line keeps clear of the marks beside it, and while editing
+      // the last line of NEW (Mert, 2026-10-21): each side's reach less the
+      // card's padding and the words' own 2px.
       const clear = (pad: number) =>
         shiftCardFirstLineInset(px("--shift-card-line1-left"), pad) +
         shiftCardFirstLineInset(px("--shift-card-line1-right"), pad);
-      const first = reading && content.children[0]?.tagName === "STRONG";
-      const tightLine = first ? Math.max(line, widths[0]! + clear(BADGE_PAD_X)) : line;
-      const compactFirst = first
-        ? Math.max(compactLine, (widths[0]! * COMPACT_TITLE_PX) / TITLE_PX + clear(COMPACT_PAD_X))
-        : compactLine;
+      const lastIndex = content.children.length - 1;
+      const lastClear = (pad: number) => (lastIndex > 0 ? shiftCardFirstLineInset(px("--shift-card-lastline-right"), pad) : 0);
+      const first = content.children[0]?.tagName === "STRONG";
+      const tightLine = Math.max(
+        line,
+        first ? widths[0]! + clear(BADGE_PAD_X) : 0,
+        lastIndex > 0 ? widths[lastIndex]! + lastClear(BADGE_PAD_X) : 0,
+      );
+      const compactFirst = Math.max(
+        compactLine,
+        first ? (widths[0]! * COMPACT_TITLE_PX) / TITLE_PX + clear(COMPACT_PAD_X) : 0,
+        lastIndex > 0 ? widths[lastIndex]! + lastClear(COMPACT_PAD_X) : 0,
+      );
       side = Math.max(side, fit(line + 2 * (room + BADGE_PAD_X) + chrome));
       tight = Math.max(tight, fit(tightLine + 2 * (SHIFT_CARD_TIGHT_SIDE + BADGE_PAD_X) + chrome));
       compact = Math.max(compact, fit(compactFirst + 2 * (SHIFT_CARD_TIGHT_SIDE + COMPACT_PAD_X) + chrome));
       const hoursIndex = Array.from(content.children).findIndex((child) =>
         child.classList.contains("schedule-shift-time"),
       );
-      const hours = hoursIndex < 0 ? 0 : widths[hoursIndex]!;
+      const hours = hoursIndex < 0 ? 0 : widths[hoursIndex]! + (hoursIndex === lastIndex ? lastClear(COMPACT_PAD_X) : 0);
       time = Math.max(time, fit(hours + 2 * (SHIFT_CARD_TIGHT_SIDE + COMPACT_PAD_X) + chrome));
     });
   return side ? { side, tight, compact, time } : null;

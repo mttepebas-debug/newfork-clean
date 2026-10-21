@@ -77,6 +77,11 @@ export function shiftCardFirstLineEdges({
   };
 }
 
+/** How far NEW, beside the last line while editing, reaches in from the card's outer right edge. */
+export function shiftCardLastLineReach(newMark: boolean): number {
+  return newMark ? BORDER + BOTTOM_RIGHT + SHIFT_CARD_MARK.newLabel : 0;
+}
+
 /** The left reach of "x2" on an open shift's card. */
 export const SHIFT_CARD_STACK_REACH = BORDER + STACK_LEFT + SHIFT_CARD_MARK.stack;
 

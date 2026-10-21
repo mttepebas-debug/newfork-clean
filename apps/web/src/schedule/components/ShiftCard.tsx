@@ -34,6 +34,7 @@ import { useFirstLineMid } from "../hooks/useFirstLineMid";
 import {
   SHIFT_CARD_MARK,
   SHIFT_CARD_STACK_REACH,
+  shiftCardLastLineReach,
   shiftCardFirstLineEdges,
   shiftCardSideRoom,
 } from "../lib/shiftCardRoom";
@@ -220,6 +221,7 @@ export function ShiftCard({
           "--shift-card-side": `${sideRoom}px`,
           "--shift-card-line1-left": `${firstLine.left}px`,
           "--shift-card-line1-right": `${firstLine.right}px`,
+          "--shift-card-lastline-right": `${shiftCardLastLineReach(showNewMark)}px`,
         } as CSSProperties
       }
       aria-label={formatScheduleBadgeAriaLabel({
@@ -247,11 +249,6 @@ export function ShiftCard({
       data-job-color-dot={false}
       data-shift-labels-visible={showShiftLabels}
       data-publication-state={publicationState ?? undefined}
-      // A narrow week while editing: the top marks keep a row of their own
-      // above the words on every card (LIVE does not fit beside a name), NEW
-      // one below (styles.css, data-card-band).
-      data-mark-row={editing ? "true" : undefined}
-      data-new-row={showNewMark ? "true" : undefined}
       data-availability-warning={availabilityWarning ? "true" : undefined}
       data-focused={focused}
       data-current={focused}
