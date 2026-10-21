@@ -11,15 +11,10 @@ import {
   type LineupRow,
   type LineupShift,
 } from "../schedule/lineup";
-import {
-  DayCalendar,
-  LineupDayPicker,
-  LineupLocationSelect,
-  LineupShiftTabs,
-  useDayCalendar,
-} from "../schedule/lineup-wheel-view";
+import { wheelIso } from "../schedule/lineup-wheel";
+import { DayCalendar, LineupDayPicker, LineupShiftTabs, useDayCalendar } from "../schedule/lineup-wheel-view";
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
-import { LoadingOutline, Skeleton } from "../shell/LoadState";
+import { Skeleton } from "../shell/LoadState";
 import {
   CopyTextButton,
   EditableRowCells,
@@ -202,25 +197,37 @@ export function DesktopLineupPage({
   const days = useWheelDays(wheelBox);
 
   let body: ReactNode;
-  if (loading) body = <DesktopLineupOutline />;
+  if (loading)
+    body = <DesktopLineupOutline day={<TicketDay label={dateLabel} date={date} today={today} waiting={waiting} onPick={onDate} />} />;
   else if (error) body = <div className="lineup-desk-scroll">{error}</div>;
   else if (!locations.length) body = <p className="lineup-desk-empty">No locations to show.</p>;
   else if (!current)
     body = (
-      <p className="lineup-desk-empty">
-        {closed.length
-          ? closed.map((item) => (
-              <span key={item.id}>
-                {item.name} · Closed today · {item.closed!.title}
-              </span>
-            ))
-          : "No shifts this day."}
-      </p>
+      <div className="lineup-desk-empty">
+        {/* No ticket, so the day sits here: the page has no other ‹ day › (Mert 2026-10-21). */}
+        <TicketDay label={dateLabel} date={date} today={today} waiting={waiting} onPick={onDate} />
+        <p>
+          {closed.length
+            ? closed.map((item) => (
+                <span key={item.id}>
+                  {item.name} · Closed today · {item.closed!.title}
+                </span>
+              ))
+            : "No shifts this day."}
+        </p>
+        {/* Nor a place menu: one location picked, the way back to all of them. */}
+        {picked && locations.length > 1 ? (
+          <button type="button" className="lineup-desk-all" onClick={() => onLocation("")}>
+            Show all locations
+          </button>
+        ) : null}
+      </div>
     );
   else {
     const segKey = `${current.location.id}:${current.shift.key}`;
-    // The ticket's place is a menu of the places (Mert 2026-10-21): on All locations one with this shift is the ticket
-    // the arrows would reach; any other is picked as the page's location.
+    // The ticket's place is a menu of the places, the page's only one (Mert 2026-10-21): on all locations a place with
+    // this shift is the ticket the arrows reach; any other is picked as the page's location (its day says why, and
+    // offers all of them again).
     const goTo = (id: string) => {
       if (!picked && lineups.some(({ location }) => location.id === id)) setAt(id);
       else onLocation(id);
@@ -248,9 +255,11 @@ export function DesktopLineupPage({
           setFolded(!folded);
         }}
         placePicker={
-          locations.length > 1 ? <TicketPlace locations={locations} value={current.location.id} onChange={goTo} /> : null
+          locations.length > 1 ? (
+            <TicketPlace locations={locations} value={current.location.id} all={Boolean(picked)} onChange={goTo} />
+          ) : null
         }
-        dayPicker={<TicketDay label={dateLabel} date={date} today={today} onPick={onDate} />}
+        dayPicker={<TicketDay label={dateLabel} date={date} today={today} waiting={waiting} onPick={onDate} />}
       />
     );
   }
@@ -258,17 +267,17 @@ export function DesktopLineupPage({
   return (
     <section ref={page} className="lineup-page list-page lineup-desk-page" aria-labelledby="lineup-title">
       {header}
-      {/* One line (Mert 2026-10-21): the date and location, a narrow wheel, the shift tabs. */}
+      {/* One line (Mert 2026-10-21): a narrow wheel and the shift tabs; the day and the place are on the ticket. */}
       <div className="lineup-desk-top">
-        <LineupDayPicker date={date} today={today} onDate={onDate} waiting={waiting} days={days} wheelRef={wheelBox}>
-          <LineupLocationSelect
-            loading={loading}
-            locations={locations}
-            value={picked?.id ?? ""}
-            allLabel="All locations"
-            onChange={onLocation}
-          />
-        </LineupDayPicker>
+        <LineupDayPicker
+          date={date}
+          today={today}
+          onDate={onDate}
+          waiting={waiting}
+          days={days}
+          wheelRef={wheelBox}
+          bar={false}
+        />
         {loading ? (
           <div className="lineup-phone-outline-tabs" aria-hidden>
             <Skeleton width={64} height={12} className="on-page" />
@@ -424,10 +433,13 @@ function DesktopLineup({
 function TicketPlace({
   locations,
   value,
+  all,
   onChange,
 }: {
   readonly locations: readonly LineupLocation[];
   readonly value: string;
+  /** One location is picked: the menu starts with All locations, the way back to every ticket. */
+  readonly all: boolean;
   readonly onChange: (id: string) => void;
 }) {
   return (
@@ -435,6 +447,7 @@ function TicketPlace({
       <span aria-hidden>{locations.find((location) => location.id === value)?.name}</span>
       <ChevronDown aria-hidden />
       <select aria-label="Go to location" value={value} onChange={(event) => onChange(event.target.value)}>
+        {all ? <option value="">All locations</option> : null}
         {locations.map((location) => (
           <option key={location.id} value={location.id}>
             {location.name}
@@ -445,35 +458,70 @@ function TicketPlace({
   );
 }
 
-/** The ticket's day: it opens the calendar under it, and a day picked there is the page's day (Mert 2026-10-21). */
+/**
+ * The ticket's day, the page's only date control (Mert 2026-10-21, from the date row it replaces): ‹ › step a day;
+ * the day is amber away from today and a click on it brings today back; on today it opens the calendar under it,
+ * and a day picked there is the page's day. While the Publish window publishes the day waits.
+ */
 function TicketDay({
   label,
   date,
   today,
+  waiting,
   onPick,
 }: {
   readonly label: string;
   readonly date: string;
   readonly today: string;
+  readonly waiting: boolean;
   readonly onPick: (iso: string) => void;
 }) {
   const calendar = useDayCalendar();
+  const other = date !== today;
+  const go = (iso: string) => {
+    if (!waiting) onPick(iso);
+  };
   return (
-    <span className="lineup-date-pick lineup-card-day" ref={calendar.box}>
+    <span className="lineup-card-day" role="group" aria-label="Day">
       <button
         type="button"
-        aria-haspopup="dialog"
-        aria-expanded={calendar.open}
-        aria-label={`${label}, pick a day`}
-        title="Pick a day"
-        onClick={() => calendar.setOpen((open) => !open)}
+        className="lineup-card-step"
+        aria-label="Previous day"
+        aria-disabled={waiting || undefined}
+        onClick={() => go(wheelIso(date, -1))}
       >
-        <CalendarDays aria-hidden />
-        {label}
+        <ChevronLeft aria-hidden />
       </button>
-      {calendar.open ? (
-        <DayCalendar date={date} today={today} onPick={onPick} onClose={() => calendar.setOpen(false)} />
-      ) : null}
+      <span className="lineup-date-pick" ref={calendar.box}>
+        <button
+          type="button"
+          className="lineup-card-day-label"
+          data-other-day={other ? "true" : undefined}
+          aria-disabled={waiting || undefined}
+          aria-haspopup={other ? undefined : "dialog"}
+          aria-expanded={other ? undefined : calendar.open}
+          title={other ? "Back to today" : "Pick a day"}
+          onClick={() => {
+            if (other) go(today);
+            else if (!waiting) calendar.setOpen((open) => !open);
+          }}
+        >
+          <CalendarDays aria-hidden />
+          {label}
+        </button>
+        {calendar.open ? (
+          <DayCalendar date={date} today={today} onPick={go} onClose={() => calendar.setOpen(false)} />
+        ) : null}
+      </span>
+      <button
+        type="button"
+        className="lineup-card-step"
+        aria-label="Next day"
+        aria-disabled={waiting || undefined}
+        onClick={() => go(wheelIso(date, 1))}
+      >
+        <ChevronRight aria-hidden />
+      </button>
     </span>
   );
 }
@@ -713,16 +761,23 @@ function None({ label }: { readonly label: string }) {
   );
 }
 
-/** The loading outline: the ticket and a few rows at their real sizes. */
-function DesktopLineupOutline() {
+/**
+ * The loading outline: the ticket and a few rows at their real sizes, grey and unheard (a screen reader hears
+ * "Loading lineups" once). The ticket's ‹ day › is the real one, so the day keeps stepping while the next one
+ * loads: it is the page's only date control (Mert 2026-10-21).
+ */
+function DesktopLineupOutline({ day }: { readonly day: ReactNode }) {
   return (
-    <LoadingOutline label="Loading lineups" className="lineup-desk lineup-desk-outline">
+    <div className="nf-loading lineup-desk lineup-desk-outline">
+      <span className="sr-only" role="status">
+        Loading lineups
+      </span>
       <div className="lineup-desk-ticket is-one">
         <div className="lineup-card is-open">
           <div className="lineup-card-head">
             <Skeleton width={120} height={14} className="lineup-card-loc" />
-            <Skeleton width={84} height={10} className="lineup-card-date" />
-            <div className="lineup-card-facts">
+            <div className="lineup-card-date">{day}</div>
+            <div className="lineup-card-facts" aria-hidden>
               {[48, 30, 120].map((width) => (
                 <div key={width}>
                   <Skeleton width={40} height={9} />
@@ -735,7 +790,7 @@ function DesktopLineupOutline() {
           </div>
         </div>
       </div>
-      <div className="lineup-desk-scroll">
+      <div className="lineup-desk-scroll" aria-hidden>
         <div className="lineup-phone-list">
           {[0, 1, 2, 3].map((row) => (
             <div className="lineup-phone-row lineup-desk-row" key={row}>
@@ -749,6 +804,6 @@ function DesktopLineupOutline() {
           ))}
         </div>
       </div>
-    </LoadingOutline>
+    </div>
   );
 }

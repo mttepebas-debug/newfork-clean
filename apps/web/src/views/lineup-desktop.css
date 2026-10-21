@@ -25,18 +25,18 @@
   }
 }
 
-/* One line (Mert 2026-10-21): the date and location on the left, a narrow wheel in the middle, the shift
-   tabs on the right, over one grey line. All three stand on it: the wheel's and the tabs' green marks fall on the
-   line, and the date row sits in the middle of the tabs' 40 px. The location is narrower, a long name ends in "…".
-   The tabs keep their width; the wheel takes what is left and shows as many days as fit (LineupDesktop.tsx). The
-   line sits right under the heading's line, no list page's 18 px between, and the wheel is low (46 px), so the
-   ticket and the list start that much higher (Mert 2026-10-21: "o boşluğu kaldır, içeriği yukarı taşı"). */
+/* One line under the heading (Mert 2026-10-21): a narrow wheel on the left, the shift tabs on the right, over one grey
+   line; the day and the place moved onto the ticket. Both stand on the line: the wheel's and the tabs' green marks
+   fall on it. The tabs keep their width; the wheel is at most 480 px and shows as many days as fit (LineupDesktop.tsx).
+   The line sits right under the heading's line, no list page's 18 px between, and the wheel is low (46 px), so the
+   ticket and the list start that much higher ("o boşluğu kaldır, içeriği yukarı taşı"). */
 .lineup-desk-page.list-page.list-page > .catalog-page-header {
   margin-bottom: 0;
 }
 .lineup-desk-top {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 480px) auto;
+  justify-content: space-between;
   align-items: end;
   column-gap: 24px;
   margin-bottom: 16px;
@@ -49,16 +49,6 @@
 }
 .lineup-desk-top .lineup-wheel-day.is-today::before {
   top: 0;
-}
-.lineup-desk-top .lineup-toolbar {
-  flex-wrap: nowrap;
-  margin-bottom: 3px;
-}
-.lineup-desk-top .lineup-toolbar .lineup-location-select {
-  flex: 0 0 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 /* The list page's tabs bring their own line and 16 px under it; here the whole line has them. */
 .lineup-desk-page.list-page .lineup-desk-top > .lineup-shift-tabs.catalog-toolbar {
@@ -73,15 +63,6 @@
 }
 .lineup-desk-top > .lineup-phone-outline-tabs {
   justify-content: flex-end;
-}
-/* A narrower window: tighter gaps and a narrower location, so the wheel keeps a few days. */
-@media (max-width: 1240px) {
-  .lineup-desk-top {
-    column-gap: 16px;
-  }
-  .lineup-desk-top .lineup-toolbar .lineup-location-select {
-    flex-basis: 150px;
-  }
 }
 
 .lineup-desk {
@@ -169,40 +150,72 @@
   opacity: 0;
   cursor: pointer;
 }
-.lineup-card-day > button {
+/* The day: ‹ day › (Mert 2026-10-21, the date row's whole behaviour). The ‹ sits under the pin, the day amber away
+   from today; small, plain buttons that take the soft green on hover. */
+.lineup-desk-page .lineup-card-date {
+  margin-left: 0;
+  overflow: visible;
+}
+.lineup-card-day {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin: -2px 0 -2px -4px;
-  padding: 2px 6px 2px 4px;
+  gap: 2px;
+  margin-left: -4px;
+}
+.lineup-card-step,
+.lineup-card-day-label {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
   border: 0;
   border-radius: 6px;
   background: none;
   color: var(--theme-text-secondary);
   font: inherit;
-  font-size: 13px;
-  line-height: 18px;
-  white-space: nowrap;
   cursor: pointer;
 }
-.lineup-card-day > button svg {
+.lineup-card-step {
+  width: 24px;
+  justify-content: center;
+  padding: 0;
+}
+.lineup-card-step svg {
+  width: 16px;
+  height: 16px;
+}
+.lineup-card-day-label {
+  gap: 5px;
+  padding: 0 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.lineup-card-day-label svg {
   width: 14px;
   height: 14px;
 }
+.lineup-card-day-label[data-other-day="true"] {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
 .lineup-card-place:hover,
-.lineup-card-day > button:hover,
-.lineup-card-day > button[aria-expanded="true"] {
+.lineup-card-step:hover,
+.lineup-card-day-label:not([data-other-day="true"]):hover,
+.lineup-card-day-label[aria-expanded="true"] {
   background: var(--theme-accent-soft);
   color: var(--theme-accent-deep);
 }
+.lineup-card-day-label[data-other-day="true"]:hover {
+  box-shadow: inset 0 0 0 1px var(--theme-warning-border);
+}
+.lineup-card-day [aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+}
 .lineup-card-place:has(select:focus-visible),
-.lineup-card-day > button:focus-visible {
+.lineup-card-step:focus-visible,
+.lineup-card-day-label:focus-visible {
   outline: 2px solid var(--theme-focus);
   outline-offset: 1px;
-}
-/* The day sits under the name's text, past the pin (the head's 22 px), as the plain day did. */
-.lineup-desk-page .lineup-card-date {
-  overflow: visible;
 }
 
 /* Right under the torn edge now, Team · Notes · Read need no line of their own: the torn edge is it. */
@@ -431,6 +444,35 @@
   background: var(--theme-surface);
   color: var(--theme-muted);
   font-size: 14px;
+}
+
+.lineup-desk-empty > p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.lineup-desk-empty > .lineup-card-day {
+  justify-self: start;
+  margin-bottom: 4px;
+}
+/* One location picked and no ticket to carry the place menu: the way back to all of them. */
+.lineup-desk-all {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--theme-accent-deep);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.lineup-desk-all:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lineup-desk-all:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
 }
 
 .lineup-desk-outline .lineup-card {

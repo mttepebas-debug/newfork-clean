@@ -289,24 +289,26 @@ describe("LineupPage", () => {
 
   // Mert 2026-10-21: the date and location, a narrow wheel and the shift tabs on one line; the ticket's facts on its
   // header's line; its half-moons open; a wheel turned anywhere on the page scrolls the list.
-  it("puts the date and location, the wheel and the shift tabs on one line, and Shift · People · Hours on the ticket's header", async () => {
+  it("puts the wheel and the shift tabs on one line, the day and the place on the ticket, and Shift · People · Hours on its header", async () => {
     renderPage();
     const ticket = await screen.findByRole("region", { name: "Downtown, Lunch" });
     const top = document.querySelector(".lineup-desk-top")!;
-    expect([...top.children].map((child) => child.classList[0])).toEqual(["lineup-toolbar", "lineup-wheel", "catalog-toolbar"]);
+    expect([...top.children].map((child) => child.classList[0])).toEqual(["lineup-wheel", "catalog-toolbar"]);
+    // The page's only ‹ day › and place menu are the ticket's (Mert 2026-10-21).
+    expect(screen.queryByRole("combobox", { name: "Location" })).toBeNull();
+    expect(within(screen.getByRole("group", { name: "Day" })).getByRole("button", { name: "Tue, Oct 13" })).toBeTruthy();
+    expect(ticket.contains(screen.getByRole("group", { name: "Day" }))).toBe(true);
     const head = ticket.querySelector(".lineup-card-head")!;
     const facts = head.querySelector(".lineup-card-facts")!;
     expect([...facts.querySelectorAll("dt")].map((dt) => dt.textContent)).toEqual(["Shift", "People", "Hours"]);
     expect(ticket.querySelectorAll(".lineup-card-facts")).toHaveLength(1);
     expect(head.nextElementSibling?.classList.contains("lineup-card-perf")).toBe(true);
     const desk = readFileSync("src/views/lineup-desktop.css", "utf8");
-    // The tabs keep their width and never scroll for the wheel; the wheel takes what is left.
-    expect(desk).toMatch(/\.lineup-desk-top \{[^}]*grid-template-columns: auto minmax\(0, 1fr\) auto;[^}]*align-items: end;[^}]*border-bottom: 1px solid var\(--theme-border\);/);
+    // The tabs keep their width and never scroll for the wheel; the wheel is at most 480 px, on the left.
+    expect(desk).toMatch(/\.lineup-desk-top \{[^}]*grid-template-columns: minmax\(0, 480px\) auto;[^}]*justify-content: space-between;[^}]*align-items: end;[^}]*border-bottom: 1px solid var\(--theme-border\);/);
     // No gap between the heading's line and this one: the list page's 18 px is gone, the wheel is 46 px.
     expect(desk).toMatch(/\.lineup-desk-page\.list-page\.list-page > \.catalog-page-header \{\s*margin-bottom: 0;/);
     expect(desk).toMatch(/\.lineup-desk-top \.lineup-wheel \{\s*height: 46px;/);
-    // The location is narrower; a long name ends in "…".
-    expect(desk).toMatch(/\.lineup-location-select \{\s*flex: 0 0 180px;\s*overflow: hidden;\s*text-overflow: ellipsis;/);
     expect(desk).toMatch(/\.lineup-desk-top \.lineup-shift-tabs \.catalog-status-tabs \{\s*margin-left: auto;/);
     expect(desk).toMatch(/"loc loc facts state fold"\s*"date date facts at \.";/);
     // The half-moons: the card no longer hides what passes its edge; each shows its inner half over the frame.
@@ -352,7 +354,7 @@ describe("LineupPage", () => {
     // On All locations it is the ticket the arrows reach: the page's location stays All.
     expect(screen.getByTestId("where").textContent).toBe("");
     expect(screen.getByRole("button", { name: "Previous location: Downtown" })).toBeTruthy();
-    const day = within(ticket).getByRole("button", { name: "Tue, Oct 13, pick a day" });
+    const day = within(ticket).getByRole("button", { name: "Tue, Oct 13" });
     expect(day.getAttribute("aria-haspopup")).toBe("dialog");
     fireEvent.click(day);
     const calendar = within(ticket).getByRole("dialog", { name: "Pick a day" });
@@ -367,9 +369,15 @@ describe("LineupPage", () => {
   it("picks the page's location from the ticket's name when one location is picked", async () => {
     renderPage(`/app/schedule/lineup?location=${downtown}`);
     const ticket = await screen.findByRole("region", { name: "Downtown, Lunch" });
-    fireEvent.change(within(ticket).getByRole("combobox", { name: "Go to location" }), { target: { value: uptown } });
+    const place = within(ticket).getByRole("combobox", { name: "Go to location" }) as HTMLSelectElement;
+    // With the page's own location menu gone, the ticket's starts with the way back to all of them.
+    expect([...place.options].map((option) => option.textContent)).toEqual(["All locations", "Downtown", "Uptown"]);
+    fireEvent.change(place, { target: { value: uptown } });
     await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(`?location=${uptown}`));
-    expect(await screen.findByRole("region", { name: "Uptown, Lunch" })).toBeTruthy();
+    const uptownTicket = await screen.findByRole("region", { name: "Uptown, Lunch" });
+    fireEvent.change(within(uptownTicket).getByRole("combobox", { name: "Go to location" }), { target: { value: "" } });
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(""));
+    expect(await screen.findByRole("button", { name: "Next location: Uptown" })).toBeTruthy();
   });
 
   it("scrolls the list from a wheel turned anywhere on the page, but not from the day wheel or sideways", async () => {
@@ -478,8 +486,11 @@ describe("LineupPage", () => {
     renderPage();
     const loading = screen.getByText("Loading lineups").closest("[role=status]") as HTMLElement;
     expect(loading.textContent).toBe("Loading lineups");
-    expect(loading.querySelector(".lineup-desk-ticket .lineup-card")).toBeTruthy();
+    expect(document.querySelector(".lineup-desk-outline .lineup-desk-ticket .lineup-card")).toBeTruthy();
     expect(screen.queryByRole("region", { name: /Lunch/ })).toBeNull();
+    // The outline's ‹ day › is the real one (the page's only date control, Mert 2026-10-21): the day still steps.
+    fireEvent.click(within(screen.getByRole("group", { name: "Day" })).getByRole("button", { name: "Next day" }));
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-14"));
   });
 
   it("gives the load-error card and tries again from it", async () => {

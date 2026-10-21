@@ -30,6 +30,7 @@ export function LineupDayPicker({
   wheelRef,
   days = 7,
   waiting = false,
+  bar = true,
   children,
 }: {
   readonly date: string;
@@ -42,6 +43,8 @@ export function LineupDayPicker({
   readonly waiting?: boolean;
   readonly barRef?: RefObject<HTMLDivElement | null>;
   readonly wheelRef?: RefObject<HTMLDivElement | null>;
+  /** The date row over the wheel; the desktop Lineup has none, its ticket carries the day (Mert 2026-10-21). */
+  readonly bar?: boolean;
   /** Beside the date: the location. */
   readonly children?: ReactNode;
 }) {
@@ -50,37 +53,39 @@ export function LineupDayPicker({
   const ownBox = useRef<HTMLDivElement | null>(null);
   return (
     <>
-      <div className="lineup-toolbar" ref={barRef}>
-        <div className="lineup-date" role="group" aria-label="Day">
-          <button
-            type="button"
-            className="lineup-step"
-            aria-label="Previous day"
-            aria-disabled={waiting || undefined}
-            onClick={() => !waiting && wheel.current?.step(-1)}
-          >
-            <ChevronLeft size={16} aria-hidden />
-          </button>
-          <WheelDate
-            date={date}
-            today={today}
-            preview={preview}
-            waiting={waiting}
-            onToday={() => !waiting && wheel.current?.seekIso(today)}
-            onPick={(iso) => !waiting && wheel.current?.seekIso(iso)}
-          />
-          <button
-            type="button"
-            className="lineup-step"
-            aria-label="Next day"
-            aria-disabled={waiting || undefined}
-            onClick={() => !waiting && wheel.current?.step(1)}
-          >
-            <ChevronRight size={16} aria-hidden />
-          </button>
+      {bar ? (
+        <div className="lineup-toolbar" ref={barRef}>
+          <div className="lineup-date" role="group" aria-label="Day">
+            <button
+              type="button"
+              className="lineup-step"
+              aria-label="Previous day"
+              aria-disabled={waiting || undefined}
+              onClick={() => !waiting && wheel.current?.step(-1)}
+            >
+              <ChevronLeft size={16} aria-hidden />
+            </button>
+            <WheelDate
+              date={date}
+              today={today}
+              preview={preview}
+              waiting={waiting}
+              onToday={() => !waiting && wheel.current?.seekIso(today)}
+              onPick={(iso) => !waiting && wheel.current?.seekIso(iso)}
+            />
+            <button
+              type="button"
+              className="lineup-step"
+              aria-label="Next day"
+              aria-disabled={waiting || undefined}
+              onClick={() => !waiting && wheel.current?.step(1)}
+            >
+              <ChevronRight size={16} aria-hidden />
+            </button>
+          </div>
+          {children}
         </div>
-        {children}
-      </div>
+      ) : null}
       <DayWheel
         boxRef={wheelRef ?? ownBox}
         visible={days}
