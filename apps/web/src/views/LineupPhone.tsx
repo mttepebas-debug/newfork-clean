@@ -401,7 +401,8 @@ function teamEmpty(shift: LineupShift, editing: LineupEditing | null): boolean {
  * The lineup card (card 1, "boarding pass"; Mert 2026-10-17 ~11:45 AM, ~12:30 PM, ~1:10 PM): the place and day on
  * the left, Live or Draft with Edit over when it went out on the right, the chevron; a torn edge; Shift · People ·
  * Hours; Team · Notes · Read inside. A tap anywhere on it but its tabs folds it to its header. The desktop's ticket
- * (F, Mert 2026-10-19) is the same card; its chevron folds it to one line that keeps the tabs (`keepTabs`, 2026-10-21).
+ * (F, Mert 2026-10-19) is the same card; folded it is one line that keeps the tabs (`keepTabs`, 2026-10-21), and a
+ * click on an empty spot of it folds and opens it like its chevron (Mert 2026-10-21).
  */
 export function LineupCard({
   location,
@@ -429,7 +430,7 @@ export function LineupCard({
   readonly open: boolean;
   /** An empty shift's box hangs off it (Mert 2026-10-17 ~2 PM). */
   readonly joined: boolean;
-  /** Folding it to its header (the phone, a tap anywhere on it); the desktop's ticket folds from its chevron only. */
+  /** Folding it to its header: a tap anywhere on it but its buttons and tabs, or its chevron. */
   readonly onFold?: () => void;
   /** The desktop's ticket: folded, it keeps its tabs on one line with its header (Mert 2026-10-21). */
   readonly keepTabs?: boolean;
@@ -479,7 +480,7 @@ export function LineupCard({
       data-lineup-card={`${location.id}:${shift.key}`}
       style={style}
       aria-label={`${location.name}, ${shift.name}`}
-      onClick={onFold && !keepTabs ? tap : undefined}
+      onClick={onFold ? tap : undefined}
     >
       <div className="lineup-card-head">
         <p className="lineup-card-loc">

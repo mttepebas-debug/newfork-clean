@@ -180,7 +180,11 @@ describe("LineupPage", () => {
     // Folded, the tabs still change the list.
     fireEvent.click(within(ticket).getByRole("tab", { name: "Notes" }));
     expect(within(screen.getByRole("tabpanel")).getByText("No notes yet.")).toBeTruthy();
-    // Only the chevron opens it, not a click on the ticket.
+    // A click on an empty spot of the ticket opens it, and again folds it; its tabs and buttons don't.
+    fireEvent.click(ticket);
+    expect(within(ticket).getByText("Hours")).toBeTruthy();
+    fireEvent.click(within(ticket).getByRole("tab", { name: "Team 1" }));
+    expect(within(ticket).getByText("Hours")).toBeTruthy();
     fireEvent.click(ticket);
     expect(within(ticket).queryByText("Hours")).toBeNull();
     // Another location keeps it folded.
@@ -217,6 +221,7 @@ describe("LineupPage", () => {
     // A manager's empty draft shows its departments, so Add Staff reaches them (LINEUP-EDIT W3a, the design's teamPane).
     expect(within(screen.getByRole("tabpanel")).getByText("No one in Kitchen yet.")).toBeTruthy();
     expect(within(screen.getByRole("tabpanel")).getByRole("button", { name: "Add Staff to Kitchen" })).toBeTruthy();
+    expect(document.querySelector(".lineup-staff-none")).toBeTruthy();
     expect(within(ticket).getByText("Draft")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Lunch, 1 person" }));
     await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(`?location=${downtown}&shift=${lunch}`));

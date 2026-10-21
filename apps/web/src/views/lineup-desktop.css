@@ -68,6 +68,7 @@
   border: 1px solid var(--theme-list-frame, var(--theme-border));
   border-radius: 16px;
   background: var(--theme-surface);
+  cursor: pointer;
 }
 /* Folded from its chevron (Mert 2026-10-21): one line, the place, day, state and when it went out, then the tabs, so
    more of the list shows. On a narrow ticket the day and "Published at" go; the place keeps room for its name. */
@@ -776,9 +777,12 @@
 }
 .lineup-staff-none {
   margin: 0;
-  padding: 14px 16px;
+  padding: 18px 16px;
   color: var(--theme-text-secondary);
-  font-size: 13.5px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
 }
 .lineup-staff-out h3 {
   color: var(--theme-text-secondary);
@@ -791,6 +795,13 @@
 .lineup-phone-row.is-out .lineup-phone-name,
 .lineup-desk-cell.is-muted {
   color: var(--theme-text-secondary);
+}
+/* A row about to be called off (its button armed) and the people called off at the foot wear a light red; Call in
+   takes the row out of the group, so it goes back to plain (Mert 2026-10-21). */
+.lineup-desk-page .lineup-phone-row.lineup-desk-row.is-out,
+.lineup-desk-page .lineup-phone-row.lineup-desk-row:has(.lineup-staff-off.is-armed) {
+  border-radius: 8px;
+  background: var(--theme-danger-soft);
 }
 .lineup-phone-row.lineup-staff-rep {
   display: grid;
