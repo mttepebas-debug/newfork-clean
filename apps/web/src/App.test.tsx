@@ -855,6 +855,7 @@ vi.mock("./communications/communications-data", () => ({
       },
     ],
     time_off: [],
+    layout: { widget_order: ["operations", "pending_requests", "quick_actions", "updates", "open_shifts", "announcements", "coming_up", "todos"], hidden_widget_ids: [] }, updates: [], coming_up: [],
   }),
   saveWorkspaceLayout: vi.fn().mockResolvedValue({ status: "saved" }),
   createWorkspaceTodo: vi.fn(),

@@ -41,7 +41,8 @@ const context = {
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
 vi.mock("../communications/communications-data", () => ({
   getWorkspaceDashboard: vi.fn(),
-  getManagerHome: vi.fn().mockResolvedValue({ workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", now: "2026-10-20T12:00:00Z", locations: [], time_off: [] }),
+  getManagerHome: vi.fn().mockResolvedValue({ workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", now: "2026-10-20T12:00:00Z", locations: [], time_off: [],
+    layout: { widget_order: ["operations", "pending_requests", "quick_actions", "updates", "open_shifts", "announcements", "coming_up", "todos"], hidden_widget_ids: [] }, updates: [], coming_up: [] }),
   saveWorkspaceLayout: vi.fn().mockResolvedValue({ status: "saved" }),
 }));
 
@@ -89,7 +90,7 @@ describe("Phase 8 communication pages", () => {
     expect(
       await screen.findByRole("heading", { name: /, Taylor\.$/ }),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Customize" }));
+    fireEvent.click(screen.getByRole("button", { name: "Customize Home" }));
     // "Next 7 days" is kept under the stored key quick_actions (YONETICI-HOME).
     fireEvent.click(screen.getByRole("button", { name: "Hide Next 7 days" }));
     fireEvent.click(screen.getByRole("button", { name: "Save layout" }));
