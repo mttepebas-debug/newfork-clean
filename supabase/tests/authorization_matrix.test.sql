@@ -638,8 +638,8 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.get_manager_home_service($1, $2) is not null$$),
   ('home.layout.save', 'workspace', 'workspace.read', false, false,
    $$select public.save_workspace_layout_service($1, $2,
-       array['quick_actions', 'operations', 'pending_requests', 'open_shifts', 'announcements', 'todos'],
-       array[]::text[]) is not null$$);
+       array['quick_actions', 'operations', 'pending_requests', 'updates', 'open_shifts', 'announcements', 'coming_up', 'todos'],
+       array[]::text[], array[]::uuid[]) is not null$$);
 
 -- The same actions as the core names them. blank: how a blank location reaches
 -- the core, as the entry point receives it: 'null' ({NULL}, no location) or

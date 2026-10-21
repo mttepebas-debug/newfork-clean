@@ -91,6 +91,16 @@ select public.submit_time_off_service(tests.user('hb:p' || n), tests.id('hb'),
 from generate_series(1, 30) n
 join public.employee_location_assignments a on a.employee_id = tests.id('hb:p' || n) and a.ended_at is null and a.is_primary
 join public.locations loc on loc.id = a.location_id;
+-- S-225: thirty more were off in the next two weeks, approved today: Updates and Coming up each read them.
+create temp table hb_off as
+select (public.submit_time_off_service(tests.user('hb:p' || n), tests.id('hb'),
+  jsonb_build_array(jsonb_build_object('segment_date', current_date + 1 + n % 13)), 'Probe', loc.timezone, gen_random_uuid()) ->> 'request_id')::uuid as id
+from generate_series(31, 60) n
+join public.employee_location_assignments a on a.employee_id = tests.id('hb:p' || n) and a.ended_at is null and a.is_primary
+join public.locations loc on loc.id = a.location_id;
+select public.decide_time_off_service(tests.user('hb:owner'), tests.id('hb'), hb_off.id, 'approve', '',
+  app_private.time_off_impact(tests.id('hb'), hb_off.id) ->> 'fingerprint')
+from hb_off;
 select tests.settle();
 
 -- The world is what the budget is about.
@@ -124,6 +134,10 @@ from hb_run group by who order by who;
 -- What was read is the whole Home, not an empty answer.
 select is((select jsonb_array_length(home -> 'locations') from hb_run where who = 'owner' and n = 1), 4,
   'the owner reads four locations');
+select is((select jsonb_array_length(home -> 'updates') from hb_run where who = 'owner' and n = 1), 30,
+  'the owner reads thirty decided requests in Updates');
+select cmp_ok((select count(*)::integer from hb_run, jsonb_array_elements(home -> 'coming_up') c where who = 'owner' and n = 1 and c ->> 'kind' = 'time_off'), '>=', 20,
+  'and the approved time off in Coming up');
 select is((select jsonb_array_length(home -> 'time_off') from hb_run where who = 'owner' and n = 1), 30,
   'the owner reads the thirty requests');
 select is((select sum(jsonb_array_length(l -> 'missing_documents'))::integer from hb_run, jsonb_array_elements(home -> 'locations') l
