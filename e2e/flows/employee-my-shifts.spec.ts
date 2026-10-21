@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import type { Browser, Locator, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
+import { swipeAt } from "../fixtures/finger";
 import { signIn, type Person } from "../fixtures/world";
 
 // CALISAN-SCHEDULE-LISTE (Mert 2026-10-17, S-153): Employee → Schedule opens on My shifts, the Home lab's
@@ -79,16 +80,7 @@ async function boxOf(on: Locator) {
 /** A finger across `on`'s middle, `dx` px sideways (Chrome's touch events through the DevTools protocol). */
 async function swipe(page: Page, on: Locator, dx: number) {
   const box = await boxOf(on);
-  const x = box.x + box.width / 2 - dx / 2;
-  const y = box.y + Math.min(box.height / 2, 60);
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
-  for (let step = 1; step <= 8; step++) {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + (dx * step) / 8, y }] });
-    await page.waitForTimeout(25);
-  }
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  await cdp.detach();
+  await swipeAt(page, box.x + box.width / 2 - dx / 2, box.y + Math.min(box.height / 2, 60), dx);
 }
 
 /** A finger's tap on `on` (Playwright's own tap scrolls the target into view first, which a finger never does). */

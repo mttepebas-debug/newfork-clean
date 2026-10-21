@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import type { Browser, Locator, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
+import { swipeAt } from "../fixtures/finger";
 import { psql } from "../global-setup";
 import { roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
 
@@ -32,17 +33,6 @@ async function swipe(page: Page, on: Locator, dx: number, dy = 0) {
   await swipeAt(page, x, Math.min(box.y + Math.min(box.height / 2, 60), PHONE.height - 120), dx, dy);
 }
 
-/** The same finger from the point (x, y) of the screen. */
-async function swipeAt(page: Page, x: number, y: number, dx: number, dy = 0) {
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
-  for (let step = 1; step <= 8; step++) {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + (dx * step) / 8, y: y + (dy * step) / 8 }] });
-    await page.waitForTimeout(25);
-  }
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  await cdp.detach();
-}
 
 const chosen = (page: Page, list: string) => page.getByRole("tablist", { name: list }).locator('[role="tab"][aria-selected="true"]');
 
