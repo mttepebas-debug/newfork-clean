@@ -90,6 +90,9 @@ insert into service_class values
   ('get_manager_home_service', 'workspace.todos'),
   ('get_notification_preferences_service', 'notifications.read_own'),
   ('get_notification_workspace_settings_service', 'settings.organization.write'),
+  -- Settings > General, New people wait for approval (KATILIM-ONAY): anybody in reads it, owner and admins change it.
+  ('get_onboarding_approval_service', 'workspace.read'),
+  ('set_onboarding_approval_service', 'settings.organization.write'),
   ('get_employee_detail_service', 'employee.read'),
   ('get_employee_document_access_service', 'documents.self'),
   ('get_employee_document_lifecycle_path_service', 'documents.read'),
