@@ -193,7 +193,11 @@ export function EmployeeDashboard({
             {new Date(`${today}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" })}
           </p>
           <ZoneNote zone={homeZone(model)} now={now} />
-          <h1 className="dl-greet" id="employee-hub-title">
+          <h1
+            className="dl-greet"
+            id="employee-hub-title"
+            style={{ "--ch": `${greetingAt(minute, now)}, ${firstName}.`.length } as CSSProperties}
+          >
             <span>{greetingAt(minute, now)},</span> <span className="dl-nm">{firstName}.</span>
           </h1>
           <p className="dl-sub">{homeSubline(model, now)}</p>

@@ -450,7 +450,11 @@ export function WorkspacePage() {
               {new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: zone }).format(now)}
             </p>
             {locations.length ? <ZoneNote zone={zone} now={now} /> : null}
-            <h1 className="dl-greet" id="manager-home-title">
+            <h1
+              className="dl-greet"
+              id="manager-home-title"
+              style={{ "--ch": `${greetingAt(minute)}, ${firstName}.`.length } as CSSProperties}
+            >
               <span>{greetingAt(minute)},</span> <span className="dl-nm">{firstName}.</span>
             </h1>
             {day ? <p className="dl-sub">{homeSubline(people, locations, needs.length)}</p> : null}

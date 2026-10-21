@@ -218,6 +218,7 @@
   display: flex;
   flex-direction: column;
   padding-top: 10px;
+  container-type: inline-size;
 }
 .dl-date {
   color: var(--dl-tx2);
@@ -226,9 +227,13 @@
   opacity: clamp(0, calc(1 - var(--st, 0) / 110), 1);
   transform: translateY(calc(var(--st, 0) * -0.22px));
 }
+/* One line, name included: a long line shrinks to fit (about 0.55em a letter, --ch letters) down to 24px, then the name ends in "…". */
 .dl-home .dl-greet {
+  display: flex;
+  gap: 0.25em;
   margin-top: 6px;
-  font-size: 36px;
+  font-size: clamp(24px, calc(100cqi / var(--ch, 20) / 0.55), 36px);
+  white-space: nowrap;
   font-weight: 700;
   line-height: 1.06;
   letter-spacing: -0.034em;
@@ -236,10 +241,10 @@
   transform: translateY(calc(var(--st, 0) * -0.3px)) scale(clamp(0.88, calc(1 - var(--st, 0) / 1600), 1));
   transform-origin: 0 0;
 }
-.dl-greet span {
-  display: block;
-}
 .dl-nm {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--dl-ac);
 }
 .dl-sub {
