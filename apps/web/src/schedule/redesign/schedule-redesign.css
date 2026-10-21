@@ -1,0 +1,518 @@
+/* Schedule redesign prototype: "Service sheet".
+   A restaurant's printed roster on warm paper, drawn with hairlines.
+   Rule of the skin: colour, line, corner, shadow and tone only. Every size
+   the schedule measures (row and card heights, card padding and type, column
+   widths, header heights) stays as it is, so drag and drop, copy and paste,
+   the column fit and the card width measurer behave exactly as before.
+   Everything sits behind :root[data-schedule-skin="sheet"] (see skin.ts). */
+
+:root[data-schedule-skin="sheet"] {
+  /* Paper and ink */
+  --sheet-canvas: #f4f3ee;
+  --sheet-paper: var(--theme-surface);
+  --sheet-paper-quiet: #fbfaf7;
+  --sheet-paper-sunk: #f7f6f1;
+  --sheet-line: #ecebe5;
+  --sheet-line-mid: #e2e0d8;
+  --sheet-line-strong: #d3d0c6;
+  --sheet-ink: #1b1f1c;
+  --sheet-ink-2: #545b56;
+  --sheet-ink-3: #868b85;
+  /* Brand green, used sparingly: today, focus, the active choice */
+  --sheet-accent: var(--theme-accent);
+  --sheet-accent-ink: var(--theme-accent-strong);
+  --sheet-accent-wash: #edf4f0;
+  --sheet-accent-line: #bcd6cb;
+  /* Depth */
+  --sheet-shadow-1: 0 1px 2px rgba(27, 31, 28, 0.05);
+  --sheet-shadow-2: 0 1px 2px rgba(27, 31, 28, 0.06), 0 6px 16px -8px rgba(27, 31, 28, 0.22);
+  --sheet-shadow-pop: 0 0 0 1px rgba(27, 31, 28, 0.06), 0 18px 44px -14px rgba(27, 31, 28, 0.32);
+  --sheet-radius-control: 8px;
+  --sheet-radius-sheet: 14px;
+  --sheet-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* The schedule's own knobs */
+  --schedule-grid-line-color: var(--sheet-line);
+  --schedule-section-line-color: var(--sheet-line-strong);
+  --schedule-badge-radius: 7px;
+  --schedule-ghost-text: #6b716c;
+  --schedule-unassigned-row-background: #fdf6e6;
+  --schedule-unassigned-line-color: #e0b45c;
+  --schedule-focus-ring-color: var(--sheet-accent);
+}
+
+/* ---------- Page ---------- */
+:root[data-schedule-skin="sheet"] .schedule-page {
+  background: var(--sheet-canvas);
+  color: var(--sheet-ink);
+}
+
+/* ---------- Top bar: controls float on the paper ---------- */
+:root[data-schedule-skin="sheet"] .schedule-topbar {
+  padding: 10px 16px 8px;
+  border-bottom: 0;
+  background: color-mix(in srgb, var(--sheet-canvas) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+:root[data-schedule-skin="sheet"] .schedule-topbar-filters {
+  margin-top: 8px;
+  padding-top: 0;
+  padding-bottom: 2px;
+  border-top: 0;
+}
+:root[data-schedule-skin="sheet"] :is(
+    .schedule-view-mode,
+    .schedule-view-mode-step,
+    .schedule-hide-unscheduled,
+    .schedule-mini-calendar-menu summary,
+    .schedule-command-menu-trigger,
+    .schedule-command-menu summary,
+    .schedule-topbar-filter summary
+  ) {
+  border-color: var(--sheet-line-strong);
+  border-radius: var(--sheet-radius-control);
+  background: var(--sheet-paper);
+  color: var(--sheet-ink);
+  box-shadow: var(--sheet-shadow-1);
+  font-weight: 650;
+  transition:
+    border-color 140ms var(--sheet-ease),
+    background-color 140ms var(--sheet-ease),
+    box-shadow 140ms var(--sheet-ease);
+}
+:root[data-schedule-skin="sheet"] :is(
+    .schedule-view-mode,
+    .schedule-view-mode-step,
+    .schedule-hide-unscheduled,
+    .schedule-command-menu-trigger,
+    .schedule-command-menu summary,
+    .schedule-topbar-filter summary
+  ):hover {
+  border-color: #c3c0b5;
+  background: var(--sheet-paper-quiet);
+}
+:root[data-schedule-skin="sheet"] .schedule-topbar-filter[data-active="true"] summary {
+  border-color: var(--sheet-accent-line);
+  background: var(--sheet-accent-wash);
+  color: var(--sheet-accent-ink);
+}
+/* Date: calendar | range read as one pill */
+:root[data-schedule-skin="sheet"] .schedule-date-split > .schedule-date-calendar-trigger {
+  border-radius: var(--sheet-radius-control) 0 0 var(--sheet-radius-control);
+}
+:root[data-schedule-skin="sheet"] .schedule-date-split > .schedule-view-mode + .schedule-view-mode {
+  border-radius: 0 var(--sheet-radius-control) var(--sheet-radius-control) 0;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+:root[data-schedule-skin="sheet"] .schedule-view-mode[data-return-cue="true"] {
+  border-color: #d8b06a;
+  background: #fdf3df;
+  color: #6f4508;
+}
+/* Week | Day: a sunk track with a raised choice */
+:root[data-schedule-skin="sheet"] .schedule-view-switch {
+  padding: 2px;
+  border-color: var(--sheet-line-mid);
+  border-radius: var(--sheet-radius-control);
+  background: #ebe9e2;
+}
+:root[data-schedule-skin="sheet"] .schedule-view-switch button {
+  width: 54px;
+  border-radius: 6px;
+  color: var(--sheet-ink-2);
+  font-weight: 650;
+  transition:
+    background-color 160ms var(--sheet-ease),
+    color 160ms var(--sheet-ease),
+    box-shadow 160ms var(--sheet-ease);
+}
+:root[data-schedule-skin="sheet"] .schedule-view-switch button + button {
+  border-left: 0;
+}
+:root[data-schedule-skin="sheet"] .schedule-view-switch button[aria-pressed="true"] {
+  background: var(--sheet-paper);
+  color: var(--sheet-ink);
+  box-shadow: 0 1px 2px rgba(27, 31, 28, 0.12), 0 0 0 1px rgba(27, 31, 28, 0.04);
+}
+/* Search */
+:root[data-schedule-skin="sheet"] .schedule-topbar-filters > .schedule-search {
+  border-color: var(--sheet-line-strong);
+  border-radius: var(--sheet-radius-control);
+  background: var(--sheet-paper);
+  box-shadow: var(--sheet-shadow-1);
+}
+:root[data-schedule-skin="sheet"] .schedule-search:focus-within {
+  border-color: var(--sheet-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sheet-accent) 16%, transparent);
+}
+:root[data-schedule-skin="sheet"] .schedule-search-key {
+  border-color: var(--sheet-line-strong);
+  background: var(--sheet-paper-sunk);
+  color: var(--sheet-ink-3);
+}
+/* Primary actions */
+:root[data-schedule-skin="sheet"] :is(
+    .schedule-action-button,
+    .schedule-action-menu summary,
+    .schedule-publish-action,
+    .schedule-published-menu summary,
+    .schedule-published-indicator
+  ) {
+  border-radius: var(--sheet-radius-control);
+  box-shadow: 0 1px 2px rgba(27, 31, 28, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  font-weight: 700;
+}
+
+/* ---------- Filter menus ---------- */
+:root[data-schedule-skin="sheet"] :is(.schedule-topbar-filter-menu, .schedule-command-menu-panel, .schedule-mini-calendar-panel) {
+  border-color: var(--sheet-line-mid);
+  border-radius: 12px;
+  box-shadow: var(--sheet-shadow-pop);
+}
+:root[data-schedule-skin="sheet"] :is(
+    .schedule-topbar-filter-all,
+    .schedule-topbar-filter-group-button,
+    .schedule-topbar-filter-item
+  ) {
+  border-radius: 6px;
+}
+:root[data-schedule-skin="sheet"] :is(
+    .schedule-topbar-filter-all,
+    .schedule-topbar-filter-group-button,
+    .schedule-topbar-filter-item
+  ):is(:hover, :focus-visible) {
+  background: var(--sheet-paper-sunk);
+}
+
+/* ---------- The sheet ---------- */
+:root[data-schedule-skin="sheet"] .schedule-grid-scroll {
+  width: auto;
+  margin: 2px 16px 16px;
+  border: 1px solid var(--sheet-line-mid);
+  border-radius: var(--sheet-radius-sheet);
+  background: var(--sheet-paper);
+  box-shadow: 0 1px 2px rgba(27, 31, 28, 0.04), 0 12px 32px -20px rgba(27, 31, 28, 0.25);
+}
+:root[data-schedule-skin="sheet"] .schedule-grid-sticky {
+  box-shadow: inset -1px 0 var(--sheet-line-mid);
+}
+:root[data-schedule-skin="sheet"] .schedule-grid-exact > [data-location-boundary="start"] {
+  box-shadow: inset 3px 0 var(--sheet-line-strong);
+}
+
+/* Location band: the name is the headline of the sheet */
+:root[data-schedule-skin="sheet"] :is(.schedule-grid-corner, .schedule-location-header, .schedule-total-header) {
+  background: var(--sheet-paper);
+}
+:root[data-schedule-skin="sheet"] .schedule-location-header span {
+  color: var(--sheet-ink);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+:root[data-schedule-skin="sheet"] .schedule-location-header:is(:hover, :focus-visible) {
+  background: var(--sheet-paper-quiet);
+  box-shadow: inset 0 -2px var(--sheet-accent-line);
+  color: var(--sheet-accent-ink);
+}
+:root[data-schedule-skin="sheet"] .schedule-location-header:is(:hover, :focus-visible) span {
+  color: var(--sheet-accent-ink);
+}
+:root[data-schedule-skin="sheet"] .schedule-location-header-list button:is(:hover, :focus-visible) {
+  background: var(--sheet-accent-wash);
+  color: var(--sheet-accent-ink);
+}
+:root[data-schedule-skin="sheet"] .schedule-total-header {
+  color: var(--sheet-ink-3);
+  letter-spacing: 0.08em;
+}
+:root[data-schedule-skin="sheet"] :is(.schedule-grid-logo-frame, .settings-logo-frame) {
+  border-color: var(--sheet-line);
+  border-radius: 10px;
+  box-shadow: var(--sheet-shadow-1);
+}
+
+/* Day headers: small spaced weekday, big quiet date, today in green */
+:root[data-schedule-skin="sheet"] :is(.schedule-employee-header, .schedule-day-header, .schedule-total-subheader) {
+  background: var(--sheet-paper);
+  box-shadow: inset 0 -1px var(--sheet-line-mid);
+}
+:root[data-schedule-skin="sheet"] .schedule-employee-header {
+  color: var(--sheet-ink-3);
+  font-weight: 650;
+  letter-spacing: 0.1em;
+}
+:root[data-schedule-skin="sheet"] .schedule-day-header strong {
+  color: var(--sheet-ink-3);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+}
+:root[data-schedule-skin="sheet"] .schedule-day-header > span:not(.schedule-day-header-posts) {
+  color: var(--sheet-ink-3);
+}
+:root[data-schedule-skin="sheet"] .schedule-day-header .schedule-day-header-date {
+  min-width: 26px;
+  border-radius: 999px;
+  color: var(--sheet-ink);
+  font-size: 15px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+:root[data-schedule-skin="sheet"] .schedule-day-header[data-today="true"] {
+  color: var(--sheet-accent-ink);
+  box-shadow: inset 0 -2px var(--sheet-accent);
+}
+:root[data-schedule-skin="sheet"] .schedule-day-header[data-today="true"] strong {
+  color: var(--sheet-accent-ink);
+}
+:root[data-schedule-skin="sheet"] .schedule-day-header[data-today="true"] .schedule-day-header-date {
+  background: var(--sheet-accent);
+  color: var(--theme-on-accent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--sheet-accent) 45%, transparent);
+}
+:root[data-schedule-skin="sheet"] .schedule-day-header[data-clickable="true"]:is(:hover, :focus-visible) {
+  background: var(--sheet-paper-quiet);
+  box-shadow: inset 0 -2px var(--sheet-accent-line);
+  color: var(--sheet-accent-ink);
+}
+:root[data-schedule-skin="sheet"] .schedule-day-header[data-viewed="true"] {
+  background: var(--sheet-accent-wash);
+}
+:root[data-schedule-skin="sheet"] .schedule-day-header[data-closed="true"] {
+  background: #fbf2ef;
+}
+:root[data-schedule-skin="sheet"] .schedule-day-header .schedule-day-post {
+  border-radius: 999px;
+  background: var(--sheet-paper-sunk);
+  box-shadow: inset 0 0 0 1px var(--sheet-line-mid);
+  color: var(--sheet-ink-2);
+}
+:root[data-schedule-skin="sheet"] .schedule-grid-exact > .schedule-day-header[data-location-boundary="start"][data-today="true"] {
+  box-shadow:
+    inset 3px 0 var(--sheet-line-strong),
+    inset 0 -2px var(--sheet-accent);
+}
+:root[data-schedule-skin="sheet"] .schedule-grid-exact > .schedule-location-header[data-location-boundary="start"]:is(:hover, :focus-visible),
+:root[data-schedule-skin="sheet"] .schedule-grid-exact > .schedule-day-header[data-location-boundary="start"][data-clickable="true"]:is(:hover, :focus-visible) {
+  box-shadow:
+    inset 3px 0 var(--sheet-line-strong),
+    inset 0 -2px var(--sheet-accent-line);
+}
+
+/* People column */
+:root[data-schedule-skin="sheet"] .schedule-employee-cell {
+  background: var(--sheet-paper-quiet);
+}
+:root[data-schedule-skin="sheet"] .schedule-employee-name-button,
+:root[data-schedule-skin="sheet"] .schedule-employee-name-text {
+  color: var(--sheet-ink);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+:root[data-schedule-skin="sheet"] .schedule-employee-name-button:is(:hover, :focus-visible) {
+  color: var(--sheet-accent-ink);
+  text-decoration: none;
+  box-shadow: 0 1px 0 currentColor;
+}
+:root[data-schedule-skin="sheet"] .schedule-employee-cell span {
+  color: var(--sheet-ink-3);
+}
+
+/* Cells */
+:root[data-schedule-skin="sheet"] .schedule-cell {
+  background: var(--sheet-paper);
+}
+:root[data-schedule-skin="sheet"] .schedule-cell[data-editing="true"]:hover {
+  background: var(--sheet-paper-quiet);
+}
+:root[data-schedule-skin="sheet"] .schedule-cell[data-drop-target="true"] {
+  background: var(--sheet-accent-wash);
+  box-shadow: inset 0 0 0 2px var(--sheet-accent-line);
+}
+:root[data-schedule-skin="sheet"] .schedule-cell.schedule-unassigned-row-cell,
+:root[data-schedule-skin="sheet"] .schedule-unassigned-row-cell {
+  background: var(--schedule-unassigned-row-background);
+}
+:root[data-schedule-skin="sheet"] :is(.schedule-filler-row-label, .schedule-filler-cell) {
+  background-color: var(--sheet-paper-quiet);
+  background-image: linear-gradient(
+    to bottom,
+    transparent calc(var(--schedule-filler-row-guide-height) - 1px),
+    var(--sheet-line) calc(var(--schedule-filler-row-guide-height) - 1px)
+  );
+}
+:root[data-schedule-skin="sheet"] .schedule-filler-cell[data-schedule-grid-empty="true"] {
+  background-color: var(--sheet-paper);
+}
+
+/* Add-a-shift strip and paste target */
+:root[data-schedule-skin="sheet"] .schedule-cell-add-action {
+  border: 1px dashed var(--sheet-line-strong);
+  background: color-mix(in srgb, var(--sheet-paper-sunk) 80%, transparent);
+  color: var(--sheet-ink-2);
+}
+:root[data-schedule-skin="sheet"] .schedule-cell-add-action:is(:hover, [data-add-shift-active="true"]) {
+  border-color: var(--sheet-accent);
+  background: var(--sheet-accent-wash);
+  color: var(--sheet-accent-ink);
+}
+
+/* ---------- Shift cards ---------- */
+:root[data-schedule-skin="sheet"] .schedule-shift-badge {
+  /* The job colour is a spine on the card's left edge, drawn inside the
+     card's own padding so no line of text moves. */
+  border-color: color-mix(in srgb, var(--shift-color) 26%, var(--sheet-line-mid));
+  background: color-mix(in srgb, var(--shift-color) 8%, var(--sheet-paper));
+  color: var(--sheet-ink);
+  box-shadow:
+    inset 3px 0 0 var(--shift-color),
+    0 1px 1px rgba(27, 31, 28, 0.05);
+}
+:root[data-schedule-skin="sheet"] .schedule-shift-badge strong {
+  color: color-mix(in srgb, var(--shift-color) 40%, var(--sheet-ink));
+}
+:root[data-schedule-skin="sheet"] .schedule-shift-badge .schedule-shift-time {
+  color: var(--sheet-ink-2);
+}
+:root[data-schedule-skin="sheet"] .schedule-badge-width-measure {
+  border-radius: var(--schedule-badge-radius);
+}
+:root[data-schedule-skin="sheet"] .schedule-cell[data-editing="true"] > .schedule-shift-badge[data-shift-badge="true"]:not([data-ghost="true"]):hover {
+  border-color: color-mix(in srgb, var(--shift-color) 45%, var(--sheet-line-mid));
+  background: color-mix(in srgb, var(--shift-color) 12%, var(--sheet-paper));
+  box-shadow:
+    inset 3px 0 0 var(--shift-color),
+    var(--sheet-shadow-2);
+}
+:root[data-schedule-skin="sheet"] .schedule-shift-badge[data-ghost="true"] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--shift-color) 30%, transparent);
+  background: color-mix(in srgb, var(--shift-color) 4%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--shift-color) 35%, transparent);
+}
+:root[data-schedule-skin="sheet"] .schedule-shift-badge[data-ghost="true"] strong {
+  color: var(--schedule-ghost-text);
+}
+:root[data-schedule-skin="sheet"] .schedule-shift-badge:focus-visible {
+  outline: 2px solid var(--sheet-accent);
+  outline-offset: 2px;
+}
+:root[data-schedule-skin="sheet"] .schedule-shift-selection-ring {
+  box-shadow:
+    inset 0 0 0 2px var(--schedule-shift-selection-color),
+    0 0 0 3px color-mix(in srgb, var(--shift-color) 24%, transparent);
+}
+:root[data-schedule-skin="sheet"] .schedule-shift-badge[data-selected="true"] {
+  background: color-mix(in srgb, var(--shift-color) 16%, var(--sheet-paper));
+}
+:root[data-schedule-skin="sheet"] .schedule-shift-drag-preview {
+  filter: drop-shadow(0 18px 26px rgba(27, 31, 28, 0.24));
+  opacity: 0.92;
+}
+:root[data-schedule-skin="sheet"] .schedule-shift-drag-preview .schedule-shift-badge {
+  transform: rotate(-1.5deg);
+}
+
+/* ---------- Menus ---------- */
+:root[data-schedule-skin="sheet"] .schedule-context-menu {
+  border-color: var(--sheet-line-mid);
+  border-radius: 12px;
+  padding: 5px;
+  box-shadow: var(--sheet-shadow-pop);
+}
+:root[data-schedule-skin="sheet"] .schedule-context-menu button {
+  border-radius: 7px;
+  color: var(--sheet-ink);
+}
+:root[data-schedule-skin="sheet"] .schedule-context-menu button:is(:hover, :focus-visible) {
+  background: var(--sheet-paper-sunk);
+}
+:root[data-schedule-skin="sheet"] .schedule-context-menu-separator {
+  background: var(--sheet-line);
+}
+
+/* ---------- Horizontal scroll bar: a slim pill ---------- */
+:root[data-schedule-skin="sheet"] .schedule-horizontal-nav,
+:root[data-schedule-skin="sheet"] .schedule-horizontal-nav-track {
+  border-top-color: var(--sheet-line);
+  background: var(--sheet-paper);
+}
+:root[data-schedule-skin="sheet"] .schedule-horizontal-nav-rail {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--sheet-paper-sunk);
+}
+:root[data-schedule-skin="sheet"] .schedule-horizontal-nav-thumb {
+  top: 5px;
+  height: 7px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sheet-line-strong);
+  box-shadow: none;
+}
+:root[data-schedule-skin="sheet"] .schedule-horizontal-nav-thumb:hover {
+  background: #b9b5aa;
+}
+:root[data-schedule-skin="sheet"] .schedule-horizontal-nav-thumb:active {
+  background: var(--sheet-ink-3);
+}
+
+/* ---------- The prototype's own switch (not part of the design) ---------- */
+#nf-skin-switch {
+  position: fixed;
+  z-index: 2147483000;
+  bottom: 14px;
+  left: 50%;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid rgba(27, 31, 28, 0.1);
+  border-radius: 999px;
+  background: rgba(27, 31, 28, 0.86);
+  box-shadow: 0 8px 24px -8px rgba(27, 31, 28, 0.45);
+  transform: translateX(-50%);
+  font-family: var(--theme-font-sans);
+}
+body:not(:has(.schedule-page)) #nf-skin-switch,
+body:has(:is(.schedule-shift-drag-preview, .schedule-shift-type-preset-drag-preview)) #nf-skin-switch {
+  display: none;
+}
+#nf-skin-switch button {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+}
+#nf-skin-switch button[aria-pressed="true"] {
+  background: #ffffff;
+  color: #1b1f1c;
+}
+
+/* ---------- Filter chips strip: paper, and no empty band ---------- */
+:root[data-schedule-skin="sheet"] .schedule-filter-command-strip {
+  border-bottom: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+:root[data-schedule-skin="sheet"] .schedule-filter-command-strip:not(:has(.schedule-filter-chip)) {
+  min-height: 0;
+  padding-block: 0;
+}
+:root[data-schedule-skin="sheet"] .schedule-filter-chip {
+  border-color: var(--sheet-line-strong);
+  border-radius: 999px;
+  background: var(--sheet-paper);
+  box-shadow: var(--sheet-shadow-1);
+}
+
+/* ---------- Day columns: today in green, the weekend a shade warmer ----------
+   The cells carry only their date (data-date), so skin.ts writes these two
+   rules for the dates around today; no element of the schedule is touched. */

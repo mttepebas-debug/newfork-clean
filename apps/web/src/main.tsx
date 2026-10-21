@@ -7,6 +7,7 @@ import { installEscapeFocus } from "./lib/escape-focus";
 import { initSentry } from "./lib/sentry";
 import { registerServiceWorker } from "./lib/service-worker";
 import { installStaleChunkReload } from "./shell/stale-chunk-reload";
+import "./schedule/redesign/skin";
 
 initSentry();
 void registerServiceWorker();
