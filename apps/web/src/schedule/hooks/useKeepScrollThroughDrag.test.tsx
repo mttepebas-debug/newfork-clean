@@ -56,6 +56,7 @@ function GrabHarness({ active }: { readonly active: boolean }) {
   return (
     <div className="schedule-grid-scroll" data-testid="scroll">
       <div ref={gridRef} data-testid="grid">
+        <div className="schedule-drag-hold-space" data-testid="space" />
         <button type="button" data-testid="card" onPointerDown={(event) => grab(event.currentTarget)} />
       </div>
     </div>
@@ -66,6 +67,14 @@ function placeCard(top: number, left = 500) {
   vi.spyOn(screen.getByTestId("card"), "getBoundingClientRect").mockReturnValue(
     { top, left, right: left + 120, bottom: top + 40, width: 120, height: 40, x: left, y: top, toJSON: () => ({}) } as DOMRect,
   );
+}
+
+// The space kept above and below the rows while a card is held.
+function held() {
+  return {
+    above: Number.parseFloat(screen.getByTestId("space").style.height) || 0,
+    below: Number.parseFloat(screen.getByTestId("grid").style.paddingBottom) || 0,
+  };
 }
 
 function sizeScroll(scrollHeight: number, clientHeight: number) {
@@ -95,8 +104,8 @@ describe("useKeepScrollThroughDrag holding the picked-up card", () => {
 
     expect(scroll.scrollTop).toBe(139);
     // 39 more pixels below the rows let the grid scroll that far.
-    expect(screen.getByTestId("grid").style.getPropertyValue("--schedule-drag-hold-bottom")).toBe("39px");
-    expect(screen.getByTestId("grid").style.getPropertyValue("--schedule-drag-hold-top")).toBe("0px");
+    expect(screen.getByTestId("grid").style.paddingBottom).toBe("39px");
+    expect(held().above).toBe(0);
   });
 
   it("fills the space above when the rows over the card left", () => {
@@ -115,7 +124,7 @@ describe("useKeepScrollThroughDrag holding the picked-up card", () => {
     rerender(<GrabHarness active />);
 
     expect(scroll.scrollTop).toBe(0);
-    expect(screen.getByTestId("grid").style.getPropertyValue("--schedule-drag-hold-top")).toBe("40px");
+    expect(held().above).toBe(40);
   });
 
   it("keeps each day's width from when the card was picked up, and lets go after the drop", () => {
@@ -133,14 +142,14 @@ describe("useKeepScrollThroughDrag holding the picked-up card", () => {
 
     rerender(<GrabHarness active />);
     expect(grid.dataset.scheduleDragHold).toBe("true");
-    expect(grid.style.getPropertyValue("--schedule-drag-hold-columns")).toBe("240px 151px 162px");
+    expect(grid.style.getPropertyValue("grid-template-columns")).toBe("240px 151px 162px");
 
     scroll.scrollTop = 40;
     rerender(<GrabHarness active={false} />);
     expect(grid.dataset.scheduleDragHold).toBeUndefined();
-    expect(grid.style.getPropertyValue("--schedule-drag-hold-columns")).toBe("");
-    expect(grid.style.getPropertyValue("--schedule-drag-hold-top")).toBe("");
-    expect(grid.style.getPropertyValue("--schedule-drag-hold-bottom")).toBe("");
+    expect(grid.style.getPropertyValue("grid-template-columns")).toBe("");
+    expect(screen.getByTestId("space").style.height).toBe("");
+    expect(grid.style.paddingBottom).toBe("");
     expect(scroll.scrollTop).toBe(220);
   });
 
@@ -152,5 +161,47 @@ describe("useKeepScrollThroughDrag holding the picked-up card", () => {
     rerender(<GrabHarness active />);
     expect(scroll.scrollTop).toBe(80);
     expect(screen.getByTestId("grid").dataset.scheduleDragHold).toBeUndefined();
+  });
+});
+
+// Mert, 2026-10-20 (atama-surukle B): at the drop the rows come back and the
+// cell the shift landed in stays where it is on screen.
+function DropHarness({ active }: { readonly active: boolean }) {
+  const gridRef = useRef<HTMLDivElement>(null);
+  const { grab } = useKeepScrollThroughDrag({ active, gridRef });
+  return (
+    <div className="schedule-grid-scroll" data-testid="scroll">
+      <div ref={gridRef} data-testid="grid">
+        <div className="schedule-drag-hold-space" data-testid="space" />
+        <button type="button" data-testid="card" onPointerDown={(event) => grab(event.currentTarget)} />
+        <div data-testid="cell" data-drop-cell="true" />
+      </div>
+    </div>
+  );
+}
+
+describe("useKeepScrollThroughDrag at the drop", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("keeps the cell the shift landed in where it was while the rows come back", () => {
+    const { rerender } = render(<DropHarness active={false} />);
+    const scroll = screen.getByTestId("scroll");
+    const cell = screen.getByTestId("cell");
+    sizeScroll(3000, 800);
+    scroll.scrollTop = 0;
+    fireEvent.scroll(scroll);
+    placeCard(200);
+    fireEvent.pointerDown(screen.getByTestId("card"));
+    rerender(<DropHarness active />);
+
+    const at = (top: number) => vi.spyOn(cell, "getBoundingClientRect").mockReturnValue(
+      { top, left: 300, right: 420, bottom: top + 60, width: 120, height: 60, x: 300, y: top, toJSON: () => ({}) } as DOMRect);
+    at(500);
+    Object.defineProperty(document, "elementFromPoint", { configurable: true, value: vi.fn(() => cell) });
+    fireEvent.pointerUp(window, { clientX: 330, clientY: 520 });
+    // Four rows of 60 come back above it.
+    at(740);
+    rerender(<DropHarness active={false} />);
+    expect(scroll.scrollTop).toBe(240);
   });
 });

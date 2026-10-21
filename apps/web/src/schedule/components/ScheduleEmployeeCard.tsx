@@ -34,6 +34,7 @@ export function ScheduleEmployeeCard({
         isUnassignedRow ? " schedule-unassigned-row-cell" : ""
       }`}
       role="rowheader"
+      data-schedule-row-owner={employee?.id}
       data-testid={isUnassignedRow ? undefined : "schedule-sticky-employee-seam"}
       data-unassigned={!employee}
       data-editing={editing}

@@ -651,7 +651,10 @@ describe("ScheduleGrid", () => {
 
     expect(await screen.findByText("Alex Rivera")).toBeTruthy();
     expect(screen.getByText("Busy Server")).toBeTruthy();
-    expect(screen.queryByText("Patio Server")).toBeNull();
+    // Folded away, not rebuilt (2026-10-20): out of the grid's rows and out of reach.
+    await waitFor(() => expect(screen.queryByRole("rowheader", { name: /Patio Server/ })).toBeNull());
+    expect(screen.getByRole("rowheader", { name: /Busy Server/ })).toBeTruthy();
+    expect(container.querySelector("[data-drag-hidden='true'][role='rowheader']")?.textContent).toContain("Patio Server");
 
     fireEvent.mouseUp(window, {
       button: 0,
@@ -659,8 +662,47 @@ describe("ScheduleGrid", () => {
       clientX: 40,
       clientY: 40,
     });
-    await waitFor(() => expect(screen.getByText("Busy Server")).toBeTruthy());
-    expect(screen.getByText("Patio Server")).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("rowheader", { name: /Patio Server/ })).toBeTruthy());
+    expect(container.querySelector("[data-drag-hidden]")).toBeNull();
+  });
+
+  // Mert, 2026-10-20 (atama-surukle B): a shift can move to another day, so a
+  // row leaves only when no day of the week can take it. Approved time off all
+  // week hides the row; time off on the shift's own day alone does not.
+  it("hides a person only when no day of the week can take the dragged shift", async () => {
+    const week = (id: string, name: string, leave: { start_at: string; end_at: string }) => ({
+      id, employee_code: id.slice(-3), display_name: name, location_ids: [locationId], job_ids: [jobId], primary_job_id: jobId,
+      weekly_availability: [{ location_id: locationId, location_name: "Main Dining", timezone: "America/Los_Angeles",
+        week_start: "2026-08-17", status: "ready" as const, unavailable_intervals: [], employee_intervals: [],
+        leave_intervals: [leave],
+        clock_segments: [{ start_at: "2026-08-10T07:00:00Z", end_at: "2026-08-31T07:00:00Z", offset_seconds: -7 * 3600 }],
+        days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-08-${17 + index}`, has_unavailable: false, all_day: false })) }],
+    });
+    const model = scheduleModel({
+      // As every workspace has it: approved time off blocks (a CHECK in the database).
+      settings: { time_format: "12h", conflict_rules: { approved_time_off: "block", closed_location: "confirm", minimum_travel: "confirm", minimum_rest: "confirm" } },
+      employees: [
+        ...scheduleModel().employees,
+        week("99999999-9999-4999-8999-999999999991", "Away All Week", { start_at: "2026-08-17T07:00:00Z", end_at: "2026-08-24T07:00:00Z" }),
+        week("99999999-9999-4999-8999-999999999992", "Away Monday", { start_at: "2026-08-17T07:00:00Z", end_at: "2026-08-18T07:00:00Z" }),
+      ],
+    });
+    const { container } = renderGrid({ model, session: editSession(model), employeeSortMode: "alphabetical", showRoleSeparators: false, showPresetShiftBadges: false });
+    const badge = container.querySelector<HTMLElement>(".schedule-shift-badge[data-shift-id='66666666-6666-4666-8666-666666666666']");
+    const targetCell = container.querySelector<HTMLElement>(".schedule-cell[data-drop-cell='true'][data-date='2026-08-18']");
+    expect(screen.getByText("Away All Week")).toBeTruthy();
+    Object.defineProperty(document, "elementFromPoint", { configurable: true, value: vi.fn(() => targetCell) });
+
+    fireEvent.mouseDown(badge!, { button: 0, buttons: 1, clientX: 10, clientY: 10 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 40, clientY: 40 });
+    await waitFor(() => expect(container.querySelector(".schedule-shift-drag-preview")).toBeTruthy());
+
+    await waitFor(() => expect(screen.queryByRole("rowheader", { name: /Away All Week/ })).toBeNull());
+    expect(screen.getByRole("rowheader", { name: /Away Monday/ })).toBeTruthy();
+    expect(screen.getByRole("rowheader", { name: /Alex Rivera/ })).toBeTruthy();
+
+    fireEvent.mouseUp(window, { button: 0, buttons: 0, clientX: 40, clientY: 40 });
+    await waitFor(() => expect(screen.getByRole("rowheader", { name: /Away All Week/ })).toBeTruthy());
   });
 
   it("widens day columns when preset badge measurement needs more space", async () => {

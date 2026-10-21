@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 
 const HOLD_ATTRIBUTE = "scheduleDragHold";
-const HOLD_COLUMNS = "--schedule-drag-hold-columns";
-const HOLD_TOP = "--schedule-drag-hold-top";
-const HOLD_BOTTOM = "--schedule-drag-hold-bottom";
+// Frames to keep the anchor in place after the rows change: the grid settles
+// in the first, the rest catch a late layout (a font, a card's measure).
+const FOLLOW_MS = 120;
 
 interface GrabbedCard {
   readonly element: HTMLElement;
@@ -14,15 +14,22 @@ interface GrabbedCard {
   readonly columns: string;
 }
 
+interface Anchor {
+  readonly element: HTMLElement;
+  readonly top: number;
+  readonly left: number;
+}
+
 /**
- * While a shift or a preset is dragged, people who cannot take it leave the
- * list, so the grid gets shorter and the browser pulls its scroll up. The
- * picked-up card stays under the mouse all the same: the days keep their
- * widths, the grid scrolls back to the card and, where it cannot scroll that
- * far, leaves empty space above or below the rows (Mert, 2026-10-13). Once
- * the drop brings the rows back, the grid returns to the height it was at
- * when the drag started; sideways it stays where the drag left it (Mert,
- * 2026-10-12).
+ * While a shift or a preset is dragged, people who cannot take it fold out
+ * of the list, so the grid gets shorter and the browser pulls its scroll up.
+ * The picked-up card stays under the mouse all the same, frame by frame while
+ * the rows fold: the days keep their widths, the grid scrolls back to the
+ * card and, where it cannot scroll that far, leaves empty space above or
+ * below the rows (Mert, 2026-10-13). At the drop the rows unfold and the cell
+ * the shift landed in stays where it is on screen (Mert, 2026-10-20); a drag
+ * let go outside any cell brings the grid back to the height it was at when
+ * the drag started (Mert, 2026-10-12).
  */
 export function useKeepScrollThroughDrag({
   active,
@@ -36,6 +43,8 @@ export function useKeepScrollThroughDrag({
   const startTopRef = useRef<number | null>(null);
   const startLeftRef = useRef<number | null>(null);
   const grabbedRef = useRef<GrabbedCard | null>(null);
+  const dropRef = useRef<Anchor | null>(null);
+  const followRef = useRef<number | null>(null);
   // Read during render: the shrink's own scroll event comes after this
   // render, and must not count as the place the drag started from.
   activeRef.current = active;
@@ -54,6 +63,28 @@ export function useKeepScrollThroughDrag({
     scroll.addEventListener("scroll", remember, { passive: true });
     return () => scroll.removeEventListener("scroll", remember);
   }, [active, gridRef]);
+
+  // The cell under the pointer as it lets go, before the rows come back.
+  useEffect(() => {
+    if (!active) return undefined;
+    const remember = (event: MouseEvent) => {
+      const hit = document.elementFromPoint?.(event.clientX, event.clientY);
+      const cell = hit instanceof HTMLElement ? hit.closest<HTMLElement>("[data-drop-cell='true']") : null;
+      if (!cell || !gridRef.current?.contains(cell)) return;
+      const bounds = cell.getBoundingClientRect();
+      dropRef.current = { element: cell, top: bounds.top, left: bounds.left };
+    };
+    window.addEventListener("pointerup", remember, true);
+    window.addEventListener("mouseup", remember, true);
+    return () => {
+      window.removeEventListener("pointerup", remember, true);
+      window.removeEventListener("mouseup", remember, true);
+    };
+  }, [active, gridRef]);
+
+  useEffect(() => () => {
+    if (followRef.current !== null) window.cancelAnimationFrame(followRef.current);
+  }, []);
 
   // A press on a card: where it is and how wide each day is, before any row
   // leaves. A press that never becomes a drag is overwritten by the next one.
@@ -81,52 +112,86 @@ export function useKeepScrollThroughDrag({
     wasActiveRef.current = active;
     const grid = gridRef.current;
     const scroll = grid?.closest<HTMLElement>(".schedule-grid-scroll");
-    if (!grid || !scroll) return;
+    if (!grid || !scroll || (!started && !ended)) return;
+    if (followRef.current !== null) window.cancelAnimationFrame(followRef.current);
+    followRef.current = null;
+    // Keeps one element at one place on screen while the rows fold or unfold.
+    const follow = (anchor: Anchor, done: () => void) => {
+      const until = performance.now() + FOLLOW_MS;
+      keepAt(grid, scroll, anchor);
+      const frame = () => {
+        if (!anchor.element.isConnected) return done();
+        keepAt(grid, scroll, anchor);
+        if (performance.now() < until) followRef.current = window.requestAnimationFrame(frame);
+        else {
+          followRef.current = null;
+          done();
+        }
+      };
+      followRef.current = window.requestAnimationFrame(frame);
+    };
     if (started) {
+      dropRef.current = null;
       const grabbed = grabbedRef.current;
       grabbedRef.current = null;
-      if (grabbed?.element.isConnected) holdCard(grid, scroll, grabbed, startTopRef.current, startLeftRef.current);
+      if (!grabbed?.element.isConnected) return;
+      // Set before anything is measured, so the first layout of the shorter
+      // grid already has the days at their old widths.
+      if (grabbed.columns && grabbed.columns !== "none") {
+        grid.dataset[HOLD_ATTRIBUTE] = "true";
+        grid.style.setProperty("grid-template-columns", grabbed.columns, "important");
+      }
+      // Where the card was on screen as the drag began: where it was pressed,
+      // moved by any scroll in between.
+      const startTop = startTopRef.current ?? grabbed.scrollTop;
+      const startLeft = startLeftRef.current ?? grabbed.scrollLeft;
+      follow({
+        element: grabbed.element,
+        top: grabbed.top - (startTop - grabbed.scrollTop),
+        left: grabbed.left - (startLeft - grabbed.scrollLeft),
+      }, () => {});
       return;
     }
-    if (!ended) return;
-    releaseGrid(grid);
-    if (startTopRef.current !== null && scroll.scrollTop !== startTopRef.current) scroll.scrollTop = startTopRef.current;
+    const drop = dropRef.current;
+    dropRef.current = null;
+    if (!drop?.element.isConnected) {
+      releaseGrid(grid);
+      if (startTopRef.current !== null && scroll.scrollTop !== startTopRef.current) scroll.scrollTop = startTopRef.current;
+      return;
+    }
+    follow(drop, () => releaseGrid(grid));
   }, [active, gridRef]);
 
   return { grab };
 }
 
-function holdCard(
-  grid: HTMLElement,
-  scroll: HTMLElement,
-  grabbed: GrabbedCard,
-  startTop: number | null,
-  startLeft: number | null,
-): void {
-  // Set before anything is measured, so the first layout of the shorter grid
-  // already has the days at their old widths.
-  if (grabbed.columns && grabbed.columns !== "none") {
-    grid.dataset[HOLD_ATTRIBUTE] = "true";
-    grid.style.setProperty(HOLD_COLUMNS, grabbed.columns);
-  }
-  // Where the card was on screen as the drag began: where it was pressed,
-  // moved by any scroll in between.
-  const wantedTop = grabbed.top - ((startTop ?? grabbed.scrollTop) - grabbed.scrollTop);
-  const wantedLeft = grabbed.left - ((startLeft ?? grabbed.scrollLeft) - grabbed.scrollLeft);
-  const now = grabbed.element.getBoundingClientRect();
-  let top = scroll.scrollTop + (now.top - wantedTop);
-  const above = Math.max(0, -top);
+/** Scrolls, or pads above or below the rows, so the anchor sits where it was. */
+function keepAt(grid: HTMLElement, scroll: HTMLElement, anchor: Anchor): void {
+  const space = holdSpace(grid);
+  // Counted as if the space added on an earlier frame were not there.
+  const previousAbove = Number.parseFloat(space?.style.height ?? "") || 0;
+  const previousBelow = Number.parseFloat(grid.style.paddingBottom) || 0;
+  const now = anchor.element.getBoundingClientRect();
+  let top = scroll.scrollTop - previousAbove + (now.top - anchor.top);
+  const above = space ? Math.max(0, -top) : 0;
   top = Math.max(0, top);
-  const below = Math.max(0, top - (scroll.scrollHeight + above - scroll.clientHeight));
-  grid.style.setProperty(HOLD_TOP, `${Math.round(above)}px`);
-  grid.style.setProperty(HOLD_BOTTOM, `${Math.round(below)}px`);
-  scroll.scrollTop = top;
-  scroll.scrollLeft = Math.max(0, scroll.scrollLeft + (now.left - wantedLeft));
+  const rows = scroll.scrollHeight - previousAbove - previousBelow;
+  const below = Math.max(0, top - (rows + above - scroll.clientHeight));
+  // Written only when it changes: an unchanged write still costs a layout.
+  if (space && Math.round(above) !== Math.round(previousAbove)) space.style.height = `${Math.round(above)}px`;
+  if (Math.round(below) !== Math.round(previousBelow)) grid.style.paddingBottom = `${Math.round(below)}px`;
+  if (scroll.scrollTop !== top) scroll.scrollTop = top;
+  const left = Math.max(0, scroll.scrollLeft + (now.left - anchor.left));
+  if (scroll.scrollLeft !== left) scroll.scrollLeft = left;
+}
+
+function holdSpace(grid: HTMLElement): HTMLElement | null {
+  return grid.querySelector<HTMLElement>(":scope > .schedule-drag-hold-space");
 }
 
 function releaseGrid(grid: HTMLElement): void {
   delete grid.dataset[HOLD_ATTRIBUTE];
-  grid.style.removeProperty(HOLD_COLUMNS);
-  grid.style.removeProperty(HOLD_TOP);
-  grid.style.removeProperty(HOLD_BOTTOM);
+  grid.style.removeProperty("grid-template-columns");
+  grid.style.removeProperty("padding-bottom");
+  holdSpace(grid)?.style.removeProperty("height");
 }

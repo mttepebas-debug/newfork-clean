@@ -99,7 +99,19 @@ export function useUniformScheduleBadgeWidth({
   useEffect(() => {
     const container = containerRef.current;
     if (!container || typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(() => measure());
+    // Only a change of width can change the widest card: rows folding away
+    // during a drag change the grid's height alone, and measuring every card
+    // then cost a tenth of a second at each drag and drop (atama-surukle B).
+    const widths = new WeakMap<Element, number>();
+    const observer = new ResizeObserver((entries) => {
+      let wider = false;
+      for (const entry of entries) {
+        const next = entry.contentRect.width;
+        if (widths.get(entry.target) !== next) wider = true;
+        widths.set(entry.target, next);
+      }
+      if (wider) measure();
+    });
     observer.observe(container);
     for (const badge of container.querySelectorAll<HTMLElement>(
       "[data-schedule-badge-width-measure='true']",

@@ -22,6 +22,7 @@ import { scheduleJobName } from "../lib/scheduleCatalogNames";
 import { formatTime } from "../lib/scheduleDateTime";
 import { toScheduleShiftMutation } from "../lib/scheduleShiftMutation";
 import { validatePresetDrop } from "../lib/schedulePresetTargets";
+import { isScheduleEmployeeEligible } from "../lib/employeeEligibility";
 import {
   useSingleShiftPointerDrag,
   type ShiftDropEvaluation,
@@ -63,10 +64,13 @@ export function evaluateScheduleShiftDropTarget({
   model,
   shift,
   target,
+  shifts = model.shifts,
 }: {
   readonly model: ScheduleReadModel;
   readonly shift: ScheduleEditableShift | undefined;
   readonly target: ShiftDropTarget;
+  /** The shifts to check against; the target person's own are enough. */
+  readonly shifts?: readonly ScheduleShift[];
 }): ShiftDropEvaluation {
   if (!shift) return { allowed: false, reason: "Shift no longer exists." };
   const sameTarget =
@@ -81,7 +85,7 @@ export function evaluateScheduleShiftDropTarget({
   return dropConflictEvaluation(
     [...evaluateScheduleShiftConflicts(
       model,
-      model.shifts,
+      shifts,
       toScheduleShiftMutation(shift, {
         location_id: target.locationId,
         employee_id: target.employeeId,
@@ -90,6 +94,36 @@ export function evaluateScheduleShiftDropTarget({
       target.copy ? null : shift.id,
     ), ...missingTargetEvidence(model, target)],
   );
+}
+
+/**
+ * Whether a dragged shift has a cell in this person's row: any of the days
+ * at the shift's own location whose drop colour is not "blocked" (Mert,
+ * 2026-10-20). The same check as the cell under the pointer, so the row and
+ * the cell never disagree. The shift's own person always has one.
+ */
+export function canTakeDraggedShift({
+  model,
+  shift,
+  employee,
+  dates,
+}: {
+  readonly model: ScheduleReadModel;
+  readonly shift: ScheduleEditableShift;
+  readonly employee: ScheduleReadModel["employees"][number];
+  readonly dates: readonly string[];
+}): boolean {
+  if (employee.id === shift.employee_id) return true;
+  if (!shift.job_id || !isScheduleEmployeeEligible(employee, {
+    locationId: shift.location_id, jobId: shift.job_id, shiftTypeId: shift.shift_type_id ?? null,
+  })) return false;
+  const own = model.shifts.filter((item) => item.employee_id === employee.id);
+  return dates.some((date) => evaluateScheduleShiftDropTarget({
+    model,
+    shift,
+    shifts: own,
+    target: { shiftId: shift.id, employeeId: employee.id, locationId: shift.location_id, date, copy: false },
+  }).targetStatus !== "blocked");
 }
 
 export interface ScheduleShiftGroupDropMemberEvaluation extends ShiftDropEvaluation {

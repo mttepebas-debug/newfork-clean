@@ -5018,20 +5018,27 @@ button.workspace-switcher-item:hover:not(:disabled) {
   display: grid;
   width: max-content;
   min-width: 100%;
-  /* Room below the rows while a card is dragged (useKeepScrollThroughDrag). */
-  padding-bottom: var(--schedule-drag-hold-bottom, 0px);
   align-items: stretch;
 }
 /* While a card is dragged and rows leave, the days keep the widths they had
-   when it was picked up, and empty space over the rows keeps it under the
-   mouse (Mert, 2026-10-13). */
-.schedule-grid-exact[data-schedule-drag-hold="true"] {
-  grid-template-columns: var(--schedule-drag-hold-columns) !important;
-}
+   when it was picked up, and empty space over or under the rows keeps it
+   under the mouse (Mert, 2026-10-13). useKeepScrollThroughDrag writes those
+   onto the grid and this spacer directly: a custom property on the grid
+   would restyle every card in it, which took more than half a second with
+   100 people (atama-surukle B, 2026-10-20). */
 .schedule-grid-exact > .schedule-drag-hold-space {
   grid-column: 1 / -1;
-  height: var(--schedule-drag-hold-top, 0px);
+  height: 0;
   border: 0;
+}
+/* People who cannot take a dragged shift fold their row away until the
+   drop. The rows stay mounted, so nothing is rebuilt (Mert, 2026-10-20). */
+.schedule-grid-exact > [data-drag-hidden="true"] {
+  height: 0;
+  min-height: 0 !important;
+  padding-block: 0 !important;
+  overflow: hidden;
+  border-bottom-width: 0;
 }
 .schedule-grid-exact[data-schedule-fit-visible-columns="true"] {
   width: 100%;
@@ -6181,6 +6188,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   box-shadow: inset 2px 0 0 #c45b43;
 }
 .schedule-shift-badge {
+  /* A finger held on a card lifts it (atama-surukle B): no text selection
+     or iPad callout in the way. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   --schedule-shift-selection-color: color-mix(
     in srgb,
     var(--shift-color) 58%,

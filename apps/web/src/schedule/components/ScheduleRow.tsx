@@ -5,10 +5,11 @@ import type {
   ScheduleShift,
 } from "@newfork/shared/schedule";
 import { Plus } from "lucide-react";
-import type {
-  CSSProperties,
-  MouseEvent,
-  PointerEvent as ReactPointerEvent,
+import {
+  memo,
+  type CSSProperties,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 
 import {
@@ -72,7 +73,9 @@ interface DisplayShiftStack {
   readonly stackCount: number;
 }
 
-export function ScheduleRow({
+// Memoised: while a shift is dragged the grid renders every frame, and only
+// the rows whose props changed draw again (atama-surukle B, 2026-10-20).
+export const ScheduleRow = memo(function ScheduleRow({
   employee,
   shifts,
   totalShifts,
@@ -221,6 +224,9 @@ export function ScheduleRow({
     "--schedule-row-min-height": `${Math.max(rowMinHeight, rowBadgeStackHeight)}px`,
     "--schedule-row-badge-height": `${badgeHeight}px`,
   } as CSSProperties;
+  // On every grid item of the row: whose row it is, so a drag can fold the
+  // row away without drawing it again (ScheduleGrid, atama-surukle B).
+  const owner = employee ? { "data-schedule-row-owner": employee.id } : {};
 
   // The name cell's "!" reads every cell of the row (KARARLAR Schedule, 2026-10-06).
   const availabilityDays = employee
@@ -390,6 +396,7 @@ export function ScheduleRow({
                   : undefined
               }
               data-drop-cell="true"
+              {...owner}
               data-employee-id={employee?.id ?? ""}
               data-location-id={interactionLocationId}
               data-display-location-id={location.id}
@@ -546,6 +553,7 @@ export function ScheduleRow({
             data-schedule-total-column-cell="true"
             data-schedule-total-hours-employee-cell="true"
             data-schedule-total-hours-week-cell="true"
+            {...owner}
             style={rowStyle}
             aria-label={`${employee.display_name} total hours ${formatHourTotalValue(
               hourTotal,
@@ -557,7 +565,7 @@ export function ScheduleRow({
       ) : null}
     </>
   );
-}
+});
 
 function isUnassignedRowDrag(
   dragState: ShiftDragState | PresetDragState | null,

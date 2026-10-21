@@ -8,6 +8,7 @@ import type {
 import type { ScheduleLogoPlacement, SchedulingSettings } from "@newfork/shared";
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -32,7 +33,7 @@ import {
   buildDisplayScheduleCellState,
   useScheduleCellState,
 } from "../hooks/useCellState";
-import { useScheduleGridDragControllers } from "../hooks/useScheduleGridDragControllers";
+import { canTakeDraggedShift, useScheduleGridDragControllers } from "../hooks/useScheduleGridDragControllers";
 import { useScheduleGridSelectionClear } from "../hooks/useScheduleGridSelectionClear";
 import { addDays } from "../lib/scheduleDateTime";
 import { filterScheduleModel, parseIds } from "../lib/scheduleFilterModel";
@@ -204,15 +205,17 @@ export function ScheduleGrid({
         : shift),
     };
   }, [searched, showAvailabilityMarks]);
-  const days = createScheduleGridDays({
+  // Kept between renders: a drag re-renders the grid every frame, and the
+  // rows only redraw when what they show changed (atama-surukle B).
+  const days = useMemo(() => createScheduleGridDays({
     selectedDate,
     view,
     weekStart: model.week_start,
-  });
-  const locationGroups = createScheduleGridLocationGroups({
+  }), [selectedDate, view, model.week_start]);
+  const locationGroups = useMemo(() => createScheduleGridLocationGroups({
     layout,
     locations: filtered.locations,
-  });
+  }), [layout, filtered.locations]);
   const columns = countScheduleGridColumns({ days, locationGroups });
   const {
     employeeRowGroups: allEmployeeRowGroups,
@@ -223,7 +226,7 @@ export function ScheduleGrid({
     showLocationInBadge,
     showShiftTypePresets,
     showUnassignedRow,
-  } = createScheduleGridViewModel({
+  } = useMemo(() => createScheduleGridViewModel({
     employeeSortMode,
     filtered,
     hideUnscheduled,
@@ -237,7 +240,7 @@ export function ScheduleGrid({
     showUnassignedShifts: showUnassignedShifts && Boolean(session),
     hasEditSession: Boolean(session),
     addDays,
-  });
+  }), [employeeSortMode, filtered, hideUnscheduled, layout, showPresetShiftBadges, showRoleSeparators, showTotalHours, showUnassignedShifts, session]);
   const sourceCellStateByKey = useScheduleCellState(model, !showAvailabilityMarks);
   const cellStateByKey = useMemo(
     () =>
@@ -268,50 +271,60 @@ export function ScheduleGrid({
   useEffect(() => {
     if (!shiftDrag.dragState) setActivePointerShiftLocationId(null);
   }, [shiftDrag.dragState]);
-  // While a shift is dragged, people who cannot take it at the shift's own
-  // location leave the list until the drop; the shift's own person stays. A
-  // preset has no location yet, so any location on screen counts (Mert,
-  // 2026-10-09, item 4 B; the drop colors of 2026-10-06 stay for the rest).
-  const dragRule = useMemo(() => {
-    if (shiftDrag.dragState) {
-      const shift = filtered.shifts.find((item) => item.id === shiftDrag.dragState?.activeShiftId);
-      if (!shift?.job_id) return null;
-      return {
-        jobId: shift.job_id,
-        shiftTypeId: shift.shift_type_id ?? null,
-        ownerId: shift.employee_id,
-        locationIds: [shift.location_id],
-      };
-    }
-    if (presetDrag.dragState) {
-      return {
-        jobId: presetDrag.dragState.jobId,
-        shiftTypeId: presetDrag.dragState.shiftTypeId,
-        ownerId: null,
-        locationIds: filtered.locations.map((location) => location.id),
-      };
-    }
-    return null;
-  }, [filtered.locations, filtered.shifts, presetDrag.dragState, shiftDrag.dragState]);
-  const { grab: grabDragSource } = useKeepScrollThroughDrag({ active: Boolean(dragRule), gridRef });
-  const { employeeRowGroups, rows } = useMemo(() => {
-    if (!dragRule) return { employeeRowGroups: allEmployeeRowGroups, rows: allRows };
-    const canTake = (employee: (typeof allRows)[number]) =>
-      employee.id === dragRule.ownerId ||
-      dragRule.locationIds.some((locationId) =>
-        isScheduleEmployeeEligible(employee, {
-          locationId,
-          jobId: dragRule.jobId,
-          shiftTypeId: dragRule.shiftTypeId,
-        }),
-      );
-    return {
-      rows: allRows.filter(canTake),
-      employeeRowGroups: allEmployeeRowGroups
-        .map((group) => ({ ...group, employees: group.employees.filter(canTake) }))
-        .filter((group) => group.employees.length > 0),
+  // While a shift is dragged, people who cannot take it on any day of the week
+  // at the shift's own location fold away until the drop; the shift's own
+  // person stays. A cell refuses what its drop colour refuses (the server's
+  // blocks: location, job, approved time off, an overlap), so somebody off on
+  // Monday stays for Tuesday (Mert, 2026-10-20, atama-surukle B; 2026-10-09
+  // item 4 B before). A preset has no location yet, so any location on
+  // screen counts. Worked out once per drag, not per pointer move.
+  const draggedId = shiftDrag.dragState?.activeShiftId ?? null;
+  const presetJobId = presetDrag.dragState?.jobId ?? null;
+  const presetShiftTypeId = presetDrag.dragState?.shiftTypeId ?? null;
+  const dragKey = draggedId ?? (presetJobId ? `preset|${presetJobId}|${presetShiftTypeId ?? ""}` : null);
+  // The rows fold a frame after the card lifts, and unfold a frame after it
+  // lands: the lift and the landing are drawn first, at once, and the bigger
+  // redraw of the rows follows (atama-surukle B, 2026-10-20). Who folds is
+  // worked out once, from the drag as it began.
+  const latest = useRef({ allRows, days, filtered, model, presetJobId, presetShiftTypeId });
+  useLayoutEffect(() => {
+    latest.current = { allRows, days, filtered, model, presetJobId, presetShiftTypeId };
+  });
+  const [fold, setFold] = useState<{ readonly key: string; readonly rows: ReadonlySet<string> } | null>(null);
+  useEffect(() => {
+    let timer: number | undefined;
+    const frame = window.requestAnimationFrame(() => {
+      timer = window.setTimeout(() => {
+        const rows = dragKey ? foldedRows(latest.current, dragKey) : null;
+        setFold(dragKey && rows ? { key: dragKey, rows } : null);
+      }, 0);
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
     };
-  }, [allEmployeeRowGroups, allRows, dragRule]);
+  }, [dragKey]);
+  const hiddenRowIds = fold?.rows ?? null;
+  // Folding is written straight onto the rows' cells: the rows are not drawn
+  // again, so a drag starts in one frame (atama-surukle B). Before the scroll
+  // keeper below, which measures the folded grid.
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || !hiddenRowIds?.size) return undefined;
+    const folded = Array.from(grid.querySelectorAll<HTMLElement>(":scope > [data-schedule-row-owner]"))
+      .filter((item) => hiddenRowIds.has(item.dataset.scheduleRowOwner ?? ""));
+    for (const item of folded) {
+      item.dataset.dragHidden = "true";
+      item.setAttribute("aria-hidden", "true");
+    }
+    return () => {
+      for (const item of folded) {
+        delete item.dataset.dragHidden;
+        item.removeAttribute("aria-hidden");
+      }
+    };
+  }, [hiddenRowIds]);
+  const { grab: grabDragSource } = useKeepScrollThroughDrag({ active: hiddenRowIds !== null, gridRef });
   const activeDragShiftLocationId = useMemo(() => {
     const activeShiftId = shiftDrag.dragState?.activeShiftId;
     if (!activeShiftId) return null;
@@ -372,6 +385,20 @@ export function ScheduleGrid({
     setActivePointerShiftLocationId(null);
     onEdit(shift, point);
   };
+  // Every card once, off screen, to size the days: not again on each pointer move.
+  const badgeWidthMeasurer = useMemo(() => renderScheduleBadgeWidthMeasurer({
+    shifts: filtered.shifts,
+    catalog: model,
+    editing: Boolean(session),
+    locationGroups,
+    showShiftType,
+    showShiftLabels,
+    showClockTimes,
+    timeFormat: model.settings.time_format,
+    showJobColorDot,
+    showLocationInBadge,
+    showShiftTypePresets,
+  }), [filtered.shifts, model, session, locationGroups, showShiftType, showShiftLabels, showClockTimes, showJobColorDot, showLocationInBadge, showShiftTypePresets]);
   const measuredBadgeWidth = useUniformScheduleBadgeWidth({
     containerRef: gridRef,
     minimumWidth: view === "week" ? 0 : 126,
@@ -454,19 +481,7 @@ export function ScheduleGrid({
       }
       onClearSelection={onClearSelection}
     >
-      {renderScheduleBadgeWidthMeasurer({
-        shifts: filtered.shifts,
-        catalog: model,
-        editing: Boolean(session),
-        locationGroups,
-        showShiftType,
-        showShiftLabels,
-        showClockTimes,
-        timeFormat: model.settings.time_format,
-        showJobColorDot,
-        showLocationInBadge,
-        showShiftTypePresets,
-      })}
+      {badgeWidthMeasurer}
       <ScheduleGridHeaders
         closures={model.closures}
         timeFormat={model.settings.time_format}
@@ -496,7 +511,8 @@ export function ScheduleGrid({
         draggedShiftId={draggedShiftId}
         dragState={shiftDrag.dragState ?? presetDrag.dragState}
         editing={Boolean(session)}
-        employeeRowGroups={employeeRowGroups}
+        employeeRowGroups={allEmployeeRowGroups}
+        hiddenRowIds={hiddenRowIds}
         fillerRowCount={fillerRowCount}
         focusedShiftId={focusedShiftId}
         searchMarks={searched.marks}
@@ -525,7 +541,7 @@ export function ScheduleGrid({
         onShiftMouseDown={handleShiftMouseDown}
         onShiftPointerDown={handleShiftPointerDown}
         pasteArmed={pasteArmed}
-        rows={rows}
+        rows={allRows}
         selectedIds={selectedIds}
         showClockTimes={showClockTimes}
         timeFormat={timeFormat ?? model.settings.time_format}
@@ -544,4 +560,35 @@ export function ScheduleGrid({
       />
     </ScheduleGridShell>
   );
+}
+
+/** The people with no cell for what is dragged: a shift (by id) or a preset ("preset|job|type"). */
+function foldedRows(
+  {
+    allRows,
+    days,
+    filtered,
+    model,
+    presetJobId,
+    presetShiftTypeId,
+  }: {
+    readonly allRows: readonly ScheduleReadModel["employees"][number][];
+    readonly days: readonly string[];
+    readonly filtered: ScheduleReadModel;
+    readonly model: ScheduleReadModel;
+    readonly presetJobId: string | null;
+    readonly presetShiftTypeId: string | null;
+  },
+  key: string,
+): ReadonlySet<string> | null {
+  if (key.startsWith("preset|")) {
+    if (!presetJobId) return null;
+    return new Set(allRows.filter((employee) => !filtered.locations.some((location) =>
+      isScheduleEmployeeEligible(employee, { locationId: location.id, jobId: presetJobId, shiftTypeId: presetShiftTypeId }),
+    )).map((employee) => employee.id));
+  }
+  const shift = filtered.shifts.find((item) => item.id === key) as ScheduleEditableShift | undefined;
+  if (!shift?.job_id) return null;
+  return new Set(allRows.filter((employee) => !canTakeDraggedShift({ model, shift, employee, dates: days }))
+    .map((employee) => employee.id));
 }

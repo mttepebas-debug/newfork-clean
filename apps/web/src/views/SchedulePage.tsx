@@ -694,6 +694,12 @@ export function SchedulePage({
     dropReview.optimisticOps.some(op => op.id === shift.pending_op_id)
       ? { ...shift, saving_state: dropReview.savingState, optimistic: true }
       : shift), [projectedShifts, dropReview.optimisticOps, dropReview.savingState]);
+  // One object while the week and its shifts stay the same: the grid only
+  // draws the rows that changed (atama-surukle B).
+  const shownModel = useMemo(
+    () => (query.data ? { ...query.data, shifts: effectiveShifts } : null),
+    [query.data, effectiveShifts],
+  );
   const visibleSelectableShiftIds = useMemo(() => {
     if (!query.data) return [];
     // A shift the search took off the grid is not on screen to select.
@@ -2048,7 +2054,7 @@ export function SchedulePage({
       </section>
     );
 
-  const model = { ...query.data, shifts: effectiveShifts };
+  const model = shownModel ?? { ...query.data, shifts: effectiveShifts };
   const draftUnread = Boolean(activeDraftId && !gridEditSession && previewSource.error);
   const draftLoading = Boolean(activeDraftId && !gridEditSession && !previewSource.error && previewSource.shifts === null);
   // The rule box after a drop names the rules that ask; the employee's own mark

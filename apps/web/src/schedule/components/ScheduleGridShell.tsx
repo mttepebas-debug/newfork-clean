@@ -46,6 +46,10 @@ function measureCardNeeds(grid: HTMLElement): ScheduleCardNeeds | null {
   let tight = 0;
   let compact = 0;
   let time = 0;
+  // One range for every line: each live range is updated by the browser on
+  // every DOM change, and thousands of them (one per line) made removing a
+  // row take seconds (atama-surukle B, 2026-10-20).
+  const range = document.createRange();
   grid
     .querySelectorAll<HTMLElement>(".schedule-shift-badge .schedule-shift-badge-content")
     .forEach((content) => {
@@ -55,7 +59,6 @@ function measureCardNeeds(grid: HTMLElement): ScheduleCardNeeds | null {
       // Each line's whole text, to the fraction of a pixel (scrollWidth
       // rounds); the name at its full 12px, whatever size it is drawn at now.
       const widths = Array.from(content.children, (child) => {
-        const range = document.createRange();
         range.selectNodeContents(child);
         // Without layout (jsdom) a range has no box: nothing is measured.
         const width = typeof range.getBoundingClientRect === "function"
@@ -175,7 +178,10 @@ export function ScheduleGridShell({
     if (
       (fitVisibleColumns || fitWeeklyLocations) &&
       !dragging &&
-      gridRef.current
+      gridRef.current &&
+      // Rows folding or unfolding around a drag change no card: no need to
+      // measure every line again (useKeepScrollThroughDrag holds the grid).
+      gridRef.current.dataset.scheduleDragHold !== "true"
     ) {
       const needs = measureCardNeeds(gridRef.current);
       setCardNeeds((current) =>

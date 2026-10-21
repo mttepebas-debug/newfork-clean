@@ -6,11 +6,15 @@ import type {
 } from "@newfork/shared/schedule";
 import {
   Fragment,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 
-import type { ScheduleCellStateMap } from "../hooks/useCellState";
+import type { ScheduleCellState, ScheduleCellStateMap } from "../hooks/useCellState";
 import type { ShiftDragState } from "../hooks/useSingleShiftPointerDrag";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
 import type { ScheduleSearchMark } from "../lib/scheduleSearch";
@@ -46,6 +50,7 @@ export function ScheduleGridBody({
   fillerRowCount,
   focusedShiftId,
   searchMarks,
+  hiddenRowIds = null,
   locations,
   model,
   onCellContextMenu,
@@ -95,6 +100,8 @@ export function ScheduleGridBody({
   readonly fillerRowCount: number;
   readonly focusedShiftId: string | null;
   readonly searchMarks?: ReadonlyMap<string, ScheduleSearchMark>;
+  /** People folded away while a shift or preset is dragged (they stay mounted). */
+  readonly hiddenRowIds?: ReadonlySet<string> | null;
   readonly locations: readonly ScheduleGridLocationGroup[];
   readonly model: ScheduleReadModel;
   readonly onCellContextMenu: (
@@ -162,19 +169,43 @@ export function ScheduleGridBody({
   readonly visibleShifts: readonly ScheduleShift[];
   readonly visibleShiftTypes: ScheduleReadModel["shift_types"];
 }) {
+  // The same functions on every render, calling the latest ones: a row only
+  // redraws when what it shows changed, not on each pointer move of a drag.
+  const handlers = useStableHandlers({
+    onCellContextMenu, onClearSelection, onCopy, onCreate, onEdit, onFocusShift, onOpenEmployeeCard,
+    onPaste, onDragOverCell, onSelect, onShiftContextMenu, onShiftMouseDown, onShiftPointerDown,
+  });
+  const openEmployeeCard = onOpenEmployeeCard ? handlers.onOpenEmployeeCard : undefined;
+  // A drag's moving parts reach only the row under the pointer (and the open
+  // shifts row, which stacks the dragged open shift).
+  const dragStateFor = (rowKey: string) => (dragState && (rowKey === "unassigned" || ownsKey(dragState.targetKey, rowKey)) ? dragState : null);
+  // A cell's own location only depends on the dragged shift where one day
+  // column holds several locations (Unified); elsewhere no row redraws for it.
+  const interactionLocationId = locations.some((location) => location.sourceIds.length > 1) ? activeInteractionShiftLocationId : null;
+  // The lifted card's own row is the only one that greys it out.
+  const draggedOwner = draggedShiftId ? (visibleShifts.find((shift) => shift.id === draggedShiftId)?.employee_id ?? "unassigned") : null;
+  const draggedFor = (rowKey: string) => (draggedOwner === rowKey ? draggedShiftId : null);
+  const dragOverFor = (rowKey: string) => (ownsKey(activeDragOverCell, rowKey) ? activeDragOverCell : null);
+  const slices = useRowSlices({ visibleShifts, totalShifts: model.shifts, cellStateByKey });
+  const catalog = useMemo(() => ({
+    jobs: model.jobs,
+    shift_types: model.shift_types,
+    referenced_jobs: model.referenced_jobs,
+    referenced_shift_types: model.referenced_shift_types,
+  }), [model.jobs, model.shift_types, model.referenced_jobs, model.referenced_shift_types]);
   const renderEmployeeRow = (employee: ScheduleEmployee) => (
     <ScheduleRow
       key={employee.id}
       employee={employee}
-      shifts={visibleShifts}
-      totalShifts={model.shifts}
+      shifts={slices.shifts(employee.id)}
+      totalShifts={slices.totalShifts(employee.id)}
       locations={locations}
       activeEditorTarget={activeEditorTarget}
-      activeInteractionShiftLocationId={activeInteractionShiftLocationId}
+      activeInteractionShiftLocationId={interactionLocationId}
       days={days}
-      catalog={model}
+      catalog={catalog}
       closures={model.closures}
-      cellStateByKey={cellStateByKey}
+      cellStateByKey={slices.cells(employee.id)}
       editing={editing}
       showShiftType={showShiftType}
       showShiftLabels={showShiftLabels}
@@ -189,22 +220,22 @@ export function ScheduleGridBody({
       searchMarks={searchMarks}
       clipboard={clipboard}
       pasteArmed={pasteArmed}
-      onSelect={onSelect}
-      onFocusShift={onFocusShift}
-      onEdit={onEdit}
-      onCreate={onCreate}
-      onCopy={onCopy}
-      onClearSelection={onClearSelection}
-      onShiftContextMenu={onShiftContextMenu}
-      onCellContextMenu={onCellContextMenu}
-      onPaste={onPaste}
-      draggedShiftId={draggedShiftId}
-      dragOverCell={activeDragOverCell}
-      dragState={dragState}
-      onShiftPointerDown={onShiftPointerDown}
-      onShiftMouseDown={onShiftMouseDown}
-      onDragOverCell={onDragOverCell}
-      onOpenEmployeeCard={onOpenEmployeeCard}
+      onSelect={handlers.onSelect}
+      onFocusShift={handlers.onFocusShift}
+      onEdit={handlers.onEdit}
+      onCreate={handlers.onCreate}
+      onCopy={handlers.onCopy}
+      onClearSelection={handlers.onClearSelection}
+      onShiftContextMenu={handlers.onShiftContextMenu}
+      onCellContextMenu={handlers.onCellContextMenu}
+      onPaste={handlers.onPaste}
+      draggedShiftId={draggedFor(employee.id)}
+      dragOverCell={dragOverFor(employee.id)}
+      dragState={dragStateFor(employee.id)}
+      onShiftPointerDown={handlers.onShiftPointerDown}
+      onShiftMouseDown={handlers.onShiftMouseDown}
+      onDragOverCell={handlers.onDragOverCell}
+      onOpenEmployeeCard={openEmployeeCard}
     />
   );
 
@@ -213,15 +244,15 @@ export function ScheduleGridBody({
       {showUnassignedRow ? (
         <ScheduleRow
           employee={null}
-          shifts={visibleShifts}
-          totalShifts={model.shifts}
+          shifts={slices.shifts(null)}
+          totalShifts={slices.totalShifts(null)}
           locations={locations}
           activeEditorTarget={activeEditorTarget}
-          activeInteractionShiftLocationId={activeInteractionShiftLocationId}
+          activeInteractionShiftLocationId={interactionLocationId}
           days={days}
-          catalog={model}
+          catalog={catalog}
           closures={model.closures}
-          cellStateByKey={cellStateByKey}
+          cellStateByKey={slices.cells(null)}
           editing={editing}
           showShiftType={showShiftType}
           showShiftLabels={showShiftLabels}
@@ -236,30 +267,30 @@ export function ScheduleGridBody({
           searchMarks={searchMarks}
           clipboard={clipboard}
           pasteArmed={pasteArmed}
-          onSelect={onSelect}
-          onFocusShift={onFocusShift}
-          onEdit={onEdit}
-          onCreate={onCreate}
-          onCopy={onCopy}
-          onClearSelection={onClearSelection}
-          onShiftContextMenu={onShiftContextMenu}
-          onCellContextMenu={onCellContextMenu}
-          onPaste={onPaste}
-          draggedShiftId={draggedShiftId}
-          dragOverCell={activeDragOverCell}
-          dragState={dragState}
-          onShiftPointerDown={onShiftPointerDown}
-          onShiftMouseDown={onShiftMouseDown}
-          onDragOverCell={onDragOverCell}
-          onOpenEmployeeCard={onOpenEmployeeCard}
+          onSelect={handlers.onSelect}
+          onFocusShift={handlers.onFocusShift}
+          onEdit={handlers.onEdit}
+          onCreate={handlers.onCreate}
+          onCopy={handlers.onCopy}
+          onClearSelection={handlers.onClearSelection}
+          onShiftContextMenu={handlers.onShiftContextMenu}
+          onCellContextMenu={handlers.onCellContextMenu}
+          onPaste={handlers.onPaste}
+          draggedShiftId={draggedFor("unassigned")}
+          dragOverCell={dragOverFor("unassigned")}
+          dragState={dragStateFor("unassigned")}
+          onShiftPointerDown={handlers.onShiftPointerDown}
+          onShiftMouseDown={handlers.onShiftMouseDown}
+          onDragOverCell={handlers.onDragOverCell}
+          onOpenEmployeeCard={openEmployeeCard}
         />
       ) : null}
       {/* Space for the rows that left above a dragged card (useKeepScrollThroughDrag). */}
-      {dragState ? <div className="schedule-drag-hold-space" aria-hidden="true" /> : null}
+      {editing ? <div className="schedule-drag-hold-space" aria-hidden="true" /> : null}
       {showEmployeeGroups
         ? employeeRowGroups.map((group) => (
             <Fragment key={`schedule-job-group-${group.job?.id ?? "none"}`}>
-              {group.job && showShiftTypePresets ? (
+              {hiddenRowIds && group.employees.every((employee) => hiddenRowIds.has(employee.id)) ? null : group.job && showShiftTypePresets ? (
                 <SchedulePresetRows
                   job={group.job}
                   shiftTypes={visibleShiftTypes}
@@ -308,4 +339,103 @@ export function ScheduleGridBody({
       ) : null}
     </>
   );
+}
+
+/** A row's cells use two key shapes: "<row>|<location>|<date>" and "<row>-<location>-<date>". */
+function ownsKey(key: string | null | undefined, rowKey: string): boolean {
+  return Boolean(key && (key.startsWith(`${rowKey}|`) || key.startsWith(`${rowKey}-`)));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Handler = ((...args: any[]) => unknown) | undefined;
+function useStableHandlers<T extends Record<string, Handler>>(latest: T): { readonly [K in keyof T]-?: NonNullable<T[K]> } {
+  const ref = useRef(latest);
+  useLayoutEffect(() => {
+    ref.current = latest;
+  });
+  const [stable] = useState(() => Object.fromEntries(Object.keys(latest).map((name) => [
+    name,
+    (...args: unknown[]) => ref.current[name]?.(...args),
+  ])) as unknown as { readonly [K in keyof T]-?: NonNullable<T[K]> });
+  return stable;
+}
+
+const NO_SHIFTS: readonly ScheduleShift[] = [];
+const NO_CELLS: ScheduleCellStateMap = new Map();
+
+/**
+ * Each row's own shifts and cells, as the same arrays and maps while what is
+ * in them stays the same: a drop or a save changes one or two rows, and only
+ * those draw again (atama-surukle B, 2026-10-20).
+ */
+function useRowSlices({
+  visibleShifts,
+  totalShifts,
+  cellStateByKey,
+}: {
+  readonly visibleShifts: readonly ScheduleShift[];
+  readonly totalShifts: readonly ScheduleShift[];
+  readonly cellStateByKey: ScheduleCellStateMap;
+}) {
+  const kept = useRef({
+    shifts: new Map<string, { key: string; value: readonly ScheduleShift[] }>(),
+    total: new Map<string, { key: string; value: readonly ScheduleShift[] }>(),
+    cells: new Map<string, { key: string; value: ScheduleCellStateMap }>(),
+  });
+  const shifts = useMemo(() => slice(kept.current.shifts, groupShifts(visibleShifts)), [visibleShifts]);
+  const total = useMemo(() => slice(kept.current.total, groupShifts(totalShifts)), [totalShifts]);
+  const cells = useMemo(() => {
+    const groups = new Map<string, [string, ScheduleCellState][]>();
+    for (const [key, state] of cellStateByKey) {
+      const row = rowOfCellKey(key);
+      const list = groups.get(row);
+      if (list) list.push([key, state]);
+      else groups.set(row, [[key, state]]);
+    }
+    const next = new Map<string, { key: string; value: ScheduleCellStateMap }>();
+    for (const [row, entries] of groups) {
+      const key = JSON.stringify(entries);
+      const before = kept.current.cells.get(row);
+      next.set(row, before?.key === key ? before : { key, value: new Map(entries) });
+    }
+    kept.current.cells = next;
+    return next;
+  }, [cellStateByKey]);
+  return {
+    shifts: (employeeId: string | null) => shifts.get(employeeId ?? "") ?? NO_SHIFTS,
+    totalShifts: (employeeId: string | null) => total.get(employeeId ?? "") ?? NO_SHIFTS,
+    cells: (employeeId: string | null) => cells.get(employeeId ?? "")?.value ?? NO_CELLS,
+  };
+}
+
+// Cell keys end with the row: "<location>|<date>|<employee or unassigned>".
+function rowOfCellKey(key: string): string {
+  const row = key.slice(key.lastIndexOf("|") + 1);
+  return row === "unassigned" ? "" : row;
+}
+
+function groupShifts(shifts: readonly ScheduleShift[]): Map<string, ScheduleShift[]> {
+  const groups = new Map<string, ScheduleShift[]>();
+  for (const shift of shifts) {
+    const row = shift.employee_id ?? "";
+    const list = groups.get(row);
+    if (list) list.push(shift);
+    else groups.set(row, [shift]);
+  }
+  return groups;
+}
+
+function slice(
+  kept: Map<string, { key: string; value: readonly ScheduleShift[] }>,
+  groups: Map<string, ScheduleShift[]>,
+): Map<string, readonly ScheduleShift[]> {
+  const next = new Map<string, { key: string; value: readonly ScheduleShift[] }>();
+  for (const [row, list] of groups) {
+    const key = JSON.stringify(list);
+    const before = kept.get(row);
+    next.set(row, before?.key === key ? before : { key, value: list });
+  }
+  kept.clear();
+  for (const [row, entry] of next) kept.set(row, entry);
+  return new Map([...next].map(([row, entry]) => [row, entry.value]));
 }

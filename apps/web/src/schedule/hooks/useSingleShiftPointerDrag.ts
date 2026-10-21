@@ -14,6 +14,10 @@ import {
 } from "../lib/scheduleDragTargets";
 
 const DRAG_THRESHOLD_PX = 6;
+// A finger held this long on a card lifts it (Mert, 2026-10-20); a finger
+// that moves further first is scrolling the page.
+const LONG_PRESS_MS = 350;
+const TOUCH_SLOP_PX = 10;
 
 export interface ShiftDropTarget {
   readonly shiftId: string;
@@ -94,6 +98,8 @@ export function useSingleShiftPointerDrag({
     readonly previewHeight: number;
     readonly grabX: number;
     readonly grabY: number;
+    /** A finger: lifted by holding still, not by moving. */
+    readonly touch?: { timer: number | null; lifted: boolean; moved: boolean; element: HTMLElement };
   } | null>(null);
   const draggingRef = useRef(false);
   const lastPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
@@ -104,6 +110,15 @@ export function useSingleShiftPointerDrag({
   const dragStateFrameRef = useRef<number | null>(null);
   const pendingDragStateRef = useRef<ShiftDragState | null>(null);
   const ignoreCompatibilityMouseUntilRef = useRef(0);
+  const menuEventRef = useRef<globalThis.MouseEvent | null>(null);
+  // The card's own right-click menu, for a finger held and let go in place.
+  const openMenu = useCallback((element: HTMLElement, clientX: number, clientY: number) => {
+    if (!element.isConnected) return;
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX, clientY, button: 2 });
+    menuEventRef.current = event;
+    element.dispatchEvent(event);
+    menuEventRef.current = null;
+  }, []);
 
   const clearClickSuppressor = useCallback(() => {
     const suppressor = clickSuppressorRef.current;
@@ -134,6 +149,8 @@ export function useSingleShiftPointerDrag({
   const clearSession = useCallback(
     (suppressClick: boolean) => {
       const hadDrag = draggingRef.current;
+      const touch = pendingRef.current?.touch;
+      if (touch?.timer != null) window.clearTimeout(touch.timer);
       pendingRef.current = null;
       draggingRef.current = false;
       lastPointRef.current = null;
@@ -264,6 +281,15 @@ export function useSingleShiftPointerDrag({
         (pending.pointerId !== null && event.pointerId !== pending.pointerId)
       )
         return;
+      if (pending.touch) {
+        const far = Math.hypot(event.clientX - pending.startX, event.clientY - pending.startY) > TOUCH_SLOP_PX;
+        // Moving before the hold ends is a scroll: let the page have it.
+        if (!pending.touch.lifted) {
+          if (far) clearSession(false);
+          return;
+        }
+        if (far) pending.touch.moved = true;
+      }
       updateDragAtPoint({
         clientX: event.clientX,
         clientY: event.clientY,
@@ -291,6 +317,14 @@ export function useSingleShiftPointerDrag({
         (pending.pointerId !== null && event.pointerId !== pending.pointerId)
       )
         return;
+      if (pending.touch && !pending.touch.moved) {
+        // A tap stays a tap; a hold let go in place opens the card's menu,
+        // as a right click does.
+        const { element, lifted } = pending.touch;
+        clearSession(lifted);
+        if (lifted) openMenu(element, event.clientX, event.clientY);
+        return;
+      }
       const clientX = Number.isFinite(event.clientX)
         ? event.clientX
         : pending.startX;
@@ -357,6 +391,18 @@ export function useSingleShiftPointerDrag({
       if (!draggingRef.current || !lastPointRef.current || !["Control", "Shift", "Meta"].includes(event.key)) return;
       updateDragAtPoint({ ...lastPointRef.current, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey });
     };
+    // A lifted card holds the page still, and the browser's own long-press
+    // menu never opens over it.
+    const handleTouchMove = (event: TouchEvent) => {
+      if (pendingRef.current?.touch?.lifted) event.preventDefault();
+    };
+    const handleContextMenu = (event: globalThis.MouseEvent) => {
+      if (!pendingRef.current?.touch || menuEventRef.current === event) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    window.addEventListener("touchmove", handleTouchMove, { capture: true, passive: false });
+    window.addEventListener("contextmenu", handleContextMenu, true);
     window.addEventListener("keydown", handleModifier, true);
     window.addEventListener("keyup", handleModifier, true);
     window.addEventListener("pointermove", handlePointerMove, true);
@@ -365,6 +411,8 @@ export function useSingleShiftPointerDrag({
     window.addEventListener("mousemove", handleMouseMove, true);
     window.addEventListener("mouseup", handleMouseUp, true);
     return () => {
+      window.removeEventListener("touchmove", handleTouchMove, true);
+      window.removeEventListener("contextmenu", handleContextMenu, true);
       window.removeEventListener("keydown", handleModifier, true);
       window.removeEventListener("keyup", handleModifier, true);
       window.removeEventListener("pointermove", handlePointerMove, true);
@@ -376,6 +424,7 @@ export function useSingleShiftPointerDrag({
   }, [
     clearSession,
     enabled,
+    openMenu,
     onDrop,
     onDropAttempt,
     resolveTargetAtPoint,
@@ -389,6 +438,7 @@ export function useSingleShiftPointerDrag({
       clientX: number,
       clientY: number,
       pointerId: number | null,
+      touch = false,
     ) => {
       const bounds =
         typeof element.getBoundingClientRect === "function"
@@ -404,6 +454,7 @@ export function useSingleShiftPointerDrag({
         previewWidth: bounds.width,
         previewHeight: bounds.height,
         ...grabPoint(bounds, startX, startY),
+        ...(touch ? { touch: { timer: null, lifted: false, moved: false, element } } : {}),
       };
     },
     [],
@@ -412,7 +463,23 @@ export function useSingleShiftPointerDrag({
   const onShiftPointerDown = useCallback(
     (shiftId: string, event: ReactPointerEvent<HTMLElement>) => {
       if (event.pointerType === "touch") {
-        ignoreCompatibilityMouseUntilRef.current = Date.now() + 800;
+        ignoreCompatibilityMouseUntilRef.current = Date.now() + LONG_PRESS_MS + 800;
+        if (!enabled || event.altKey) return;
+        startPendingDrag(shiftId, event.currentTarget, event.clientX, event.clientY,
+          Number.isFinite(event.pointerId) ? event.pointerId : null, true);
+        const pending = pendingRef.current;
+        if (!pending?.touch) return;
+        const touch = pending.touch;
+        touch.timer = window.setTimeout(() => {
+          touch.timer = null;
+          if (pendingRef.current?.touch !== touch) return;
+          touch.lifted = true;
+          draggingRef.current = true;
+          onDragStart(shiftId);
+          navigator.vibrate?.(10);
+          updateDragAtPoint({ clientX: pending.startX, clientY: pending.startY, ctrlKey: false, metaKey: false, shiftKey: false });
+        }, LONG_PRESS_MS);
+        // No preventDefault: a quick swipe still scrolls the grid.
         return;
       }
       if (
@@ -441,7 +508,7 @@ export function useSingleShiftPointerDrag({
       event.preventDefault();
       event.stopPropagation();
     },
-    [enabled, startPendingDrag],
+    [enabled, onDragStart, startPendingDrag, updateDragAtPoint],
   );
   const onShiftMouseDown = useCallback(
     (shiftId: string, event: MouseEvent<HTMLElement>) => {

@@ -11,7 +11,9 @@ function Harness({
   warning = false,
   ownCell = false,
   onDrop = vi.fn(),
+  onContextMenu = vi.fn(),
 }: {
+  readonly onContextMenu?: () => void;
   readonly enabled?: boolean;
   readonly warning?: boolean;
   readonly ownCell?: boolean;
@@ -37,6 +39,7 @@ function Harness({
         type="button"
         onPointerDown={(event) => drag.onShiftPointerDown("shift-1", event)}
         onMouseDown={(event) => drag.onShiftMouseDown("shift-1", event)}
+        onContextMenu={onContextMenu}
       >
         Shift
       </button>
@@ -274,5 +277,56 @@ describe("useSingleShiftPointerDrag", () => {
 
     expect(screen.getByTestId("drag-state").textContent).toBe("idle");
     expect(onDrop).not.toHaveBeenCalled();
+  });
+
+  // Mert, 2026-10-20 (atama-surukle B): on a tablet a finger held on a card
+  // lifts it; a quick swipe still scrolls (the test above).
+  function touch(target: Element | Window, type: string, x: number, y: number) {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperties(event, {
+      button: { value: 0 }, buttons: { value: type === "pointerup" ? 0 : 1 },
+      clientX: { value: x }, clientY: { value: y }, pointerId: { value: 7 }, pointerType: { value: "touch" },
+    });
+    fireEvent(target, event);
+    return event;
+  }
+  const hold = () => new Promise((resolve) => setTimeout(resolve, 420));
+
+  it("lifts a card held still on a touch screen, and drops it where the finger lets go", async () => {
+    const onDrop = vi.fn();
+    render(<Harness onDrop={onDrop} />);
+    const shift = screen.getByRole("button", { name: "Shift" });
+    const cell = screen.getByTestId("drop-cell");
+    Object.defineProperty(document, "elementFromPoint", { configurable: true, value: vi.fn(() => cell) });
+    touch(shift, "pointerdown", 10, 10);
+    expect(screen.getByTestId("drag-state").textContent).toBe("idle");
+    await hold();
+    await waitFor(() => expect(screen.getByTestId("drag-state").textContent).toContain("Dinner, 4p to 10p"));
+    // The page does not scroll under the lifted card.
+    const move = new Event("touchmove", { bubbles: true, cancelable: true });
+    window.dispatchEvent(move);
+    expect(move.defaultPrevented).toBe(true);
+    touch(window, "pointermove", 60, 80);
+    touch(window, "pointerup", 60, 80);
+    expect(onDrop).toHaveBeenCalledWith(expect.objectContaining({ shiftId: "shift-1", employeeId: "emp-1", date: "2026-08-17" }));
+    await waitFor(() => expect(screen.getByTestId("drag-state").textContent).toBe("idle"));
+  });
+
+  it("opens the card's menu when a held card is let go without moving, and only then", async () => {
+    const onDrop = vi.fn();
+    const onContextMenu = vi.fn();
+    render(<Harness onDrop={onDrop} onContextMenu={onContextMenu} />);
+    const shift = screen.getByRole("button", { name: "Shift" });
+    touch(shift, "pointerdown", 10, 10);
+    await hold();
+    // The browser's own long-press menu would land mid-hold: it is not this one.
+    const native = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 });
+    shift.dispatchEvent(native);
+    expect(native.defaultPrevented).toBe(true);
+    expect(onContextMenu).not.toHaveBeenCalled();
+    touch(window, "pointerup", 11, 11);
+    expect(onContextMenu).toHaveBeenCalledOnce();
+    expect(onDrop).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByTestId("drag-state").textContent).toBe("idle"));
   });
 });
