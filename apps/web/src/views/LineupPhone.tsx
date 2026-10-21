@@ -41,7 +41,7 @@ import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDat
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
 import { useTabSwipe } from "../shell/useTabSwipe";
 import { CopyTextButton, EditNotesButton, NotesEditor, SectionsWindow, type LineupEditing } from "./LineupDesktopEdit";
-import { AddStaffButton, OutGroups, StaffWindow, teamDepartments, type StaffPlace } from "./LineupDesktopStaff";
+import { AddStaffButton, EmptyDepartment, OutGroups, StaffWindow, teamDepartments, type StaffPlace } from "./LineupDesktopStaff";
 import { LineupPersonCircle } from "./LineupPersonCircle";
 import { PersonSheet } from "./LineupPhoneStaff";
 import "./lineup-phone.css";
@@ -693,7 +693,8 @@ function TeamPane({
             <h3>
               {department.name}
               <span>{count}</span>
-              {editing && department.id ? (
+              {/* An empty department carries its Add Staff in its frame instead (EmptyDepartment). */}
+              {editing && department.id && department.jobs.length ? (
                 <AddStaffButton
                   department={department.name}
                   onAdd={() => onStaff({ kind: "add", department: { id: department.id!, name: department.name } })}
@@ -701,7 +702,17 @@ function TeamPane({
               ) : null}
             </h3>
             <div className="lineup-phone-list">
-              {department.jobs.length ? null : <p className="lineup-staff-none">No one in {department.name} yet.</p>}
+              {department.jobs.length ? null : (
+                <EmptyDepartment
+                  department={department.name}
+                  shift={shift.name}
+                  onAdd={
+                    editing && department.id
+                      ? () => onStaff({ kind: "add", department: { id: department.id!, name: department.name } })
+                      : null
+                  }
+                />
+              )}
               {department.jobs.map((job) => (
                 <div className="lineup-phone-job" key={job.id}>
                   <p>

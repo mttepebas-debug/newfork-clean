@@ -1,6 +1,6 @@
 import type { LineupCandidates } from "@newfork/shared";
 import { ConfirmButton } from "@newfork/ui";
-import { ArrowLeftRight, Search, UserPlus, X } from "lucide-react";
+import { ArrowLeftRight, Search, UserPlus, Users, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -113,6 +113,32 @@ export function AddStaffButton({ department, onAdd }: { readonly department: str
       <UserPlus size={16} aria-hidden />
       Add Staff
     </button>
+  );
+}
+
+/**
+ * A department with no one on it, editing (Mert 2026-10-21, "Varyant 2, küçük boş durum"; newfork-pages/
+ * lineup-bos-departman): in the middle of its frame an icon, "No one in <department>", a line saying what Add Staff
+ * does, and Add Staff itself, the heading's own green button, which the heading then leaves out. Phone and desktop.
+ */
+export function EmptyDepartment({
+  department,
+  shift,
+  onAdd,
+}: {
+  readonly department: string;
+  readonly shift: string;
+  readonly onAdd: (() => void) | null;
+}) {
+  return (
+    <div className="lineup-staff-empty">
+      <span className="lineup-staff-empty-ic" aria-hidden>
+        <Users />
+      </span>
+      <b>No one in {department}</b>
+      <p>Add staff for {shift}. The Schedule doesn't change.</p>
+      {onAdd ? <AddStaffButton department={department} onAdd={onAdd} /> : null}
+    </div>
   );
 }
 

@@ -223,9 +223,9 @@ describe("LineupPage", () => {
     expect(screen.queryByRole("button", { name: /location/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Dinner, no one", pressed: true })).toBeTruthy();
     // A manager's empty draft shows its departments, so Add Staff reaches them (LINEUP-EDIT W3a, the design's teamPane).
-    expect(within(screen.getByRole("tabpanel")).getByText("No one in Kitchen yet.")).toBeTruthy();
+    expect(within(screen.getByRole("tabpanel")).getByText("No one in Kitchen")).toBeTruthy();
     expect(within(screen.getByRole("tabpanel")).getByRole("button", { name: "Add Staff to Kitchen" })).toBeTruthy();
-    expect(document.querySelector(".lineup-staff-none")).toBeTruthy();
+    expect(document.querySelector(".lineup-staff-empty")).toBeTruthy();
     expect(within(ticket).getByText("Draft")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Lunch, 1 person" }));
     await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(`?location=${downtown}&shift=${lunch}`));
@@ -2311,7 +2311,7 @@ describe("LineupPage, calling off, adding and replacing on the desktop", () => {
     expect(within(out).getByText("Called off 9:41 AM")).toBeTruthy();
     const front = screen.getByRole("region", { name: "Front of House" });
     expect(within(front).queryByText("Maria Lopez")).toBeNull();
-    expect(within(front).getByText("No one in Front of House yet.")).toBeTruthy();
+    expect(within(front).getByText("No one in Front of House")).toBeTruthy();
     fireEvent.click(within(out).getByRole("button", { name: "Call in Maria Lopez" }));
     await waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0]).toMatchObject({ ...target(), action: "call_in", row: { source_shift_id: marias() } });
@@ -2349,11 +2349,25 @@ describe("LineupPage, calling off, adding and replacing on the desktop", () => {
     expect(sent[0]).toMatchObject({ action: "add_person", person: { employee_id: aisha, job_id: host } });
   });
 
-  it("shows a department with no one on it, with its Add Staff", async () => {
+  // Mert 2026-10-21 ("Varyant 2, küçük boş durum"): in the middle of the empty frame an icon, the title, one line and
+  // the heading's own green Add Staff, which the heading then leaves out: one Add Staff, not two.
+  it("shows a department with no one on it as a small empty state with its one Add Staff", async () => {
     renderPage(`/app/schedule/lineup?location=${downtown}`);
     const kitchen = await screen.findByRole("region", { name: "Kitchen" });
-    expect(within(kitchen).getByText("No one in Kitchen yet.")).toBeTruthy();
-    expect(within(kitchen).getByRole("button", { name: "Add Staff to Kitchen" })).toBeTruthy();
+    const empty = kitchen.querySelector(".lineup-staff-empty")!;
+    expect(empty.querySelector(".lineup-staff-empty-ic svg")).toBeTruthy();
+    expect(within(kitchen).getByText("No one in Kitchen")).toBeTruthy();
+    expect(within(kitchen).getByText("Add staff for Lunch. The Schedule doesn't change.")).toBeTruthy();
+    expect(within(kitchen).getAllByRole("button", { name: "Add Staff to Kitchen" })).toHaveLength(1);
+    const add = within(kitchen).getByRole("button", { name: "Add Staff to Kitchen" });
+    expect(empty.contains(add)).toBe(true);
+    expect(add.classList.contains("lineup-staff-add")).toBe(true);
+    expect(kitchen.querySelector("h3")!.contains(add)).toBe(false);
+    // A department with people keeps its Add Staff on its heading.
+    const front = screen.getByRole("region", { name: "Front of House" });
+    expect(front.querySelector("h3")!.contains(within(front).getByRole("button", { name: "Add Staff to Front of House" }))).toBe(true);
+    fireEvent.click(add);
+    expect(screen.getByRole("dialog", { name: "Add Staff · Kitchen" })).toBeTruthy();
   });
 
   // Mert 2026-10-21: the departments with people stay on top, the empty ones go under them.
@@ -2477,7 +2491,10 @@ describe("LineupPage, calling off, adding and replacing on the desktop", () => {
       expect(within(out).getByText("Maria Lopez")).toBeTruthy();
       expect(within(out).getByText("Server · called off 9:41 AM")).toBeTruthy();
       const front = screen.getByRole("region", { name: "Front of House" });
-      expect(within(front).getByText("No one in Front of House yet.")).toBeTruthy();
+      expect(within(front).getByText("No one in Front of House")).toBeTruthy();
+      // The phone too: one Add Staff, in the empty frame (Mert 2026-10-21).
+      expect(within(front).getAllByRole("button", { name: "Add Staff to Front of House" })).toHaveLength(1);
+      expect(front.querySelector("h3")!.querySelector(".lineup-staff-add")).toBeNull();
       fireEvent.click(within(out).getByRole("button", { name: "Call in Maria Lopez" }));
       await waitFor(() => expect(sent).toHaveLength(1));
       expect(sent[0]).toMatchObject({ ...target(), action: "call_in", row: { source_shift_id: marias() } });
