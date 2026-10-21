@@ -169,6 +169,25 @@ describe("dismissNextScheduleSearchLayer", () => {
     expect(editing("date=2026-08-03&view=day")?.search.get("view")).toBe("week");
     expect(editing("date=2026-08-03&view=week&mode=edit")).toBeNull();
   });
+
+  // Mert 2026-10-21: with the edit open on another week, Esc with nothing to
+  // close goes back to the edit's week, not to this week.
+  it("goes back to the week an edit is open on, after filters and daily view", () => {
+    const away = (search: string) =>
+      dismissNextScheduleSearchLayer({
+        search: new URLSearchParams(search),
+        modelWeekStart: "2026-09-14",
+        currentWeekStart: "2026-09-07",
+        today: "2026-09-10",
+        editWeekStart: "2026-08-03",
+      });
+
+    expect(away("date=2026-09-14&view=week&jobs=job-1")?.search.has("jobs")).toBe(false);
+    expect(away("date=2026-09-16&view=day")?.search.get("view")).toBe("week");
+    const back = away("date=2026-09-14&view=week");
+    expect(back?.search.get("date")).toBe("2026-08-03");
+    expect(back?.search.get("view")).toBe("week");
+  });
 });
 
 describe("clearFocusedShiftSearchFilters", () => {

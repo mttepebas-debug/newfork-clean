@@ -58,6 +58,7 @@ export function dismissNextScheduleSearchLayer({
   today,
   focusedShift = false,
   editing = false,
+  editWeekStart = null,
 }: {
   readonly search: URLSearchParams;
   readonly modelWeekStart: string;
@@ -67,6 +68,8 @@ export function dismissNextScheduleSearchLayer({
   readonly focusedShift?: boolean;
   /** An edit is open on this week; the press never takes the page off it. */
   readonly editing?: boolean;
+  /** An edit held open on another week: the last step goes back to it (Mert, 2026-10-21). */
+  readonly editWeekStart?: string | null;
 }): ScheduleSearchDismissal | null {
   const next = new URLSearchParams(search);
 
@@ -80,6 +83,11 @@ export function dismissNextScheduleSearchLayer({
     return { search: next, clearFocusedShift: focusStep };
   }
   if (next.get("view") === "day") {
+    next.set("view", "week");
+    return { search: next, clearFocusedShift: false };
+  }
+  if (!editing && editWeekStart && modelWeekStart !== editWeekStart) {
+    next.set("date", editWeekStart);
     next.set("view", "week");
     return { search: next, clearFocusedShift: false };
   }

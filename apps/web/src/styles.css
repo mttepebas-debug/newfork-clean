@@ -4659,6 +4659,32 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-edit-banner button {
   white-space: nowrap;
 }
+/* An edit held open on another week: where it is, and the way back. */
+.schedule-edit-banner.schedule-edit-elsewhere {
+  flex-wrap: nowrap;
+  justify-content: space-between;
+}
+.schedule-edit-elsewhere p {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #25433a;
+  font-size: 13px;
+}
+.schedule-edit-elsewhere p svg {
+  flex: 0 0 auto;
+  color: var(--theme-accent);
+}
+.schedule-edit-elsewhere strong {
+  font-weight: 700;
+}
+.schedule-edit-banner .schedule-edit-elsewhere-back {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  color: #fff;
+}
 /* A switch that is on (Paste mode, Availability) sits on the accent ground. */
 .schedule-edit-banner button[aria-pressed="true"] {
   border-color: color-mix(in srgb, var(--theme-accent) 65%, white);

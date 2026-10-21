@@ -2486,6 +2486,48 @@ describe("App", () => {
     expect(discardScheduleEditSession).not.toHaveBeenCalled();
   }, 20000);
 
+  // Mert 2026-10-21 (Schedule Kararları, tab 4, A + Esc): on another week the
+  // page says where the edit is open and goes back to it in one press.
+  it("says on another week where the edit is open and goes back to it by its button or by Esc", async () => {
+    vi.mocked(getScheduleReadModel).mockImplementation(async (_workspace, date) =>
+      scheduleFixtureForWeek(date >= "2026-09-14" ? "2026-09-14" : date >= "2026-09-07" ? "2026-09-07" : "2026-08-17"),
+    );
+    const acquired = makeDefaultEditAcquireResult();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...acquired,
+      session: { ...acquired.session, week_start: "2026-09-07" },
+    });
+    window.history.pushState({}, "", "/app/schedule?date=2026-09-07");
+    testAuth.role = "owner";
+    const { container } = render(<App />);
+    const app = within(container);
+    await openPublishedScheduleEditor(app);
+    expect(await app.findByRole("button", { name: "Discard" })).toBeTruthy();
+    expect(app.queryByRole("button", { name: "Back to editing" })).toBeNull();
+    const week = () => new URLSearchParams(window.location.search).get("date");
+
+    fireEvent.click(app.getByRole("button", { name: "Next week" }));
+    await waitFor(() => expect(week()).toBe("2026-09-14"));
+    const back = await app.findByRole("button", { name: "Back to editing" });
+    const strip = back.closest("[role='status']");
+    expect(strip?.textContent).toContain("You're editing Sep 7 – Sep 13. This week is view only.");
+    expect(app.queryByRole("button", { name: "Discard" })).toBeNull();
+
+    fireEvent.click(back);
+    await waitFor(() => expect(week()).toBe("2026-09-07"));
+    expect(await app.findByRole("button", { name: "Discard" })).toBeTruthy();
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("mode")).toBe("edit"));
+    expect(app.queryByRole("button", { name: "Back to editing" })).toBeNull();
+
+    fireEvent.click(app.getByRole("button", { name: "Next week" }));
+    await waitFor(() => expect(week()).toBe("2026-09-14"));
+    await app.findByRole("button", { name: "Back to editing" });
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(week()).toBe("2026-09-07"));
+    expect(await app.findByRole("button", { name: "Discard" })).toBeTruthy();
+    expect(acquireScheduleEditSession).toHaveBeenCalledTimes(1);
+  }, 20000);
+
   // Mert 2026-10-12: leaving Schedule with unsaved edit work asks first.
   describe("leaving an edit for another page", () => {
     const dirtyEdit = () => {
