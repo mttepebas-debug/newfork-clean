@@ -95,6 +95,8 @@ export function isBlankScheduleDismissTarget(target: Element): boolean {
     [
       "[data-schedule-top-bar]",
       "[data-schedule-filter-command-strip]",
+      // S-228: the search's "No one matches" box and its buttons.
+      "[data-schedule-search-empty]",
       // Mert, 2026-10-12: the bottom navigation bar only scrolls the grid.
       "[data-schedule-horizontal-nav]",
       ".schedule-topbar-dismiss-layer",

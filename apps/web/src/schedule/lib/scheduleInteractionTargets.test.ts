@@ -49,6 +49,18 @@ describe("scheduleInteractionTargets", () => {
     expect(isBlankScheduleDismissTarget(document.getElementById("logo-image")!)).toBe(false);
   });
 
+  // S-228: a press in the "No one matches" box is its buttons' own; as a blank
+  // press it took the search off first and Show all filters never landed (CI 39546600109).
+  it("treats the search's no-match box as a control, not blank schedule", () => {
+    document.body.innerHTML = `
+      <section class="schedule-page">
+        <div data-schedule-search-empty><span id="empty-text">No one matches</span><button id="show-all">Show all filters</button></div>
+      </section>`;
+
+    expect(isBlankScheduleDismissTarget(document.getElementById("empty-text")!)).toBe(false);
+    expect(isBlankScheduleDismissTarget(document.getElementById("show-all")!)).toBe(false);
+  });
+
   // Visual QA on G14: the save recovery sheet is a native <dialog> with no role
   // attribute, and the confirmation windows are alertdialogs. A press inside any
   // window belongs to that window; it must not run the page's dismissal cascade.

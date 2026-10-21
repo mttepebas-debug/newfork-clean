@@ -116,7 +116,7 @@ export function ScheduleSearchEmpty({
   readonly onShowAllFilters: () => void;
 }) {
   return (
-    <div className="schedule-search-empty" role="status">
+    <div className="schedule-search-empty" role="status" data-schedule-search-empty>
       <strong>No one matches “{term}”.</strong>
       {matchesOutsideFilters ? (
         <span>Someone matches outside your filters.</span>
