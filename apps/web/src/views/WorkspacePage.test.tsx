@@ -9,7 +9,6 @@ import {
 import type {
   ActiveWorkspaceContext,
   ManagerHome,
-  OwnerSetupChecklistItemId,
   WorkspaceDashboard,
 } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -19,9 +18,7 @@ import WorkspacePage, { dueLabel } from "./WorkspacePage";
 import {
   createWorkspaceTodo,
   getManagerHome,
-  getOwnerSetupChecklistProgress,
   getWorkspaceDashboard,
-  markOwnerSetupChecklistItem,
   resolveWorkspaceTodo,
   saveWorkspaceLayout,
 } from "../communications/communications-data";
@@ -113,7 +110,6 @@ const managerHome = {
 const greeting = { name: /^(Good morning|Good afternoon|Good evening|Up late), Meyhouse\.$/ };
 
 let currentContext: ActiveWorkspaceContext = context;
-let completedChecklistItemIds: OwnerSetupChecklistItemId[] = [];
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context: currentContext }),
@@ -127,39 +123,17 @@ vi.mock("../employee-hub/shift-exchanges/exchange-data", async (importOriginal) 
 vi.mock("../communications/communications-data", () => ({
   createWorkspaceTodo: vi.fn(),
   getManagerHome: vi.fn(),
-  getOwnerSetupChecklistProgress: vi.fn(),
   getWorkspaceDashboard: vi.fn(),
-  markOwnerSetupChecklistItem: vi.fn(),
   resolveWorkspaceTodo: vi.fn(),
   saveWorkspaceLayout: vi.fn(),
 }));
 
-describe("WorkspacePage setup checklist", () => {
+describe("WorkspacePage", () => {
   beforeEach(() => {
     currentContext = context;
-    completedChecklistItemIds = [];
     vi.clearAllMocks();
     vi.mocked(getWorkspaceDashboard).mockResolvedValue(dashboard);
     vi.mocked(getManagerHome).mockResolvedValue(managerHome);
-    vi.mocked(getOwnerSetupChecklistProgress).mockImplementation(async () => ({
-      workspace_id: workspaceId,
-      user_id: userId,
-      completed_item_ids: completedChecklistItemIds,
-      closed_at: null,
-    }));
-    vi.mocked(markOwnerSetupChecklistItem).mockImplementation(
-      async (_workspaceId, itemId) => {
-        if (!completedChecklistItemIds.includes(itemId)) {
-          completedChecklistItemIds = [...completedChecklistItemIds, itemId];
-        }
-        return {
-          workspace_id: workspaceId,
-          user_id: userId,
-          completed_item_ids: completedChecklistItemIds,
-          closed_at: null,
-        };
-      },
-    );
     vi.mocked(createWorkspaceTodo).mockResolvedValue({
       id: "a9700000-0000-4000-8000-000000000011",
       workspace_id: workspaceId,
@@ -355,36 +329,6 @@ describe("WorkspacePage setup checklist", () => {
     expect(screen.queryByRole("heading", { name: "We couldn't load Home" })).toBeNull();
   });
 
-  // The checklist sits above the cards: if it painted after them, every card
-  // would jump down under the owner's thumb (CI run 39023052297, 405 px on a
-  // phone). The outline stays until both have answered; they paint together.
-  it("keeps the outline until the setup checklist has answered, so the cards never jump", async () => {
-    let answer!: (progress: Awaited<ReturnType<typeof getOwnerSetupChecklistProgress>>) => void;
-    vi.mocked(getOwnerSetupChecklistProgress).mockReturnValueOnce(
-      new Promise((resolve) => {
-        answer = resolve;
-      }),
-    );
-    renderPage();
-    await waitFor(() => expect(getWorkspaceDashboard).toHaveBeenCalled());
-    await act(async () => {
-      await Promise.resolve();
-    });
-    // Both reads start at once, not one after the other.
-    expect(getOwnerSetupChecklistProgress).toHaveBeenCalledWith(workspaceId);
-    expect(screen.getAllByRole("status").some((node) => node.textContent === "Loading Home")).toBe(true);
-    const cards = [...document.querySelectorAll(".mh-loc")];
-    expect(cards.length).toBeGreaterThan(0);
-    expect(cards.every((card) => card.querySelector(".nf-skeleton"))).toBe(true);
-    expect(screen.queryByRole("heading", greeting)).toBeNull();
-
-    await act(async () => {
-      answer({ workspace_id: workspaceId, user_id: userId, completed_item_ids: [], closed_at: null });
-    });
-    expect(await screen.findByRole("region", { name: "Setup checklist" })).toBeTruthy();
-    expect(screen.getByRole("heading", greeting)).toBeTruthy();
-  });
-
   it("keeps the last cards and says so when a refresh fails", async () => {
     const { client } = renderPage();
     expect(await screen.findByRole("heading", greeting)).toBeTruthy();
@@ -412,17 +356,6 @@ describe("WorkspacePage setup checklist", () => {
     ).toBeTruthy();
     expect(screen.queryByText("Internal server error")).toBeNull();
   });
-  it("says the checklist could not be loaded when its read fails", async () => {
-    vi.mocked(getOwnerSetupChecklistProgress).mockRejectedValue(new TypeError("Failed to fetch"));
-    renderPage();
-    const card = await screen.findByRole("heading", { name: "We couldn't load the setup checklist" });
-    expect(card.tagName).toBe("H3");
-    expect(screen.queryByText("Setup checklist progress could not be saved.")).toBeNull();
-    // Unknown is not zero: no "0 of N" and no list of unvisited steps.
-    expect(screen.queryByText(/required visits complete/)).toBeNull();
-    expect(screen.queryByText("Failed to fetch")).toBeNull();
-  });
-
   // BL-278 (7): a failed check must not show zero shift changes waiting.
   it("does not show zero shift changes when they could not be checked", async () => {
     currentContext = { ...context, actions: [...context.actions, "exchange.read"] };
@@ -441,124 +374,6 @@ describe("WorkspacePage setup checklist", () => {
     renderPage();
     await screen.findByRole("heading", { name: "Needs you" });
     expect(vi.mocked(getExchanges)).not.toHaveBeenCalled();
-  });
-
-  it("keeps the last checklist visits and says so when a refresh fails", async () => {
-    const { client } = renderPage();
-    const checklist = await screen.findByRole("region", { name: "Setup checklist" });
-    const items = checklist.querySelectorAll(".owner-setup-checklist-item").length;
-    expect(items).toBeGreaterThan(0);
-    vi.mocked(getOwnerSetupChecklistProgress).mockRejectedValueOnce(new TypeError("Failed to fetch"));
-    await act(async () => {
-      await client.refetchQueries({ queryKey: ["owner-setup-checklist"] });
-    });
-    expect(
-      await screen.findByText("The setup checklist didn't refresh. These are the last visits that loaded."),
-    ).toBeTruthy();
-    expect(checklist.querySelectorAll(".owner-setup-checklist-item").length).toBe(items);
-    expect(within(checklist).getByText(/required visits complete/)).toBeTruthy();
-  });
-
-  it("shows a visit-based setup checklist to owner roles", async () => {
-    renderPage();
-
-    expect(await screen.findByRole("heading", greeting)).toBeTruthy();
-    const checklist = await screen.findByRole("region", {
-      name: "Setup checklist",
-    });
-    expect(within(checklist).getByRole("heading", { name: "Setup checklist" })).toBeTruthy();
-    expect(within(checklist).getByRole("link", { name: /employees/i })).toBeTruthy();
-    expect(within(checklist).getByRole("link", { name: /billing/i })).toBeTruthy();
-    expect(within(checklist).getByRole("button", { name: /app tour/i })).toBeTruthy();
-  });
-
-  it("stores checklist visits per user and workspace on the server", async () => {
-    renderPage();
-    const checklist = await screen.findByRole("region", {
-      name: "Setup checklist",
-    });
-
-    fireEvent.click(within(checklist).getByRole("link", { name: /employees/i }));
-
-    expect(await screen.findByText("Employees route")).toBeTruthy();
-    await waitFor(() =>
-      expect(markOwnerSetupChecklistItem).toHaveBeenCalledWith(
-        workspaceId,
-        "employees",
-      ),
-    );
-  });
-
-  it("hides checklist after demotion and restores the same progress after re-promotion", async () => {
-    const rendered = renderPage();
-    const checklist = await screen.findByRole("region", {
-      name: "Setup checklist",
-    });
-
-    fireEvent.click(within(checklist).getByRole("button", { name: /app tour/i }));
-    await waitFor(() =>
-      expect(markOwnerSetupChecklistItem).toHaveBeenCalledWith(
-        workspaceId,
-        "app_tour",
-      ),
-    );
-    await waitFor(() =>
-      expect(
-        within(checklist).getByText("1 of 2 required visits complete"),
-      ).toBeTruthy(),
-    );
-
-    currentContext = {
-      ...context,
-      membership: { ...context.membership, access: { employee: true, management: null } },
-    };
-    rendered.rerender(
-      <QueryClientProvider
-        client={
-          new QueryClient({
-            defaultOptions: {
-              queries: { retry: false },
-              mutations: { retry: false },
-            },
-          })
-        }
-      >
-        <MemoryRouter initialEntries={["/app/workspace"]}>
-          <Routes>
-            <Route path="/app/workspace" element={<WorkspacePage />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    expect(screen.queryByRole("heading", { name: "Setup checklist" })).toBeNull();
-
-    currentContext = context;
-    rendered.rerender(
-      <QueryClientProvider
-        client={
-          new QueryClient({
-            defaultOptions: {
-              queries: { retry: false },
-              mutations: { retry: false },
-            },
-          })
-        }
-      >
-        <MemoryRouter initialEntries={["/app/workspace"]}>
-          <Routes>
-            <Route path="/app/workspace" element={<WorkspacePage />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    const restoredChecklist = await screen.findByRole("region", {
-      name: "Setup checklist",
-    });
-    await waitFor(() =>
-      expect(
-        within(restoredChecklist).getByText("1 of 2 required visits complete"),
-      ).toBeTruthy(),
-    );
   });
 
   it("shows open workspace todos from the dashboard", async () => {
@@ -699,43 +514,17 @@ describe("WorkspacePage setup checklist", () => {
     ).toBeNull();
   });
 
-  it("hides the setup checklist from employee roles", async () => {
-    currentContext = {
-      ...context,
-      membership: { ...context.membership, access: { employee: true, management: null } },
-    };
+  // Mert 2026-10-21: the owner setup checklist is gone from Home.
+  it("shows the owner no setup checklist on Home", async () => {
     renderPage();
-
     expect(await screen.findByRole("heading", greeting)).toBeTruthy();
-    await waitFor(() =>
-      expect(screen.queryByRole("heading", { name: "Setup checklist" })).toBeNull(),
-    );
-  });
-
-  it("hides the setup checklist when it is closed in settings", async () => {
-    vi.mocked(getOwnerSetupChecklistProgress).mockImplementation(async () => ({
-      workspace_id: workspaceId,
-      user_id: userId,
-      completed_item_ids: ["app_tour"],
-      closed_at: "2026-09-05T12:00:00.000Z",
-    }));
-    renderPage();
-
-    expect(await screen.findByRole("heading", greeting)).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Setup checklist" })).toBeNull();
-  });
-
-  it("describes checklist progress as visits instead of completed setup", async () => {
-    renderPage();
-    const checklist = await screen.findByRole("region", {
-      name: "Setup checklist",
+    await act(async () => {
+      await Promise.resolve();
     });
-
-    expect(
-      within(checklist).getByText("0 of 2 required visits complete"),
-    ).toBeTruthy();
-    expect(within(checklist).getAllByText("Optional visit").length).toBeGreaterThan(0);
-    expect(within(checklist).queryByText(/setup complete/i)).toBeNull();
+    expect(screen.queryByRole("region", { name: "Setup checklist" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Setup checklist" })).toBeNull();
+    expect(screen.queryByText(/required visits complete/)).toBeNull();
+    expect(document.querySelector(".owner-setup-checklist")).toBeNull();
   });
 
   // YONETICI-HOME (KARARLAR S-210): "Locations first".

@@ -2,17 +2,14 @@ import {
   announcementDraftSchema,
   announcementIntentSchema,
   announcementStateActionSchema,
-  ownerSetupChecklistItemIdSchema,
   homeLayoutInputSchema,
   workspaceManualTodoInputSchema,
   type ActiveWorkspaceContext,
-  type Permission,
 } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
   resolveActor,
-  resolveWorkspaceAuthorization,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
 import type { CommunicationService } from "./communication-service";
@@ -44,10 +41,6 @@ const announcementSaveBody = z
 const stateBody = z.object({
   expected_revision: z.number().int().positive(),
   bring_back: z.array(z.string().uuid()).max(500).default([]),
-});
-const setupChecklistPatchBody = z.object({
-  itemId: ownerSetupChecklistItemIdSchema.optional(),
-  closed: z.boolean().optional(),
 });
 export function registerCommunicationRoutes(
   app: FastifyInstance,
@@ -326,92 +319,6 @@ export function registerCommunicationRoutes(
       );
     },
   );
-
-  app.get(
-    "/v1/workspaces/:workspaceId/workspace/setup-checklist",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      if (!params.success)
-        return reply.status(400).send({ error: "Valid workspace required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "settings.general.read",
-        options.contextResolver,
-        reply,
-        "Workspace management required",
-      );
-      if (!context) return;
-      if (!options.service) return unavailable(reply);
-      return reply.send(
-        await options.service.getOwnerSetupChecklistProgress(actor(context)),
-      );
-    },
-  );
-
-  app.patch(
-    "/v1/workspaces/:workspaceId/workspace/setup-checklist",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      const body = setupChecklistPatchBody.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid setup checklist update required" });
-      if (body.data.itemId === undefined && body.data.closed === undefined)
-        return reply
-          .status(400)
-          .send({ error: "Valid setup checklist update required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "settings.general.manage",
-        options.contextResolver,
-        reply,
-        "Workspace management required",
-      );
-      if (!context) return;
-      if (!options.service) return unavailable(reply);
-      if (body.data.itemId !== undefined) {
-        return reply.send(
-          await options.service.markOwnerSetupChecklistItem({
-            ...actor(context),
-            itemId: body.data.itemId,
-          }),
-        );
-      }
-      return reply.send(
-        await options.service.setOwnerSetupChecklistClosed({
-          ...actor(context),
-          closed: body.data.closed ?? false,
-        }),
-      );
-    },
-  );
-}
-
-async function authorize(
-  authorization: string | undefined,
-  workspaceId: string,
-  permission: Permission,
-  resolver: WorkspaceContextResolver | null,
-  reply: FastifyReply,
-  permissionMessage: string,
-): Promise<ActiveWorkspaceContext | null> {
-  const result = await resolveWorkspaceAuthorization({
-    authorization,
-    workspaceId,
-    permission,
-    resolver,
-  });
-  if (result.context) return result.context;
-  reply.status(result.denied === "workspace_not_found" ? 404 : 403).send({
-    error:
-      result.denied === "workspace_not_found"
-        ? "Workspace not found"
-        : permissionMessage,
-  });
-  return null;
 }
 
 function actor(context: ActiveWorkspaceContext) {

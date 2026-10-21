@@ -643,62 +643,6 @@ describe("api app", () => {
     expect(resolveWorkspaceTodo).not.toHaveBeenCalled();
   });
 
-  it("forwards setup checklist reads to the workspace service", async () => {
-    const getOwnerSetupChecklistProgress = vi.fn(async () => ({
-      workspace_id: resolvedContext.workspace.id,
-      user_id: resolvedContext.userId,
-      completed_item_ids: [],
-      closed_at: null,
-    }));
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      communicationService: {
-        getOwnerSetupChecklistProgress,
-      } as unknown as CommunicationService,
-    });
-
-    const response = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace/setup-checklist`,
-      headers: { authorization: "Bearer valid-token" },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(getOwnerSetupChecklistProgress).toHaveBeenCalledWith({
-      actorUserId: resolvedContext.userId,
-      workspaceId: resolvedContext.workspace.id,
-    });
-  });
-
-  it("forwards setup checklist item progress to the workspace service", async () => {
-    const markOwnerSetupChecklistItem = vi.fn(async () => ({
-      workspace_id: resolvedContext.workspace.id,
-      user_id: resolvedContext.userId,
-      completed_item_ids: ["schedule"],
-      closed_at: null,
-    }));
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      communicationService: {
-        markOwnerSetupChecklistItem,
-      } as unknown as CommunicationService,
-    });
-
-    const response = await app.inject({
-      method: "PATCH",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace/setup-checklist`,
-      headers: { authorization: "Bearer valid-token" },
-      payload: { itemId: "schedule" },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(markOwnerSetupChecklistItem).toHaveBeenCalledWith({
-      actorUserId: resolvedContext.userId,
-      workspaceId: resolvedContext.workspace.id,
-      itemId: "schedule",
-    });
-  });
-
   it("validates announcement content before the service boundary", async () => {
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },

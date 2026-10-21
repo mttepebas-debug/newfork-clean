@@ -4,7 +4,6 @@ import type {
   HomeLayoutInput,
   HomeSectionId,
   ManagerHomeLocation,
-  OwnerSetupChecklistItemId,
   WorkspaceDashboard,
   WorkspaceTodo,
 } from "@newfork/shared";
@@ -40,9 +39,7 @@ import { safeAppActionUrl } from "../communications/action-url";
 import {
   createWorkspaceTodo,
   getManagerHome,
-  getOwnerSetupChecklistProgress,
   getWorkspaceDashboard,
-  markOwnerSetupChecklistItem,
   resolveWorkspaceTodo,
   saveWorkspaceLayout,
 } from "../communications/communications-data";
@@ -60,7 +57,6 @@ import { requestErrorText } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
 import { LoadError, LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
-import { membershipClass } from "../auth/access";
 import {
   HOME_SECTIONS,
   cardsInPairs,
@@ -123,16 +119,6 @@ export function WorkspacePage() {
     enabled: Boolean(workspaceId),
     refetchInterval: 5 * 60_000,
   });
-  // The setup checklist sits above the sections: it is read beside the
-  // dashboard and the outline stays until both have answered, so the page
-  // never jumps down when it paints (CI run 39023052297: 405 px on a phone).
-  const ownerRole =
-    (context ? membershipClass(context.membership) : undefined) === "owner" || (context ? membershipClass(context.membership) : undefined) === "admin";
-  const checklist = useQuery({
-    queryKey: ownerSetupChecklistKey(workspaceId),
-    queryFn: () => getOwnerSetupChecklistProgress(workspaceId),
-    enabled: Boolean(workspaceId && ownerRole),
-  });
   const exchanges = useQuery({
     queryKey: ["shift-exchanges", workspaceId, context?.userId, true],
     queryFn: () => getExchanges(workspaceId, true),
@@ -172,10 +158,7 @@ export function WorkspacePage() {
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(query.error) || isNoAccess(home.error))
     return <NoAccessState homeHref={noAccessHomePath(context, "/app/workspace")} />;
-  // Only the first answer holds the outline: a later read of the checklist
-  // (its own Try again) does not take the whole page back to the outline.
-  if (query.isLoading || home.isLoading || (checklist.isPending && checklist.isFetching && !checklist.isFetchedAfterMount))
-    return <HomeOutline />;
+  if (query.isLoading || home.isLoading) return <HomeOutline />;
   if (!query.data) {
     return (
       <section className="manager-home-page is-plain">
@@ -248,8 +231,6 @@ export function WorkspacePage() {
     headElement?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
   const allHidden = !customizing && layout.widget_order.every((id) => hidden.has(id));
-  const shown = layout.widget_order.filter((id) => !hidden.has(id));
-  const setupAfter = shown.includes("pending_requests") ? "pending_requests" : shown[shown.length - 1];
 
   const inView = (ids: readonly string[]) => selected === "all" || ids.includes(selected);
   const pairs = cardsInPairs(locations.length);
@@ -487,19 +468,11 @@ export function WorkspacePage() {
             </p>
           ) : null}
           {allHidden ? <p className="workspace-empty mh-allhidden">Every card is hidden. Use Customize to show them again.</p> : null}
-          {allHidden && ownerRole && context ? <OwnerSetupChecklist workspaceId={context.workspace.id} /> : null}
           <div className="dl-secs mh-secs">
             {layout.widget_order.map((id, index) => {
               const off = hidden.has(id);
               if (off && !customizing) return null;
-              // The owner's setup list follows "Needs you" (variant C's "Finish setting up"); it is not arranged.
-              if (!customizing)
-                return (
-                  <div key={id}>
-                    {parts[id]()}
-                    {id === setupAfter && ownerRole && context ? <OwnerSetupChecklist workspaceId={context.workspace.id} /> : null}
-                  </div>
-                );
+              if (!customizing) return <div key={id}>{parts[id]()}</div>;
               const label = HOME_SECTIONS[id];
               return (
                 <div className={`mh-cz${off ? " is-hidden" : ""}`} key={id}>
@@ -804,159 +777,6 @@ function WeekStrip({ locations, phone }: { locations: readonly ManagerHomeLocati
         );
       })}
     </div>
-  );
-}
-
-type ChecklistItem = {
-  readonly id: OwnerSetupChecklistItemId;
-  readonly label: string;
-  readonly to: string | null;
-  readonly required: boolean;
-};
-
-const ownerSetupChecklistItems: readonly ChecklistItem[] = [
-  {
-    id: "app_tour",
-    label: "App tour",
-    to: null,
-    required: true,
-  },
-  {
-    id: "scheduling_preferences",
-    label: "Set scheduling preferences",
-    to: "/app/settings/scheduling?checklist=setup",
-    required: true,
-  },
-  {
-    id: "employees",
-    label: "Employees",
-    to: "/app/employees",
-    required: false,
-  },
-  {
-    id: "documents",
-    label: "Documents",
-    to: "/app/settings/documents",
-    required: false,
-  },
-  {
-    id: "schedule",
-    label: "First schedule view",
-    to: "/app/schedule",
-    required: false,
-  },
-  {
-    id: "billing",
-    label: "Billing",
-    to: "/account/workspaces?checklist=billing",
-    required: false,
-  },
-];
-
-const ownerSetupChecklistKey = (workspaceId: string) => ["owner-setup-checklist", workspaceId];
-
-function OwnerSetupChecklist({
-  workspaceId,
-}: {
-  readonly workspaceId: string;
-}) {
-  const phone = usePhoneWidth();
-  const queryClient = useQueryClient();
-  const queryKey = ownerSetupChecklistKey(workspaceId);
-  const progressQuery = useQuery({
-    queryKey,
-    queryFn: () => getOwnerSetupChecklistProgress(workspaceId),
-    enabled: Boolean(workspaceId),
-  });
-  const markMutation = useMutation({
-    mutationFn: (id: OwnerSetupChecklistItemId) =>
-      markOwnerSetupChecklistItem(workspaceId, id),
-    onSuccess: async (progress) => {
-      queryClient.setQueryData(queryKey, progress);
-      await queryClient.invalidateQueries({ queryKey });
-    },
-  });
-  if (progressQuery.isPending || progressQuery.data?.closed_at) return null;
-  const unread = progressQuery.error && !progressQuery.data;
-
-  const visited = new Set(progressQuery.data?.completed_item_ids ?? []);
-  const markVisited = (id: OwnerSetupChecklistItemId) => {
-    if (!visited.has(id)) markMutation.mutate(id);
-  };
-  const requiredCount = ownerSetupChecklistItems.filter(
-    (item) => item.required,
-  ).length;
-  const requiredVisitedCount = ownerSetupChecklistItems.filter(
-    (item) => item.required && visited.has(item.id),
-  ).length;
-
-  return (
-    <section className="owner-setup-checklist" aria-labelledby="setup-title">
-      <header>
-        <div>
-          <h2 id="setup-title">Setup checklist</h2>
-          {unread ? null : <p>{requiredVisitedCount} of {requiredCount} required visits complete</p>}
-        </div>
-      </header>
-      {unread ? (
-        <LoadError
-          inset
-          level={3}
-          title="We couldn't load the setup checklist"
-          detail="Your visits didn't load. Nothing was changed."
-          retrying={progressQuery.isFetching}
-          onRetry={() => void progressQuery.refetch()}
-        />
-      ) : progressQuery.error ? (
-        <RefreshError
-          message="The setup checklist didn't refresh. These are the last visits that loaded."
-          retrying={progressQuery.isFetching}
-          onRetry={() => void progressQuery.refetch()}
-        />
-      ) : null}
-      {markMutation.error ? (
-        <p className="workspace-error" role="alert">
-          Setup checklist progress could not be saved.
-        </p>
-      ) : null}
-      {unread ? null : <div className="owner-setup-checklist-list">
-        {/* KARARLAR "Schedule telefonda tamamen kapalı": a phone is not sent to Schedule. */}
-        {ownerSetupChecklistItems.filter((item) => !(phone && item.to === "/app/schedule")).map((item) => {
-          const done = visited.has(item.id);
-          const content = (
-            <>
-              <span className="owner-setup-checklist-status" data-done={done}>
-                {done ? <CheckCircle2 size={15} aria-hidden /> : null}
-              </span>
-              <span>
-                <strong>{item.label}</strong>
-                <small>{item.required ? "Required visit" : "Optional visit"}</small>
-              </span>
-              <ArrowRight size={15} aria-hidden />
-            </>
-          );
-          return item.to ? (
-            <Link
-              className="owner-setup-checklist-item"
-              key={item.id}
-              to={item.to}
-              onClick={() => markVisited(item.id)}
-            >
-              {content}
-            </Link>
-          ) : (
-            <button
-              className="owner-setup-checklist-item"
-              key={item.id}
-              type="button"
-              onClick={() => markVisited(item.id)}
-            >
-              {content}
-            </button>
-          );
-        })}
-      </div>}
-    </section>
   );
 }
 

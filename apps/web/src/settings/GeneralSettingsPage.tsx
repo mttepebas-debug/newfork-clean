@@ -1,17 +1,7 @@
 import { Button } from "@newfork/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Building2,
-  ImagePlus,
-  ListChecks,
-  Save,
-} from "lucide-react";
+import { Building2, ImagePlus, Save } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
-import {
-  getOwnerSetupChecklistProgress,
-  setOwnerSetupChecklistClosed,
-} from "../communications/communications-data";
 import {
   ScheduleLogoUploadDialog,
   type ScheduleLogoSaveDraft,
@@ -20,12 +10,9 @@ import { ScheduleLogoFrame } from "../schedule/components/ScheduleLogoFrame";
 import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
 import { breaksLetterRule, LetterRuleNote, letterRuleProps } from "../shell/us-text";
 import { FieldNote } from "../shell/FieldNote";
-import { isNoAccess } from "../lib/no-access";
-import { LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
 
 export default function GeneralSettingsPage() {
   const { context, refresh } = useAuth();
-  const queryClient = useQueryClient();
   const canEdit =
     context?.permissions.includes("settings.general.manage") ?? false;
   const [name, setName] = useState(context?.workspace.name ?? "");
@@ -35,27 +22,11 @@ export default function GeneralSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [logoOpen, setLogoOpen] = useState(false);
   const [savingLogo, setSavingLogo] = useState(false);
-  const workspaceId = context?.workspace.id ?? "";
 
   useEffect(
     () => setName(context?.workspace.name ?? ""),
     [context?.workspace.name],
   );
-  const checklistQueryKey = ["owner-setup-checklist", workspaceId];
-  const checklistQuery = useQuery({
-    queryKey: checklistQueryKey,
-    queryFn: () => getOwnerSetupChecklistProgress(workspaceId),
-    enabled: Boolean(workspaceId),
-  });
-  const checklistMutation = useMutation({
-    mutationFn: (closed: boolean) =>
-      setOwnerSetupChecklistClosed(workspaceId, closed),
-    onSuccess: async (progress) => {
-      queryClient.setQueryData(checklistQueryKey, progress);
-      await queryClient.invalidateQueries({ queryKey: checklistQueryKey });
-    },
-  });
-  const checklistClosed = Boolean(checklistQuery.data?.closed_at);
 
   if (!context) return null;
 
@@ -170,68 +141,6 @@ export default function GeneralSettingsPage() {
           </Button>
         </div>
       </form>
-      <section
-        className="organization-form setup-checklist-settings"
-        aria-labelledby="setup-checklist-settings-title"
-      >
-        <div className="organization-form-row">
-          <div>
-            <label id="setup-checklist-settings-title">Setup checklist</label>
-            <p>
-              Controls whether the guided setup checklist appears on the
-              Workspace dashboard for this workspace.
-            </p>
-          </div>
-          <div className="setup-checklist-settings-control">
-            {checklistQuery.isLoading ? (
-              <LoadingOutline label="Loading setup checklist setting">
-                <Skeleton width={150} height={12} />
-              </LoadingOutline>
-            ) : checklistQuery.data !== undefined ? (
-              <span>
-                {checklistClosed
-                  ? "Hidden from Workspace"
-                  : "Visible on Workspace"}
-              </span>
-            ) : null}
-            <Button
-              type="button"
-              disabled={
-                !canEdit ||
-                checklistQuery.data === undefined ||
-                isNoAccess(checklistQuery.error) ||
-                checklistMutation.isPending
-              }
-              onClick={() => checklistMutation.mutate(!checklistClosed)}
-            >
-              <ListChecks size={16} aria-hidden />
-              {checklistClosed ? "Show checklist" : "Hide checklist"}
-            </Button>
-          </div>
-        </div>
-        {/* A failed read is not a failed save (Mert 2026-10-14, "B"). */}
-        {checklistQuery.error && !isNoAccess(checklistQuery.error) ? (
-          <RefreshError
-            message={
-              checklistQuery.data !== undefined
-                ? "This setting didn't refresh. This is the last value that loaded."
-                : "This setting didn't load. Nothing was changed."
-            }
-            retrying={checklistQuery.isFetching}
-            onRetry={() => void checklistQuery.refetch()}
-          />
-        ) : null}
-        <FieldNote
-          id="setup-checklist"
-          error={
-            isNoAccess(checklistQuery.error)
-              ? "You don't have access to this setting."
-              : checklistMutation.error
-                ? "Setup checklist visibility could not be saved."
-                : null
-          }
-        />
-      </section>
       <ScheduleLogoUploadDialog
         open={logoOpen}
         organizationName={context.workspace.name}

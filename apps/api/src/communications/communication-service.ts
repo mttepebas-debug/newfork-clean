@@ -5,7 +5,6 @@ import {
   announcementSavedSchema,
   announcementStateResultSchema,
   importantDateListSchema,
-  ownerSetupChecklistProgressSchema,
   workspaceDashboardSchema,
   managerHomeSchema,
   workspaceManualTodoInputSchema,
@@ -19,8 +18,6 @@ import {
   type AnnouncementStateAction,
   type AnnouncementStateResult,
   type ImportantDateList,
-  type OwnerSetupChecklistItemId,
-  type OwnerSetupChecklistProgress,
   type WorkspaceDashboard,
   type ManagerHome,
   type HomeLayoutInput,
@@ -84,15 +81,6 @@ export interface CommunicationService {
   resolveWorkspaceTodo(
     input: ActorInput & { todoId: string },
   ): Promise<WorkspaceTodo>;
-  getOwnerSetupChecklistProgress(
-    input: ActorInput,
-  ): Promise<OwnerSetupChecklistProgress>;
-  markOwnerSetupChecklistItem(
-    input: ActorInput & { itemId: OwnerSetupChecklistItemId },
-  ): Promise<OwnerSetupChecklistProgress>;
-  setOwnerSetupChecklistClosed(
-    input: ActorInput & { closed: boolean },
-  ): Promise<OwnerSetupChecklistProgress>;
 }
 
 interface ActorInput {
@@ -222,30 +210,6 @@ export function createCommunicationServiceWithClient(
         await rpc("resolve_workspace_todo_service", {
           ...actorArgs(input),
           target_todo_id: input.todoId,
-        }),
-      );
-    },
-    async getOwnerSetupChecklistProgress(input) {
-      return ownerSetupChecklistProgressSchema.parse(
-        await rpc(
-          "get_owner_setup_checklist_progress_service",
-          actorArgs(input),
-        ),
-      );
-    },
-    async markOwnerSetupChecklistItem(input) {
-      return ownerSetupChecklistProgressSchema.parse(
-        await rpc("mark_owner_setup_checklist_item_service", {
-          ...actorArgs(input),
-          target_item_id: input.itemId,
-        }),
-      );
-    },
-    async setOwnerSetupChecklistClosed(input) {
-      return ownerSetupChecklistProgressSchema.parse(
-        await rpc("set_owner_setup_checklist_closed_service", {
-          ...actorArgs(input),
-          should_close: input.closed,
         }),
       );
     },

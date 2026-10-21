@@ -6,7 +6,6 @@ import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Save } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { WeeklyPreferenceSettingsPanel } from "../availability/WeeklyPreferenceSettings";
@@ -29,14 +28,6 @@ const defaults: SchedulingSettingsInput = {
   time_off_lead_hours: 24,
 };
 
-type SchedulingSettingsDraft = Omit<
-  SchedulingSettingsInput,
-  "week_start_day" | "time_format"
-> & {
-  week_start_day: SchedulingSettingsInput["week_start_day"] | "";
-  time_format: SchedulingSettingsInput["time_format"] | "";
-};
-
 const weekdays = [
   "monday",
   "tuesday",
@@ -50,47 +41,36 @@ const weekdays = [
 export default function SchedulingSettingsPage() {
   const { context } = useAuth();
   const canEdit = can(context, "settings.scheduling.write");
-  const location = useLocation();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
-  const checklistMode =
-    new URLSearchParams(location.search).get("checklist") === "setup";
   const queryKey = ["scheduling-settings", workspaceId];
   const query = useQuery({
     queryKey,
     queryFn: () => loadSchedulingSettings(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  const [draft, setDraft] = useState<SchedulingSettingsDraft>(
-    checklistMode ? checklistDraft(defaults) : defaults,
-  );
+  const [draft, setDraft] = useState<SchedulingSettingsInput>(defaults);
   const [draftDirty, setDraftDirty] = useState(false);
-  // BL-677 (1): once the checklist's two choices are saved, the page shows
-  // them like any other saved value instead of blanking them again.
-  const [checklistSaved, setChecklistSaved] = useState(false);
-  const blankChoices = checklistMode && !checklistSaved;
   const [saved, setSaved] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!query.data || draftDirty) return;
-    const parsed = schedulingSettingsInputSchema.parse(query.data);
-    setDraft(blankChoices ? checklistDraft(parsed) : parsed);
+    setDraft(schedulingSettingsInputSchema.parse(query.data));
     setValidationError(null);
-  }, [blankChoices, draftDirty, query.data]);
+  }, [draftDirty, query.data]);
 
   const mutation = useMutation({
     mutationFn: (values: SchedulingSettingsInput) =>
       saveSchedulingSettings(workspaceId, values),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey });
-      setChecklistSaved(true);
       setDraftDirty(false);
       setSaved(true);
     },
   });
 
-  const updateDraft = (patch: Partial<SchedulingSettingsDraft>): void => {
+  const updateDraft = (patch: Partial<SchedulingSettingsInput>): void => {
     setDraft((current) => ({
       ...current,
       ...patch,
@@ -104,10 +84,6 @@ export default function SchedulingSettingsPage() {
     if (!canEdit) return;
     setSaved(false);
     setValidationError(null);
-    if (blankChoices && (!draft.week_start_day || !draft.time_format)) {
-      setValidationError("Choose week start and time format before saving.");
-      return;
-    }
     const hours = draft.time_off_lead_hours;
     if (hours !== undefined && !(Number.isInteger(hours) && hours >= 0 && hours <= 720)) {
       setValidationError("Enter a time off decision window from 0 to 720 hours.");
@@ -268,9 +244,7 @@ export default function SchedulingSettingsPage() {
                   disabled={
                     mutation.isPending ||
                     // BL-677 (1): nothing changed, nothing to save.
-                    !draftDirty ||
-                    (blankChoices &&
-                      (!draft.week_start_day || !draft.time_format))
+                    !draftDirty
                   }
                 >
                   <Save size={16} aria-hidden />
@@ -301,12 +275,6 @@ export default function SchedulingSettingsPage() {
       ) : null}
     </section>
   );
-}
-
-function checklistDraft(
-  values: SchedulingSettingsInput,
-): SchedulingSettingsDraft {
-  return { ...values, week_start_day: "", time_format: "" };
 }
 
 function SettingsChoiceRow({

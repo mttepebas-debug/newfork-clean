@@ -21,7 +21,6 @@ const tenantScopedQueryPrefixes = new Set([
   "organization-jobs",
   "organization-locations",
   "own-avatar",
-  "owner-setup-checklist",
   "roles",
   "schedule-drafts",
   "schedule-pending-ops",

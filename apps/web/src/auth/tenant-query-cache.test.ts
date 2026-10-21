@@ -14,9 +14,6 @@ describe("tenant query cache", () => {
       true,
     );
     expect(isTenantScopedQueryKey(["document-types", "org-a"])).toBe(true);
-    expect(isTenantScopedQueryKey(["owner-setup-checklist", "org-a"])).toBe(
-      true,
-    );
     expect(isTenantScopedQueryKey(["my-onboarding-phone", "org-a", "+14155550100"])).toBe(true);
     // AVATAR-IKON: one's avatar belongs to a workspace.
     expect(isTenantScopedQueryKey(["own-avatar", "org-a"])).toBe(true);
@@ -47,9 +44,6 @@ describe("tenant query cache", () => {
       ["document-types", "org-a"],
       [{ id: "document-type-a" }],
     );
-    queryClient.setQueryData(["owner-setup-checklist", "org-a"], {
-      closed_at: null,
-    });
     queryClient.setQueryData(["shift-exchanges", "org-a", "preview", "case", "candidate"], { private_note: "Manager only" });
     queryClient.setQueryData(["account-profile"], { email: "user@test.dev" });
     queryClient.setQueryData(["account-workspaces"], [{ id: "org-a" }]);
@@ -75,9 +69,6 @@ describe("tenant query cache", () => {
     ).toBeUndefined();
     expect(
       queryClient.getQueryData(["document-types", "org-a"]),
-    ).toBeUndefined();
-    expect(
-      queryClient.getQueryData(["owner-setup-checklist", "org-a"]),
     ).toBeUndefined();
     expect(queryClient.getQueryData(["account-profile"])).toEqual({
       email: "user@test.dev",

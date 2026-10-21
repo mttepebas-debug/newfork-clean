@@ -76,7 +76,7 @@ const weeklySettings: WeeklyPreferenceSettingsRead = {
   },
   can_edit: true,
 };
-describe("SchedulingSettingsPage checklist mode", () => {
+describe("SchedulingSettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     context.permissions = [
@@ -99,9 +99,7 @@ describe("SchedulingSettingsPage checklist mode", () => {
     );
   });
 
-  function renderPage(
-    initialEntry = "/app/settings/scheduling?checklist=setup",
-  ) {
+  function renderPage(initialEntry = "/app/settings/scheduling") {
     const client = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -158,42 +156,15 @@ describe("SchedulingSettingsPage checklist mode", () => {
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
 
-  it("requires explicit week start and time format choices in checklist mode", async () => {
-    renderPage();
-
-    const saveButton = await screen.findByRole("button", {
-      name: /save rules/i,
-    });
-    expect(saveButton).toHaveProperty("disabled", true);
-
-    fireEvent.click(screen.getByRole("radio", { name: "Sunday" }));
-    expect(saveButton).toHaveProperty("disabled", true);
-
-    fireEvent.click(screen.getByRole("radio", { name: "24-hour" }));
-    expect(saveButton).toHaveProperty("disabled", false);
-    // The server holds what was saved; the next read answers with it.
-    vi.mocked(saveSchedulingSettings).mockImplementation(async () => {
-      vi.mocked(loadSchedulingSettings).mockResolvedValue({
-        ...settings,
-        week_start_day: "sunday",
-        time_format: "24h",
-      });
-    });
-    fireEvent.click(saveButton);
-
+  // Mert 2026-10-21: the setup checklist is gone; an old ?checklist=setup
+  // address shows the saved rules like any other visit.
+  it("shows the saved rules on an old checklist address too", async () => {
+    renderPage("/app/settings/scheduling?checklist=setup");
+    await screen.findByRole("button", { name: /save rules/i });
     await waitFor(() =>
-      expect(saveSchedulingSettings).toHaveBeenCalledWith(
-        workspaceId,
-        expect.objectContaining({
-          week_start_day: "sunday",
-          time_format: "24h",
-        }),
-      ),
+      expect(screen.getByRole("radio", { name: "Monday" })).toHaveProperty("checked", true),
     );
-    // BL-677 (1): once saved, the two choices stay shown, not blank again.
-    await screen.findByText("Scheduling rules saved.");
-    expect(screen.getByRole("radio", { name: "Sunday" })).toHaveProperty("checked", true);
-    expect(screen.getByRole("radio", { name: "24-hour" })).toHaveProperty("checked", true);
+    expect(screen.getByRole("radio", { name: "12-hour" })).toHaveProperty("checked", true);
   });
 
   it("saves the time off decision window with the other rules (FB-6.3.6)", async () => {
