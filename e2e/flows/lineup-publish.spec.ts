@@ -32,9 +32,9 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   ]');`);
   const day = sql(`select tests.week(${week}) + 2;`);
 
-  const ayse = await openPage(browser, "ayse", `/app/schedule/lineup?date=${day}`);
-  // The desktop, F (Mert 2026-10-19): Kadikoy's ticket, its team in the list under it.
-  await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
+  // The desktop, F (Mert 2026-10-19): Kadikoy's ticket, its team in the list under it. The desktop has no Location
+  // menu of its own since the ticket carries the place (Mert 2026-10-21): the page opens on Kadikoy.
+  const ayse = await openPage(browser, "ayse", `/app/schedule/lineup?date=${day}&location=${sql(`select tests.id('${run}:K');`)}`);
   const kadikoy = ayse.getByRole("region", { name: /^Kadikoy, / });
   await expect(ayse.getByRole("tabpanel")).toContainText("Emre Person");
   const trigger = ayse.getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ });
@@ -80,8 +80,8 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   await expect(emre.getByText("Acknowledged.", { exact: true })).toBeVisible();
   await expect(emre.getByRole("button", { name: "Acknowledge", exact: true })).toHaveCount(0);
 
+  // The address keeps Kadikoy.
   await ayse.reload();
-  await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
   // Who read it (Mert 2026-10-17): the ticket's Read tab; Emre is under Read, Ali not yet.
   await ayse.getByRole("region", { name: /^Kadikoy, / }).getByRole("tab", { name: /^Read 1\/\d+$/ }).click();
   const readers = ayse.getByRole("tabpanel");

@@ -85,8 +85,8 @@ test("each Lineup row draws the person's drawing: her own first, else her job's;
         'service_date', '${day}', 'shift_type_id', tests.id('${w}:type:lunch'))), 'ask_ack', true)) ->> 'kind';`);
 
   // The manager's desktop Lineup, a draft.
-  const manager = await open(browser, owner, `/app/schedule/lineup?date=${day}`);
-  await manager.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
+  // No Location menu of its own since the ticket carries the place (Mert 2026-10-21): the page opens on Kadikoy.
+  const manager = await open(browser, owner, `/app/schedule/lineup?date=${day}&location=${sql(`select tests.id('${w}:K');`)}`);
   await expect(manager.getByRole("tabpanel")).toContainText("Ida Person");
   expect(await drawnFor(manager, "Eli Person")).toBe(eliOwn);
   const idas = await drawnFor(manager, "Ida Person");
@@ -100,8 +100,8 @@ test("each Lineup row draws the person's drawing: her own first, else her job's;
   sql(`update public.jobs set lineup_icons = array(select a.key from app_private.lineup_art a where a.kind <> 'team'
        order by a.no limit 2 offset 5) where id = tests.id('${w}:job:cook');`);
   expect(share("share")).toBe("share");
+  // The address keeps Kadikoy.
   await manager.reload();
-  await manager.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
   await expect(manager.getByRole("tabpanel")).toContainText("Ida Person");
   expect(await drawnFor(manager, "Ida Person")).toBe(idas);
 

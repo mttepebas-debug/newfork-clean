@@ -25,8 +25,8 @@ test("a manager changes a draft lineup's row, its location's sections and its no
   const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
   await signIn(page, "ayse");
   await expect(page).not.toHaveURL(/\/sign-in/);
-  await page.goto(`/app/schedule/lineup?date=${day}`);
-  await page.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
+  // The desktop has no Location menu of its own since the ticket carries the place (Mert 2026-10-21).
+  await page.goto(`/app/schedule/lineup?date=${day}&location=${sql(`select tests.id('${run}:K');`)}`);
   const team = page.getByRole("tabpanel");
   await expect(team).toContainText("Emre Person");
 
