@@ -1,4 +1,5 @@
-import { Button } from "@newfork/ui";
+import { Button, useToast } from "@newfork/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, ImagePlus, Save } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
@@ -10,9 +11,20 @@ import { ScheduleLogoFrame } from "../schedule/components/ScheduleLogoFrame";
 import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
 import { breaksLetterRule, LetterRuleNote, letterRuleProps } from "../shell/us-text";
 import { FieldNote } from "../shell/FieldNote";
+import { isNoAccess } from "../lib/no-access";
+import { LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
+import { can } from "../auth/can";
+import { Switch } from "../notification-settings/parts";
+import "../notification-settings/notification-settings.css";
+import {
+  loadOnboardingApproval,
+  onboardingApprovalKey,
+  saveOnboardingApproval,
+} from "./onboarding-approval-data";
 
 export default function GeneralSettingsPage() {
   const { context, refresh } = useAuth();
+  const queryClient = useQueryClient();
   const canEdit =
     context?.permissions.includes("settings.general.manage") ?? false;
   const [name, setName] = useState(context?.workspace.name ?? "");
@@ -22,11 +34,36 @@ export default function GeneralSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [logoOpen, setLogoOpen] = useState(false);
   const [savingLogo, setSavingLogo] = useState(false);
+  const workspaceId = context?.workspace.id ?? "";
 
   useEffect(
     () => setName(context?.workspace.name ?? ""),
     [context?.workspace.name],
   );
+
+  // New people wait for approval (KATILIM-ONAY, S-231): anybody here reads it; the owner and admins
+  // change it (settings.organization.write). The API decides; can() only reflects it.
+  const toast = useToast();
+  const canChangeApproval = can(context, "settings.organization.write");
+  const approvalQuery = useQuery({
+    queryKey: onboardingApprovalKey(workspaceId),
+    queryFn: () => loadOnboardingApproval(workspaceId),
+    enabled: Boolean(workspaceId),
+  });
+  const approvalMutation = useMutation({
+    mutationFn: (required: boolean) => saveOnboardingApproval(workspaceId, required),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(onboardingApprovalKey(workspaceId), settings);
+      toast.success(
+        settings.final_approval_required
+          ? "New people now wait for approval."
+          : "New people now start when they finish onboarding.",
+      );
+      // Turning it off lets people in: the lists that show them move on.
+      void queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+  const approvalRequired = approvalQuery.data?.final_approval_required;
 
   if (!context) return null;
 
@@ -141,6 +178,67 @@ export default function GeneralSettingsPage() {
           </Button>
         </div>
       </form>
+      <section
+        className="organization-form onboarding-approval-settings"
+        aria-labelledby="onboarding-approval-title"
+      >
+        <div className="organization-form-row">
+          <div>
+            <label id="onboarding-approval-title" htmlFor="onboarding-approval-switch">
+              New people wait for approval
+            </label>
+            {approvalRequired !== undefined ? (
+              <p id="onboarding-approval-help">
+                {approvalRequired
+                  ? "New people finish their required details and documents first. A manager then approves them, and their schedule opens."
+                  : "New people start as soon as they finish their required details and documents."}
+              </p>
+            ) : null}
+          </div>
+          <div className="onboarding-approval-control">
+            {approvalQuery.isLoading ? (
+              <LoadingOutline label="Loading approval setting">
+                <Skeleton width={28} height={12} />
+              </LoadingOutline>
+            ) : approvalRequired !== undefined ? (
+              <span aria-hidden>{approvalRequired ? "On" : "Off"}</span>
+            ) : null}
+            <Switch
+              id="onboarding-approval-switch"
+              label="New people wait for approval"
+              checked={approvalRequired ?? false}
+              describedBy={approvalRequired !== undefined ? "onboarding-approval-help" : undefined}
+              disabled={
+                !canChangeApproval ||
+                approvalRequired === undefined ||
+                approvalMutation.isPending
+              }
+              onChange={(next) => approvalMutation.mutate(next)}
+            />
+          </div>
+        </div>
+        {approvalQuery.error && !isNoAccess(approvalQuery.error) ? (
+          <RefreshError
+            message={
+              approvalQuery.data !== undefined
+                ? "This setting didn't refresh. This is the last value that loaded."
+                : "This setting didn't load. Nothing was changed."
+            }
+            retrying={approvalQuery.isFetching}
+            onRetry={() => void approvalQuery.refetch()}
+          />
+        ) : null}
+        <FieldNote
+          id="onboarding-approval"
+          error={
+            isNoAccess(approvalQuery.error)
+              ? "You don't have access to this setting."
+              : approvalMutation.error
+                ? "The approval setting could not be saved."
+                : null
+          }
+        />
+      </section>
       <ScheduleLogoUploadDialog
         open={logoOpen}
         organizationName={context.workspace.name}
