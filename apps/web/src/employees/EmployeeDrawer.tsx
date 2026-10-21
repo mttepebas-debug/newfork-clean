@@ -3092,6 +3092,11 @@ function AssignmentPicker({
                     Primary
                   </label>
                 ) : null}
+                {/* A locked row that is the primary says so, with nothing to
+                    pick: the owner's Owner job and first location (Mert, 20 Oct). */}
+                {checked && reason && primary === option.id ? (
+                  <span className="primary-choice">Primary</span>
+                ) : null}
                 {checked ? rowAction?.(option.id) : null}
               </div>
             );

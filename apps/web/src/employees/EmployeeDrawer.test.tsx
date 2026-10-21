@@ -1655,6 +1655,27 @@ describe("EmployeeDrawer", () => {
       await savedWith({ job_ids: [ownerJobId, serverJobId], primary_job_id: serverJobId });
     });
 
+    // Mert, 20 Oct: setup makes the Owner job and the first location the
+    // founder's primary. On the owner's locked rows the drawer says so in grey,
+    // with nothing to pick.
+    it("shows the owner's primary job and location as plain text on their locked rows", async () => {
+      withManagementJobs();
+      renderDrawer("employment", {
+        ...detail,
+        role_name: "Owner",
+        is_workspace_owner: true,
+        primary_job_id: ownerJobId,
+        primary_job_name: "Owner",
+        jobs: [{ id: ownerJobId, name: "Owner", primary: true, archived: false }],
+      });
+      await employeeLoaded();
+      expect(within(jobRow("Owner")).getByText("Primary")).toBeTruthy();
+      expect(within(jobRow("Owner")).queryByRole("radio")).toBeNull();
+      const locationRow = screen.getByLabelText(detail.locations[0]!.name).closest("div")!;
+      expect(within(locationRow).getByText("Primary")).toBeTruthy();
+      expect(within(locationRow).queryByRole("radio")).toBeNull();
+    });
+
     // Security review D1: a record read with a job and no primary (saved while
     // Remote) goes out as it was read. The drawer makes up no primary; the
     // database answers and its sentence is shown.
