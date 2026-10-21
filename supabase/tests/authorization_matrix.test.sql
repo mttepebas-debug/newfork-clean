@@ -475,6 +475,10 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('notifications.workspace_settings', 'workspace', null, false, false,
    $$select public.save_notification_workspace_settings_service($1, $2,
        '{"email_enabled": true, "push_enabled": true, "sms_enabled": false, "muted_types": []}') is not null$$),
+  -- Settings > General, New people wait for approval (KATILIM-ONAY, S-231): an organization setting. Off, as
+  -- the test world has it, so the probe lets nobody in.
+  ('onboarding.approval_setting', 'workspace', null, false, false,
+   $$select public.set_onboarding_approval_service($1, $2, false) is not null$$),
   ('workspace.close', 'workspace', null, true, false,
    $$select public.request_workspace_closure_service($1, $2, 'immediate', (select w.name from public.workspaces w where w.id = $2), true, null) is not null$$),
   ('workspace.transfer_ownership', 'workspace', null, true, false,
@@ -686,6 +690,7 @@ insert into core_action (key, core_key, blank) values
   ('settings.scheduling.write', 'settings.scheduling.write', 'null'),
   ('settings.conflict_rules.write', 'settings.conflict_rules.write', 'null'),
   ('notifications.workspace_settings', 'settings.organization.write', 'null'),
+  ('onboarding.approval_setting', 'settings.organization.write', 'null'),
   ('settings.locations.read', 'settings.locations.read', 'null'),
   ('settings.jobs.read', 'settings.jobs.read', 'null'),
   ('settings.shift_catalog.read', 'settings.shift_catalog.read', 'null'),
@@ -933,7 +938,7 @@ begin
 
   when 'settings.organization.write', 'settings.locations.write', 'settings.jobs.write',
        'settings.roles.write', 'settings.scheduling.write', 'settings.conflict_rules.write',
-       'notifications.workspace_settings' then
+       'notifications.workspace_settings', 'onboarding.approval_setting' then
     -- Managers read the catalog; they never write organization settings (D1).
     return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
 
