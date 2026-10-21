@@ -183,7 +183,7 @@ function Body({ s, axis }: { s: Schedule; axis: [number, number] }) {
   const template = `200px repeat(${grid.columns.length}, minmax(${colWidth}px, 1fr))${totals ? " 64px" : ""}`;
   const style = { "--b-cols": template, width: `max(100%, ${200 + grid.columns.length * colWidth + (totals ? 64 : 0)}px)` } as CSSProperties;
   return (
-    <div className="b-scroll" ref={(el) => { s.scrollerRef.current = el; }} data-proto-grid data-day={day || undefined}>
+    <div className="b-scroll" ref={(el) => { s.scrollerRef.current = el; }} data-proto-grid data-day={day || undefined} data-drag={s.drag ? true : undefined}>
       <div className="b-grid" role="grid" style={style}>
         <div className="b-row b-band">
           <div className="b-corner">
@@ -197,7 +197,7 @@ function Body({ s, axis }: { s: Schedule; axis: [number, number] }) {
           {totals ? <div className="b-total-head">Σ</div> : null}
         </div>
         <div className="b-row b-days">
-          <div className="b-corner b-corner-axis">{day ? <AxisTicks axis={axis} /> : <span>Hours on the day's clock</span>}</div>
+          <div className="b-corner b-corner-axis"><span>{day ? "Hours" : "Hours on the day's clock"}</span></div>
           {grid.columns.map((c) => (
             <DayHeader key={c.key} s={s} column={c} axis={axis} />
           ))}
@@ -272,6 +272,7 @@ function DayHeader({ s, column, axis }: { s: Schedule; column: Column; axis: [nu
       <div className="b-hist" aria-hidden>
         {counts.map((n, i) => <i key={i} style={{ height: `${(n / peak) * 100}%` }} data-zero={n === 0 || undefined} />)}
       </div>
+      {s.url.view === "day" ? <AxisTicks axis={axis} /> : null}
       {titles.length ? <span className="b-post" title={titles.join("\n")}>{titles[0]}{titles.length > 1 ? ` +${titles.length - 1}` : ""}</span> : null}
     </div>
   );

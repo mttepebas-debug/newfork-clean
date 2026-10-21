@@ -336,6 +336,9 @@
 :is(.dir-a, .dir-b, .dir-c) .pv-window {
   position: fixed;
   z-index: 8000;
+  display: flex;
+  max-height: calc(100vh - 24px);
+  flex-direction: column;
   width: 360px;
   overflow: hidden;
   border-radius: var(--r-l);
@@ -363,7 +366,8 @@
 }
 :is(.dir-a, .dir-b, .dir-c) .pv-window-body {
   display: grid;
-  max-height: min(62vh, 520px);
+  min-height: 0;
+  flex: 1 1 auto;
   gap: 12px;
   overflow: auto;
   padding: 14px 16px;
@@ -637,8 +641,8 @@
 :is(.dir-a, .dir-b, .dir-c) .pv-toasts {
   position: fixed;
   z-index: 9800;
+  top: 16px;
   right: 20px;
-  bottom: 20px;
   display: grid;
   gap: 8px;
   justify-items: end;
@@ -696,4 +700,9 @@
 @keyframes pv-toast-in {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: none; }
+}
+
+/* While a card is carried, cells show only where it can land. */
+[data-proto-grid][data-drag] [data-proto-add] {
+  opacity: 0 !important;
 }

@@ -19,12 +19,19 @@ function useFloating(x: number, y: number, gap = 8) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    let left = x + gap;
-    let top = y;
-    if (left + r.width > window.innerWidth - 12) left = Math.max(12, x - r.width - gap);
-    if (top + r.height > window.innerHeight - 12) top = Math.max(12, window.innerHeight - r.height - 12);
-    setPos({ left, top });
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      let left = x + gap;
+      let top = y;
+      if (left + r.width > window.innerWidth - 12) left = Math.max(12, x - r.width - gap);
+      if (top + r.height > window.innerHeight - 12) top = Math.max(12, window.innerHeight - r.height - 12);
+      setPos({ left, top });
+    };
+    place();
+    // Fonts and fields can change the height after the first frame.
+    const observer = new ResizeObserver(place);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [x, y, gap]);
   return { ref, style: pos };
 }

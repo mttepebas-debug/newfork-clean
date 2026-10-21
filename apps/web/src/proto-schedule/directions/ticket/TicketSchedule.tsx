@@ -164,7 +164,7 @@ function Body({ s }: { s: Schedule }) {
   const template = `236px repeat(${grid.columns.length}, minmax(${colWidth}px, 1fr))${totals ? " 70px" : ""}`;
   const style = { "--c-cols": template, width: `max(100%, ${236 + grid.columns.length * colWidth + (totals ? 70 : 0)}px)` } as CSSProperties;
   return (
-    <div className="c-scroll" ref={(el) => { s.scrollerRef.current = el; }} data-proto-grid>
+    <div className="c-scroll" ref={(el) => { s.scrollerRef.current = el; }} data-proto-grid data-drag={s.drag ? true : undefined}>
       <div className="c-grid" role="grid" style={style}>
         <div className="c-row c-band">
           <div className="c-corner">

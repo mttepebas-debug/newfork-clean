@@ -276,6 +276,12 @@ function useScheduleController() {
     [navigate],
   );
   // Focus ends when another change replaces its job or type filter (rule 78).
+  // The address follows a moment after the click, so the check starts once
+  // the address has shown the focus's own filters.
+  const focusSeen = useRef(false);
+  useEffect(() => {
+    focusSeen.current = false;
+  }, [focusId]);
   useEffect(() => {
     if (!focusId) return;
     const s = shiftById(focusId);
@@ -284,7 +290,8 @@ function useScheduleController() {
       url.jobs.length === 1 &&
       url.jobs[0] === s.jobId &&
       (s.shiftTypeId ? url.shiftTypes.length === 1 && url.shiftTypes[0] === s.shiftTypeId : !url.shiftTypes.length);
-    if (!ok) setFocusId(null);
+    if (ok) focusSeen.current = true;
+    else if (focusSeen.current) setFocusId(null);
   }, [focusId, url.jobs, url.shiftTypes, shiftById]);
 
   // ---- selection (rule 81)
@@ -550,7 +557,8 @@ function useScheduleController() {
       setMenu(null);
       return;
     }
-    const cellish = target.closest("[data-proto-cell],[data-proto-add],[data-proto-gridbg]");
+    const onCard = Boolean(target.closest("[data-proto-card]"));
+    const cellish = !onCard && target.closest("[data-proto-cell],[data-proto-add],[data-proto-gridbg]");
     if (pasteArmed && target.closest("[data-proto-cell],[data-proto-add]")) return;
     if ((event.ctrlKey || event.metaKey || event.shiftKey) && target.closest("[data-proto-card]")) return;
     if (cellish) {
@@ -632,6 +640,9 @@ function useScheduleController() {
       if (!started) {
         if (Math.hypot(e.clientX - startX, e.clientY - startY) < 6) return;
         started = true;
+        // No text selection while a card is carried.
+        window.getSelection()?.removeAllRanges();
+        document.documentElement.style.userSelect = "none";
         setFocusId(null);
         window.clearTimeout(clickTimer.current);
         frame = requestAnimationFrame(() => setFolded(foldedFor(week, shifts, shift, grid?.dates ?? [shift.date])));
@@ -643,6 +654,7 @@ function useScheduleController() {
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", cancel);
       cancelAnimationFrame(frame);
+      document.documentElement.style.userSelect = "";
       if (!started) return;
       spendNextClick();
       const state = dragRef.current;
@@ -670,6 +682,7 @@ function useScheduleController() {
       apply();
     };
     const cancel = () => {
+      document.documentElement.style.userSelect = "";
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", cancel);
@@ -776,6 +789,8 @@ function useScheduleController() {
       title: closed?.title,
       onClick: (event: React.MouseEvent<HTMLElement>) => {
         if (!target || !editingHere) return;
+        // A card's own click is not a press on the cell body (rule 104).
+        if ((event.target as Element).closest("[data-proto-card]")) return;
         if (pasteArmed) {
           event.preventDefault();
           pasteInto(target);
