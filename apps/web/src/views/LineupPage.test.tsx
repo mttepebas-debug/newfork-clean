@@ -341,6 +341,37 @@ describe("LineupPage", () => {
     await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(""));
   });
 
+  // Mert 2026-10-21: the ticket's place is a menu of the places; its day opens the calendar.
+  it("goes to another place from the ticket's name and picks the day from the ticket's day", async () => {
+    renderPage();
+    const downtownTicket = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    const place = within(downtownTicket).getByRole("combobox", { name: "Go to location" }) as HTMLSelectElement;
+    expect([...place.options].map((option) => option.textContent)).toEqual(["Downtown", "Uptown"]);
+    fireEvent.change(place, { target: { value: uptown } });
+    const ticket = screen.getByRole("region", { name: "Uptown, Lunch" });
+    // On All locations it is the ticket the arrows reach: the page's location stays All.
+    expect(screen.getByTestId("where").textContent).toBe("");
+    expect(screen.getByRole("button", { name: "Previous location: Downtown" })).toBeTruthy();
+    const day = within(ticket).getByRole("button", { name: "Tue, Oct 13, pick a day" });
+    expect(day.getAttribute("aria-haspopup")).toBe("dialog");
+    fireEvent.click(day);
+    const calendar = within(ticket).getByRole("dialog", { name: "Pick a day" });
+    // A click inside the calendar doesn't fold the ticket.
+    fireEvent.click(calendar);
+    expect(ticket.classList.contains("is-open")).toBe(true);
+    fireEvent.click(within(calendar).getByRole("gridcell", { name: "October 15, 2026" }));
+    expect(within(ticket).queryByRole("dialog", { name: "Pick a day" })).toBeNull();
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-15"));
+  });
+
+  it("picks the page's location from the ticket's name when one location is picked", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const ticket = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    fireEvent.change(within(ticket).getByRole("combobox", { name: "Go to location" }), { target: { value: uptown } });
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(`?location=${uptown}`));
+    expect(await screen.findByRole("region", { name: "Uptown, Lunch" })).toBeTruthy();
+  });
+
   it("scrolls the list from a wheel turned anywhere on the page, but not from the day wheel or sideways", async () => {
     renderPage();
     const ticket = await screen.findByRole("region", { name: "Downtown, Lunch" });
