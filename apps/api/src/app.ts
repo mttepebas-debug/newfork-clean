@@ -151,6 +151,8 @@ import {
 import { registerSignatureSettingsRoutes } from "./settings/signature-settings-routes";
 import { registerNotificationSettingsRoutes } from "./notification-settings/notification-settings-routes";
 import { createNotificationSettingsServiceFromEnvironment, type NotificationSettingsService } from "./notification-settings/notification-settings-service";
+import { registerOnboardingApprovalRoutes } from "./settings/onboarding-approval-routes";
+import { createOnboardingApprovalServiceFromEnvironment, type OnboardingApprovalService } from "./settings/onboarding-approval-service";
 import {
   createSignatureSettingsService,
   type SignatureSettingsService,
@@ -220,6 +222,7 @@ export interface BuildAppOptions {
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
   readonly notificationSettingsService?: NotificationSettingsService | null;
+  readonly onboardingApprovalService?: OnboardingApprovalService | null;
   readonly maintenanceWorker?: MaintenanceWorker | null;
   readonly maintenanceCron?: {
     readonly cronSecret?: string;
@@ -975,6 +978,10 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
   registerNotificationSettingsRoutes(app, {
     service: options.notificationSettingsService === undefined ? createNotificationSettingsServiceFromEnvironment() : options.notificationSettingsService,
+    contextResolver,
+  });
+  registerOnboardingApprovalRoutes(app, {
+    service: options.onboardingApprovalService === undefined ? createOnboardingApprovalServiceFromEnvironment() : options.onboardingApprovalService,
     contextResolver,
   });
 
