@@ -196,5 +196,21 @@ select ok(exists(select 1 from public.person_notifications n where n.workspace_i
   and n.type_key = 'shift_changes.closed' and n.title = 'A manager closed the request for the open shift'),
   'Ali hears it');
 
+-- 9. A published shift made open is asked about on the next publish (Mert, 2026-10-20 evening:
+-- "Make open shift" in the shift window, or the card dragged to the Unassigned row) -------------
+select tests.remember('os:draft:6', pg_temp.draft(6, 'blank', '[
+  {"person": "ali", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
+]'));
+select pg_temp.publish(tests.id('os:draft:6'), null);
+select tests.remember('os:draft:6b', pg_temp.draft(6, 'published', '[]'));
+update public.schedule_draft_shifts set employee_id = null where draft_id = tests.id('os:draft:6b') and scheduled_date = tests.week(6) + 2;
+select is((select jsonb_agg(x ->> 'scheduled_date') from jsonb_array_elements(pg_temp.preview(tests.id('os:draft:6b')) -> 'open_shifts') x),
+  jsonb_build_array((tests.week(6) + 2)::text), 'Ali''s Wednesday made open is asked about');
+select lives_ok($$ select pg_temp.publish(tests.id('os:draft:6b'), 'offer') $$, 'Rachel offers it');
+select tests.settle();
+select ok(pg_temp.shift(6, 2) ->> 'employee_id' is null and (pg_temp.open_case(6, 2)).id is not null, 'it is published open and offered');
+select ok(pg_temp.offered('jake', 6, 2), 'Jake finds it in Available Shifts');
+select ok(not pg_temp.offered('berk', 6, 2), 'Berk at Besiktas does not');
+
 select * from finish();
 rollback;

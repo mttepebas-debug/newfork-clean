@@ -118,6 +118,52 @@ test("an open shift offered on publishing reaches who may take it, and a manager
     .toBe("Ali");
 });
 
+// Mert, 2026-10-20 evening: a published shift made open ("Make open shift" in the shift window)
+// is asked about on the next publish too.
+test("a published shift made open is asked about on the next publish and offered", async ({ browser }) => {
+  test.setTimeout(240_000);
+  const week = roundWeek(660);
+  const label = roundLabel("emre-made-open");
+  sql(`select tests.publish_week('${run}', ${week}, '[
+    {"label": "${label}", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "11:00", "end": "17:00"}
+  ]');`);
+  const monday = sql(`select tests.week(${week});`);
+  const wednesday = sql(`select tests.week(${week}) + 2;`);
+  const source = sql(`select source_shift_id from public.schedule_published_shifts where id = tests.id('${run}:shift:${label}');`);
+
+  const ayse = await open(browser, "ayse", `/app/schedule?date=${monday}`);
+  await ayse.getByRole("button", { name: /^Draft selector:/ }).click();
+  await ayse.getByRole("button", { name: "Edit live schedule", exact: true }).click();
+  await expect(ayse).toHaveURL(/mode=edit/);
+  await ayse.locator('[data-shift-badge]:not([data-ghost="true"])').first().dblclick();
+  const editor = ayse.getByRole("dialog", { name: "Edit shift" });
+  await editor.getByRole("combobox", { name: "Employee" }).click();
+  await ayse.getByRole("option", { name: /Make open shift/ }).click();
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await ayse.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).click();
+  await ayse.getByLabel("Draft name").fill(draftName("Made open"));
+  await ayse.getByRole("button", { name: "Save As", exact: true }).click();
+  await expect(ayse).not.toHaveURL(/mode=edit/);
+
+  await ayse.getByRole("button", { name: "Publish", exact: true }).click();
+  const dialog = ayse.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Next", exact: true }).click();
+  const question = dialog.getByRole("group", { name: "1 open shift: what happens when you publish?" });
+  await expect(question).toBeVisible();
+  await expect(question.getByRole("radio", { name: /Offer to eligible employees/ })).toBeChecked();
+  await shot(ayse, "1440-publish-made-open");
+  await dialog.getByRole("button", { name: "Publish 1 location", exact: true }).click();
+  await expect(ayse.getByRole("dialog")).toHaveCount(0);
+  await expect
+    .poll(() => sql(`select count(*) from public.shift_exchange_cases where offered_source_id = '${source}'
+      and status = 'open' and owner_id is null;`), { timeout: 30_000 })
+    .toBe("1");
+
+  const ali = await open(browser, "ali", `/app/employee-hub/shift-hub?hub_view=available&from=${wednesday}&to=${wednesday}`);
+  await expect(ali.getByRole("article", { name: /Your manager is offering this open shift/ })).toBeVisible();
+});
+
 test("an open shift kept on publishing reaches no employee", async () => {
   const week = roundWeek(650);
   const thursday = sql(`select tests.week(${week}) + 3;`);
