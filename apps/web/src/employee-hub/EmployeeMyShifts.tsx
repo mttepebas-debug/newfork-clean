@@ -73,11 +73,11 @@ function merged(parts: (Model | undefined)[]): Model | undefined {
   return { ...a, shifts: byId([...a.shifts, ...b.shifts]), requests: byId([...a.requests, ...b.requests]) };
 }
 
-export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string }) {
+export function EmployeeMyShifts({ workspaceId, zone }: { readonly workspaceId: string; readonly zone: string }) {
   const [search, setSearch] = useSearchParams();
   const now = useHubClock();
-  const today = todayIn(undefined, now);
-  const pickups = usePickupShifts(workspaceId);
+  const today = todayIn(zone, now);
+  const pickups = usePickupShifts(workspaceId, zone);
   // The workspace's own week (Settings → Scheduling): the Team schedule's read model carries it.
   const board = useQuery({
     queryKey: ["employee-schedule-board", workspaceId, today],

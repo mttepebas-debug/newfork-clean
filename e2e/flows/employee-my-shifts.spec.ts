@@ -20,9 +20,9 @@ const addDays = (iso: string, n: number) => {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
-/** This week's Monday on the world's clock (Pacific, as CI and this machine run). */
+/** This week's Monday at the world's locations (Istanbul): My shifts reads the location's day, not the device's (S-226). */
 const thisMonday = () => {
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date());
   return addDays(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
 };
 const uuid = (n: number) => `c4150000-0000-4000-8000-${String(n).padStart(12, "0")}`;

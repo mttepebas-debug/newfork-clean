@@ -310,7 +310,7 @@ function useExchangeAction(workspace: string) {
 
 const HUB_VIEWS = ["available", "requests", "history"] as const;
 
-export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
+export function ShiftExchangeHub({ workspaceId, zone }: { workspaceId: string; zone?: string }) {
   const { context } = useAuth();
   const [params, setParams] = useSearchParams();
   const search = params.get("q") ?? "";
@@ -318,7 +318,8 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
   const [online, setOnline] = useState(navigator.onLine);
   const detailRef = useRef<HTMLElement>(null);
   const { mutation, notice, setNotice } = useExchangeAction(workspaceId);
-  const from = params.get("from") ?? todayIn();
+  // From today at the primary location (S-226).
+  const from = params.get("from") ?? todayIn(zone);
   const to = params.get("to") ?? addDays(from, 42);
   const focusedCase = params.get("case") ?? undefined;
   const query = useQuery({

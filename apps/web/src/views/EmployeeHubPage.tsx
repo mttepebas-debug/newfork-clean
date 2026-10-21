@@ -1,4 +1,5 @@
 import { todayIn } from "../lib/today";
+import { homeZone } from "../employee-hub/dashboard-model";
 import { Button } from "@newfork/ui";
 import { timeOffSubmitInputSchema, type EmployeeHubReadModel } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -107,16 +108,16 @@ export function EmployeeHubPage() {
     onSelect: (page) => navigate(employeeSchedulePath(page, location.search)),
   });
   const phoneBars = useListPhoneWidth();
-  // The hub's date range is asked before its locations load: the device's calendar.
-  const today = todayIn(undefined, now);
-  // My shifts asks for its own two weeks; the page itself needs only today's answer there.
+  // The hub's date range is asked before its locations load, so on the device's calendar: a day either side
+  // of the location's is inside it, and My shifts asks for its own two weeks (the page reads only the model).
+  const deviceToday = todayIn(undefined, now);
   const selectedScheduleDate = path === "schedule/team"
     ? scheduleDateFromSearch(location.search)
     : path === "schedule"
-      ? today
+      ? deviceToday
       : null;
-  const from = selectedScheduleDate ?? addDays(today, -2);
-  const end = selectedScheduleDate ?? addDays(today, 42);
+  const from = selectedScheduleDate ?? addDays(deviceToday, -2);
+  const end = selectedScheduleDate ?? addDays(deviceToday, 42);
   const query = useQuery({
     queryKey: ["employee-hub", workspaceId, context?.userId, from, end],
     queryFn: () => getEmployeeHub(workspaceId, from, end),
@@ -164,6 +165,9 @@ export function EmployeeHubPage() {
       </section>
     );
   const model = query.data;
+  // Every page's own "today" is the primary location's (S-226).
+  const zone = homeZone(model);
+  const today = todayIn(zone, now);
   if (!path)
     return (
       <section
@@ -205,7 +209,7 @@ export function EmployeeHubPage() {
       {path === "schedule" ? (
         <>
           <EmployeeScheduleTabs tabsRef={scheduleSwipe.tabs} />
-          <EmployeeMyShifts key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} />
+          <EmployeeMyShifts key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} zone={zone} />
         </>
       ) : path === "schedule/team" ? (
         // The team's board is a desktop page (Mert 2026-10-17): a phone opens My shifts.
@@ -219,6 +223,7 @@ export function EmployeeHubPage() {
             workspaceId={workspaceId}
             employeeId={model.employee.id}
             organizationName={context?.workspace.name ?? ""}
+            zone={zone}
           />
         </>
         )
@@ -231,10 +236,11 @@ export function EmployeeHubPage() {
             employeeId={model.employee.id}
             date={scheduleDateFromSearch(`?view=day&date=${new URLSearchParams(location.search).get("date") ?? ""}`) ?? today}
             timeFormat={model.settings.time_format}
+            zone={zone}
           />
         </>
       ) : path.startsWith("shift-hub") ? (
-        <ShiftExchangeHub key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} />
+        <ShiftExchangeHub key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} zone={zone} />
       ) : (
         <AvailabilityView key={`${model.workspace_id}:${model.employee.id}`} model={model} refresh={refresh} />
       )}

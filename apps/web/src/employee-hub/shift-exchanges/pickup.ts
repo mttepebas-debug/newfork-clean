@@ -33,9 +33,9 @@ export function pickupOpportunities(model: ExchangeReadModel): ExchangeOpportuni
 }
 
 /** The pool as Shift Hub first reads it (today and six weeks on), so both share one answer. */
-export function usePickupShifts(workspaceId: string) {
+export function usePickupShifts(workspaceId: string, zone: string) {
   const { context } = useAuth();
-  const from = todayIn();
+  const from = todayIn(zone);
   const to = addDays(from, 42);
   const query = useQuery({
     queryKey: ["shift-exchanges", workspaceId, context?.userId, from, to, undefined],

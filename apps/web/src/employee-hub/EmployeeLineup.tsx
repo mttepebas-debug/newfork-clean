@@ -71,13 +71,16 @@ export function EmployeeLineup({
   employeeId,
   date,
   timeFormat,
+  zone,
 }: {
   readonly workspaceId: string;
   readonly employeeId: string;
   readonly date: string;
   readonly timeFormat: ScheduleTimeFormat;
+  // The primary location's zone (S-226).
+  readonly zone?: string;
 }): JSX.Element {
-  const today = todayIn();
+  const today = todayIn(zone);
   const navigate = useNavigate();
   const query = useMyLineups(workspaceId, date);
   // Her lineups in the day's order (by her own start): the location row lists their locations in it.

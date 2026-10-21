@@ -10,6 +10,10 @@ export function shiftZone(
       ?.timezone,
   );
 }
+// The page's own "today" (S-226): the primary location's zone, else the first location's, else the device's.
+export function homeZone(model: EmployeeHubReadModel): string {
+  return validZone(model.time_off_timezone ?? model.locations[0]?.timezone);
+}
 // Compare wall times in each shift's own location. This also handles yesterday's overnight shift.
 export function shiftState(
   shift: EmployeeHubShift,

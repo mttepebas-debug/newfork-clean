@@ -38,10 +38,13 @@ export function EmployeeScheduleBoard({
   workspaceId,
   employeeId,
   organizationName,
+  zone,
 }: {
   readonly workspaceId: string;
   readonly employeeId: string | null;
   readonly organizationName: string;
+  // The primary location's zone (S-226); each location column marks its own day.
+  readonly zone?: string;
 }) {
   const [params, setParams] = useSearchParams();
   const { context } = useAuth();
@@ -66,8 +69,7 @@ export function EmployeeScheduleBoard({
   const pointerDismissRef = useRef<(event: PointerEvent) => void>(noop);
   const clickGuardRef = useRef<(event: MouseEvent) => void>(noop);
 
-  // The board opens before its locations load: the device's calendar.
-  const today = todayIn();
+  const today = todayIn(zone);
   const selectedDate = isCalendarDay(params.get("date"))
     ? (params.get("date") as string)
     : today;

@@ -16,8 +16,8 @@ import { Link, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { formatTime } from "../schedule/lib/scheduleDateTime";
-import { dateInZone, validZone } from "../lib/today";
-import { greeting, nextShift, shiftDate, shiftInstant, shiftState, shiftZone } from "./dashboard-model";
+import { dateInZone } from "../lib/today";
+import { greeting, nextShift, shiftDate, shiftInstant, homeZone, shiftState, shiftZone } from "./dashboard-model";
 import {
   ARC,
   arcNow,
@@ -88,11 +88,11 @@ export function EmployeeDashboard({
   const root = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useSearchParams();
   const shift = nextShift(model, now);
-  const zone = shift ? shiftZone(model, shift) : validZone(model.locations[0]?.timezone);
+  const zone = shift ? shiftZone(model, shift) : homeZone(model);
   const today = dateInZone(now, zone);
   const minute = clockMinutes(now, zone);
   // QA 38, S-151 (3): open shifts here are released shifts in the pool, as on Shift Hub.
-  const pickups = usePickupShifts(model.workspace_id);
+  const pickups = usePickupShifts(model.workspace_id, homeZone(model));
   const week = homeWeek(model, today, pickups.map((item) => item.scheduled_date));
   const data = useHomeData(model, today);
   const far = useHomeScroll(root);
