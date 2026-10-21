@@ -158,9 +158,11 @@ describe("LineupPage", () => {
     expect(within(ticket).getByRole("tab", { name: "Team 1" }).getAttribute("aria-selected")).toBe("true");
     // The desktop's ticket folds its details, not the list (below).
     expect(within(ticket).queryByRole("button", { name: "Hide list" })).toBeNull();
-    const heads = document.querySelector(".lineup-desk-cols")!;
-    // Section is the last column, by the list's right edge (Mert 2026-10-19 ~5:30 AM).
-    expect([...heads.children].map((cell) => cell.textContent)).toEqual(["", "Employee", "Position", "Label", "In – Out", "Section"]);
+    // The headings sit on the department's line, its name where the people are (Mert 2026-10-21); Section is the
+    // last column, by the list's right edge (Mert 2026-10-19 ~5:30 AM).
+    expect(document.querySelector(".lineup-desk-cols")).toBeNull();
+    const heads = screen.getByRole("region", { name: "Front of House" }).querySelector("h3.lineup-desk-dept")!;
+    expect([...heads.children].map((cell) => cell.textContent)).toEqual(["Front of House1", "Position", "Label", "In – Out", "Section"]);
     const row = within(screen.getByRole("list", { name: "Server" })).getByRole("listitem");
     expect([...row.children].map((cell) => cell.textContent)).toEqual(["ML", "Maria Lopez", "Server", "Training", "11:00 AM – 4:00 PM", "—"]);
     expect(within(row).getByLabelText("No section")).toBeTruthy();
@@ -282,16 +284,28 @@ describe("LineupPage", () => {
     expect(timeOf("Chloe Davis").querySelector(".lineup-phone-changed")).toBeTruthy();
   });
 
+  // Mert 2026-10-21: the chosen shift reads at a glance, its line and its name, over the list page's own tab line.
+  it("marks the chosen shift tab with a 3 px green line and its name in green, no tab moving", () => {
+    const wheel = readFileSync("src/schedule/lineup-wheel.css", "utf8");
+    const tabs = ".lineup-shift-tabs\\.lineup-shift-tabs\\.catalog-toolbar\\.catalog-toolbar \\.catalog-status-tabs button";
+    // The tab fills its row: at its own 42 px the row (overflow hidden) cut the line off.
+    expect(wheel).toMatch(new RegExp(`${tabs} \\{\\s*height: auto;\\s*min-height: 0;\\s*margin-bottom: 0;\\s*border-bottom-width: 3px;\\s*\\}`));
+    expect(wheel).toMatch(
+      new RegExp(`${tabs}\\.active \\{\\s*border-bottom: 3px solid var\\(--theme-accent-deep\\);\\s*color: var\\(--theme-accent-deep\\);\\s*font-weight: 700;`),
+    );
+  });
+
   it("keeps the page still: only the list under the ticket scrolls, its column headings pinned", () => {
     const frozen = readFileSync("src/views/list-page-frozen.css", "utf8");
     expect(frozen).toMatch(/\.lineup-page\.list-page\.list-page > \.lineup-desk \{\s*flex: 1 1 auto;/);
     const desk = readFileSync("src/views/lineup-desktop.css", "utf8");
     expect(desk).toMatch(/\.lineup-desk-scroll \{[^}]*min-height: 0;[^}]*overflow-y: auto;/);
-    expect(desk).toMatch(/\.lineup-desk-cols \{\s*position: sticky;\s*top: 0;/);
+    expect(desk).toMatch(/h3\.lineup-desk-dept \{\s*position: sticky;\s*top: 0;[^}]*grid-template-columns: var\(--lineup-desk-cols\);/);
     expect(desk).toMatch(/--lineup-desk-cols: 38px minmax\(0, 1\.25fr\) minmax\(0, 1fr\) minmax\(0, 0\.8fr\) minmax\(206px, 1\.1fr\) minmax\(0, 1fr\);/);
-    // Headings centred on their columns' content; Employee starts where the names do.
-    expect(desk).toMatch(/\.lineup-desk-cols \{[^}]*text-align: center;/);
-    expect(desk).toMatch(/\.lineup-desk-cols > :nth-child\(2\) \{\s*text-align: left;/);
+    // Headings centred on their columns' content: the line's side padding is the row's 12 px plus the frame's 1 px.
+    expect(desk).toMatch(/h3\.lineup-desk-dept \{[^}]*padding: 0 13px;/);
+    expect(desk).toMatch(/\.lineup-phone-row\.lineup-desk-row \{[^}]*padding: 7px 12px;/);
+    expect(desk).toMatch(/\.lineup-desk-dept > \.lineup-desk-col \{[^}]*text-align: center;/);
     expect(desk).toMatch(/\.lineup-desk-cell \{[^}]*text-align: center;/);
     // Centred on the whole screen as if the menu weren't there, its width unchanged, never under the menu
     // (Mert 2026-10-21).

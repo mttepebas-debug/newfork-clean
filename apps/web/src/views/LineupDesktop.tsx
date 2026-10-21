@@ -399,42 +399,51 @@ function DesktopTeam({
     );
   return (
     <>
-      <div className="lineup-desk-cols">
-        <span aria-hidden />
-        <span aria-hidden>Employee</span>
-        <span aria-hidden>Position</span>
-        <span aria-hidden>Label</span>
-        <span aria-hidden>In – Out</span>
-        <span>
-          <span className="lineup-desk-col-lab">
-            <span aria-hidden>Section</span>
-            {/* The Sections window (S-178 ek 3): from the gear by SECTION; the ticket has no button of its own. */}
-            {editing ? (
-              <button
-                type="button"
-                className="lineup-edit-gear"
-                aria-label="Manage sections"
-                title="Manage sections"
-                aria-haspopup="dialog"
-                onClick={onManageSections}
-              >
-                <Settings size={15} aria-hidden />
-              </button>
-            ) : null}
-          </span>
-        </span>
-        {editing ? <span aria-hidden /> : null}
-      </div>
-      {departments.map((department) => (
+      {departments.map((department, at) => (
         <section className="lineup-phone-dept" key={department.id ?? "other"} aria-label={department.name}>
-          <h3>
-            {department.name}
-            <span>{department.jobs.reduce((sum, job) => sum + job.rows.length, 0)}</span>
-            {editing && department.id ? (
-              <AddStaffButton
-                department={department.name}
-                onAdd={() => onStaff({ kind: "add", department: { id: department.id!, name: department.name } })}
-              />
+          {/* The column headings sit on each department's line, pinned while its people scroll (Mert 2026-10-21):
+              the department's name where the people are, then position, label, in – out, section. */}
+          <h3 className="lineup-desk-dept">
+            <span className="lineup-desk-dept-name">
+              {department.name}
+              <span>{department.jobs.reduce((sum, job) => sum + job.rows.length, 0)}</span>
+            </span>
+            <span className="lineup-desk-col" aria-hidden>
+              Position
+            </span>
+            <span className="lineup-desk-col" aria-hidden>
+              Label
+            </span>
+            <span className="lineup-desk-col" aria-hidden>
+              In – Out
+            </span>
+            <span className="lineup-desk-col">
+              <span className="lineup-desk-col-lab">
+                <span aria-hidden>Section</span>
+                {/* The Sections window (S-178 ek 3): from the gear by SECTION, on the first department only. */}
+                {editing && at === 0 ? (
+                  <button
+                    type="button"
+                    className="lineup-edit-gear"
+                    aria-label="Manage sections"
+                    title="Manage sections"
+                    aria-haspopup="dialog"
+                    onClick={onManageSections}
+                  >
+                    <Settings size={15} aria-hidden />
+                  </button>
+                ) : null}
+              </span>
+            </span>
+            {editing ? (
+              <span className="lineup-desk-dept-add">
+                {department.id ? (
+                  <AddStaffButton
+                    department={department.name}
+                    onAdd={() => onStaff({ kind: "add", department: { id: department.id!, name: department.name } })}
+                  />
+                ) : null}
+              </span>
             ) : null}
           </h3>
           <div className="lineup-phone-list">

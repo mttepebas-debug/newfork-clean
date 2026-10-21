@@ -165,8 +165,11 @@
   gap: 16px;
 }
 
-/* The column headings, pinned at the top of the list. */
-.lineup-desk-cols {
+/* A department's line carries the column headings, on the rows' own grid (Mert 2026-10-21: no line of headings of
+   its own, so more rows show), pinned while its people scroll. Its side padding is the row's 12 px plus the frame's
+   1 px, so each heading sits centred on its column's content (Mert 2026-10-19 ~5:30 AM). The name takes the circle
+   and person columns; the headings are lighter than it, so the name still leads. */
+.lineup-desk-page .lineup-phone-dept > h3.lineup-desk-dept {
   position: sticky;
   top: 0;
   z-index: 3;
@@ -175,23 +178,30 @@
   align-items: center;
   column-gap: 14px;
   min-height: 36px;
-  margin: 0 0 4px;
-  padding: 0 17px;
-  border-bottom: 1px solid var(--theme-border-subtle);
+  padding: 0 13px;
   background: var(--theme-page);
-  color: var(--theme-text-secondary);
-  font-size: 11.5px;
-  font-weight: 800;
+}
+.lineup-desk-dept-name {
+  display: flex;
+  grid-column: 1 / 3;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.lineup-desk-page .lineup-desk-dept > .lineup-desk-col {
+  color: var(--theme-muted);
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-align: center;
-  text-transform: uppercase;
 }
-/* Each heading centred on its column's content (Mert 2026-10-19 ~5:30 AM); Employee starts where the names do. */
-.lineup-desk-cols > :nth-child(2) {
-  text-align: left;
+.lineup-desk-dept-add {
+  display: flex;
+  justify-content: flex-end;
 }
 .lineup-desk-page .lineup-phone-dept:first-of-type {
-  margin-top: 6px;
+  margin-top: 0;
 }
 .lineup-desk-page .lineup-phone-job > p {
   padding-left: 16px;
@@ -771,9 +781,9 @@
 .lineup-staff-add:hover {
   background: var(--theme-accent-soft);
 }
-/* Its words end where the Call off buttons' edge does (the row's 12px padding plus the cell's own). */
-.lineup-desk-page .lineup-phone-dept > h3 > .lineup-staff-add {
-  margin-right: 3px;
+/* Its words end where the Call off buttons' edge does: the button's own padding hangs past the column. */
+.lineup-desk-dept-add > .lineup-staff-add {
+  margin-right: -6px;
 }
 .lineup-staff-none {
   margin: 0;
