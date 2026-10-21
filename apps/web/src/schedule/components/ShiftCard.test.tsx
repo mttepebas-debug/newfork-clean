@@ -73,7 +73,9 @@ describe("ShiftCard", () => {
     const live = screen.getByRole("button", { name: /Dinner-Server/i });
     expect(live.querySelector(".schedule-shift-badge-markers .schedule-shift-live-mark")?.textContent).toBe("Live");
     expect(live.querySelector(".schedule-shift-new-mark")).toBeNull();
-    expect(live.getAttribute("data-mark-row")).toBe("true");
+    // Mert, 2026-10-21: LIVE sits beside the first line, not on a row of its own.
+    expect(live.getAttribute("data-mark-row")).toBeNull();
+    expect(live.style.getPropertyValue("--shift-card-lastline-right")).toBe("0px");
     // Both sides keep LIVE's room: 6 + 30 + 4 - 8.
     expect(live.style.getPropertyValue("--shift-card-side")).toBe("32px");
     expect(live.style.getPropertyValue("--shift-card-line1-right")).toBe("37px");
@@ -89,6 +91,8 @@ describe("ShiftCard", () => {
   it("shows \"New\" only while editing, on a new shift and on an edited live one", () => {
     renderShiftCard();
     expect(document.querySelector(".schedule-shift-new-mark")?.textContent).toBe("New");
+    // NEW sits beside the last line, which keeps clear of it: 1 + 4 + 22.
+    expect(document.querySelector<HTMLElement>("[data-shift-badge]")?.style.getPropertyValue("--shift-card-lastline-right")).toBe("27px");
     expect(document.querySelector(".schedule-shift-new-mark")?.getAttribute("title")).toBe(
       "Not published yet - goes live on next publish",
     );

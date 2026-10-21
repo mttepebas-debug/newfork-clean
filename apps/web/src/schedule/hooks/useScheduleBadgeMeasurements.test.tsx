@@ -445,7 +445,7 @@ describe("row badge height measurement", () => {
 
   // Mert, 2026-10-13: on a short card the "!" on top and NEW below touched.
   it("keeps room between the top corner mark and NEW on a short card", () => {
-    const shortCard = ({ border = 0, withNew = true } = {}) => {
+    const shortCard = ({ border = 0, withNew = true, lines = 1 } = {}) => {
       const badge = document.createElement("button");
       badge.style.padding = "0";
       badge.style.borderTopWidth = `${border}px`;
@@ -455,6 +455,7 @@ describe("row badge height measurement", () => {
       content.dataset.shiftBadgeContent = "true";
       Object.defineProperty(content, "scrollHeight", { configurable: true, value: 34 });
       content.getBoundingClientRect = () => ({ height: 34 }) as DOMRect;
+      for (let line = 0; line < lines; line += 1) content.append(document.createElement("span"));
       const markers = document.createElement("span");
       markers.className = "schedule-shift-badge-markers";
       // The top marks sit centred on the first line (useFirstLineMid): their
@@ -467,7 +468,8 @@ describe("row badge height measurement", () => {
       if (withNew) {
         const newMark = document.createElement("span");
         newMark.className = "schedule-shift-new-mark";
-        newMark.style.bottom = "4px";
+        // Its middle 11.5px up: its bottom edge 4px off the corner.
+        newMark.style.bottom = "11.5px";
         Object.defineProperty(newMark, "offsetHeight", { configurable: true, value: 15 });
         badge.append(newMark);
       }
@@ -484,6 +486,9 @@ describe("row badge height measurement", () => {
     );
     // Without NEW the card is as tall as its words and border.
     expect(measureBadgeIntrinsicHeight(shortCard({ border: 1, withNew: false }))).toBe(36);
+    // Two lines: the marks sit beside the first and the last, and the card is
+    // as tall as its words (Mert, 2026-10-21).
+    expect(measureBadgeIntrinsicHeight(shortCard({ border: 1, lines: 2 }))).toBe(36);
   });
 
   it("measures the tallest per-cell badge stack for dynamic row height", () => {

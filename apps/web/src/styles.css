@@ -9778,25 +9778,24 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 /* A fitted week too narrow for the side room (ScheduleGridShell
    data-card-band, Mert 2026-10-12 and 2026-10-14): the words take the card's
-   width. Reading, the marks stay beside the first line, which keeps clear of
+   width. The top marks stay beside the first line, which keeps clear of
    them: centred while it can be, sliding away from a mark only as far as it
-   must. While editing, every card keeps a row of its own for the top marks
-   above the words (LIVE does not fit beside a name there) and NEW one below,
-   3px clear of the words. */
+   must. While editing, NEW sits beside the last line the same way (Mert,
+   2026-10-21: no rows of their own, no empty space in the card). */
 .schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"], [data-card-band="clip"])
   .schedule-shift-badge .schedule-shift-badge-content {
   padding-right: 2px;
   padding-left: 2px;
 }
 .schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"])
-  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child {
+  .schedule-shift-badge .schedule-shift-badge-content > strong:first-child {
   display: flex;
   align-self: stretch;
 }
 .schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"])
-  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::before,
+  .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::before,
 .schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"])
-  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::after {
+  .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::after {
   flex: 1 1 0;
   content: "";
 }
@@ -9804,45 +9803,55 @@ button.workspace-switcher-item:hover:not(:disabled) {
    the outer edge, less the border, the card's padding (8px; 5px compact) and
    the words' own 2px. */
 .schedule-grid-exact[data-card-band="tight"]
-  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::before {
+  .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::before {
   min-width: max(0px, calc(var(--shift-card-line1-left, 0px) - 7px));
 }
 .schedule-grid-exact[data-card-band="tight"]
-  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::after {
+  .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::after {
   min-width: max(0px, calc(var(--shift-card-line1-right, 0px) - 7px));
 }
 .schedule-grid-exact[data-card-band="compact"]
-  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::before {
+  .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::before {
   min-width: max(0px, calc(var(--shift-card-line1-left, 0px) - 4px));
 }
 .schedule-grid-exact[data-card-band="compact"]
-  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::after {
+  .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::after {
   min-width: max(0px, calc(var(--shift-card-line1-right, 0px) - 4px));
 }
 /* Clip band: the name already fills the card and ends in "…". */
 .schedule-grid-exact[data-card-band="clip"]
-  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child {
+  .schedule-shift-badge .schedule-shift-badge-content > strong:first-child {
   align-self: stretch;
   padding-right: max(0px, calc(var(--shift-card-line1-right, 0px) - 4px));
   padding-left: max(0px, calc(var(--shift-card-line1-left, 0px) - 4px));
 }
-/* Editing: the marks' own row, its middle 13.5px down (6px + a 15px mark);
-   a ghost's 17px pin, 2px taller, sits 2px higher. */
-.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"], [data-card-band="clip"])
-  .schedule-cell[data-editing="true"] .schedule-shift-badge[data-mark-row="true"] {
-  --shift-card-line1-mid: 13.5px !important;
+/* NEW beside the last line, as the top marks beside the first
+   (--shift-card-lastline-right; a one-line card keeps NEW in its corner). */
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"])
+  .schedule-shift-badge .schedule-shift-badge-content > :last-child:not(:first-child) {
+  display: flex;
+  align-self: stretch;
+  justify-content: center;
 }
-.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"], [data-card-band="clip"])
-  .schedule-cell[data-editing="true"] .schedule-shift-badge[data-ghost="true"][data-mark-row="true"] {
-  --shift-card-line1-mid: 11.5px !important;
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"])
+  .schedule-shift-badge .schedule-shift-badge-content > :last-child:not(:first-child)::before,
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"])
+  .schedule-shift-badge .schedule-shift-badge-content > :last-child:not(:first-child)::after {
+  flex: 1 1 0;
+  content: "";
 }
-.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"], [data-card-band="clip"])
-  .schedule-cell[data-editing="true"] .schedule-shift-badge[data-mark-row="true"] .schedule-shift-badge-content {
-  padding-top: 18px;
+.schedule-grid-exact[data-card-band="tight"]
+  .schedule-shift-badge .schedule-shift-badge-content > :last-child:not(:first-child)::after {
+  min-width: max(0px, calc(var(--shift-card-lastline-right, 0px) - 7px));
 }
-.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"], [data-card-band="clip"])
-  .schedule-shift-badge[data-new-row="true"] .schedule-shift-badge-content {
-  padding-bottom: 16px;
+.schedule-grid-exact[data-card-band="compact"]
+  .schedule-shift-badge .schedule-shift-badge-content > :last-child:not(:first-child)::after {
+  min-width: max(0px, calc(var(--shift-card-lastline-right, 0px) - 4px));
+}
+.schedule-grid-exact[data-card-band="clip"]
+  .schedule-shift-badge .schedule-shift-badge-content > :last-child:not(:first-child) {
+  align-self: stretch;
+  padding-right: max(0px, calc(var(--shift-card-lastline-right, 0px) - 4px));
 }
 /* Compact band: narrower still, the name a point smaller (12px to 11px) so it
    stays whole; only past that does a name end in "…" (clip). */
@@ -10010,7 +10019,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-shift-new-mark {
   position: absolute;
   right: 4px;
-  bottom: 4px;
+  /* Level with the last line (useFirstLineMid); a one-line card's NEW sits
+     4px off the bottom corner. */
+  bottom: var(--shift-card-lastline-mid, 10.5px);
+  transform: translateY(50%);
   z-index: 2;
   color: var(--theme-success);
   font-size: 9px;
