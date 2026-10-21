@@ -29,10 +29,11 @@
 }
 
 /* ---------- desktop: the card, the days on the left, the day on the right ---------- */
+/* A Home card on the sky (workspace-theme-sync). */
 .dav-frame {
   background: var(--theme-surface);
-  border: 1px solid var(--theme-list-frame);
-  border-radius: 10px;
+  border-radius: 22px;
+  box-shadow: var(--theme-shadow-card);
 }
 .dav-frame-head {
   display: flex;
