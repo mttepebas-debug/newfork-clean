@@ -4659,6 +4659,71 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-edit-banner button {
   white-space: nowrap;
 }
+/* Edit-return mockup: an edit held open on another week (variants A and B). */
+.schedule-edit-banner.schedule-edit-elsewhere {
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+.schedule-edit-elsewhere p {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #25433a;
+  font-size: 13px;
+}
+.schedule-edit-elsewhere p svg {
+  flex: 0 0 auto;
+  color: var(--theme-accent);
+}
+.schedule-edit-elsewhere strong {
+  font-weight: 700;
+}
+.schedule-edit-banner .schedule-edit-elsewhere-back {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  color: #fff;
+}
+.schedule-edit-return-chip {
+  display: inline-flex;
+  height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #aabeb5;
+  border-radius: 5px;
+  padding: 0 10px;
+  background: var(--theme-selected);
+  color: #25433a;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.schedule-edit-return-chip svg {
+  color: var(--theme-accent);
+}
+.schedule-edit-return-chip:hover {
+  border-color: var(--theme-accent);
+}
+.schedule-edit-return-short {
+  display: none;
+}
+/* Below 1200px the top bar has no room for the long name: the dates alone, the name on hover. */
+@media (max-width: 1199px) {
+  .schedule-edit-return-long {
+    display: none;
+  }
+  .schedule-edit-return-short {
+    display: inline;
+  }
+}
+@media (max-width: 720px) {
+  .schedule-edit-elsewhere p {
+    font-size: 12px;
+  }
+}
 /* A switch that is on (Paste mode, Availability) sits on the accent ground. */
 .schedule-edit-banner button[aria-pressed="true"] {
   border-color: color-mix(in srgb, var(--theme-accent) 65%, white);

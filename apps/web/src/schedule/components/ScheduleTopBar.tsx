@@ -97,6 +97,8 @@ interface ScheduleTopBarProps {
   readonly selectedEmployeeIds: readonly string[];
   readonly onEmployeeFilterChange: (ids: string[]) => void;
   readonly actions?: ReactNode;
+  /** Edit-return mockup (variant B): sits right after the Week | Day switch. */
+  readonly editReturn?: ReactNode;
   /**
    * The manager Schedule's search (S-228): with it the filters, Hide
    * Unscheduled and Settings move to a second row behind a search field.
@@ -164,6 +166,7 @@ export function ScheduleTopBar({
   selectedEmployeeIds,
   onEmployeeFilterChange,
   actions,
+  editReturn,
   search,
 }: ScheduleTopBarProps) {
   const lastDismissSignalRef = useRef(dropdownDismissSignal);
@@ -441,6 +444,7 @@ export function ScheduleTopBar({
         {onViewChange ? (
           <ScheduleViewSwitch view={view} onChange={onViewChange} />
         ) : null}
+        {editReturn}
         {search ? null : (
           <>
             {settingsMenu}

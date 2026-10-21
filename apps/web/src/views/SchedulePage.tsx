@@ -24,6 +24,7 @@ import {
   Undo2,
   WandSparkles,
   X,
+  Pencil,
 } from "lucide-react";
 import {
   useCallback,
@@ -617,6 +618,20 @@ export function SchedulePage({
     session && query.data && session.week_start === query.data.week_start
       ? session
       : null;
+  // Edit-return mockup (?rv=a|b|d): an edit held open on another week.
+  const editReturnVariants = search.get("rv") ?? "";
+  const editElsewhere =
+    session && query.data && session.week_start !== query.data.week_start ? session : null;
+  const editElsewhereLabel = editElsewhere
+    ? formatPeriod(editElsewhere.week_start, editElsewhere.week_start, "week").replace(/, \d{4}$/, "")
+    : "";
+  const backToEditWeek = () => {
+    if (!editElsewhere) return;
+    const next = new URLSearchParams(search);
+    next.set("date", editElsewhere.week_start);
+    next.set("view", "week");
+    setSearch(next);
+  };
   useEffect(() => {
     if (!gridEditSession) setPresetPick(null);
   }, [gridEditSession]);
@@ -2328,6 +2343,7 @@ export function SchedulePage({
       today,
       focusedShift: Boolean(focusedShiftId),
       editing: Boolean(gridEditSession),
+      editWeekStart: editReturnVariants.includes("d") ? (editElsewhere?.week_start ?? null) : null,
     });
     if (!dismissal) return false;
     setSearch(dismissal.search);
@@ -2737,6 +2753,27 @@ export function SchedulePage({
     >
       <ScheduleTopBar
         weekLabel={periodLabel}
+        editReturn={
+          editElsewhere && editReturnVariants.includes("b") ? (
+            <button
+              type="button"
+              className="schedule-edit-return-chip"
+              aria-label={`Back to editing ${editElsewhereLabel}`}
+              title={`Back to editing ${editElsewhereLabel}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                backToEditWeek();
+              }}
+            >
+              <Pencil size={14} aria-hidden />
+              <span className="schedule-edit-return-long">Editing {editElsewhereLabel}</span>
+              <span className="schedule-edit-return-short" aria-hidden>
+                {editElsewhereLabel.replace(/ – ([A-Z][a-z]{2}) /, (all, month) =>
+                  editElsewhereLabel.startsWith(month) ? "–" : all)}
+              </span>
+            </button>
+          ) : null
+        }
         selectedDate={selectedDate}
         view={view}
         weekStartDate={model.week_start}
@@ -2867,6 +2904,19 @@ export function SchedulePage({
               ? "Someone is editing this schedule"
               : "Viewing this schedule"}
           </small>
+        </div>
+      ) : null}
+      {editElsewhere && editReturnVariants.includes("a") ? (
+        <div className="schedule-edit-banner schedule-edit-elsewhere" role="status">
+          <p>
+            <Pencil size={14} aria-hidden />
+            <span>
+              You're editing <strong>{editElsewhereLabel}</strong>. This week is view only.
+            </span>
+          </p>
+          <button type="button" className="schedule-edit-elsewhere-back" onClick={backToEditWeek}>
+            Back to editing
+          </button>
         </div>
       ) : null}
       {gridEditSession ? (
