@@ -241,14 +241,19 @@ export function LineupPage() {
   // The desktop: F (Mert 2026-10-19 ~2:45 AM, "f harika").
   return (
     <DesktopLineupPage
-      header={
+      header={(tools) =>
         <>
           <CatalogPageHeader
             eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
             title="Lineup"
             titleId="lineup-title"
             description="Today's lineups, live from the Schedule."
-            action={publishControl}
+            action={
+              <>
+                {tools}
+                {publishControl}
+              </>
+            }
           />
           <ZoneNote zone={zone} />
         </>

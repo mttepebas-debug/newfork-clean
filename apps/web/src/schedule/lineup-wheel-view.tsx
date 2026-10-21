@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 
 import { Skeleton } from "../shell/LoadState";
@@ -28,6 +29,7 @@ export function LineupDayPicker({
   wheelRef,
   days = 7,
   waiting = false,
+  barSlot,
   children,
 }: {
   readonly date: string;
@@ -40,14 +42,15 @@ export function LineupDayPicker({
   readonly waiting?: boolean;
   readonly barRef?: RefObject<HTMLDivElement | null>;
   readonly wheelRef?: RefObject<HTMLDivElement | null>;
+  /** Where the date row goes when not over the wheel (the desktop's heading); null until it mounts. */
+  readonly barSlot?: HTMLElement | null;
   /** Beside the date: the location. */
   readonly children?: ReactNode;
 }) {
   const wheel = useRef<WheelControl | null>(null);
   const preview = useRef<((iso: string) => void) | null>(null);
   const ownBox = useRef<HTMLDivElement | null>(null);
-  return (
-    <>
+  const bar = (
       <div className="lineup-toolbar" ref={barRef}>
         <div className="lineup-date" role="group" aria-label="Day">
           <button
@@ -78,6 +81,10 @@ export function LineupDayPicker({
         </div>
         {children}
       </div>
+  );
+  return (
+    <>
+      {barSlot === undefined ? bar : barSlot ? createPortal(bar, barSlot) : null}
       <DayWheel
         boxRef={wheelRef ?? ownBox}
         visible={days}
