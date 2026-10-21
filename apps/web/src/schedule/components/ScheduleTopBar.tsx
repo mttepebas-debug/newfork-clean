@@ -50,6 +50,8 @@ interface ScheduleTopBarProps {
   readonly onNextViewPeriod: () => void;
   readonly onCurrentViewPeriodClick: () => void;
   readonly isCurrentViewPeriod: boolean;
+  /** Shows the Week | Day switch; the date button then only jumps to today or this week. */
+  readonly onViewChange?: (view: "day" | "week") => void;
   readonly onDayPick: (date: string) => void;
   readonly onWeekJump: (date: string) => void;
   /** Day cells in the calendar always open that day, even from week view. */
@@ -113,6 +115,7 @@ export function ScheduleTopBar({
   onNextViewPeriod,
   onCurrentViewPeriodClick,
   isCurrentViewPeriod,
+  onViewChange,
   hideUnscheduled,
   onToggleHideUnscheduled,
   showUnassignedShifts,
@@ -157,7 +160,13 @@ export function ScheduleTopBar({
   const [openDropdownId, setOpenDropdownId] =
     useState<ScheduleTopBarDropdownId | null>(null);
   const viewModeLabel = view === "day" ? "Daily view" : "Weekly view";
-  const viewModeTitle = isCurrentViewPeriod
+  const viewModeTitle = onViewChange
+    ? isCurrentViewPeriod
+      ? "Open calendar"
+      : view === "day"
+        ? "Jump to today"
+        : "Jump to this week"
+    : isCurrentViewPeriod
     ? `Switch to ${view === "day" ? "weekly" : "daily"} view`
     : view === "day"
       ? "Jump to today"
@@ -268,10 +277,19 @@ export function ScheduleTopBar({
             ) : null
           }
           returnCue={!isCurrentViewPeriod}
-          onToggleViewMode={onCurrentViewPeriodClick}
+          fixedWidth={Boolean(onViewChange)}
+          onToggleViewMode={
+            // With the switch, the date never changes the view: this period opens the calendar.
+            onViewChange && isCurrentViewPeriod
+              ? () => setDropdownOpen("calendar", openDropdownId !== "calendar")
+              : onCurrentViewPeriodClick
+          }
           onPrevious={onPreviousViewPeriod}
           onNext={onNextViewPeriod}
         />
+        {onViewChange ? (
+          <ScheduleViewSwitch view={view} onChange={onViewChange} />
+        ) : null}
         <div className="schedule-command-menu">
           <button
             type="button"
@@ -412,6 +430,7 @@ export function ScheduleViewModeControls({
   viewModeLabel,
   viewModeTitle,
   returnCue = false,
+  fixedWidth = false,
   showViewToggle = true,
   onToggleViewMode,
   onPrevious,
@@ -428,6 +447,8 @@ export function ScheduleViewModeControls({
   readonly viewModeLabel: string;
   readonly viewModeTitle?: string;
   readonly returnCue?: boolean;
+  /** Keeps one width, so the Week | Day switch beside it never moves. */
+  readonly fixedWidth?: boolean;
   readonly showViewToggle?: boolean;
   readonly onToggleViewMode: () => void;
   readonly onPrevious?: () => void;
@@ -477,6 +498,7 @@ export function ScheduleViewModeControls({
             type="button"
             className="schedule-view-mode"
             title={viewModeTitle}
+            data-fixed-width={fixedWidth || undefined}
             data-return-cue={returnCue}
             onClick={(event) => {
               event.stopPropagation();
@@ -503,6 +525,41 @@ export function ScheduleViewModeControls({
           <ChevronRight size={18} aria-hidden />
         </button>
       ) : null}
+    </div>
+  );
+}
+
+const SCHEDULE_VIEWS = [
+  { id: "week", label: "Week" },
+  { id: "day", label: "Day" },
+] as const;
+
+function ScheduleViewSwitch({
+  view,
+  onChange,
+}: {
+  readonly view: "day" | "week";
+  readonly onChange: (view: "day" | "week") => void;
+}) {
+  return (
+    <div
+      className="schedule-view-switch"
+      role="group"
+      aria-label="Schedule view"
+    >
+      {SCHEDULE_VIEWS.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          aria-pressed={view === item.id}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (view !== item.id) onChange(item.id);
+          }}
+        >
+          {item.label}
+        </button>
+      ))}
     </div>
   );
 }

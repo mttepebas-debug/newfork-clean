@@ -434,4 +434,41 @@ describe("ScheduleTopBar", () => {
     expect(onToggleUnassignedShifts).toHaveBeenCalledTimes(1);
     expect(onToggleUnassignedFrozen).toHaveBeenCalledTimes(1);
   });
+
+  it("puts a Week | Day switch right after the date; the date never changes the view (S-228)", () => {
+    const onViewChange = vi.fn();
+    const onCurrentViewPeriodClick = vi.fn();
+    const { rerender } = renderTopBar({ isCurrentViewPeriod: true, onViewChange, onCurrentViewPeriodClick });
+
+    const views = screen.getByRole("group", { name: "Schedule view" });
+    expect(views.previousElementSibling?.classList.contains("schedule-view-mode-controls")).toBe(true);
+    const week = within(views).getByRole("button", { name: "Week" });
+    const day = within(views).getByRole("button", { name: "Day" });
+    expect(week.getAttribute("aria-pressed")).toBe("true");
+    expect(day.getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(week);
+    expect(onViewChange).not.toHaveBeenCalled();
+    fireEvent.click(day);
+    expect(onViewChange).toHaveBeenCalledWith("day");
+
+    // This week: the date opens the calendar instead of switching to the daily view.
+    expect(screen.queryByTitle("Switch to daily view")).toBeNull();
+    const date = screen.getByRole("button", { name: "Aug 17 - Aug 23" });
+    expect(date.getAttribute("title")).toBe("Open calendar");
+    fireEvent.click(date);
+    expect(screen.getByRole("dialog", { name: "Schedule calendar" })).toBeTruthy();
+    expect(onCurrentViewPeriodClick).not.toHaveBeenCalled();
+
+    // Another week: the orange date goes back to this week.
+    rerender(
+      <MemoryRouter>
+        <ScheduleTopBar
+          {...buildTopBarProps({ isCurrentViewPeriod: false, onViewChange, onCurrentViewPeriodClick })}
+        />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByTitle("Jump to this week"));
+    expect(onCurrentViewPeriodClick).toHaveBeenCalledTimes(1);
+  });
 });

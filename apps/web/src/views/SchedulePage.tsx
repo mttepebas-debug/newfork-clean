@@ -158,6 +158,7 @@ import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButt
 import { formatSchedulePasteConflictContext } from "../schedule/lib/scheduleCatalogNames";
 import { templateAppliedDescription } from "../schedule/lib/templateApplyMessage";
 import { autoFillRejectedText } from "../schedule/lib/autoFillText";
+import { viewSwitchDate } from "../schedule/lib/scheduleViewSwitch";
 import {
   asksForReload,
   autoFillApplyError,
@@ -201,6 +202,7 @@ import {
   currentWeekStart,
   formatPeriod,
   formatTime,
+  formatWeekdayDate,
 } from "../schedule/lib/scheduleDateTime";
 import {
   buildCellPresetMenuItems,
@@ -2136,7 +2138,11 @@ export function SchedulePage({
       },
     });
   };
-  const periodLabel = formatPeriod(selectedDate, model.week_start, view);
+  // "Tue, Oct 20, 2026" fits the date button's fixed width (S-228).
+  const periodLabel =
+    view === "day"
+      ? `${formatWeekdayDate(selectedDate)}, ${selectedDate.slice(0, 4)}`
+      : formatPeriod(selectedDate, model.week_start, view);
   const isCurrentViewPeriod =
     view === "day" ? selectedDate === today : model.week_start === currentWeek;
   const selectedLocationIds = validIds(
@@ -2193,14 +2199,20 @@ export function SchedulePage({
       ? selectedLocationIds
       : model.locations.map((item) => item.id),
   );
-  const toggleCurrentViewPeriod = () => {
-    if (!isCurrentViewPeriod) {
-      jumpToCurrentPeriod();
-      return;
-    }
+  const changeView = (nextView: "day" | "week") => {
+    if (nextView === view) return;
     const next = new URLSearchParams(search);
-    next.set("date", today);
-    next.set("view", view === "week" ? "day" : "week");
+    next.set(
+      "date",
+      viewSwitchDate({
+        to: nextView,
+        selectedDate,
+        weekStart: model.week_start,
+        currentWeek,
+        today,
+      }),
+    );
+    next.set("view", nextView);
     setSearch(next);
   };
   const dismissOpenTopbarDropdown = (): boolean => {
@@ -2702,8 +2714,9 @@ export function SchedulePage({
         onLayoutChange={setLayout}
         onPreviousViewPeriod={() => changePeriod(view === "day" ? -1 : -7)}
         onNextViewPeriod={() => changePeriod(view === "day" ? 1 : 7)}
-        onCurrentViewPeriodClick={toggleCurrentViewPeriod}
+        onCurrentViewPeriodClick={jumpToCurrentPeriod}
         isCurrentViewPeriod={isCurrentViewPeriod}
+        onViewChange={changeView}
         onDayPick={(date) => {
           const next = new URLSearchParams(search);
           next.set("date", date);

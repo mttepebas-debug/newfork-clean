@@ -3912,6 +3912,45 @@ button.workspace-switcher-item:hover:not(:disabled) {
   width: 34px;
   padding: 0;
 }
+/* Week | Day (S-228): two equal 56px halves at the controls' 34px height. */
+.schedule-view-switch {
+  display: inline-flex;
+  height: 34px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 5px;
+  background: var(--theme-surface);
+}
+.schedule-view-switch button {
+  display: inline-flex;
+  width: 56px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--theme-muted-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+}
+.schedule-view-switch button + button {
+  border-left: 1px solid var(--theme-border-control);
+}
+.schedule-view-switch button[aria-pressed="true"] {
+  background: var(--theme-selected);
+  color: var(--theme-accent-strong);
+}
+.schedule-view-switch button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
+.schedule-date-split > .schedule-view-mode[data-fixed-width] {
+  width: 164px;
+  min-width: 0;
+}
 .schedule-view-mode[data-return-cue="true"] {
   border-color: #c2872d;
   background: #fff6e7;
