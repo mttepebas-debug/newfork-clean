@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 571, last: 20261021060000_open_shift_offer.sql
--- fingerprint: sha256:7b9f78af6a83f957f66796bf86b33e7782e906c8bcf0060522cb010c43f3a44a
+-- migrations: 572, last: 20261021060000_open_shift_offer.sql
+-- fingerprint: sha256:09018304ea7a550d02d6f8950512938f5ce26f1180aeb99624e86d450a194a9d
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5650,6 +5650,28 @@ $$;
 
 
 ALTER FUNCTION "app_private"."held_role_keeps_its_class"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."home_section_order"("target_order" "text"[]) RETURNS "text"[]
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  with allowed(value, position) as (
+    values ('operations', 1), ('pending_requests', 2), ('quick_actions', 3), ('updates', 4),
+      ('open_shifts', 5), ('announcements', 6), ('coming_up', 7), ('todos', 8)
+  ),
+  placed as (
+    select input.value, min(input.ordinality) as ordinality
+    from unnest(coalesce(target_order, '{}'::text[])) with ordinality input(value, ordinality)
+    join allowed on allowed.value = input.value
+    group by input.value
+  )
+  select array_agg(allowed.value order by coalesce(placed.ordinality, 1000 + allowed.position), allowed.position)
+  from allowed left join placed on placed.value = allowed.value;
+$$;
+
+
+ALTER FUNCTION "app_private"."home_section_order"("target_order" "text"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."initialize_employee_onboarding"("target_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "uuid"
@@ -16326,13 +16348,26 @@ CREATE OR REPLACE FUNCTION "public"."get_manager_home_service"("actor_user_id" "
 declare
   me app_private.actor_state;
   documents_rule app_private.authz_actions;
+  employee_rule app_private.authz_actions;
   places uuid[];
+  exchange_places uuid[];
+  saved public.workspace_layout_preferences;
+  local_today date;
   result jsonb;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'workspace.todos');
   me := app_private.actor(actor_user_id, target_workspace_id);
   places := app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.read');
+  exchange_places := app_private.scope_set(actor_user_id, target_workspace_id, 'exchange.read');
   select * into documents_rule from app_private.authz_actions r where r.key = 'documents.read';
+  select * into employee_rule from app_private.authz_actions r where r.key = 'employee.read';
+  select * into saved from public.workspace_layout_preferences p
+  where p.workspace_id = target_workspace_id and p.user_id = actor_user_id;
+  -- Coming up starts on the earliest "today" among the locations in view.
+  local_today := coalesce(
+    (select min((now() at time zone l.timezone)::date) from public.locations l
+     where l.workspace_id = target_workspace_id and l.id = any(places)),
+    (now() at time zone 'UTC')::date);
 
   with place as (
     select l.id, l.name, l.timezone, (now() at time zone l.timezone)::date as today
@@ -16354,13 +16389,186 @@ begin
       and s.scheduled_date between place.today - 1 and place.today + 6
   ),
   person as (
-    select e.id, btrim(coalesce(nullif(btrim(e.preferred_name), ''), e.first_name) || ' ' || e.last_name) as name
+    select e.id, e.user_id, btrim(coalesce(nullif(btrim(e.preferred_name), ''), e.first_name) || ' ' || e.last_name) as name
     from public.employee_profiles e
     where e.workspace_id = target_workspace_id
+  ),
+  -- Updates (S-225), the last seven days. A location-week published, its latest version.
+  published as (
+    select distinct on (p.location_id, p.week_start) p.id, p.location_id, p.week_start, p.published_at, p.published_by
+    from public.schedule_location_publications p
+    where p.workspace_id = target_workspace_id
+      and p.location_id = any(places)
+      and p.published_at > now() - interval '7 days'
+    order by p.location_id, p.week_start, p.published_at desc
+  ),
+  -- Time off decided: the request's own verdict (not a shortening or a cancellation's echo), still standing.
+  decided_time_off as materialized (
+    -- decided_by, not actor_user_id: a column named as the parameter makes the whole read ambiguous (42702).
+    select distinct on (event.request_id) event.id, event.request_id, event.action, event.actor_user_id as decided_by, event.created_at,
+      request.employee_id
+    from public.schedule_time_off_events event
+    join public.schedule_time_off_requests request on request.id = event.request_id
+    where event.workspace_id = target_workspace_id
+      and event.created_at > now() - interval '7 days'
+      and event.action in ('approved', 'denied')
+      and not event.metadata ? 'shortened'
+      and not event.metadata ? 'cancellation_request_id'
+      and request.request_type = 'time_off'
+      and request.status::text = event.action
+    order by event.request_id, event.created_at desc
+  ),
+  -- A shift change a manager closed: approved, or declined where that ends it (a direct request).
+  decided_exchange as (
+    select distinct on (event.case_id) event.id, event.action, event.actor_user_id as decided_by, event.created_at, exchange.kind,
+      exchange.owner_id, exchange.offered_snapshot, exchange.requested_snapshot
+    from public.shift_exchange_events event
+    join public.shift_exchange_cases exchange on exchange.id = event.case_id
+    where event.workspace_id = target_workspace_id
+      and event.created_at > now() - interval '7 days'
+      and (event.action = 'transfer_completed' or (event.action = 'application_rejected' and exchange.audience = 'direct'))
+      and ((exchange.offered_snapshot ->> 'location_id')::uuid = any(exchange_places)
+        or (exchange.kind = 'swap' and (exchange.requested_snapshot ->> 'location_id')::uuid = any(exchange_places)))
+    order by event.case_id, event.created_at desc
+  ),
+  joined as materialized (
+    select invitation.id, invitation.employee_id, invitation.accepted_at
+    from public.employee_invitations invitation
+    where invitation.workspace_id = target_workspace_id
+      and invitation.accepted_at > now() - interval '7 days'
+  ),
+  update_line as (
+    select published.published_at as at, jsonb_build_object(
+      'kind', 'published',
+      'id', published.id::text,
+      'at', published.published_at,
+      'location_ids', jsonb_build_array(published.location_id),
+      'by', (select person.name from person where person.user_id = published.published_by limit 1),
+      'first_date', published.week_start,
+      'last_date', published.week_start + 6,
+      'shifts', (select count(*) from public.schedule_published_shifts s
+        where s.workspace_id = target_workspace_id and s.location_id = published.location_id
+          and s.scheduled_date between published.week_start and published.week_start + 6
+          and s.publication_id = published.id)
+    ) as line
+    from published
+    union all
+    select decided.created_at, jsonb_build_object(
+      'kind', 'time_off',
+      'id', decided.id::text,
+      'at', decided.created_at,
+      'location_ids', coalesce((
+        select jsonb_agg(assignment.location_id order by assignment.is_primary desc, assignment.location_id)
+        from public.employee_location_assignments assignment
+        where assignment.employee_id = decided.employee_id and assignment.ended_at is null
+          and assignment.location_id = any(places)
+      ), '[]'::jsonb),
+      'approved', decided.action = 'approved',
+      'person', who.name,
+      'by', (select person.name from person where person.user_id = decided.decided_by limit 1),
+      'first_date', (select min(segment.segment_date) from public.schedule_time_off_segments segment where segment.request_id = decided.request_id),
+      'last_date', (select max(segment.segment_date) from public.schedule_time_off_segments segment where segment.request_id = decided.request_id)
+    )
+    from decided_time_off decided
+    join person who on who.id = decided.employee_id
+    where app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', decided.employee_id) is null
+    union all
+    select decided.created_at, jsonb_build_object(
+      'kind', decided.kind,
+      'id', decided.id::text,
+      'at', decided.created_at,
+      'location_ids', to_jsonb(array(
+        select distinct side from unnest(array[(decided.offered_snapshot ->> 'location_id')::uuid,
+          (decided.requested_snapshot ->> 'location_id')::uuid]) side
+        where side = any(exchange_places))),
+      'approved', decided.action = 'transfer_completed',
+      'person', coalesce(owner.name, 'Somebody'),
+      'by', (select person.name from person where person.user_id = decided.decided_by limit 1),
+      'first_date', (decided.offered_snapshot ->> 'date')::date,
+      'last_date', (decided.offered_snapshot ->> 'date')::date
+    )
+    from decided_exchange decided
+    left join person owner on owner.id = decided.owner_id
+    union all
+    select joined.accepted_at, jsonb_build_object(
+      'kind', 'joined',
+      'id', joined.id::text,
+      'at', joined.accepted_at,
+      'location_ids', coalesce((
+        select jsonb_agg(assignment.location_id order by assignment.is_primary desc, assignment.location_id)
+        from public.employee_location_assignments assignment
+        where assignment.employee_id = joined.employee_id and assignment.ended_at is null
+          and assignment.location_id = any(places)
+      ), '[]'::jsonb),
+      'person', who.name
+    )
+    from joined
+    join person who on who.id = joined.employee_id
+    where who.user_id is distinct from actor_user_id
+      and app_private.authz_check(me, employee_rule, null, joined.employee_id, null) is null
+  ),
+  -- Coming up (S-225), the next fourteen days. A day an announcement closes a location in view.
+  closed as (
+    select closure.announcement_id, closure.title, min(closure.closed_date) as first_date, max(closure.closed_date) as last_date,
+      jsonb_agg(distinct closure.location_id) as location_ids
+    from public.schedule_closures closure
+    join place on place.id = closure.location_id
+    where closure.workspace_id = target_workspace_id
+      and closure.kind = 'closed'
+      and closure.closed_date between place.today and place.today + 13
+    group by closure.announcement_id, closure.title
+  ),
+  approved_off as materialized (
+    select request.id, request.employee_id, min(segment.segment_date) as first_date, max(segment.segment_date) as last_date
+    from public.schedule_time_off_segments segment
+    join public.schedule_time_off_requests request on request.id = segment.request_id
+    where segment.workspace_id = target_workspace_id
+      and segment.segment_date between local_today and local_today + 13
+      and segment.status = 'approved'
+      and request.status = 'approved'
+      and request.request_type = 'time_off'
+    group by request.id, request.employee_id
+  ),
+  -- Days past the next seven (those are in "Needs you") with no current publication.
+  unpublished as (
+    select place.id as location_id, min(day.date) as first_date, max(day.date) as last_date
+    from place
+    cross join lateral (select (place.today + offset_days)::date as date from generate_series(7, 13) offset_days) day
+    where not exists (
+      select 1 from public.schedule_location_publications publication
+      where publication.location_id = place.id and publication.status = 'current'
+        and day.date >= publication.week_start and day.date < publication.week_start + 7)
+    group by place.id
+  ),
+  coming_line as (
+    select closed.first_date, 1 as rank, jsonb_build_object(
+      'kind', 'closed', 'id', closed.announcement_id::text, 'location_ids', closed.location_ids, 'name', closed.title,
+      'first_date', closed.first_date, 'last_date', closed.last_date) as line
+    from closed
+    union all
+    select off.first_date, 2, jsonb_build_object(
+      'kind', 'time_off', 'id', off.id::text,
+      'location_ids', coalesce((
+        select jsonb_agg(assignment.location_id order by assignment.is_primary desc, assignment.location_id)
+        from public.employee_location_assignments assignment
+        where assignment.employee_id = off.employee_id and assignment.ended_at is null
+          and assignment.location_id = any(places)
+      ), '[]'::jsonb),
+      'person', who.name, 'first_date', off.first_date, 'last_date', off.last_date)
+    from approved_off off
+    join person who on who.id = off.employee_id
+    where app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', off.employee_id) is null
+    union all
+    select unpublished.first_date, 3, jsonb_build_object(
+      'kind', 'unpublished', 'id', unpublished.location_id::text || ':' || unpublished.first_date::text,
+      'location_ids', jsonb_build_array(unpublished.location_id),
+      'first_date', unpublished.first_date, 'last_date', unpublished.last_date)
+    from unpublished
   )
   select jsonb_build_object(
     'workspace_id', target_workspace_id,
     'now', now(),
+    -- S-220: in the person's own order; a location they have not placed comes after, by name.
     'locations', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', place.id,
@@ -16434,7 +16642,7 @@ begin
             limit 20
           ) missing
         ), '[]'::jsonb)
-      ) order by place.name, place.id)
+      ) order by array_position(coalesce(saved.location_order, '{}'::uuid[]), place.id) nulls last, place.name, place.id)
       from place
     ), '[]'::jsonb),
     -- Time off waiting on an answer the actor may read, with the person's locations in view.
@@ -16463,6 +16671,21 @@ begin
         limit 50
       ) request
       join person on person.id = request.employee_id
+    ), '[]'::jsonb),
+    -- S-220: the person's sections, the two new ones after what they placed.
+    'layout', jsonb_build_object(
+      'widget_order', to_jsonb(app_private.home_section_order(saved.widget_order)),
+      'hidden_widget_ids', to_jsonb(array(
+        select distinct value from unnest(coalesce(saved.hidden_widget_ids, '{}'::text[])) value
+        where value = any(app_private.home_section_order(null))))
+    ),
+    'updates', coalesce((
+      select jsonb_agg(item.line order by item.at desc, item.line ->> 'id')
+      from (select * from update_line order by at desc, line ->> 'id' limit 30) item
+    ), '[]'::jsonb),
+    'coming_up', coalesce((
+      select jsonb_agg(item.line order by item.first_date, item.rank, item.line ->> 'id')
+      from (select * from coming_line order by first_date, rank, line ->> 'id' limit 30) item
     ), '[]'::jsonb)
   ) into result;
 
@@ -27208,6 +27431,54 @@ $$;
 ALTER FUNCTION "public"."save_workspace_layout_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_widget_order" "text"[], "target_hidden_widget_ids" "text"[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."save_workspace_layout_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_widget_order" "text"[], "target_hidden_widget_ids" "text"[], "target_location_order" "uuid"[]) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  allowed constant text[] := app_private.home_section_order(null);
+begin
+  -- The home's own gate (KK-34): whoever cannot open it does not arrange it.
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'workspace.todos');
+  if target_widget_order is null or target_hidden_widget_ids is null or target_location_order is null
+    or cardinality(target_widget_order) <> cardinality(allowed)
+    or (select count(distinct value) from unnest(target_widget_order) value) <> cardinality(allowed)
+    or exists (select 1 from unnest(target_widget_order || target_hidden_widget_ids) value where value is null or not value = any(allowed))
+    or cardinality(target_location_order) > 500
+    or exists (select 1 from unnest(target_location_order) value where value is null)
+    or (select count(distinct value) from unnest(target_location_order) value) <> cardinality(target_location_order) then
+    raise exception 'valid workspace layout required' using errcode = '22023';
+  end if;
+
+  insert into public.workspace_layout_preferences (workspace_id, user_id, widget_order, hidden_widget_ids, location_order)
+  values (
+    target_workspace_id,
+    actor_user_id,
+    target_widget_order,
+    array(select distinct value from unnest(target_hidden_widget_ids) value),
+    -- S-220: only this workspace's locations are kept; the read shows those in the actor's scope.
+    array(
+      select given.id
+      from unnest(target_location_order) with ordinality given(id, ordinality)
+      join public.locations location on location.id = given.id and location.workspace_id = target_workspace_id
+      order by given.ordinality
+    )
+  )
+  on conflict (workspace_id, user_id)
+  do update set
+    widget_order = excluded.widget_order,
+    hidden_widget_ids = excluded.hidden_widget_ids,
+    location_order = excluded.location_order,
+    updated_at = now();
+
+  return jsonb_build_object('status', 'saved');
+end;
+$$;
+
+
+ALTER FUNCTION "public"."save_workspace_layout_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_widget_order" "text"[], "target_hidden_widget_ids" "text"[], "target_location_order" "uuid"[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."save_workspace_role_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_role_id" "uuid", "role_name" "text", "role_description" "text", "role_access_class" "public"."workspace_role", "permission_keys" "text"[], "expected_updated_at" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -33593,7 +33864,8 @@ CREATE TABLE IF NOT EXISTS "public"."workspace_layout_preferences" (
     "user_id" "uuid" NOT NULL,
     "widget_order" "text"[] NOT NULL,
     "hidden_widget_ids" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "location_order" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL
 );
 
 
@@ -34952,6 +35224,10 @@ CREATE UNIQUE INDEX "employee_invitation_pending_idx" ON "public"."employee_invi
 
 
 
+CREATE INDEX "employee_invitations_accepted_idx" ON "public"."employee_invitations" USING "btree" ("workspace_id", "accepted_at") WHERE ("accepted_at" IS NOT NULL);
+
+
+
 CREATE INDEX "employee_invitations_delivery_status_idx" ON "public"."employee_invitations" USING "btree" ("workspace_id", "delivery_status", "updated_at" DESC) WHERE ("status" = 'pending'::"public"."employee_invitation_status");
 
 
@@ -35172,6 +35448,10 @@ CREATE UNIQUE INDEX "schedule_templates_name_idx" ON "public"."schedule_template
 
 
 
+CREATE INDEX "schedule_time_off_events_recent_idx" ON "public"."schedule_time_off_events" USING "btree" ("workspace_id", "created_at");
+
+
+
 CREATE INDEX "schedule_time_off_queue_idx" ON "public"."schedule_time_off_requests" USING "btree" ("workspace_id", "status", "created_at" DESC);
 
 
@@ -35193,6 +35473,10 @@ CREATE INDEX "scheduled_schedule_exports_workspace_idx" ON "public"."scheduled_s
 
 
 CREATE INDEX "shift_exchange_employee" ON "public"."shift_exchange_applications" USING "btree" ("workspace_id", "employee_id", "case_id");
+
+
+
+CREATE INDEX "shift_exchange_events_recent_idx" ON "public"."shift_exchange_events" USING "btree" ("workspace_id", "created_at");
 
 
 
@@ -38486,6 +38770,10 @@ REVOKE ALL ON FUNCTION "app_private"."held_role_keeps_its_class"() FROM PUBLIC;
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."home_section_order"("target_order" "text"[]) FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."initialize_employee_onboarding"("target_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 
 
@@ -40499,6 +40787,11 @@ GRANT ALL ON FUNCTION "public"."save_signature_template_draft_service"("actor_us
 
 REVOKE ALL ON FUNCTION "public"."save_workspace_layout_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_widget_order" "text"[], "target_hidden_widget_ids" "text"[]) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."save_workspace_layout_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_widget_order" "text"[], "target_hidden_widget_ids" "text"[]) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."save_workspace_layout_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_widget_order" "text"[], "target_hidden_widget_ids" "text"[], "target_location_order" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."save_workspace_layout_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_widget_order" "text"[], "target_hidden_widget_ids" "text"[], "target_location_order" "uuid"[]) TO "service_role";
 
 
 
