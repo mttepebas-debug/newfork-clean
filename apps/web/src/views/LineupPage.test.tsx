@@ -289,11 +289,12 @@ describe("LineupPage", () => {
 
   // Mert 2026-10-21: the date and location, a narrow wheel and the shift tabs on one line; the ticket's facts on its
   // header's line; its half-moons open; a wheel turned anywhere on the page scrolls the list.
-  it("puts the wheel and the shift tabs on one line, the day and the place on the ticket, and Shift · People · Hours on its header", async () => {
+  it("puts the shift tabs and the wheel on one line, the day and the place on the ticket, and Shift · People · Hours on its header", async () => {
     renderPage();
     const ticket = await screen.findByRole("region", { name: "Downtown, Lunch" });
     const top = document.querySelector(".lineup-desk-top")!;
-    expect([...top.children].map((child) => child.classList[0])).toEqual(["lineup-wheel", "catalog-toolbar"]);
+    // The tabs on the left, the wheel from them to the right edge (Mert 2026-10-21).
+    expect([...top.children].map((child) => child.classList[0])).toEqual(["catalog-toolbar", "lineup-wheel"]);
     // The page's only ‹ day › and place menu are the ticket's (Mert 2026-10-21).
     expect(screen.queryByRole("combobox", { name: "Location" })).toBeNull();
     expect(within(screen.getByRole("group", { name: "Day" })).getByRole("button", { name: "Tue, Oct 13" })).toBeTruthy();
@@ -304,12 +305,12 @@ describe("LineupPage", () => {
     expect(ticket.querySelectorAll(".lineup-card-facts")).toHaveLength(1);
     expect(head.nextElementSibling?.classList.contains("lineup-card-perf")).toBe(true);
     const desk = readFileSync("src/views/lineup-desktop.css", "utf8");
-    // The tabs keep their width and never scroll for the wheel; the wheel is at most 480 px, on the left.
-    expect(desk).toMatch(/\.lineup-desk-top \{[^}]*grid-template-columns: minmax\(0, 480px\) auto;[^}]*justify-content: space-between;[^}]*align-items: end;[^}]*border-bottom: 1px solid var\(--theme-border\);/);
+    // The tabs keep their width and never scroll for the wheel; the wheel takes the rest of the line.
+    expect(desk).toMatch(/\.lineup-desk-top \{[^}]*grid-template-columns: auto minmax\(0, 1fr\);[^}]*align-items: end;[^}]*border-bottom: 1px solid var\(--theme-border\);/);
+    expect(desk).toMatch(/\.lineup-desk-top > \.lineup-wheel \{\s*grid-column: 2;/);
     // No gap between the heading's line and this one: the list page's 18 px is gone, the wheel is 46 px.
     expect(desk).toMatch(/\.lineup-desk-page\.list-page\.list-page > \.catalog-page-header \{\s*margin-bottom: 0;/);
     expect(desk).toMatch(/\.lineup-desk-top \.lineup-wheel \{\s*height: 46px;/);
-    expect(desk).toMatch(/\.lineup-desk-top \.lineup-shift-tabs \.catalog-status-tabs \{\s*margin-left: auto;/);
     expect(desk).toMatch(/"loc loc facts state fold"\s*"date date facts at \.";/);
     // The half-moons: the card no longer hides what passes its edge; each shows its inner half over the frame.
     expect(desk).not.toMatch(/\.lineup-desk-page \.lineup-card \{[^}]*overflow: hidden;/);

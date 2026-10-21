@@ -96,8 +96,8 @@ function useWheelScrollsList(page: RefObject<HTMLElement | null>) {
 }
 
 /**
- * The days the narrow wheel between the location and the shift tabs shows: as many 48 px days as fit in it, an odd
- * number so the day sits in the middle, 3 to 7 (Mert 2026-10-21: the tabs never scroll for it).
+ * The days the wheel beside the shift tabs shows: as many 64 px days as fit in it, an odd number so the day sits in
+ * the middle, 3 to 15 (Mert 2026-10-21: it runs to the right edge; the tabs never scroll for it).
  */
 function useWheelDays(box: RefObject<HTMLDivElement | null>): number {
   const [days, setDays] = useState(7);
@@ -105,7 +105,7 @@ function useWheelDays(box: RefObject<HTMLDivElement | null>): number {
     const wheel = box.current;
     if (!wheel || typeof ResizeObserver !== "function") return;
     const fit = () => {
-      const count = Math.max(3, Math.min(7, Math.floor(wheel.clientWidth / 48)));
+      const count = Math.max(3, Math.min(15, Math.floor(wheel.clientWidth / 64)));
       setDays(count % 2 ? count : count - 1);
     };
     fit();
@@ -267,17 +267,9 @@ export function DesktopLineupPage({
   return (
     <section ref={page} className="lineup-page list-page lineup-desk-page" aria-labelledby="lineup-title">
       {header}
-      {/* One line (Mert 2026-10-21): a narrow wheel and the shift tabs; the day and the place are on the ticket. */}
+      {/* One line (Mert 2026-10-21): the shift tabs on the left, the wheel from them to the right edge; the day and the
+          place are on the ticket. */}
       <div className="lineup-desk-top">
-        <LineupDayPicker
-          date={date}
-          today={today}
-          onDate={onDate}
-          waiting={waiting}
-          days={days}
-          wheelRef={wheelBox}
-          bar={false}
-        />
         {loading ? (
           <div className="lineup-phone-outline-tabs" aria-hidden>
             <Skeleton width={64} height={12} className="on-page" />
@@ -287,6 +279,15 @@ export function DesktopLineupPage({
         ) : tabs.length ? (
           <LineupShiftTabs shifts={tabs} chosen={key} onChoose={onShift} />
         ) : null}
+        <LineupDayPicker
+          date={date}
+          today={today}
+          onDate={onDate}
+          waiting={waiting}
+          days={days}
+          wheelRef={wheelBox}
+          bar={false}
+        />
       </div>
       {body}
     </section>

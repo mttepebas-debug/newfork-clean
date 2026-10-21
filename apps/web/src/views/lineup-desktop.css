@@ -25,22 +25,24 @@
   }
 }
 
-/* One line under the heading (Mert 2026-10-21): a narrow wheel on the left, the shift tabs on the right, over one grey
-   line; the day and the place moved onto the ticket. Both stand on the line: the wheel's and the tabs' green marks
-   fall on it. The tabs keep their width; the wheel is at most 480 px and shows as many days as fit (LineupDesktop.tsx).
-   The line sits right under the heading's line, no list page's 18 px between, and the wheel is low (46 px), so the
-   ticket and the list start that much higher ("o boşluğu kaldır, içeriği yukarı taşı"). */
+/* One line under the heading (Mert 2026-10-21): the shift tabs on the left, the wheel from them to the right edge,
+   over one grey line; the day and the place are on the ticket. Both stand on the line: the tabs' and the wheel's
+   green marks fall on it. The tabs keep their width; the wheel takes the rest and shows as many days as fit
+   (LineupDesktop.tsx). The line sits right under the heading's line, no list page's 18 px between, and the wheel is
+   low (46 px), so the ticket and the list start that much higher ("o boşluğu kaldır, içeriği yukarı taşı"). */
 .lineup-desk-page.list-page.list-page > .catalog-page-header {
   margin-bottom: 0;
 }
 .lineup-desk-top {
   display: grid;
-  grid-template-columns: minmax(0, 480px) auto;
-  justify-content: space-between;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: end;
   column-gap: 24px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--theme-border);
+}
+.lineup-desk-top > .lineup-wheel {
+  grid-column: 2;
 }
 .lineup-desk-top .lineup-wheel {
   height: 46px;
@@ -57,12 +59,6 @@
 }
 .lineup-desk-page.list-page .lineup-desk-top .catalog-toolbar-status-row {
   border-bottom: 0;
-}
-.lineup-desk-top .lineup-shift-tabs .catalog-status-tabs {
-  margin-left: auto;
-}
-.lineup-desk-top > .lineup-phone-outline-tabs {
-  justify-content: flex-end;
 }
 
 .lineup-desk {
