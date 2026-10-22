@@ -10,11 +10,14 @@ import {
   type MyTimeOffShiftsQuery,
   type TimeOffAnswerInput,
   type TimeOffAskInput,
+  type TimeOffCancellationAnswerInput,
+  type TimeOffCancellationAskInput,
   type TimeOffDeciderView,
   type TimeOffImpact,
   type TimeOffRequestsPage,
   type TimeOffRequestsQuery,
   type TimeOffRequestView,
+  type TimeOffTakeBackInput,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { rpcFailure } from "../http-error";
@@ -36,6 +39,16 @@ export interface TimeOffRequestsService {
   answer(input: Actor & { readonly requestId: string; readonly answer: TimeOffAnswerInput }): Promise<TimeOffDeciderView>;
   /** D3: the employee form's shifts in the days asked. */
   myShifts(input: Actor & { readonly query: MyTimeOffShiftsQuery }): Promise<MyTimeOffShifts>;
+  /** D4: the employee asks to cancel approved time off; the time off comes back carrying it. */
+  askCancellation(
+    input: Actor & { readonly requestId: string; readonly request: TimeOffCancellationAskInput },
+  ): Promise<TimeOffRequestView>;
+  /** D4: the answer to a cancellation (answer_time_off_service on a 'cancel' row, no print). */
+  answerCancellation(
+    input: Actor & { readonly requestId: string; readonly answer: TimeOffCancellationAnswerInput },
+  ): Promise<TimeOffDeciderView>;
+  /** D4: approved time off taken back, with a note. */
+  takeBack(input: Actor & { readonly requestId: string; readonly takeBack: TimeOffTakeBackInput }): Promise<TimeOffDeciderView>;
 }
 
 interface RpcClient {
@@ -116,6 +129,37 @@ export function createTimeOffRequestsService(options: { url: string; serviceRole
           note: a.note,
           expected_revision: a.expected_revision,
           expected_impact: a.expected_impact,
+        }),
+      );
+    },
+    async askCancellation(input) {
+      return timeOffRequestViewSchema.parse(
+        await call("ask_time_off_cancellation_service", input, {
+          target_request_id: input.requestId,
+          asked_note: input.request.note,
+          expected_revision: input.request.expected_revision,
+          request_key: input.request.client_key,
+        }),
+      );
+    },
+    async answerCancellation(input) {
+      const a = input.answer;
+      return timeOffDeciderViewSchema.parse(
+        await call("answer_time_off_service", input, {
+          target_request_id: input.requestId,
+          verdict: a.verdict,
+          note: a.note,
+          expected_revision: a.expected_revision,
+          expected_impact: null,
+        }),
+      );
+    },
+    async takeBack(input) {
+      return timeOffDeciderViewSchema.parse(
+        await call("take_back_time_off_service", input, {
+          target_request_id: input.requestId,
+          note: input.takeBack.note,
+          expected_revision: input.takeBack.expected_revision,
         }),
       );
     },

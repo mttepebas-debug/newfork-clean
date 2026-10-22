@@ -62,6 +62,10 @@ const request: TimeOffRequestView = {
   decision_note: null,
   ended_at: null,
   ended_note: null,
+  cancels_id: null,
+  ended_by_name: null,
+  used_until: null,
+  cancellation: null,
 };
 const mine: MyTimeOff = { time_zone: "America/Los_Angeles", today: "2026-10-22", location_names: ["Downtown"], requests: [request] };
 // D3: the answerer's side.
@@ -71,6 +75,14 @@ const listed: TimeOffRequestsPage = { total: 1, waiting: 1, page: 1, page_size: 
 const impact: TimeOffImpact = { request: decided, fingerprint: "11611d0e7f9542616aa542c39e615471", shift_count: 0, hidden_shift_count: 0, locations: [] };
 const answered: TimeOffDeciderView = { ...decided, status: "approved", revision: 2, decided_by_name: "Mk Person" };
 const shifts: MyTimeOffShifts = { count: 0, shifts: [] };
+// D4: cancelling and taking back.
+const cancellationId = "98020000-0000-4000-8000-000000000002";
+const withCancellation: TimeOffRequestView = { ...request, status: "approved", revision: 2, cancellation: { id: cancellationId,
+  status: "pending", note: "Plans changed", revision: 1, created_at: "2026-10-23T16:30:00+00:00", decided_at: null,
+  decided_by_name: null, decision_note: null } };
+const cancelAnswered: TimeOffDeciderView = { ...decided, id: cancellationId, kind: "cancel", cancels_id: requestId, status: "approved",
+  decided_by_name: "Mk Person" };
+const takenBack: TimeOffDeciderView = { ...decided, status: "revoked", revision: 3, ended_note: "Short-staffed", ended_by_name: "Mk Person" };
 
 function serviceMock(): TimeOffRequestsService {
   return {
@@ -81,6 +93,9 @@ function serviceMock(): TimeOffRequestsService {
     impact: vi.fn().mockResolvedValue(impact),
     answer: vi.fn().mockResolvedValue(answered),
     myShifts: vi.fn().mockResolvedValue(shifts),
+    askCancellation: vi.fn().mockResolvedValue(withCancellation),
+    answerCancellation: vi.fn().mockResolvedValue(cancelAnswered),
+    takeBack: vi.fn().mockResolvedValue(takenBack),
   };
 }
 
@@ -99,6 +114,9 @@ const ask = {
 };
 const withdraw = { expected_revision: 1 };
 const answer = { verdict: "approve", note: "Enjoy", expected_revision: 1, expected_impact: "11611d0e7f9542616aa542c39e615471" };
+const askCancel = { note: "Plans changed", expected_revision: 2, client_key: "5b1d0c9e-0f7e-4c8a-9a51-6f5f2b0c4d12" };
+const answerCancel = { verdict: "approve", note: null, expected_revision: 1 };
+const takeBack = { note: "Short-staffed", expected_revision: 2 };
 
 // Each route, the action the core must have listed for it, a valid body, and what it answers.
 const routes = [
@@ -109,6 +127,9 @@ const routes = [
   ["GET", base, "time_off.decide", undefined, listed],
   ["GET", `${base}/${requestId}/impact`, "time_off.decide", undefined, impact],
   ["POST", `${base}/${requestId}/answer`, "time_off.decide", answer, answered],
+  ["POST", `${base}/${requestId}/cancellation`, "time_off.request_own", askCancel, withCancellation],
+  ["POST", `${base}/${cancellationId}/answer-cancellation`, "time_off.decide", answerCancel, cancelAnswered],
+  ["POST", `${base}/${requestId}/take-back`, "time_off.decide", takeBack, takenBack],
 ] as const;
 
 describe("time off requests routes", () => {
@@ -158,6 +179,9 @@ describe("time off requests routes", () => {
     await app.inject({ method: "GET", url: `${base}/${requestId}/impact`, headers: auth });
     await app.inject({ method: "POST", url: `${base}/${requestId}/answer`, headers: auth, payload: answer });
     await app.inject({ method: "GET", url: `${base}/my-shifts?start=2026-10-30&end=2026-10-30&from=09:00&to=24:00`, headers: auth });
+    await app.inject({ method: "POST", url: `${base}/${requestId}/cancellation`, headers: auth, payload: askCancel });
+    await app.inject({ method: "POST", url: `${base}/${cancellationId}/answer-cancellation`, headers: auth, payload: answerCancel });
+    await app.inject({ method: "POST", url: `${base}/${requestId}/take-back`, headers: auth, payload: { ...takeBack, note: "  Short-staffed " } });
     const actor = { actorUserId: userId, workspaceId };
     expect(service.mine).toHaveBeenCalledExactlyOnceWith(actor);
     expect(service.ask).toHaveBeenCalledExactlyOnceWith({ ...actor, request: ask });
@@ -166,6 +190,12 @@ describe("time off requests routes", () => {
     expect(service.impact).toHaveBeenCalledExactlyOnceWith({ ...actor, requestId });
     expect(service.answer).toHaveBeenCalledExactlyOnceWith({ ...actor, requestId, answer });
     expect(service.myShifts).toHaveBeenCalledExactlyOnceWith({ ...actor, query: { start: "2026-10-30", end: "2026-10-30", from: "09:00", to: "24:00" } });
+    expect(service.askCancellation).toHaveBeenCalledExactlyOnceWith({ ...actor, requestId, request: askCancel });
+    expect(service.answerCancellation).toHaveBeenCalledExactlyOnceWith({ ...actor, requestId: cancellationId, answer: answerCancel });
+    expect(service.takeBack).toHaveBeenCalledExactlyOnceWith({ ...actor, requestId, takeBack });
+    const smuggledCancel = await app.inject({ method: "POST", url: `${base}/${requestId}/cancellation`, headers: auth,
+      payload: { ...askCancel, actor_user_id: spoofed } });
+    expect(smuggledCancel.statusCode).toBe(400);
     const smuggledAnswer = await app.inject({ method: "POST", url: `${base}/${requestId}/answer`, headers: auth, payload: { ...answer, actor_user_id: spoofed } });
     expect(smuggledAnswer.statusCode).toBe(400);
     const smuggled = await app.inject({ method: "POST", url: base, headers: auth, payload: { ...ask, actor_user_id: spoofed } });
@@ -194,6 +224,17 @@ describe("time off requests routes", () => {
     ["GET", `${base}/my-shifts?start=2026-10-30`, undefined],
     ["GET", `${base}/my-shifts?start=2026-10-30&end=2026-10-31&from=09:00`, undefined],
     ["GET", `${base}/my-shifts?start=10/30/2026&end=2026-10-31`, undefined],
+    ["POST", `${base}/${requestId}/cancellation`, { ...askCancel, note: "x".repeat(1001) }],
+    ["POST", `${base}/${requestId}/cancellation`, { ...askCancel, client_key: "again" }],
+    ["POST", `${base}/${requestId}/cancellation`, { note: null, client_key: askCancel.client_key }],
+    ["POST", `${base}/not-an-id/cancellation`, askCancel],
+    ["POST", `${base}/${cancellationId}/answer-cancellation`, { ...answerCancel, verdict: "maybe" }],
+    ["POST", `${base}/${cancellationId}/answer-cancellation`, { ...answerCancel, expected_impact: "abc" }],
+    ["POST", `${base}/not-an-id/answer-cancellation`, answerCancel],
+    ["POST", `${base}/${requestId}/take-back`, { ...takeBack, note: "   " }],
+    ["POST", `${base}/${requestId}/take-back`, { expected_revision: 2 }],
+    ["POST", `${base}/${requestId}/take-back`, { ...takeBack, note: "x".repeat(1001) }],
+    ["POST", `${base}/not-an-id/take-back`, takeBack],
   ] as const)("%s %s refuses a question it cannot read", async (method, url, payload) => {
     const service = serviceMock();
     const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
@@ -242,6 +283,28 @@ describe("time off requests routes", () => {
     vi.mocked(service.ask).mockRejectedValue(rpcFailure({ message: "Refused", code, hint }));
     const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
     const response = await app.inject({ method: "POST", url: base, headers: auth, payload: ask });
+    expect(response.statusCode).toBe(status);
+    expect(response.json()).toMatchObject({ reason: hint });
+    await app.close();
+  });
+
+  it.each([
+    ["askCancellation", `${base}/${requestId}/cancellation`, askCancel, "PT409", "time_off.cancel_pending", 409],
+    ["askCancellation", `${base}/${requestId}/cancellation`, askCancel, "PT409", "time_off.not_approved", 409],
+    ["askCancellation", `${base}/${requestId}/cancellation`, askCancel, "PT409", "time_off.ended", 409],
+    ["askCancellation", `${base}/${requestId}/cancellation`, askCancel, "PT409", "time_off.key_reused", 409],
+    ["askCancellation", `${base}/${requestId}/cancellation`, askCancel, "42501", "authz.out_of_scope", 403],
+    ["answerCancellation", `${base}/${cancellationId}/answer-cancellation`, answerCancel, "PT409", "time_off.not_pending", 409],
+    ["answerCancellation", `${base}/${cancellationId}/answer-cancellation`, answerCancel, "42501", "authz.rank", 403],
+    ["takeBack", `${base}/${requestId}/take-back`, takeBack, "22023", "time_off.note_required", 400],
+    ["takeBack", `${base}/${requestId}/take-back`, takeBack, "PT409", "time_off.changed", 409],
+    ["takeBack", `${base}/${requestId}/take-back`, takeBack, "P0002", "time_off.not_found", 404],
+    ["takeBack", `${base}/${requestId}/take-back`, takeBack, "42501", "authz.rank", 403],
+  ] as const)("D4 %s at %s passes %s %s through as %i", async (method, url, payload, code, hint, status) => {
+    const service = serviceMock();
+    vi.mocked(service[method]).mockRejectedValue(rpcFailure({ message: "Refused", code, hint }));
+    const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
+    const response = await app.inject({ method: "POST", url, headers: auth, payload });
     expect(response.statusCode).toBe(status);
     expect(response.json()).toMatchObject({ reason: hint });
     await app.close();

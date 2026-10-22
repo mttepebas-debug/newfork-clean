@@ -2,7 +2,10 @@ import {
   myTimeOffShiftsQuerySchema,
   timeOffAnswerInputSchema,
   timeOffAskInputSchema,
+  timeOffCancellationAnswerInputSchema,
+  timeOffCancellationAskInputSchema,
   timeOffRequestsQuerySchema,
+  timeOffTakeBackInputSchema,
   timeOffWithdrawInputSchema,
   type AuthzAction,
 } from "@newfork/shared";
@@ -100,5 +103,38 @@ export function registerTimeOffRequestsRoutes(
     if (!body.success) return reply.status(400).send({ error: "Approve or decline what you reviewed" });
     if (!options.service) return unavailable(reply);
     return reply.send(await options.service.answer({ ...actor, requestId: params.data.id, answer: body.data }));
+  });
+
+  // D4: the employee asks to cancel approved time off (the address names the time off); a cancellation is
+  // withdrawn like a request. Whoever may answer answers it (the address names the cancellation; no print:
+  // it opens no shift) and takes approved time off back with a note.
+  app.post("/v1/workspaces/:workspaceId/time-off-requests/:id/cancellation", async (request, reply) => {
+    const actor = await gate(request, "time_off.request_own");
+    const params = requestParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid time off request required" });
+    const body = timeOffCancellationAskInputSchema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "Send the time off you read and a note of 1000 characters or fewer" });
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.askCancellation({ ...actor, requestId: params.data.id, request: body.data }));
+  });
+
+  app.post("/v1/workspaces/:workspaceId/time-off-requests/:id/answer-cancellation", async (request, reply) => {
+    const actor = await gate(request, "time_off.decide");
+    const params = requestParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid time off request required" });
+    const body = timeOffCancellationAnswerInputSchema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "Approve or decline what you reviewed" });
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.answerCancellation({ ...actor, requestId: params.data.id, answer: body.data }));
+  });
+
+  app.post("/v1/workspaces/:workspaceId/time-off-requests/:id/take-back", async (request, reply) => {
+    const actor = await gate(request, "time_off.decide");
+    const params = requestParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid time off request required" });
+    const body = timeOffTakeBackInputSchema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "Say why you revoke this time off" });
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.takeBack({ ...actor, requestId: params.data.id, takeBack: body.data }));
   });
 }
