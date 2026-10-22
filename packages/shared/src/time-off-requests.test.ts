@@ -6,10 +6,13 @@ import {
   timeOffAnswerInputSchema,
   timeOffAskInputSchema,
   timeOffAskRefusal,
+  timeOffCancellationAnswerInputSchema,
+  timeOffCancellationAskInputSchema,
   timeOffDayCount,
   timeOffImpactSchema,
   timeOffRequestsPageSchema,
   timeOffRequestsQuerySchema,
+  timeOffTakeBackInputSchema,
 } from "./time-off-requests";
 
 const now = { date: "2026-10-22", time: "09:30" };
@@ -77,37 +80,98 @@ describe("timeOffAskInputSchema", () => {
 
 describe("myTimeOffSchema", () => {
   it("reads what my_time_off_service answers", () => {
-    // A rolled-back `select public.my_time_off_service(...)::text` (D2 migration, test world fx, 2026-10-22).
+    // A rolled-back `select public.my_time_off_service(...)::text` (D4 migration, test world fx, 2026-10-22):
+    // approved time off with a cancellation waiting.
     const read = {
-      time_zone: "Europe/Istanbul",
       today: "2026-10-22",
-      location_names: ["Kadikoy"],
       requests: [
         {
-          id: "0500b11b-9cde-4b29-8920-f37cc9f5b268",
+          id: "fb60a125-162c-4e43-ab04-a9109fd00d8f",
           kind: "leave",
-          kind_of_leave: "personal",
-          status: "pending",
-          starts_at: "2026-10-28T15:00:00+00:00",
-          ends_at: "2026-10-28T21:00:00+00:00",
-          all_day: false,
-          time_timezone: "Europe/Istanbul",
-          start_date: "2026-10-28",
-          end_date: "2026-10-28",
-          start_time: "18:00",
-          end_time: "24:00",
-          note: null,
-          revision: 1,
-          created_at: "2026-10-22T11:08:06.533185+00:00",
-          decided_at: null,
-          decided_by_name: null,
-          decision_note: null,
+          note: "Family visit",
+          status: "approved",
+          all_day: true,
+          ends_at: "2028-09-20T21:00:00+00:00",
+          end_date: "2028-09-20",
+          end_time: null,
           ended_at: null,
+          revision: 2,
+          starts_at: "2028-09-18T21:00:00+00:00",
+          cancels_id: null,
+          created_at: "2026-10-22T12:50:12.019564+00:00",
+          decided_at: "2026-10-22T12:50:12.019564+00:00",
           ended_note: null,
-        },
+          start_date: "2028-09-19",
+          start_time: null,
+          used_until: null,
+          cancellation: {
+            id: "5252467c-2df4-4c04-aba5-816fa5bf1757",
+            note: "Plans changed",
+            status: "pending",
+            revision: 1,
+            created_at: "2026-10-22T12:50:12.019564+00:00",
+            decided_at: null,
+            decision_note: null,
+            decided_by_name: null
+          },
+          decision_note: null,
+          ended_by_name: null,
+          kind_of_leave: "vacation",
+          time_timezone: "Europe/Istanbul",
+          decided_by_name: "Mk Person"
+        }
       ],
+      time_zone: "Europe/Istanbul",
+      location_names: [
+        "Kadikoy",
+        "Besiktas"
+      ]
     };
     expect(myTimeOffSchema.parse(read)).toEqual(read);
+  });
+
+  it("reads a D2 answer without the D4 fields as having none", () => {
+    const { cancellation: _c, cancels_id: _i, used_until: _u, ended_by_name: _n, ...before } = {
+      id: "fb60a125-162c-4e43-ab04-a9109fd00d8f",
+      kind: "leave",
+      note: "Family visit",
+      status: "approved",
+      all_day: true,
+      ends_at: "2028-09-20T21:00:00+00:00",
+      end_date: "2028-09-20",
+      end_time: null,
+      ended_at: null,
+      revision: 2,
+      starts_at: "2028-09-18T21:00:00+00:00",
+      cancels_id: null,
+      created_at: "2026-10-22T12:50:12.019564+00:00",
+      decided_at: "2026-10-22T12:50:12.019564+00:00",
+      ended_note: null,
+      start_date: "2028-09-19",
+      start_time: null,
+      used_until: null,
+      cancellation: {
+        id: "5252467c-2df4-4c04-aba5-816fa5bf1757",
+        note: "Plans changed",
+        status: "pending",
+        revision: 1,
+        created_at: "2026-10-22T12:50:12.019564+00:00",
+        decided_at: null,
+        decision_note: null,
+        decided_by_name: null
+      },
+      decision_note: null,
+      ended_by_name: null,
+      kind_of_leave: "vacation",
+      time_timezone: "Europe/Istanbul",
+      decided_by_name: "Mk Person"
+    };
+    expect(myTimeOffSchema.parse({ ...{"today": "2026-10-22", "time_zone": "Europe/Istanbul", "location_names": ["Kadikoy", "Besiktas"]}, requests: [before] }).requests[0]).toMatchObject({
+      cancellation: null,
+      cancels_id: null,
+      used_until: null,
+      ended_by_name: null,
+    });
   });
 });
 
@@ -137,6 +201,11 @@ const deciderView = {
   time_timezone: "Europe/Istanbul",
   location_names: ["Kadikoy", "Besiktas"],
   decided_by_name: null,
+  // D4 (the same service's answer since 20261022160000).
+  cancels_id: null,
+  used_until: null,
+  cancellation: null,
+  ended_by_name: null,
 } as const;
 
 describe("the answer's shapes", () => {
@@ -203,5 +272,76 @@ describe("the answer's shapes", () => {
     expect(myTimeOffShiftsQuerySchema.safeParse({ start: "2028-09-19", end: "2028-09-20" }).success).toBe(true);
     expect(myTimeOffShiftsQuerySchema.safeParse({ start: "2028-09-19", end: "2028-09-19", from: "08:00", to: "24:00" }).success).toBe(true);
     expect(myTimeOffShiftsQuerySchema.safeParse({ start: "2028-09-19", end: "2028-09-19", from: "08:00" }).success).toBe(false);
+  });
+});
+
+// Time off rebuild D4: a cancellation as time_off_requests_service lists it (rolled back, world fx), and the
+// shapes the employee and the answerer send.
+describe("D4 cancellation and take back", () => {
+  it("reads a cancellation waiting in the answerer's list", () => {
+    const page = {
+      page: 1,
+      total: 1,
+      waiting: 1,
+      requests: [
+        {
+          id: "5252467c-2df4-4c04-aba5-816fa5bf1757",
+          kind: "cancel",
+          note: "Plans changed",
+          status: "pending",
+          all_day: true,
+          ends_at: "2028-09-20T21:00:00+00:00",
+          end_date: "2028-09-20",
+          end_time: null,
+          ended_at: null,
+          revision: 1,
+          starts_at: "2028-09-18T21:00:00+00:00",
+          cancels_id: "fb60a125-162c-4e43-ab04-a9109fd00d8f",
+          created_at: "2026-10-22T12:50:12.019564+00:00",
+          decided_at: null,
+          ended_note: null,
+          start_date: "2028-09-19",
+          start_time: null,
+          used_until: null,
+          employee_id: "ced859e3-8f2b-48a7-858f-88f5fba28246",
+          cancellation: null,
+          decision_note: null,
+          employee_name: "Ali Person",
+          ended_by_name: null,
+          kind_of_leave: "vacation",
+          shifts_opened: 0,
+          time_timezone: "Europe/Istanbul",
+          location_names: [
+            "Kadikoy",
+            "Besiktas"
+          ],
+          decided_by_name: null
+        }
+      ],
+      page_size: 50
+    };
+    expect(timeOffRequestsPageSchema.parse(page)).toEqual(page);
+  });
+
+  it("asks to cancel with an optional note, on a revision and a key", () => {
+    const ask = { note: null, expected_revision: 2, client_key: "98020000-0000-4000-8000-000000000001" };
+    expect(timeOffCancellationAskInputSchema.safeParse(ask).success).toBe(true);
+    expect(timeOffCancellationAskInputSchema.safeParse({ ...ask, note: "Plans changed" }).success).toBe(true);
+    expect(timeOffCancellationAskInputSchema.safeParse({ ...ask, note: "x".repeat(1001) }).success).toBe(false);
+    expect(timeOffCancellationAskInputSchema.safeParse({ ...ask, client_key: "nope" }).success).toBe(false);
+    expect(timeOffCancellationAskInputSchema.safeParse({ ...ask, extra: 1 }).success).toBe(false);
+  });
+
+  it("answers a cancellation without a print", () => {
+    expect(timeOffCancellationAnswerInputSchema.safeParse({ verdict: "approve", note: null, expected_revision: 1 }).success).toBe(true);
+    expect(timeOffCancellationAnswerInputSchema.safeParse({ verdict: "decline", note: "Busy week", expected_revision: 1 }).success).toBe(true);
+    expect(timeOffCancellationAnswerInputSchema.safeParse({ verdict: "maybe", note: null, expected_revision: 1 }).success).toBe(false);
+  });
+
+  it("takes time off back only with a note", () => {
+    expect(timeOffTakeBackInputSchema.parse({ note: "  Short-staffed  ", expected_revision: 2 }).note).toBe("Short-staffed");
+    expect(timeOffTakeBackInputSchema.safeParse({ note: "   ", expected_revision: 2 }).success).toBe(false);
+    expect(timeOffTakeBackInputSchema.safeParse({ note: "x".repeat(1001), expected_revision: 2 }).success).toBe(false);
+    expect(timeOffTakeBackInputSchema.safeParse({ expected_revision: 2 }).success).toBe(false);
   });
 });

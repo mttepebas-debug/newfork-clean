@@ -51,10 +51,28 @@ export type TimeOffAskInput = z.infer<typeof timeOffAskInputSchema>;
 export const timeOffWithdrawInputSchema = z.object({ expected_revision: z.number().int().min(1) }).strict();
 export type TimeOffWithdrawInput = z.infer<typeof timeOffWithdrawInputSchema>;
 
+/**
+ * D4: the cancellation last asked of approved time off (a withdrawn one is not shown). Waiting past the time
+ * off's end, it reads as expired.
+ */
+export const timeOffCancellationSchema = z.object({
+  id,
+  status: z.enum(["pending", "approved", "declined", "expired"]),
+  note: z.string().nullable(),
+  revision: z.number().int(),
+  created_at: instant,
+  decided_at: instant.nullable(),
+  decided_by_name: z.string().nullable(),
+  decision_note: z.string().nullable(),
+});
+export type TimeOffCancellation = z.infer<typeof timeOffCancellationSchema>;
+
 /** One request as the employee reads it; dates and clocks are local to the zone it was asked in. */
 export const timeOffRequestViewSchema = z.object({
   id,
   kind: z.enum(["leave", "cancel"]),
+  /** D4: a cancellation names the time off it cancels. */
+  cancels_id: id.nullable().default(null),
   kind_of_leave: kindOfLeaveSchema,
   status: timeOffRequestStatusSchema,
   starts_at: instant,
@@ -73,6 +91,12 @@ export const timeOffRequestViewSchema = z.object({
   decision_note: z.string().nullable(),
   ended_at: instant.nullable(),
   ended_note: z.string().nullable(),
+  /** D4: who cancelled (the answerer) or revoked it. */
+  ended_by_name: z.string().nullable().default(null),
+  /** D4: cancelled or revoked time off that had started was used until then; null when none of it was. */
+  used_until: instant.nullable().default(null),
+  /** D4: on time off, the cancellation last asked of it. */
+  cancellation: timeOffCancellationSchema.nullable().default(null),
 });
 export type TimeOffRequestView = z.infer<typeof timeOffRequestViewSchema>;
 
@@ -255,3 +279,49 @@ export const myTimeOffShiftsSchema = z.object({
   ),
 });
 export type MyTimeOffShifts = z.infer<typeof myTimeOffShiftsSchema>;
+
+// Time off rebuild D4 (KARARLAR S-239 (4), (6)): the employee asks to cancel approved time off, started or
+// not; one manager answers it as they answer time off; whoever may answer takes approved time off back with
+// a note. Only what is left goes, and shifts that went to open shifts stay open. The database decides.
+
+/** What the employee sends to cancel approved time off, on the revision they read. The note is optional. */
+export const timeOffCancellationAskInputSchema = z
+  .object({
+    note: z.string().max(1000).nullable(),
+    expected_revision: z.number().int().min(1),
+    client_key: id,
+  })
+  .strict();
+export type TimeOffCancellationAskInput = z.infer<typeof timeOffCancellationAskInputSchema>;
+
+/** The answer to a cancellation, on the revision read; it opens no shift, so it carries no print. */
+export const timeOffCancellationAnswerInputSchema = z
+  .object({
+    verdict: z.enum(["approve", "decline"]),
+    note: z.string().max(1000).nullable(),
+    expected_revision: z.number().int().min(1),
+  })
+  .strict();
+export type TimeOffCancellationAnswerInput = z.infer<typeof timeOffCancellationAnswerInputSchema>;
+
+/** Taking approved time off back: the note is required. */
+export const timeOffTakeBackInputSchema = z
+  .object({
+    note: z.string().trim().min(1).max(1000),
+    expected_revision: z.number().int().min(1),
+  })
+  .strict();
+export type TimeOffTakeBackInput = z.infer<typeof timeOffTakeBackInputSchema>;
+
+/** Every reason asking to cancel, or taking back, is refused besides the authorization core's. */
+export const timeOffCancelReasons = [
+  "time_off.invalid",
+  "time_off.changed",
+  "time_off.not_approved",
+  "time_off.ended",
+  "time_off.cancel_pending",
+  "time_off.key_reused",
+  "time_off.not_found",
+  "time_off.note_required",
+] as const;
+export type TimeOffCancelReason = (typeof timeOffCancelReasons)[number];
