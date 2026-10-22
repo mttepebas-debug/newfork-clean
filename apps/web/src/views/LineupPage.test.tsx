@@ -1550,7 +1550,9 @@ describe("LineupPage on a phone, E", () => {
     expect(within(panel).queryByRole("button")).toBeNull();
   });
 
+  // A published one: a manager's draft opens its notes to edit (S-238).
   it("says when a lineup has no notes yet", async () => {
+    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: false } };
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
     expect(within(screen.getByRole("tabpanel")).getByText("No notes yet.")).toBeTruthy();

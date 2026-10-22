@@ -40,7 +40,7 @@ import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../sched
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
 import { useTabSwipe } from "../shell/useTabSwipe";
-import { CopyTextButton, EditNotesButton, NotesEditor, SectionsWindow, type LineupEditing } from "./LineupDesktopEdit";
+import { CopyTextButton, NotesEditor, SectionsWindow, type LineupEditing } from "./LineupDesktopEdit";
 import { AddStaffButton, EmptyDepartment, OutGroups, StaffWindow, teamDepartments, type StaffPlace } from "./LineupDesktopStaff";
 import { LineupPersonCircle } from "./LineupPersonCircle";
 import { PersonSheet } from "./LineupPhoneStaff";
@@ -53,7 +53,7 @@ import "./lineup-phone.css";
 // Publish waits at the bottom over the bar while the shift on screen has a draft; it opens the Publish window as
 // a sheet. On a draft that hasn't started, a manager taps a row for its person panel (Replace…, Call off) and adds
 // staff from a department's heading (LINEUP-EDIT W3b); the panel changes the row's fields, the ticket's gear opens
-// Sections, Notes has Edit notes and Read Copy as text (W2b).
+// Sections, Notes opens to edit on a draft (S-238) and Read has Copy as text (W2b).
 
 export interface PhonePublish {
   readonly waiting: number;
@@ -292,7 +292,14 @@ function LocationLineup({
   const live = shift.publish.published;
   // Read is off until the lineup is published (Mert 2026-10-17 ~12:30 PM): a draft shows Team or Notes.
   const seg: Seg = picked === "read" && !live ? "team" : picked;
-  const swipe = useTabSwipe({ tabs: live ? SEGS : SEGS.slice(0, 2), active: seg, enabled: open, onSelect: setSeg, scope: "self" });
+  // S-238 (Mert 2026-10-21): on a draft that can change, going to Notes opens its notes to edit, no pencil step; a
+  // published one's open read only, with nothing to edit them (Edit on the card takes the lineup back first).
+  const [notesOpen, setNotesOpen] = useState(false);
+  const pick = (next: Seg) => {
+    if (next === "notes") setNotesOpen(true);
+    setSeg(next);
+  };
+  const swipe = useTabSwipe({ tabs: live ? SEGS : SEGS.slice(0, 2), active: seg, enabled: open, onSelect: pick, scope: "self" });
   // A draft that hasn't started changes in place (the server locks the rest), as on the desktop.
   const changing = editing && lineupEditable(shift, now) ? editing : null;
   // The person panel's row, by its key: the panel reads her as the day has her now (a change moves her row).
@@ -301,7 +308,6 @@ function LocationLineup({
   const setPerson = (row: LineupRow | null) => setPersonKey(row?.shiftId ?? null);
   const [staff, setStaff] = useState<StaffPlace | null>(null);
   const [sectionsOpen, setSectionsOpen] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
   const joined = open && seg === "team" && teamEmpty(shift, changing);
   const panel = `${ids}panel`;
   return (
@@ -328,18 +334,15 @@ function LocationLineup({
         cardRef={swipe.tabs}
         onSections={changing ? () => setSectionsOpen(true) : undefined}
       >
-        <Segments shift={shift} seg={seg} onSeg={setSeg} ids={ids} panel={panel} />
+        <Segments shift={shift} seg={seg} onSeg={pick} ids={ids} panel={panel} />
       </LineupCard>
       {open ? (
         <div className="lineup-phone-pane" role="tabpanel" id={panel} aria-labelledby={`${ids}seg-${seg}`}>
           {seg === "notes" ? (
             changing && notesOpen ? (
-              <NotesEditor editing={changing} shift={shift} onDone={() => setNotesOpen(false)} />
+              <NotesEditor editing={changing} shift={shift} onDone={() => setNotesOpen(false)} focusFirst={false} />
             ) : (
-              <>
-                {changing ? <EditNotesButton onEdit={() => setNotesOpen(true)} /> : null}
-                <NotesPane shift={shift} />
-              </>
+              <NotesPane shift={shift} />
             )
           ) : seg === "read" ? (
             <ReadPane
