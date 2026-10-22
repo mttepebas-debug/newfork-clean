@@ -29,7 +29,7 @@ const CLOCKS = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2))
 
 export const blankDraft: AskDraft = { kind: null, start: "", end: "", allDay: true, from: "09:00", to: "17:00", note: "" };
 
-function FieldMessage({ id, text }: { id: string; text: string | undefined }) {
+export function FieldMessage({ id, text }: { id: string; text: string | undefined }) {
   if (!text) return null;
   return (
     <p className="tor-fmsg" id={id} role="alert">
@@ -39,7 +39,7 @@ function FieldMessage({ id, text }: { id: string; text: string | undefined }) {
   );
 }
 
-function Field({ label, children, hint, message }: { label: ReactNode; children: ReactNode; hint?: ReactNode; message?: ReactNode }) {
+export function Field({ label, children, hint, message }: { label: ReactNode; children: ReactNode; hint?: ReactNode; message?: ReactNode }) {
   return (
     <div className="tor-field">
       <span className="tor-label">{label}</span>
@@ -139,115 +139,22 @@ export function TimeOffAskForm({
   const msg = (field: AskField) => `${ids}-${field}-msg`;
   const described = (field: AskField) => (shown[field] ? msg(field) : undefined);
 
-  const kindField = phone ? (
-    <Field
-      label={<label htmlFor={`${ids}-kind`}>Type</label>}
-      hint={draft.kind ? leaveKinds.find((k) => k.kind === draft.kind)?.hint : "Sick covers you or someone you care for."}
-      message={<FieldMessage id={msg("kind")} text={shown.kind} />}
-    >
-      <select
-        id={`${ids}-kind`}
-        value={draft.kind ?? ""}
-        aria-invalid={shown.kind ? true : undefined}
-        aria-describedby={described("kind")}
-        onChange={(event) => change({ kind: (event.target.value || null) as AskDraft["kind"] })}
-      >
-        <option value="" disabled>Choose a type</option>
-        {leaveKinds.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
-      </select>
-    </Field>
-  ) : (
-    <Field label={<span id={`${ids}-kind-l`}>What kind of time off?</span>} message={<FieldMessage id={msg("kind")} text={shown.kind} />}>
-      <div className="tor-radiolist" role="radiogroup" aria-labelledby={`${ids}-kind-l`} aria-describedby={described("kind")}>
-        {leaveKinds.map((k) => (
-          <label key={k.kind}>
-            <input type="radio" name={`${ids}-kind`} value={k.kind} checked={draft.kind === k.kind} onChange={() => change({ kind: k.kind })} />
-            <span><strong>{k.label}</strong><small>{k.hint}</small></span>
-          </label>
-        ))}
-      </div>
-    </Field>
+  const kindField = (
+    <KindField ids={ids} phone={phone} kind={draft.kind} message={shown.kind} describedBy={described("kind")} onChange={(kind) => change({ kind })} />
   );
 
-  const multi = Boolean(draft.start && end && draft.start !== end);
   const dates = (
-    <>
-      <Field label="Which days?" message={<FieldMessage id={msg("dates")} text={shown.dates} />}>
-        <div className="tor-quick" role="group" aria-label="Quick dates">
-          {QUICK.map(([which, label]) => (
-            <button
-              key={which}
-              type="button"
-              aria-pressed={quick === which}
-              onClick={() => {
-                const range = quickRange(which, now.date);
-                change({ start: range.start, end: range.end, allDay: true });
-                setQuick(which);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="tor-two">
-          <label className="tor-field" htmlFor={`${ids}-start`}>
-            <span className="tor-sublabel">First day</span>
-            <input
-              id={`${ids}-start`}
-              type="date"
-              min={now.date}
-              value={draft.start}
-              aria-invalid={shown.dates ? true : undefined}
-              aria-describedby={described("dates")}
-              onChange={(event) => {
-                setQuick(null);
-                const start = event.target.value;
-                change({ start, end: draft.end && draft.end < start ? start : draft.end });
-              }}
-            />
-          </label>
-          <label className="tor-field" htmlFor={`${ids}-end`}>
-            <span className="tor-sublabel">Last day</span>
-            <input
-              id={`${ids}-end`}
-              type="date"
-              min={draft.start || now.date}
-              value={end}
-              aria-invalid={shown.dates ? true : undefined}
-              aria-describedby={described("dates")}
-              onChange={(event) => {
-                setQuick(null);
-                change({ end: event.target.value });
-              }}
-            />
-          </label>
-        </div>
-      </Field>
-      <label className="tor-check">
-        <input type="checkbox" checked={draft.allDay} onChange={(event) => change({ allDay: event.target.checked })} />
-        All day
-      </label>
-      {draft.allDay ? null : (
-        <div className="tor-field">
-          <div className="tor-two">
-            <label className="tor-field" htmlFor={`${ids}-from`}>
-              <span className="tor-label">{multi ? `Starts ${monthDay(draft.start)} at` : "From"}</span>
-              <select id={`${ids}-from`} value={draft.from} aria-describedby={described("time")} onChange={(event) => change({ from: event.target.value })}>
-                {CLOCKS.map((c) => <option key={c} value={c}>{clockText(c, timeFormat)}</option>)}
-              </select>
-            </label>
-            <label className="tor-field" htmlFor={`${ids}-to`}>
-              <span className="tor-label">{multi ? `Ends ${monthDay(end)} at` : "To"}</span>
-              <select id={`${ids}-to`} value={draft.to} aria-describedby={described("time")} onChange={(event) => change({ to: event.target.value })}>
-                {CLOCKS.map((c) => <option key={c} value={c}>{clockText(c, timeFormat)}</option>)}
-                <option value="24:00">End of day</option>
-              </select>
-            </label>
-          </div>
-          <FieldMessage id={msg("time")} text={shown.time} />
-        </div>
-      )}
-    </>
+    <RangeFields
+      ids={ids}
+      draft={draft}
+      minDate={now.date}
+      quick={quick}
+      onQuick={setQuick}
+      change={change}
+      messages={shown}
+      describedBy={described}
+      timeFormat={timeFormat}
+    />
   );
 
   const note = (
@@ -296,7 +203,7 @@ export function TimeOffAskForm({
 }
 
 /** The top of the desktop drawer: the kind, the dates large, how long. */
-function SummaryCard({ draft, timeFormat }: { draft: AskDraft; timeFormat: TimeFormat }) {
+export function SummaryCard({ draft, timeFormat }: { draft: AskDraft; timeFormat: TimeFormat }) {
   const end = draft.end || draft.start;
   let meta = "";
   if (draft.start && end >= draft.start) {
@@ -316,5 +223,162 @@ function SummaryCard({ draft, timeFormat }: { draft: AskDraft; timeFormat: TimeF
       </p>
       {meta ? <p className="tor-tk-meta">{meta}</p> : null}
     </div>
+  );
+}
+
+/** The kind: a select with its hint on a phone, the described radio list on a computer. */
+export function KindField({
+  ids,
+  phone,
+  kind,
+  message,
+  describedBy,
+  onChange,
+}: {
+  ids: string;
+  phone: boolean;
+  kind: AskDraft["kind"];
+  message: string | undefined;
+  describedBy: string | undefined;
+  onChange: (kind: AskDraft["kind"]) => void;
+}) {
+  const msgId = `${ids}-kind-msg`;
+  return phone ? (
+    <Field
+      label={<label htmlFor={`${ids}-kind`}>Type</label>}
+      hint={kind ? leaveKinds.find((k) => k.kind === kind)?.hint : "Sick covers you or someone you care for."}
+      message={<FieldMessage id={msgId} text={message} />}
+    >
+      <select
+        id={`${ids}-kind`}
+        value={kind ?? ""}
+        aria-invalid={message ? true : undefined}
+        aria-describedby={describedBy}
+        onChange={(event) => onChange((event.target.value || null) as AskDraft["kind"])}
+      >
+        <option value="" disabled>Choose a type</option>
+        {leaveKinds.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+      </select>
+    </Field>
+  ) : (
+    <Field label={<span id={`${ids}-kind-l`}>What kind of time off?</span>} message={<FieldMessage id={msgId} text={message} />}>
+      <div className="tor-radiolist" role="radiogroup" aria-labelledby={`${ids}-kind-l`} aria-describedby={describedBy}>
+        {leaveKinds.map((k) => (
+          <label key={k.kind}>
+            <input type="radio" name={`${ids}-kind`} value={k.kind} checked={kind === k.kind} onChange={() => onChange(k.kind)} />
+            <span><strong>{k.label}</strong><small>{k.hint}</small></span>
+          </label>
+        ))}
+      </div>
+    </Field>
+  );
+}
+
+/** The days and hours: Tomorrow / This weekend / Next week, First day and Last day, All day, the clocks. */
+export function RangeFields({
+  ids,
+  draft,
+  minDate,
+  quick,
+  onQuick,
+  change,
+  messages,
+  describedBy,
+  timeFormat,
+  label = "Which days?",
+}: {
+  ids: string;
+  draft: AskDraft;
+  /** The first day the date fields offer (today at the location). */
+  minDate: string;
+  quick: string | null;
+  onQuick: (which: string | null) => void;
+  change: (next: Partial<AskDraft>) => void;
+  messages: Partial<Record<AskField, string>>;
+  describedBy: (field: AskField) => string | undefined;
+  timeFormat: TimeFormat;
+  label?: string;
+}) {
+  const end = draft.end || draft.start;
+  const multi = Boolean(draft.start && end && draft.start !== end);
+  const msg = (field: AskField) => `${ids}-${field}-msg`;
+  return (
+    <>
+      <Field label={label} message={<FieldMessage id={msg("dates")} text={messages.dates} />}>
+        <div className="tor-quick" role="group" aria-label="Quick dates">
+          {QUICK.map(([which, text]) => (
+            <button
+              key={which}
+              type="button"
+              aria-pressed={quick === which}
+              onClick={() => {
+                const range = quickRange(which, minDate);
+                change({ start: range.start, end: range.end, allDay: true });
+                onQuick(which);
+              }}
+            >
+              {text}
+            </button>
+          ))}
+        </div>
+        <div className="tor-two">
+          <label className="tor-field" htmlFor={`${ids}-start`}>
+            <span className="tor-sublabel">First day</span>
+            <input
+              id={`${ids}-start`}
+              type="date"
+              min={minDate}
+              value={draft.start}
+              aria-invalid={messages.dates ? true : undefined}
+              aria-describedby={describedBy("dates")}
+              onChange={(event) => {
+                onQuick(null);
+                const start = event.target.value;
+                change({ start, end: draft.end && draft.end < start ? start : draft.end });
+              }}
+            />
+          </label>
+          <label className="tor-field" htmlFor={`${ids}-end`}>
+            <span className="tor-sublabel">Last day</span>
+            <input
+              id={`${ids}-end`}
+              type="date"
+              min={draft.start || minDate}
+              value={end}
+              aria-invalid={messages.dates ? true : undefined}
+              aria-describedby={describedBy("dates")}
+              onChange={(event) => {
+                onQuick(null);
+                change({ end: event.target.value });
+              }}
+            />
+          </label>
+        </div>
+      </Field>
+      <label className="tor-check">
+        <input type="checkbox" checked={draft.allDay} onChange={(event) => change({ allDay: event.target.checked })} />
+        All day
+      </label>
+      {draft.allDay ? null : (
+        <div className="tor-field">
+          <div className="tor-two">
+            <label className="tor-field" htmlFor={`${ids}-from`}>
+              <span className="tor-label">{multi ? `Starts ${monthDay(draft.start)} at` : "From"}</span>
+              <select id={`${ids}-from`} value={draft.from} aria-describedby={describedBy("time")} onChange={(event) => change({ from: event.target.value })}>
+                {CLOCKS.map((c) => <option key={c} value={c}>{clockText(c, timeFormat)}</option>)}
+              </select>
+            </label>
+            <label className="tor-field" htmlFor={`${ids}-to`}>
+              <span className="tor-label">{multi ? `Ends ${monthDay(end)} at` : "To"}</span>
+              <select id={`${ids}-to`} value={draft.to} aria-describedby={describedBy("time")} onChange={(event) => change({ to: event.target.value })}>
+                {CLOCKS.map((c) => <option key={c} value={c}>{clockText(c, timeFormat)}</option>)}
+                <option value="24:00">End of day</option>
+              </select>
+            </label>
+          </div>
+          <FieldMessage id={msg("time")} text={messages.time} />
+        </div>
+      )}
+    </>
   );
 }

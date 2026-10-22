@@ -35,6 +35,7 @@ function request(overrides: Partial<TimeOffRequestView>): TimeOffRequestView {
     ended_by_name: null,
     used_until: null,
     cancellation: null,
+    added_by_name: null,
     ...overrides,
   };
 }
@@ -275,6 +276,18 @@ describe("Time off (new)", () => {
     dialog = screen.getByRole("dialog", { name: "Time off" });
     expect(within(dialog).getByText("Declined", { selector: "strong" })).toBeTruthy();
     expect(within(dialog).getByText("Rachel Adams wrote").parentElement!.textContent).toBe("Rachel Adams wroteWe are short that day.");
+  });
+
+  it("says who added time off a manager entered, and shows their note as theirs (D5)", async () => {
+    const added = { ...dentist, note: "Get well soon.", added_by_name: "Rachel Adams", created_at: "2026-10-21T17:00:00+00:00" };
+    answer({ mine: () => ({ ...mine, requests: [added] }) });
+    renderIt();
+    fireEvent.click(await screen.findByRole("row", { name: /Personal/ }));
+    const dialog = screen.getByRole("dialog", { name: "Time off" });
+    expect(within(dialog).getByText("Added by Rachel Adams on Oct 21")).toBeTruthy();
+    expect(within(dialog).queryByText("Sent")).toBeNull();
+    expect(within(dialog).queryByText("Your note: Get well soon.")).toBeNull();
+    expect(within(dialog).getByText("Rachel Adams wrote").parentElement!.textContent).toBe("Rachel Adams wroteGet well soon.");
   });
 
   it("on a phone says which shifts would go to open shifts if the days are approved", async () => {

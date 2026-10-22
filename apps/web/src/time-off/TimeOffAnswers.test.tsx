@@ -40,6 +40,7 @@ function view(overrides: Partial<TimeOffDeciderView>): TimeOffDeciderView {
     ended_by_name: null,
     used_until: null,
     cancellation: null,
+    added_by_name: null,
     employee_id: "735032ec-0e98-4fb1-8005-c4ede5b1726b",
     employee_name: "Alex Kim",
     location_names: ["Downtown", "Midtown"],
@@ -286,6 +287,18 @@ describe("Requests → Time off (new)", () => {
     expect(within(dialog).getByText("Covered by Jo.")).toBeTruthy();
     expect(within(dialog).getByText("1 shift went to open shifts.")).toBeTruthy();
     expect(within(dialog).queryByRole("button", { name: "Approve" })).toBeNull();
+  });
+
+  it("lists time off a manager added as added, not asked, and says who added it (D5)", async () => {
+    const added = { ...dentist, added_by_name: "Rachel Adams", note: "Doctor's note on file.", created_at: "2026-10-21T17:00:00+00:00" };
+    answerWith({ list: () => ({ ...page, requests: [wedding, added] }) });
+    renderIt();
+    fireEvent.click(await screen.findByRole("row", { name: /Sam Lee has personal time off, added by Rachel Adams, Oct 27/ }));
+    const dialog = screen.getByRole("dialog", { name: "Review time off" });
+    expect(within(dialog).getByText("Added by Rachel Adams, Oct 21")).toBeTruthy();
+    expect(within(dialog).queryByText(/Approved by/)).toBeNull();
+    expect(within(dialog).getByText("Added")).toBeTruthy();
+    expect(within(dialog).getByText("Rachel Adams's note")).toBeTruthy();
   });
 
   it("opens a linked request the page does not list", async () => {

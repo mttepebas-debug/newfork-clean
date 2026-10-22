@@ -1,6 +1,7 @@
 import {
   timeOffAskRefusal,
   timeOffDayCount,
+  timeOffEntryRefusal,
   type KindOfLeave,
   type TimeOffDeciderView,
   type TimeOffRequestStatus,
@@ -250,14 +251,20 @@ export function withdrawRefusalText(reason: string | undefined): string {
 
 const askedFor: Record<KindOfLeave, string> = { vacation: "vacation", sick: "sick time", personal: "personal time off", other: "time off" };
 
-/** "Alex Kim asks for vacation, Nov 13–16" or (D4) "Alex Kim asks to cancel time off, Nov 13–16"; with hours, "…, Oct 27, 1:00 PM to 6:00 PM" (one sentence, S-151). */
+/** "Alex Kim asks for vacation, Nov 13–16", (D5) "Alex Kim has vacation, added by Rachel Adams, Nov 13–16" or (D4) "Alex Kim asks to cancel time off, Nov 13–16"; with hours, "…, Oct 27, 1:00 PM to 6:00 PM" (one sentence, S-151). */
 export function answerSentence(request: TimeOffDeciderView, format: TimeFormat = "12h") {
   let when: string;
   if (request.all_day || !request.start_time || !request.end_time) when = rangeShort(request);
   else if (request.start_date === request.end_date) when = `${monthDay(request.start_date)}, ${hoursText(request, format)}`;
   else
     when = `${monthDay(request.start_date)} ${clockText(request.start_time, format)} to ${monthDay(request.end_date)} ${clockText(request.end_time, format)}`;
-  const middle = request.kind === "cancel" ? " asks to cancel time off, " : ` asks for ${askedFor[request.kind_of_leave]}, `;
+  // D5: time off a manager added for the person was not asked for.
+  const middle =
+    request.kind === "cancel"
+      ? " asks to cancel time off, "
+      : request.added_by_name
+        ? ` has ${askedFor[request.kind_of_leave]}, added by ${request.added_by_name}, `
+        : ` asks for ${askedFor[request.kind_of_leave]}, `;
   return { name: request.employee_name, middle, when, text: `${request.employee_name}${middle}${when}` };
 }
 
@@ -305,5 +312,74 @@ export function takeBackRefusalText(reason: string | undefined): string {
       return "You can't revoke your own time off.";
     default:
       return answerRefusalText(reason);
+  }
+}
+
+// D5: whoever may answer adds approved time off for somebody.
+
+/** The add form's own checks: the employee, the kind, the days from the person's today, the range rules. */
+export function entryDraftProblems(
+  draft: AskDraft,
+  today: string,
+  person: boolean,
+): Partial<Record<AskField | "person", string>> {
+  const problems: Partial<Record<AskField | "person", string>> = {};
+  if (!person) problems.person = "Choose an employee.";
+  if (!draft.kind) problems.kind = "Choose a type.";
+  if (!draft.start) {
+    problems.dates = "Choose the days off.";
+    return problems;
+  }
+  const end = draft.end || draft.start;
+  const why = timeOffEntryRefusal(
+    { start_date: draft.start, end_date: end, all_day: draft.allDay, start_time: draft.allDay ? null : draft.from, end_time: draft.allDay ? null : draft.to },
+    today,
+  );
+  if (why === "time_off.order") {
+    if (end < draft.start) problems.dates = "The last day is before the first day.";
+    else problems.time = "The end time is before the start time.";
+  } else if (why === "time_off.too_long") problems.dates = "Add 31 days or fewer at a time.";
+  else if (why === "time_off.past") problems.dates = "That day has passed. Time off can start today at the earliest.";
+  return problems;
+}
+
+/** Why adding time off did not go through, by its reason, and the field it belongs to. */
+export function entryRefusalText(
+  reason: string | undefined,
+  first: string,
+): { readonly field: AskField | "person" | null; readonly text: string } {
+  switch (reason) {
+    case "time_off.pending_overlap":
+      return { field: "dates", text: `${first} has a request waiting for these days. Answer it first.` };
+    case "time_off.overlap":
+      return { field: "dates", text: `${first} already has time off in these days.` };
+    case "time_off.past":
+      return { field: "dates", text: "That time has passed. Time off can start today at the earliest." };
+    case "time_off.too_long":
+      return { field: "dates", text: "Add 31 days or fewer at a time." };
+    case "time_off.order":
+      return { field: "time", text: "The end is before the start." };
+    case "time_off.no_such_time":
+      return { field: "time", text: "The clocks change that night, so this time doesn't exist. Pick another time." };
+    case "time_off.changed":
+      return { field: null, text: "The shifts in these days changed. Check the list again, then add." };
+    case "time_off.timezone_changed":
+      return { field: null, text: `${first}'s location changed time zone. Check the days and hours, then add again.` };
+    case "time_off.no_location":
+      return { field: "person", text: `${first} needs a location before they can have time off.` };
+    case "time_off.no_employee_access":
+      return { field: "person", text: "Time off is only for people who work shifts." };
+    case "time_off.not_found":
+      return { field: "person", text: "This person is no longer in the workspace." };
+    case "authz.rank":
+      return { field: "person", text: "You can't add time off for yourself." };
+    case "authz.document_blocked":
+      return { field: null, text: "Add your missing documents before you add time off." };
+    case "time_off.key_reused":
+    case "time_off.invalid":
+      return { field: null, text: "Something in this time off didn't go through. Check it and add again." };
+    default:
+      if (reason?.startsWith("authz.")) return { field: "person", text: `You can't add time off for ${first}.` };
+      return { field: null, text: "Couldn't add the time off. Check your connection and try again." };
   }
 }

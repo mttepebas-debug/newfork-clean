@@ -427,10 +427,10 @@ export function TimeOffAnswerDrawer({
           </DrawerField>
           <DrawerField label="Length">{lengthText(current)}</DrawerField>
           <DrawerField label="When">{rangeText(current, timeFormat)}</DrawerField>
-          <DrawerField label="Asked">{monthDay(instantDay(current.created_at, zone))}</DrawerField>
+          <DrawerField label={current.added_by_name ? "Added" : "Asked"}>{monthDay(instantDay(current.created_at, zone))}</DrawerField>
         </div>
       </DrawerSection>
-      <DrawerSection title={isCancel ? `${first}'s reason` : `${first}'s note`}>
+      <DrawerSection title={isCancel ? `${first}'s reason` : current.added_by_name ? `${current.added_by_name}'s note` : `${first}'s note`}>
         {current.note ? <p className="rd-quote">{current.note}</p> : <p className="rd-empty">No note.</p>}
       </DrawerSection>
       {current.kind === "leave" && current.status === "approved" && current.cancellation?.status === "pending" ? (
@@ -570,6 +570,8 @@ export function TimeOffAnswerDrawer({
  */
 function answerLine(request: TimeOffDeciderView): string {
   const day = (at: string | null) => (at ? `, ${monthDay(instantDay(at, request.time_timezone))}` : "");
+  // D5: time off added for the person was approved by whoever added it.
+  if (request.status === "approved" && request.added_by_name) return `Added by ${request.added_by_name}${day(request.created_at)}`;
   if (request.status === "approved") return `Approved by ${request.decided_by_name ?? "a manager"}${day(request.decided_at)}`;
   if (request.status === "declined") return `Declined by ${request.decided_by_name ?? "a manager"}${day(request.decided_at)}`;
   if (request.status === "cancelled") return `Cancelled by ${request.ended_by_name ?? "a manager"}${day(request.ended_at)}`;

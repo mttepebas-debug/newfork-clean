@@ -30,19 +30,27 @@ function Steps({ request, places }: { request: TimeOffRequestView; places: reado
   const by = (name: string | null, at: string | null) => [name, at ? monthDay(instantDay(at, zone)) : null].filter(Boolean).join(", ");
   const approvedOnce = request.status === "approved" || request.status === "cancelled" || request.status === "revoked";
   const cancellation = request.cancellation;
+  // D5: time off a manager added for them was not sent, nor answered: it was added, approved.
+  const added = request.added_by_name;
   return (
     <ol className="tor-steps">
-      <li className="is-done">
-        <strong>Sent</strong>
-        <span>{dayText(instantDay(request.created_at, zone))}</span>
-      </li>
+      {added ? (
+        <li className="is-done">
+          <strong>Added by {added} on {monthDay(instantDay(request.created_at, zone))}</strong>
+        </li>
+      ) : (
+        <li className="is-done">
+          <strong>Sent</strong>
+          <span>{dayText(instantDay(request.created_at, zone))}</span>
+        </li>
+      )}
       {request.status === "pending" ? (
         <li className="is-now">
           <strong>Waiting for a manager</strong>
           {places.length ? <span>{placesText(places)}</span> : null}
         </li>
       ) : null}
-      {approvedOnce ? (
+      {approvedOnce && !added ? (
         <li className="is-done">
           <strong>Approved</strong>
           <span>{by(request.decided_by_name, request.decided_at)}</span>
@@ -237,7 +245,14 @@ export function TimeOffDetail({
       {request.status === "cancelled" || request.status === "revoked" ? (
         <p className="tor-note-line"><Info size={15} aria-hidden /><span>{usedLine(request, timeFormat)}</span></p>
       ) : null}
-      {request.note ? <p className="tor-mynote">Your note: {request.note}</p> : null}
+      {request.note && request.added_by_name ? (
+        <blockquote className="tor-quote">
+          <span>{request.added_by_name} wrote</span>
+          {request.note}
+        </blockquote>
+      ) : request.note ? (
+        <p className="tor-mynote">Your note: {request.note}</p>
+      ) : null}
       {request.decision_note ? (
         <blockquote className="tor-quote">
           <span>{request.decided_by_name ?? "Your manager"} wrote</span>

@@ -2,6 +2,8 @@ import {
   myTimeOffSchema,
   myTimeOffShiftsSchema,
   timeOffDeciderViewSchema,
+  timeOffEntryImpactSchema,
+  timeOffEntryPeopleSchema,
   timeOffImpactSchema,
   timeOffRequestsPageSchema,
   timeOffRequestViewSchema,
@@ -13,6 +15,10 @@ import {
   type TimeOffCancellationAnswerInput,
   type TimeOffCancellationAskInput,
   type TimeOffDeciderView,
+  type TimeOffEntryImpact,
+  type TimeOffEntryImpactQuery,
+  type TimeOffEntryInput,
+  type TimeOffEntryPeople,
   type TimeOffImpact,
   type TimeOffRequestsPage,
   type TimeOffRequestsQuery,
@@ -225,5 +231,52 @@ export function useTakeBackTimeOff(workspaceId: string) {
     mutationFn: ({ requestId, input }: { requestId: string; input: TimeOffTakeBackInput }) =>
       takeBackTimeOff(workspaceId, requestId, input),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["time-off-requests", workspaceId] }),
+  });
+}
+
+// Time off rebuild D5: whoever may answer adds approved time off for somebody: whom, what it would open, the
+// entry. Adding settles every time off list and what shows shifts (it opens some).
+
+export const timeOffEntryPeopleKey = (workspaceId: string) => ["time-off-requests", workspaceId, "entry-people"] as const;
+export const timeOffEntryImpactKey = (workspaceId: string, query: TimeOffEntryImpactQuery) =>
+  ["time-off-requests", workspaceId, "entry-impact", query] as const;
+
+export async function loadTimeOffEntryPeople(workspaceId: string): Promise<TimeOffEntryPeople> {
+  return timeOffEntryPeopleSchema.parse(await apiRequest(client(), `${base(workspaceId)}/entries/people`));
+}
+
+export async function loadTimeOffEntryImpact(workspaceId: string, query: TimeOffEntryImpactQuery): Promise<TimeOffEntryImpact> {
+  return timeOffEntryImpactSchema.parse(await apiRequest(client(), `${base(workspaceId)}/entries/impact${search({ ...query })}`));
+}
+
+export async function enterTimeOff(workspaceId: string, entry: TimeOffEntryInput): Promise<TimeOffDeciderView> {
+  return timeOffDeciderViewSchema.parse(
+    await apiRequest(client(), `${base(workspaceId)}/entries`, { method: "POST", body: JSON.stringify(entry) }),
+  );
+}
+
+export function useTimeOffEntryPeople(workspaceId: string) {
+  return useQuery({ queryKey: timeOffEntryPeopleKey(workspaceId), queryFn: () => loadTimeOffEntryPeople(workspaceId), enabled: Boolean(workspaceId) });
+}
+
+export function useTimeOffEntryImpact(workspaceId: string, query: TimeOffEntryImpactQuery | null) {
+  return useQuery({
+    queryKey: timeOffEntryImpactKey(workspaceId, query ?? { employee_id: "", start: "", end: "" }),
+    queryFn: () => loadTimeOffEntryImpact(workspaceId, query!),
+    enabled: Boolean(workspaceId && query),
+    // Every change asks again: an entry made on an old picture is refused anyway.
+    staleTime: 0,
+  });
+}
+
+export function useEnterTimeOff(workspaceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (entry: TimeOffEntryInput) => enterTimeOff(workspaceId, entry),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["time-off-requests", workspaceId] }),
+        refreshExchangeSurfaces(queryClient, workspaceId),
+      ]),
   });
 }

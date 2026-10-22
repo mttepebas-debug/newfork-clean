@@ -18,7 +18,7 @@ const view = {
   note: null, revision: 1, created_at: "2026-10-22T16:30:00+00:00", decided_at: null, decided_by_name: null,
   decision_note: null, ended_at: null, ended_note: null,
   // D4: what the API answers since 20261022160000.
-  cancels_id: null, ended_by_name: null, used_until: null, cancellation: null,
+  cancels_id: null, ended_by_name: null, used_until: null, cancellation: null, added_by_name: null,
 };
 const mine = { time_zone: "America/Los_Angeles", today: "2026-10-22", location_names: ["Downtown"], requests: [view] };
 

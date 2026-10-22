@@ -191,3 +191,14 @@
 .tor-cancelbox textarea:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 1px; }
 .tor-note-line { display: flex; gap: 8px; margin: 0; color: var(--theme-text-secondary); font-size: 13px; line-height: 1.45; }
 .tor-note-line svg { flex: none; margin-top: 2px; color: var(--theme-muted-strong); }
+
+/* D5: Requests → Time off → Add time off (whoever may answer adds approved time off for somebody) */
+.toe-checking { padding: 2px 0; }
+.toe-hidden { margin: 6px 0 0; color: var(--theme-muted); font-size: 12.5px; }
+.toe-confirm { display: flex; flex: 1; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; }
+.toe-confirm-text { display: grid; gap: 2px; min-width: 0; font-size: 13.5px; }
+.toe-confirm-text strong { color: var(--theme-text); }
+.toe-confirm-text span { color: var(--theme-text-secondary); }
+.toe-confirm-actions { display: flex; gap: 10px; }
+.tor-sheet.is-phone .toe-confirm-actions { flex: 1 1 100%; }
+.tor-sheet.is-phone .toe-confirm-actions .nf-button { flex: 1; }

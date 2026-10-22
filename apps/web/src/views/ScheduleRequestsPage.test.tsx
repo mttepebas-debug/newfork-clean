@@ -1094,6 +1094,18 @@ describe("Time off tab with the new time off", () => {
     expect(String(apiRequest.mock.calls[0]![1])).toContain(`/v1/workspaces/${workspaceId}/time-off-requests?`);
   });
 
+  it("adds time off from the filter row on the Time off tab (D5)", async () => {
+    renderPage("/app/schedule/requests?type=time_off");
+    await screen.findByRole("row", { name: /Jo Park asks for vacation/ });
+    expect(screen.getByRole("button", { name: "Add time off" })).toBeTruthy();
+  });
+
+  it("offers no Add time off on the All tab", async () => {
+    renderPage();
+    expect(await screen.findByRole("row", { name: /Alex Kim/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add time off" })).toBeNull();
+  });
+
   it("keeps the All tab as it is", async () => {
     renderPage();
     expect(await screen.findByRole("row", { name: /Alex Kim/ })).toBeTruthy();

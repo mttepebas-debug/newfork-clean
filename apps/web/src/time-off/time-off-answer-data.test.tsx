@@ -27,7 +27,7 @@ const view = {
   note: null, revision: 1, created_at: "2026-10-22T16:30:00+00:00", decided_at: null, decided_by_name: null,
   decision_note: null, ended_at: null, ended_note: null,
   // D4: what the API answers since 20261022160000.
-  cancels_id: null, ended_by_name: null, used_until: null, cancellation: null,
+  cancels_id: null, ended_by_name: null, used_until: null, cancellation: null, added_by_name: null,
   employee_id: "735032ec-0e98-4fb1-8005-c4ede5b1726b", employee_name: "Ali Person", location_names: ["Downtown"], shifts_opened: 0,
 };
 const page = { total: 1, waiting: 1, page: 1, page_size: 50, requests: [view] };

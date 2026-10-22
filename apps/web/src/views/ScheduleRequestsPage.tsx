@@ -1,5 +1,5 @@
 import { CatalogDrawer } from "../settings/CatalogDrawer";
-import { CatalogPageHeader } from "./CatalogPageHeader";
+import { CatalogPageHeader, ListAddButton } from "./CatalogPageHeader";
 import { ListPagination } from "./ListPagination";
 import { RequestCards, RequestsTable } from "./RequestsTable";
 import { SwapReview } from "./SwapReview";
@@ -45,6 +45,7 @@ import { NoAccessRoute, NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { timeOffV2Enabled } from "../time-off/time-off-flag";
 import { TimeOffAnswers } from "../time-off/TimeOffAnswers";
+import { TimeOffEntry } from "../time-off/TimeOffEntry";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
 
 export function ScheduleRequestsPage() {
@@ -84,6 +85,7 @@ function ScheduleRequestsPageContent() {
   const [locationId, setLocationId] = useState("");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(params.get("request") ?? "");
+  const [addingTimeOff, setAddingTimeOff] = useState(false);
   // EKRAN-02 C2 (H2): the swap whose review window is open over the list. The
   // window reads the list's latest copy and keeps the last one it saw, so a
   // refresh that no longer lists the swap does not pull it away (P26).
@@ -333,6 +335,7 @@ function ScheduleRequestsPageContent() {
   // Time off rebuild D3: behind the time-off-v2 flag the Time off tab is the new time off's (its own list,
   // paged by the server, and its answer drawer). The All tab and the old drawer stay until D7.
   const newTimeOff = view.type === "time_off" && timeOffV2Enabled() && can(context, "time_off.decide");
+  // D5: whoever may answer adds approved time off for somebody from the Time off tab's filter row.
 
   return (
     <section
@@ -406,6 +409,7 @@ function ScheduleRequestsPageContent() {
               }}
             />
           </label>
+          {newTimeOff ? <ListAddButton label="Add time off" shortLabel="Add" onClick={() => setAddingTimeOff(true)} /> : null}
         </div>
       </div>
 
@@ -444,18 +448,32 @@ function ScheduleRequestsPageContent() {
           )}
         </div>
       ) : newTimeOff ? (
-        <TimeOffAnswers
-          workspaceId={workspaceId}
-          timeFormat={timeFormat}
-          locationId={locationId}
-          search={search}
-          page={view.page}
-          pageSize={view.pageSize}
-          onPageChange={(next) => setView({ page: next > 1 ? String(next) : null })}
-          onPageSizeChange={(size) => setView({ size: size === 50 ? null : String(size), page: null })}
-          selectedId={selectedId}
-          onSelect={selectRequest}
-        />
+        <>
+          <TimeOffAnswers
+            workspaceId={workspaceId}
+            timeFormat={timeFormat}
+            locationId={locationId}
+            search={search}
+            page={view.page}
+            pageSize={view.pageSize}
+            onPageChange={(next) => setView({ page: next > 1 ? String(next) : null })}
+            onPageSizeChange={(size) => setView({ size: size === 50 ? null : String(size), page: null })}
+            selectedId={selectedId}
+            onSelect={selectRequest}
+          />
+          {addingTimeOff ? (
+            <TimeOffEntry
+              workspaceId={workspaceId}
+              timeFormat={timeFormat}
+              onClose={() => setAddingTimeOff(false)}
+              onAdded={(entered) => {
+                setAddingTimeOff(false);
+                selectRequest(entered.id);
+                toast.success(`Time off added for ${entered.employee_name}`);
+              }}
+            />
+          ) : null}
+        </>
       ) : (
         <>
           <div className="employee-table-wrap requests-table-wrap" ref={listWrap} tabIndex={-1}>
