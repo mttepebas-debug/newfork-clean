@@ -4,6 +4,8 @@ import {
   timeOffAskInputSchema,
   timeOffCancellationAnswerInputSchema,
   timeOffCancellationAskInputSchema,
+  timeOffEntryImpactQuerySchema,
+  timeOffEntryInputSchema,
   timeOffRequestsQuerySchema,
   timeOffTakeBackInputSchema,
   timeOffWithdrawInputSchema,
@@ -67,6 +69,31 @@ export function registerTimeOffRequestsRoutes(
     return reply.send(
       await options.service.withdraw({ ...actor, requestId: params.data.id, expectedRevision: body.data.expected_revision }),
     );
+  });
+
+  // D5: whoever may answer enters approved time off for somebody. The gate is the core's list (time_off.decide
+  // somewhere); the database asks again for the person, refuses their own and somebody who only manages.
+  // These static paths come before /:id in Fastify's router.
+  app.get("/v1/workspaces/:workspaceId/time-off-requests/entries/people", async (request, reply) => {
+    const actor = await gate(request, "time_off.decide");
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.entryPeople(actor));
+  });
+
+  app.get("/v1/workspaces/:workspaceId/time-off-requests/entries/impact", async (request, reply) => {
+    const actor = await gate(request, "time_off.decide");
+    const query = timeOffEntryImpactQuerySchema.safeParse(request.query);
+    if (!query.success) return reply.status(400).send({ error: "Choose a person, the days, and both hours unless it is all day" });
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.entryImpact({ ...actor, query: query.data }));
+  });
+
+  app.post("/v1/workspaces/:workspaceId/time-off-requests/entries", async (request, reply) => {
+    const actor = await gate(request, "time_off.decide");
+    const body = timeOffEntryInputSchema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "Choose a person, a type, the days, and the hours unless it is all day" });
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.enter({ ...actor, entry: body.data }));
   });
 
   // D3: who may answer reads the list, what approving would open, and answers. The gate is the core's list

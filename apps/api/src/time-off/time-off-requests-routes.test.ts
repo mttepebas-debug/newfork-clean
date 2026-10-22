@@ -5,6 +5,8 @@ import {
   type MyTimeOff,
   type MyTimeOffShifts,
   type TimeOffDeciderView,
+  type TimeOffEntryImpact,
+  type TimeOffEntryPeople,
   type TimeOffImpact,
   type TimeOffRequestView,
   type TimeOffRequestsPage,
@@ -66,6 +68,7 @@ const request: TimeOffRequestView = {
   ended_by_name: null,
   used_until: null,
   cancellation: null,
+  added_by_name: null,
 };
 const mine: MyTimeOff = { time_zone: "America/Los_Angeles", today: "2026-10-22", location_names: ["Downtown"], requests: [request] };
 // D3: the answerer's side.
@@ -83,6 +86,13 @@ const withCancellation: TimeOffRequestView = { ...request, status: "approved", r
 const cancelAnswered: TimeOffDeciderView = { ...decided, id: cancellationId, kind: "cancel", cancels_id: requestId, status: "approved",
   decided_by_name: "Mk Person" };
 const takenBack: TimeOffDeciderView = { ...decided, status: "revoked", revision: 3, ended_note: "Short-staffed", ended_by_name: "Mk Person" };
+// D5: time off entered for somebody.
+const mariaId = "735032ec-0e98-4fb1-8005-c4ede5b1726b";
+const entryPeople: TimeOffEntryPeople = { people: [{ employee_id: mariaId, name: "Maria Lopez", location_names: ["Downtown"],
+  time_zone: "America/Los_Angeles", today: "2026-10-22" }] };
+const entryImpact: TimeOffEntryImpact = { fingerprint: "d41d8cd98f00b204e9800998ecf8427e", shift_count: 0, hidden_shift_count: 0,
+  locations: [], time_zone: "America/Los_Angeles", overlap: null };
+const entered: TimeOffDeciderView = { ...decided, status: "approved", added_by_name: "Mk Person", decided_by_name: "Mk Person" };
 
 function serviceMock(): TimeOffRequestsService {
   return {
@@ -96,6 +106,9 @@ function serviceMock(): TimeOffRequestsService {
     askCancellation: vi.fn().mockResolvedValue(withCancellation),
     answerCancellation: vi.fn().mockResolvedValue(cancelAnswered),
     takeBack: vi.fn().mockResolvedValue(takenBack),
+    entryPeople: vi.fn().mockResolvedValue(entryPeople),
+    entryImpact: vi.fn().mockResolvedValue(entryImpact),
+    enter: vi.fn().mockResolvedValue(entered),
   };
 }
 
@@ -117,6 +130,19 @@ const answer = { verdict: "approve", note: "Enjoy", expected_revision: 1, expect
 const askCancel = { note: "Plans changed", expected_revision: 2, client_key: "5b1d0c9e-0f7e-4c8a-9a51-6f5f2b0c4d12" };
 const answerCancel = { verdict: "approve", note: null, expected_revision: 1 };
 const takeBack = { note: "Short-staffed", expected_revision: 2 };
+const enter = {
+  employee_id: mariaId,
+  kind_of_leave: "sick",
+  start_date: "2026-10-22",
+  end_date: "2026-10-22",
+  all_day: true,
+  start_time: null,
+  end_time: null,
+  note: null,
+  expected_timezone: "America/Los_Angeles",
+  expected_impact: "d41d8cd98f00b204e9800998ecf8427e",
+  client_key: "5b1d0c9e-0f7e-4c8a-9a51-6f5f2b0c4d13",
+};
 
 // Each route, the action the core must have listed for it, a valid body, and what it answers.
 const routes = [
@@ -130,6 +156,9 @@ const routes = [
   ["POST", `${base}/${requestId}/cancellation`, "time_off.request_own", askCancel, withCancellation],
   ["POST", `${base}/${cancellationId}/answer-cancellation`, "time_off.decide", answerCancel, cancelAnswered],
   ["POST", `${base}/${requestId}/take-back`, "time_off.decide", takeBack, takenBack],
+  ["GET", `${base}/entries/people`, "time_off.decide", undefined, entryPeople],
+  ["GET", `${base}/entries/impact?employee_id=${mariaId}&start=2026-10-22&end=2026-10-22`, "time_off.decide", undefined, entryImpact],
+  ["POST", `${base}/entries`, "time_off.decide", enter, entered],
 ] as const;
 
 describe("time off requests routes", () => {
@@ -182,7 +211,16 @@ describe("time off requests routes", () => {
     await app.inject({ method: "POST", url: `${base}/${requestId}/cancellation`, headers: auth, payload: askCancel });
     await app.inject({ method: "POST", url: `${base}/${cancellationId}/answer-cancellation`, headers: auth, payload: answerCancel });
     await app.inject({ method: "POST", url: `${base}/${requestId}/take-back`, headers: auth, payload: { ...takeBack, note: "  Short-staffed " } });
+    await app.inject({ method: "GET", url: `${base}/entries/people`, headers: auth });
+    await app.inject({ method: "GET", url: `${base}/entries/impact?employee_id=${mariaId}&start=2026-10-22&end=2026-10-23&from=09:00&to=24:00`, headers: auth });
+    await app.inject({ method: "POST", url: `${base}/entries`, headers: auth, payload: enter });
     const actor = { actorUserId: userId, workspaceId };
+    expect(service.entryPeople).toHaveBeenCalledExactlyOnceWith(actor);
+    expect(service.entryImpact).toHaveBeenCalledExactlyOnceWith({ ...actor,
+      query: { employee_id: mariaId, start: "2026-10-22", end: "2026-10-23", from: "09:00", to: "24:00" } });
+    expect(service.enter).toHaveBeenCalledExactlyOnceWith({ ...actor, entry: enter });
+    const smuggledEntry = await app.inject({ method: "POST", url: `${base}/entries`, headers: auth, payload: { ...enter, actor_user_id: spoofed } });
+    expect(smuggledEntry.statusCode).toBe(400);
     expect(service.mine).toHaveBeenCalledExactlyOnceWith(actor);
     expect(service.ask).toHaveBeenCalledExactlyOnceWith({ ...actor, request: ask });
     expect(service.withdraw).toHaveBeenCalledExactlyOnceWith({ ...actor, requestId, expectedRevision: 1 });
@@ -235,6 +273,12 @@ describe("time off requests routes", () => {
     ["POST", `${base}/${requestId}/take-back`, { expected_revision: 2 }],
     ["POST", `${base}/${requestId}/take-back`, { ...takeBack, note: "x".repeat(1001) }],
     ["POST", `${base}/not-an-id/take-back`, takeBack],
+    ["POST", `${base}/entries`, { ...enter, employee_id: "somebody" }],
+    ["POST", `${base}/entries`, { ...enter, expected_impact: null }],
+    ["POST", `${base}/entries`, { ...enter, all_day: false }],
+    ["POST", `${base}/entries`, { ...enter, kind_of_leave: "holiday" }],
+    ["GET", `${base}/entries/impact?start=2026-10-22&end=2026-10-22`, undefined],
+    ["GET", `${base}/entries/impact?employee_id=${mariaId}&start=2026-10-22&end=2026-10-22&from=09:00`, undefined],
   ] as const)("%s %s refuses a question it cannot read", async (method, url, payload) => {
     const service = serviceMock();
     const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
@@ -305,6 +349,27 @@ describe("time off requests routes", () => {
     vi.mocked(service[method]).mockRejectedValue(rpcFailure({ message: "Refused", code, hint }));
     const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
     const response = await app.inject({ method: "POST", url, headers: auth, payload });
+    expect(response.statusCode).toBe(status);
+    expect(response.json()).toMatchObject({ reason: hint });
+    await app.close();
+  });
+
+  it.each([
+    ["enter", "POST", `${base}/entries`, enter, "PT409", "time_off.pending_overlap", 409],
+    ["enter", "POST", `${base}/entries`, enter, "PT409", "time_off.overlap", 409],
+    ["enter", "POST", `${base}/entries`, enter, "PT409", "time_off.changed", 409],
+    ["enter", "POST", `${base}/entries`, enter, "22023", "time_off.past", 400],
+    ["enter", "POST", `${base}/entries`, enter, "22023", "time_off.no_employee_access", 400],
+    ["enter", "POST", `${base}/entries`, enter, "P0002", "time_off.not_found", 404],
+    ["enter", "POST", `${base}/entries`, enter, "42501", "authz.rank", 403],
+    ["entryImpact", "GET", `${base}/entries/impact?employee_id=${mariaId}&start=2026-10-21&end=2026-10-22`, undefined, "22023", "time_off.past", 400],
+    ["entryImpact", "GET", `${base}/entries/impact?employee_id=${mariaId}&start=2026-10-22&end=2026-10-22`, undefined, "42501", "authz.out_of_scope", 403],
+    ["entryPeople", "GET", `${base}/entries/people`, undefined, "42501", "authz.document_blocked", 403],
+  ] as const)("D5 %s at %s %s passes %s %s through as %i", async (call, method, url, payload, code, hint, status) => {
+    const service = serviceMock();
+    vi.mocked(service[call]).mockRejectedValue(rpcFailure({ message: "Refused", code, hint }));
+    const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
+    const response = await app.inject({ method, url, headers: auth, ...(payload ? { payload } : {}) });
     expect(response.statusCode).toBe(status);
     expect(response.json()).toMatchObject({ reason: hint });
     await app.close();

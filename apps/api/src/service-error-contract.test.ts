@@ -104,6 +104,12 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
     workspaceId: workspace, requestId: id, answer: { verdict: "decline", note: null, expected_revision: 1 } })],
   ["take back time off", () => createTimeOffRequestsService(options).takeBack({ actorUserId: actor, workspaceId: workspace,
     requestId: id, takeBack: { note: "Short-staffed", expected_revision: 1 } })],
+  ["whom one may enter time off for", () => createTimeOffRequestsService(options).entryPeople({ actorUserId: actor, workspaceId: workspace })],
+  ["what entering time off would open", () => createTimeOffRequestsService(options).entryImpact({ actorUserId: actor, workspaceId: workspace,
+    query: { employee_id: id, start: "2028-09-11", end: "2028-09-12" } })],
+  ["enter time off for somebody", () => createTimeOffRequestsService(options).enter({ actorUserId: actor, workspaceId: workspace,
+    entry: { employee_id: id, kind_of_leave: "sick", start_date: "2028-09-11", end_date: "2028-09-11", all_day: true, start_time: null,
+      end_time: null, note: null, expected_timezone: "America/Los_Angeles", expected_impact: "abc", client_key: id } })],
 ];
 
 describe.each(calls)("%s service", (_name, call) => {

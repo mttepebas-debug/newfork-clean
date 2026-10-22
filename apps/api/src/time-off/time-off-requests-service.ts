@@ -2,6 +2,8 @@ import {
   myTimeOffSchema,
   myTimeOffShiftsSchema,
   timeOffDeciderViewSchema,
+  timeOffEntryImpactSchema,
+  timeOffEntryPeopleSchema,
   timeOffImpactSchema,
   timeOffRequestsPageSchema,
   timeOffRequestViewSchema,
@@ -13,6 +15,10 @@ import {
   type TimeOffCancellationAnswerInput,
   type TimeOffCancellationAskInput,
   type TimeOffDeciderView,
+  type TimeOffEntryImpact,
+  type TimeOffEntryImpactQuery,
+  type TimeOffEntryInput,
+  type TimeOffEntryPeople,
   type TimeOffImpact,
   type TimeOffRequestsPage,
   type TimeOffRequestsQuery,
@@ -49,6 +55,12 @@ export interface TimeOffRequestsService {
   ): Promise<TimeOffDeciderView>;
   /** D4: approved time off taken back, with a note. */
   takeBack(input: Actor & { readonly requestId: string; readonly takeBack: TimeOffTakeBackInput }): Promise<TimeOffDeciderView>;
+  /** D5: whom this person may enter time off for. */
+  entryPeople(input: Actor): Promise<TimeOffEntryPeople>;
+  /** D5: what entering time off for somebody would open, and whether it falls on time off. */
+  entryImpact(input: Actor & { readonly query: TimeOffEntryImpactQuery }): Promise<TimeOffEntryImpact>;
+  /** D5: approved time off entered for somebody. */
+  enter(input: Actor & { readonly entry: TimeOffEntryInput }): Promise<TimeOffDeciderView>;
 }
 
 interface RpcClient {
@@ -160,6 +172,39 @@ export function createTimeOffRequestsService(options: { url: string; serviceRole
           target_request_id: input.requestId,
           note: input.takeBack.note,
           expected_revision: input.takeBack.expected_revision,
+        }),
+      );
+    },
+    async entryPeople(input) {
+      return timeOffEntryPeopleSchema.parse(await call("time_off_entry_people_service", input));
+    },
+    async entryImpact(input) {
+      const q = input.query;
+      return timeOffEntryImpactSchema.parse(
+        await call("enter_time_off_impact_service", input, {
+          target_employee_id: q.employee_id,
+          first_day: q.start,
+          last_day: q.end,
+          from_clock: q.from ?? null,
+          to_clock: q.to ?? null,
+        }),
+      );
+    },
+    async enter(input) {
+      const e = input.entry;
+      return timeOffDeciderViewSchema.parse(
+        await call("enter_time_off_service", input, {
+          target_employee_id: e.employee_id,
+          entered_kind: e.kind_of_leave,
+          first_day: e.start_date,
+          last_day: e.end_date,
+          entered_all_day: e.all_day,
+          from_clock: e.all_day ? null : e.start_time,
+          to_clock: e.all_day ? null : e.end_time,
+          entered_note: e.note,
+          expected_timezone: e.expected_timezone,
+          expected_impact: e.expected_impact,
+          request_key: e.client_key,
         }),
       );
     },
