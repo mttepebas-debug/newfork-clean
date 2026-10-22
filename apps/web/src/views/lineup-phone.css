@@ -19,14 +19,22 @@
 }
 
 /* The page header, pinned at the top of the main area at its full size (the shell's frozen top, which would
-   fold it to one line, leaves it alone: data-frozen-own). */
+   fold it to one line, leaves it alone: data-frozen-own). It lets the page's sky through: clear at rest, and
+   it frosts what passes under it once the page moves, as the employee's Lineup does (Mert 2026-10-21). */
 .lineup-phone-page .lineup-phone-head {
   position: sticky;
   top: 0;
   z-index: 5;
   margin: 0 -16px;
   padding: 16px 16px 0;
-  background: var(--theme-page);
+  background: color-mix(in srgb, var(--theme-app-ground) 70%, transparent);
+  -webkit-backdrop-filter: saturate(1.6) blur(18px);
+  backdrop-filter: saturate(1.6) blur(18px);
+}
+.app-main:not([data-frozen-scrolled]) > .lineup-phone-page .lineup-phone-head {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 .lineup-phone-page.list-page .lineup-phone-head > .catalog-page-header {
   height: auto;
@@ -35,7 +43,6 @@
   align-items: flex-start;
   margin: 0;
   padding: 16px 0 20px;
-  background: var(--theme-page);
 }
 .lineup-phone-page.list-page .lineup-phone-head > .catalog-page-header h1 {
   flex-wrap: wrap;
