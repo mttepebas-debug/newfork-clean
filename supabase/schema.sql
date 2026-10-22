@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 576, last: 20261022120000_time_off_leave_spans.sql
--- fingerprint: sha256:b87b02ada54493f4c4d4fba58c182dbec7547baf02ee901968664acd5a947de3
+-- migrations: 577, last: 20261022130000_time_off_requests.sql
+-- fingerprint: sha256:e381ea4def3d7bfc877e4e30792d8b97276eaffb1c522c2881832c4b0559575f
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3736,6 +3736,10 @@ begin
     values (w, closed.id, 'revoked', actor, why);
     perform app_private.time_off_tell(w, closed.id, 'withdrawn', actor);
   end loop;
+  -- And in the new table (time off rebuild D2); its notices come with D3.
+  update public.time_off_requests r
+  set status = 'withdrawn', ended_by = actor, ended_at = now(), ended_note = why, revision = r.revision + 1, updated_at = now()
+  where r.workspace_id = w and r.employee_id = emp and r.status = 'pending';
 
   return impact;
 end;
@@ -5141,7 +5145,9 @@ CREATE OR REPLACE FUNCTION "app_private"."employee_side_impact"("w" "uuid", "emp
         and c.status = 'open' and c.owner_id is distinct from emp),
     'time_off_withdrawn', (
       select count(*)::integer from public.schedule_time_off_requests r
-      where r.workspace_id = w and r.employee_id = emp and r.status = 'pending'),
+      where r.workspace_id = w and r.employee_id = emp and r.status = 'pending')
+      + (select count(*)::integer from public.time_off_requests r
+         where r.workspace_id = w and r.employee_id = emp and r.status = 'pending'),
     'availability_deleted',
       exists (select 1 from public.employee_weekly_preferences p where p.workspace_id = w and p.employee_id = emp)
       or exists (select 1 from public.manager_weekly_reminders m where m.workspace_id = w and m.employee_id = emp))
@@ -6173,7 +6179,30 @@ CREATE OR REPLACE FUNCTION "app_private"."leave_spans"("target_workspace" "uuid"
     and (upper_inf(leave_spans.target_window)
       or seg.segment_date <= (upper(leave_spans.target_window) at time zone 'UTC')::date + 3)
     and tstzrange(seg.starts_at, seg.ends_at, '[)') && leave_spans.target_window
-    and piece.span && leave_spans.target_window;
+    and piece.span && leave_spans.target_window
+  union all
+  -- The new table (D2): what is approved, or left of it, is `effective`; one request is one range, so
+  -- its id is also the piece's.
+  select r.employee_id, r.id, r.id, r.revision, piece.span, false, r.time_timezone
+  from public.time_off_requests r
+  cross join lateral unnest(r.effective) piece(span)
+  where r.workspace_id = leave_spans.target_workspace
+    and r.employee_id = any (leave_spans.target_people)
+    and r.kind = 'leave'
+    and not isempty(r.effective)
+    and (upper_inf(leave_spans.target_window) or r.starts_at < upper(leave_spans.target_window))
+    and piece.span && leave_spans.target_window
+  union all
+  -- A request waiting for an answer, as the hours asked, until it starts: then it has expired.
+  select r.employee_id, r.id, r.id, r.revision, tstzrange(r.starts_at, r.ends_at, '[)'), true, r.time_timezone
+  from public.time_off_requests r
+  where r.workspace_id = leave_spans.target_workspace
+    and r.employee_id = any (leave_spans.target_people)
+    and r.kind = 'leave'
+    and r.status = 'pending'
+    and r.starts_at > now()
+    and (upper_inf(leave_spans.target_window) or r.starts_at < upper(leave_spans.target_window))
+    and tstzrange(r.starts_at, r.ends_at, '[)') && leave_spans.target_window;
 $$;
 
 
@@ -10317,6 +10346,83 @@ COMMENT ON FUNCTION "app_private"."time_off_request_item"("actor_user_id" "uuid"
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."time_off_requests" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "employee_id" "uuid" NOT NULL,
+    "kind" "text" DEFAULT 'leave'::"text" NOT NULL,
+    "cancels_id" "uuid",
+    "starts_at" timestamp with time zone NOT NULL,
+    "ends_at" timestamp with time zone NOT NULL,
+    "all_day" boolean NOT NULL,
+    "time_timezone" "text" NOT NULL,
+    "kind_of_leave" "text" NOT NULL,
+    "note" "text",
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "effective" "tstzmultirange" DEFAULT '{}'::"tstzmultirange" NOT NULL,
+    "decided_by" "uuid",
+    "decided_at" timestamp with time zone,
+    "decision_note" "text",
+    "ended_by" "uuid",
+    "ended_at" timestamp with time zone,
+    "ended_note" "text",
+    "created_by" "uuid" NOT NULL,
+    "reminded_at" timestamp with time zone,
+    "revision" integer DEFAULT 1 NOT NULL,
+    "client_key" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "time_off_requests_cancels_check" CHECK ((("kind" = 'cancel'::"text") = ("cancels_id" IS NOT NULL))),
+    CONSTRAINT "time_off_requests_decision_note_check" CHECK (("char_length"("decision_note") <= 1000)),
+    CONSTRAINT "time_off_requests_effective_inside_check" CHECK (("effective" <@ "tstzmultirange"("tstzrange"("starts_at", "ends_at", '[)'::"text")))),
+    CONSTRAINT "time_off_requests_effective_status_check" CHECK (("isempty"("effective") OR (("kind" = 'leave'::"text") AND ("status" = ANY (ARRAY['approved'::"text", 'cancelled'::"text", 'revoked'::"text"]))))),
+    CONSTRAINT "time_off_requests_ended_note_check" CHECK (("char_length"("ended_note") <= 1000)),
+    CONSTRAINT "time_off_requests_kind_check" CHECK (("kind" = ANY (ARRAY['leave'::"text", 'cancel'::"text"]))),
+    CONSTRAINT "time_off_requests_kind_of_leave_check" CHECK (("kind_of_leave" = ANY (ARRAY['vacation'::"text", 'sick'::"text", 'personal'::"text", 'other'::"text"]))),
+    CONSTRAINT "time_off_requests_length_check" CHECK ((("ends_at" - "starts_at") <= '31 days 01:00:00'::interval)),
+    CONSTRAINT "time_off_requests_note_check" CHECK (("char_length"("note") <= 1000)),
+    CONSTRAINT "time_off_requests_order_check" CHECK (("ends_at" > "starts_at")),
+    CONSTRAINT "time_off_requests_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'approved'::"text", 'declined'::"text", 'withdrawn'::"text", 'expired'::"text", 'cancelled'::"text", 'revoked'::"text"])))
+);
+
+
+ALTER TABLE "public"."time_off_requests" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."time_off_request_view"("r" "public"."time_off_requests") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select jsonb_build_object(
+    'id', r.id,
+    'kind', r.kind,
+    'kind_of_leave', r.kind_of_leave,
+    'status', case when r.status = 'pending' and r.starts_at <= now() then 'expired' else r.status end,
+    'starts_at', r.starts_at,
+    'ends_at', r.ends_at,
+    'all_day', r.all_day,
+    'time_timezone', r.time_timezone,
+    'start_date', (r.starts_at at time zone r.time_timezone)::date,
+    'end_date', case when r.all_day or (r.ends_at at time zone r.time_timezone)::time = '00:00'
+      then (r.ends_at at time zone r.time_timezone)::date - 1 else (r.ends_at at time zone r.time_timezone)::date end,
+    'start_time', case when r.all_day then null else to_char(r.starts_at at time zone r.time_timezone, 'HH24:MI') end,
+    'end_time', case when r.all_day then null
+      when (r.ends_at at time zone r.time_timezone)::time = '00:00' then '24:00'
+      else to_char(r.ends_at at time zone r.time_timezone, 'HH24:MI') end,
+    'note', r.note,
+    'revision', r.revision,
+    'created_at', r.created_at,
+    'decided_at', r.decided_at,
+    'decided_by_name', case when r.decided_by is null then null else app_private.account_name(r.decided_by) end,
+    'decision_note', r.decision_note,
+    'ended_at', r.ended_at,
+    'ended_note', r.ended_note)
+$$;
+
+
+ALTER FUNCTION "app_private"."time_off_request_view"("r" "public"."time_off_requests") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."time_off_shifts_fingerprint"("shifts" "jsonb") RETURNS "text"
     LANGUAGE "sql" IMMUTABLE
     SET "search_path" TO ''
@@ -11841,6 +11947,107 @@ $$;
 
 
 ALTER FUNCTION "public"."approve_signature_retention_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_policy_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."ask_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "asked_kind" "text", "first_day" "date", "last_day" "date", "asked_all_day" boolean, "from_clock" time without time zone, "to_clock" time without time zone, "asked_note" "text", "expected_timezone" "text", "request_key" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  person uuid;
+  zone_name text;
+  prior public.time_off_requests;
+  shown jsonb;
+  note_text text := nullif(btrim(coalesce(asked_note, '')), '');
+  begins timestamptz;
+  ends timestamptz;
+  created public.time_off_requests;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'time_off.request_own');
+  select e.id into person from public.employee_profiles e
+  where e.workspace_id = target_workspace_id and e.user_id = actor_user_id and e.archived_at is null;
+  if person is null then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'time_off.request_own';
+  end if;
+  if request_key is null then
+    raise exception 'A request key is required' using errcode = '22023', hint = 'time_off.invalid';
+  end if;
+  -- One request at a time per person, so two cannot both pass the overlap check. Nothing else waits.
+  perform pg_advisory_xact_lock(hashtextextended('time_off_person:' || person::text, 0));
+
+  select * into prior from public.time_off_requests r where r.client_key = request_key;
+  if found then
+    shown := app_private.time_off_request_view(prior);
+    if prior.employee_id is distinct from person or prior.kind <> 'leave'
+       or prior.kind_of_leave is distinct from asked_kind or prior.all_day is distinct from asked_all_day
+       or prior.note is distinct from note_text
+       or shown ->> 'start_date' is distinct from first_day::text or shown ->> 'end_date' is distinct from last_day::text
+       or shown ->> 'start_time' is distinct from (case when asked_all_day then null else to_char(from_clock, 'HH24:MI') end)
+       or shown ->> 'end_time' is distinct from (case when asked_all_day then null else to_char(to_clock, 'HH24:MI') end) then
+      raise exception 'This request key was used for other time off' using errcode = 'PT409', hint = 'time_off.key_reused';
+    end if;
+    return shown;
+  end if;
+
+  if asked_kind is null or asked_kind not in ('vacation', 'sick', 'personal', 'other')
+     or first_day is null or last_day is null or asked_all_day is null
+     or (not asked_all_day and (from_clock is null or to_clock is null or from_clock = '24:00'))
+     or char_length(note_text) > 1000 then
+    raise exception 'Choose a type, the days, and the hours unless it is all day; a note is at most 1000 characters'
+      using errcode = '22023', hint = 'time_off.invalid';
+  end if;
+  if last_day < first_day then
+    raise exception 'The last day is before the first day' using errcode = '22023', hint = 'time_off.order';
+  end if;
+
+  zone_name := app_private.time_off_timezone(target_workspace_id, person);
+  if zone_name is null then
+    raise exception 'You need a location before you can ask for time off' using errcode = '55000', hint = 'time_off.no_location';
+  end if;
+  if expected_timezone is distinct from zone_name then
+    raise exception 'The time zone of your location changed. Check the hours again before sending'
+      using errcode = 'PT409', hint = 'time_off.timezone_changed';
+  end if;
+
+  if asked_all_day then
+    if last_day - first_day + 1 > 31 then
+      raise exception 'Ask for 31 days or fewer at a time' using errcode = '22023', hint = 'time_off.too_long';
+    end if;
+    begins := first_day::timestamp at time zone zone_name;
+    ends := (last_day + 1)::timestamp at time zone zone_name;
+  else
+    if last_day + to_clock <= first_day + from_clock then
+      raise exception 'The end is before the start' using errcode = '22023', hint = 'time_off.order';
+    end if;
+    if (last_day + to_clock) - (first_day + from_clock) > interval '31 days' then
+      raise exception 'Ask for 31 days or fewer at a time' using errcode = '22023', hint = 'time_off.too_long';
+    end if;
+    begin
+      -- A clock the zone repeats is its first time; one it skips does not exist.
+      begins := public.time_off_resolve_clock(first_day + from_clock, zone_name, 'earlier');
+      ends := public.time_off_resolve_clock(last_day + to_clock, zone_name, 'earlier');
+    exception when sqlstate '22023' then
+      raise exception 'These hours do not exist on this date in your time zone'
+        using errcode = '22023', hint = 'time_off.no_such_time';
+    end;
+  end if;
+  if begins <= now() then
+    raise exception 'That time has already started' using errcode = '22023', hint = 'time_off.started';
+  end if;
+  if exists (select 1 from app_private.leave_spans(target_workspace_id, array[person], tstzrange(begins, ends, '[)'))) then
+    raise exception 'You already have time off or a request in these hours' using errcode = 'PT409', hint = 'time_off.overlap';
+  end if;
+
+  insert into public.time_off_requests (workspace_id, employee_id, starts_at, ends_at, all_day, time_timezone,
+    kind_of_leave, note, created_by, client_key)
+  values (target_workspace_id, person, begins, ends, asked_all_day, zone_name, asked_kind, note_text, actor_user_id, request_key)
+  returning * into created;
+  return app_private.time_off_request_view(created);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."ask_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "asked_kind" "text", "first_day" "date", "last_day" "date", "asked_all_day" boolean, "from_clock" time without time zone, "to_clock" time without time zone, "asked_note" "text", "expected_timezone" "text", "request_key" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."assess_schedule_shift_service"("actor" "uuid", "w" "uuid", "shift" "jsonb", "target_shift_id" "uuid" DEFAULT NULL::"uuid", "target_session_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
@@ -21277,6 +21484,42 @@ $$;
 
 
 ALTER FUNCTION "public"."mutate_schedule_edit_shift_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_session_id" "uuid", "expected_session_revision" integer, "operation" "text", "target_shift_id" "uuid", "expected_shift_revision" integer, "shift_payload" "jsonb", "request_idempotency_key" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."my_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  person uuid;
+  zone_name text;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'employee_hub.read');
+  select e.id into person from public.employee_profiles e
+  where e.workspace_id = target_workspace_id and e.user_id = actor_user_id and e.archived_at is null;
+  if person is null then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'employee_hub.read';
+  end if;
+  zone_name := app_private.time_off_timezone(target_workspace_id, person);
+  return jsonb_build_object(
+    'time_zone', zone_name,
+    'today', case when zone_name is null then null else (now() at time zone zone_name)::date end,
+    'location_names', coalesce((
+      select jsonb_agg(l.name order by a.is_primary desc, a.assigned_at)
+      from public.employee_location_assignments a
+      join public.locations l on l.id = a.location_id and l.workspace_id = a.workspace_id
+      where a.workspace_id = target_workspace_id and a.employee_id = person and a.ended_at is null
+        and app_private.location_is_live(l)), '[]'::jsonb),
+    'requests', coalesce((
+      select jsonb_agg(app_private.time_off_request_view(r) order by r.starts_at desc, r.created_at desc)
+      from (select * from public.time_off_requests q
+            where q.workspace_id = target_workspace_id and q.employee_id = person
+            order by q.starts_at desc limit 200) r), '[]'::jsonb));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."my_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."normalize_schedule_time_source"("w" "uuid", "payload" "jsonb", "previous" "jsonb" DEFAULT NULL::"jsonb", "preserve_saved_timezone" boolean DEFAULT false) RETURNS "jsonb"
@@ -31732,6 +31975,40 @@ $$;
 ALTER FUNCTION "public"."withdraw_document_acknowledgement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."withdraw_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_request_id" "uuid", "expected_revision" integer) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  found_request public.time_off_requests;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'time_off.request_own');
+  select * into found_request from public.time_off_requests r
+  where r.id = target_request_id and r.workspace_id = target_workspace_id;
+  if not found then
+    raise exception 'Time off request not found' using errcode = 'P0002', hint = 'time_off.not_found';
+  end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'time_off.request_own', target_person => found_request.employee_id);
+  perform pg_advisory_xact_lock(hashtextextended('time_off_person:' || found_request.employee_id::text, 0));
+  select * into found_request from public.time_off_requests r where r.id = target_request_id for update;
+  if found_request.revision is distinct from expected_revision then
+    raise exception 'This request changed. Check it again' using errcode = 'PT409', hint = 'time_off.changed';
+  end if;
+  if found_request.kind <> 'leave' or found_request.status <> 'pending' or found_request.starts_at <= now() then
+    raise exception 'Only a request waiting for an answer can be withdrawn' using errcode = 'PT409', hint = 'time_off.not_pending';
+  end if;
+  update public.time_off_requests
+  set status = 'withdrawn', ended_by = actor_user_id, ended_at = now(), revision = revision + 1, updated_at = now()
+  where id = found_request.id
+  returning * into found_request;
+  return app_private.time_off_request_view(found_request);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."withdraw_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_request_id" "uuid", "expected_revision" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."workspace_has_permission"("target_workspace_id" "uuid", "target_permission" "text") RETURNS boolean
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -34869,6 +35146,21 @@ ALTER TABLE ONLY "public"."time_off_commands"
 
 
 
+ALTER TABLE ONLY "public"."time_off_requests"
+    ADD CONSTRAINT "time_off_requests_client_key_key" UNIQUE ("client_key");
+
+
+
+ALTER TABLE ONLY "public"."time_off_requests"
+    ADD CONSTRAINT "time_off_requests_id_workspace_id_key" UNIQUE ("id", "workspace_id");
+
+
+
+ALTER TABLE ONLY "public"."time_off_requests"
+    ADD CONSTRAINT "time_off_requests_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."time_off_required_locations"
     ADD CONSTRAINT "time_off_required_locations_pkey" PRIMARY KEY ("request_id", "location_id");
 
@@ -35495,6 +35787,18 @@ CREATE INDEX "time_off_cancellation_period_parent_idx" ON "public"."time_off_can
 
 
 CREATE UNIQUE INDEX "time_off_legacy_clock_unique" ON "public"."schedule_time_off_segments" USING "btree" ("request_id", "segment_date", "start_time", "end_time") WHERE ("starts_at" IS NULL);
+
+
+
+CREATE INDEX "time_off_requests_cancels" ON "public"."time_off_requests" USING "btree" ("cancels_id") WHERE ("cancels_id" IS NOT NULL);
+
+
+
+CREATE INDEX "time_off_requests_person" ON "public"."time_off_requests" USING "btree" ("workspace_id", "employee_id", "starts_at");
+
+
+
+CREATE INDEX "time_off_requests_waiting" ON "public"."time_off_requests" USING "btree" ("workspace_id", "starts_at") WHERE ("status" = 'pending'::"text");
 
 
 
@@ -37406,6 +37710,36 @@ ALTER TABLE ONLY "public"."time_off_commands"
 
 
 
+ALTER TABLE ONLY "public"."time_off_requests"
+    ADD CONSTRAINT "time_off_requests_cancels_fkey" FOREIGN KEY ("cancels_id", "workspace_id") REFERENCES "public"."time_off_requests"("id", "workspace_id");
+
+
+
+ALTER TABLE ONLY "public"."time_off_requests"
+    ADD CONSTRAINT "time_off_requests_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."time_off_requests"
+    ADD CONSTRAINT "time_off_requests_decided_by_fkey" FOREIGN KEY ("decided_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."time_off_requests"
+    ADD CONSTRAINT "time_off_requests_employee_fkey" FOREIGN KEY ("employee_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id");
+
+
+
+ALTER TABLE ONLY "public"."time_off_requests"
+    ADD CONSTRAINT "time_off_requests_ended_by_fkey" FOREIGN KEY ("ended_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."time_off_requests"
+    ADD CONSTRAINT "time_off_requests_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id");
+
+
+
 ALTER TABLE ONLY "public"."time_off_required_locations"
     ADD CONSTRAINT "time_off_required_locations_location_id_workspace_id_fkey" FOREIGN KEY ("location_id", "workspace_id") REFERENCES "public"."locations"("id", "workspace_id") ON DELETE RESTRICT;
 
@@ -38053,6 +38387,9 @@ ALTER TABLE "public"."time_off_cancellation_periods" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."time_off_commands" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."time_off_requests" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."time_off_required_locations" ENABLE ROW LEVEL SECURITY;
@@ -39333,6 +39670,14 @@ REVOKE ALL ON FUNCTION "app_private"."time_off_request_item"("actor_user_id" "uu
 
 
 
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."time_off_requests" TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."time_off_request_view"("r" "public"."time_off_requests") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."time_off_shifts_fingerprint"("shifts" "jsonb") FROM PUBLIC;
 
 
@@ -39486,6 +39831,11 @@ GRANT ALL ON FUNCTION "public"."apply_schedule_template_service"("actor_user_id"
 
 REVOKE ALL ON FUNCTION "public"."approve_signature_retention_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_policy_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."approve_signature_retention_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_policy_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."ask_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "asked_kind" "text", "first_day" "date", "last_day" "date", "asked_all_day" boolean, "from_clock" time without time zone, "to_clock" time without time zone, "asked_note" "text", "expected_timezone" "text", "request_key" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."ask_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "asked_kind" "text", "first_day" "date", "last_day" "date", "asked_all_day" boolean, "from_clock" time without time zone, "to_clock" time without time zone, "asked_note" "text", "expected_timezone" "text", "request_key" "uuid") TO "service_role";
 
 
 
@@ -40276,6 +40626,11 @@ GRANT ALL ON FUNCTION "public"."mark_workspace_retention_purge_completed_service
 
 REVOKE ALL ON FUNCTION "public"."mutate_schedule_edit_shift_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_session_id" "uuid", "expected_session_revision" integer, "operation" "text", "target_shift_id" "uuid", "expected_shift_revision" integer, "shift_payload" "jsonb", "request_idempotency_key" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."mutate_schedule_edit_shift_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_session_id" "uuid", "expected_session_revision" integer, "operation" "text", "target_shift_id" "uuid", "expected_shift_revision" integer, "shift_payload" "jsonb", "request_idempotency_key" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."my_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."my_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
 
 
 
@@ -41198,6 +41553,11 @@ GRANT ALL ON FUNCTION "public"."weekly_team_read_service"("actor" "uuid", "w" "u
 
 REVOKE ALL ON FUNCTION "public"."withdraw_document_acknowledgement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."withdraw_document_acknowledgement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."withdraw_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_request_id" "uuid", "expected_revision" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."withdraw_time_off_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_request_id" "uuid", "expected_revision" integer) TO "service_role";
 
 
 

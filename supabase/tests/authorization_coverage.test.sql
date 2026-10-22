@@ -241,6 +241,10 @@ insert into service_class values
   ('submit_employee_document_lifecycle_service', 'documents.self'),
   ('submit_employee_onboarding_service', 'onboarding.self'),
   ('submit_time_off_service', 'time_off.request_own'),
+  -- Time off rebuild D2: the employee's own doors to the new table.
+  ('ask_time_off_service', 'time_off.request_own'),
+  ('withdraw_time_off_service', 'time_off.request_own'),
+  ('my_time_off_service', 'employee_hub.read'),
   ('sync_expiring_document_todos_service', 'exempt:worker'),
   ('terminate_employee_service', 'employee.terminate'),
   ('touch_workspace_membership_service', 'account.self'),
