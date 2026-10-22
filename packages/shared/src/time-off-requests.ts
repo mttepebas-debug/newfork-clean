@@ -86,6 +86,8 @@ export const timeOffRequestViewSchema = z.object({
   note: z.string().nullable(),
   revision: z.number().int(),
   created_at: instant,
+  /** D5: who added time off entered for the person by somebody else; null when they asked for it. */
+  added_by_name: z.string().nullable().default(null),
   decided_at: instant.nullable(),
   decided_by_name: z.string().nullable(),
   decision_note: z.string().nullable(),
@@ -325,3 +327,99 @@ export const timeOffCancelReasons = [
   "time_off.note_required",
 ] as const;
 export type TimeOffCancelReason = (typeof timeOffCancelReasons)[number];
+
+// Time off rebuild D5 (KARARLAR S-239 (1), (6)): whoever may answer a person's time off enters approved time
+// off for them, a record and not a request. The database (enter_time_off_service,
+// enter_time_off_impact_service, time_off_entry_people_service) decides who, when and what it opens.
+
+/** Whom this person may enter time off for, each with where they work, their zone and today there. */
+export const timeOffEntryPeopleSchema = z.object({
+  people: z.array(
+    z.object({
+      employee_id: id,
+      name: z.string(),
+      location_names: z.array(z.string()),
+      time_zone: z.string(),
+      today: day,
+    }),
+  ),
+});
+export type TimeOffEntryPeople = z.infer<typeof timeOffEntryPeopleSchema>;
+export type TimeOffEntryPerson = TimeOffEntryPeople["people"][number];
+
+/** The question before entering: the person, the days, and the hours unless it is all day. */
+export const timeOffEntryImpactQuerySchema = z
+  .object({
+    employee_id: id,
+    start: day,
+    end: day,
+    from: clock.optional(),
+    to: endClock.optional(),
+  })
+  .strict()
+  .refine((query) => (query.from === undefined) === (query.to === undefined), {
+    message: "Both hours, or neither",
+    path: ["from"],
+  });
+export type TimeOffEntryImpactQuery = z.infer<typeof timeOffEntryImpactQuerySchema>;
+
+/** What entering would open, as an answer's impact, with the zone and whether it falls on time off. */
+export const timeOffEntryImpactSchema = timeOffImpactSchema.omit({ request: true }).extend({
+  time_zone: z.string(),
+  /** Time off already approved there, or a request still waiting for an answer (answer that first). */
+  overlap: z.enum(["approved", "pending"]).nullable(),
+});
+export type TimeOffEntryImpact = z.infer<typeof timeOffEntryImpactSchema>;
+
+/** What the form sends: the person and their time off, on the zone and the print of the shifts it read. */
+export const timeOffEntryInputSchema = z
+  .object({
+    employee_id: id,
+    kind_of_leave: kindOfLeaveSchema,
+    start_date: day,
+    end_date: day,
+    all_day: z.boolean(),
+    start_time: clock.nullable(),
+    end_time: endClock.nullable(),
+    note: z.string().max(1000).nullable(),
+    expected_timezone: z.string().min(1).max(100),
+    expected_impact: z.string().min(1).max(100),
+    client_key: id,
+  })
+  .strict()
+  .refine((input) => input.all_day || (input.start_time !== null && input.end_time !== null), {
+    message: "Choose a start and an end time",
+    path: ["start_time"],
+  });
+export type TimeOffEntryInput = z.infer<typeof timeOffEntryInputSchema>;
+
+/** Every reason entering is refused besides the authorization core's. */
+export const timeOffEntryReasons = [
+  "time_off.invalid",
+  "time_off.order",
+  "time_off.too_long",
+  "time_off.past",
+  "time_off.overlap",
+  "time_off.pending_overlap",
+  "time_off.no_such_time",
+  "time_off.no_location",
+  "time_off.no_employee_access",
+  "time_off.timezone_changed",
+  "time_off.changed",
+  "time_off.key_reused",
+  "time_off.not_found",
+] as const;
+export type TimeOffEntryReason = (typeof timeOffEntryReasons)[number];
+
+/**
+ * What the form refuses before it sends: an end before the start, more than 31 days, a day before today at
+ * the person's location. Today is allowed, all day too; hours that already ended stay the database's answer.
+ */
+export function timeOffEntryRefusal(
+  range: TimeOffAskRange,
+  today: string,
+): "time_off.order" | "time_off.too_long" | "time_off.past" | null {
+  const asked = timeOffAskRefusal(range, { date: "0000-01-01", time: "00:00" });
+  if (asked === "time_off.order" || asked === "time_off.too_long") return asked;
+  return range.start_date < today ? "time_off.past" : null;
+}
