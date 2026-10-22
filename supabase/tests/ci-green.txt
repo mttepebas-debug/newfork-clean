@@ -248,3 +248,4 @@ supabase/tests/time_off_ask.test.sql
 supabase/tests/time_off_answer.test.sql
 supabase/tests/time_off_pending_schedule.test.sql
 supabase/tests/time_off_cancel_and_take_back.test.sql
+supabase/tests/time_off_enter.test.sql
