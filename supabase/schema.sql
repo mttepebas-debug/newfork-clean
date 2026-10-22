@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 575, last: 20261022094836_manager_home_document_links.sql
--- fingerprint: sha256:e38c40f232fdf05e5e5ec0acf14cce453c05fc29018f7f02098c7ba4c1533ffc
+-- migrations: 576, last: 20261022120000_time_off_leave_spans.sql
+-- fingerprint: sha256:b87b02ada54493f4c4d4fba58c182dbec7547baf02ee901968664acd5a947de3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1384,10 +1384,8 @@ CREATE OR REPLACE FUNCTION "app_private"."announcement_back_rows"("item" "public
     select shaped.*, case
       when lower(shaped.span) <= now() then 'Already started'
       when shaped.employee_id is not null and exists (
-        select 1 from public.schedule_time_off_segments segment
-        join public.schedule_time_off_requests request on request.id = segment.request_id and request.workspace_id = segment.workspace_id
-        where request.workspace_id = shaped.workspace_id and request.employee_id = shaped.employee_id and request.status = 'approved'
-          and public.time_off_effective_ranges(segment.id) && shaped.span)
+        select 1 from app_private.leave_spans(shaped.workspace_id, array[shaped.employee_id], shaped.span) away
+        where not away.pending)
         then shaped.short_name || ' has approved time off that day'
       when shaped.silent and not exists (
         select 1 from public.schedule_drafts draft
@@ -6149,6 +6147,39 @@ $$;
 ALTER FUNCTION "app_private"."keep_system_catalog_records"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."leave_spans"("target_workspace" "uuid", "target_people" "uuid"[], "target_window" "tstzrange") RETURNS TABLE("employee_id" "uuid", "request_id" "uuid", "segment_id" "uuid", "revision" integer, "span" "tstzrange", "pending" boolean, "zone" "text")
+    LANGUAGE "sql" STABLE STRICT
+    SET "search_path" TO ''
+    AS $$
+  select req.employee_id, req.id, seg.id, req.revision, piece.span, req.status = 'pending', seg.time_timezone
+  from public.schedule_time_off_requests req
+  join public.schedule_time_off_segments seg on seg.request_id = req.id and seg.workspace_id = req.workspace_id
+  -- What time_off_effective_ranges says, without its three calls where nothing was given back: a
+  -- pending request's hours are the hours asked; an approved period nothing cancels is all there.
+  cross join lateral unnest(case
+    when req.status = 'pending' then tstzmultirange(tstzrange(seg.starts_at, seg.ends_at, '[)'))
+    when seg.status <> 'approved' then '{}'::tstzmultirange
+    when not exists (select 1 from public.time_off_cancellation_periods cp where cp.parent_segment_id = seg.id)
+      then tstzmultirange(tstzrange(seg.starts_at, seg.ends_at, '[)'))
+    else public.time_off_effective_ranges(seg.id) end) piece(span)
+  where req.workspace_id = leave_spans.target_workspace
+    and req.employee_id = any (leave_spans.target_people)
+    and req.request_type = 'time_off'
+    and req.status in ('approved', 'pending')
+    -- A period is at most a day long (time_off_resolve_period) and its date is
+    -- local: three days either side finds every one that can touch the window.
+    and (lower_inf(leave_spans.target_window)
+      or seg.segment_date >= (lower(leave_spans.target_window) at time zone 'UTC')::date - 3)
+    and (upper_inf(leave_spans.target_window)
+      or seg.segment_date <= (upper(leave_spans.target_window) at time zone 'UTC')::date + 3)
+    and tstzrange(seg.starts_at, seg.ends_at, '[)') && leave_spans.target_window
+    and piece.span && leave_spans.target_window;
+$$;
+
+
+ALTER FUNCTION "app_private"."leave_spans"("target_workspace" "uuid", "target_people" "uuid"[], "target_window" "tstzrange") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."lineup_art_keys_valid"("keys" "text"[]) RETURNS boolean
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -8704,18 +8735,17 @@ with location_zone as (
   select z.zone_name,
     tstzrange(target_week_start::timestamp at time zone z.zone_name, (target_week_start + 8)::timestamp at time zone z.zone_name, '[)') as span
   from zone z
+), leave_piece as materialized (
+  -- Read once for the week and a day either side, whatever the zones (UTC-12 to UTC+14).
+  select away.employee_id, away.span
+  from app_private.leave_spans(target_workspace_id, target_employee_ids,
+    tstzrange((target_week_start - 1)::timestamp at time zone 'UTC', (target_week_start + 9)::timestamp at time zone 'UTC', '[)')) away
+  where not away.pending
 ), leave as (
-  select req.employee_id, lt.zone_name, range_agg(piece.span * lt.span) as spans
+  select lp.employee_id, lt.zone_name, range_agg(lp.span * lt.span) as spans
   from leave_target lt
-  join public.schedule_time_off_requests req
-    on req.workspace_id = target_workspace_id and req.employee_id = any(target_employee_ids)
-   and req.request_type = 'time_off' and req.status = 'approved'
-  join public.schedule_time_off_segments seg
-    on seg.request_id = req.id and seg.workspace_id = req.workspace_id and seg.status = 'approved'
-   and seg.segment_date between target_week_start - 4 and target_week_start + 12
-  cross join lateral unnest(public.time_off_effective_ranges(seg.id)) piece(span)
-  where piece.span && lt.span
-  group by req.employee_id, lt.zone_name
+  join leave_piece lp on lp.span && lt.span
+  group by lp.employee_id, lt.zone_name
 ), clock_segments as (
   select s.zone_name,
     jsonb_agg(jsonb_build_object('start_at', lower(s.utc_span), 'end_at', upper(s.utc_span), 'offset_seconds', s.offset_seconds)
@@ -11927,13 +11957,9 @@ begin
  -- Only the employee's own marks are unavailable hours; the note is not (M12).
  select coalesce(range_agg(tstzrange((x->>'start_at')::timestamptz,(x->>'end_at')::timestamptz,'[)')),'{}') into unavailable
   from jsonb_array_elements(capacity->'employee_intervals') x;
- for leave_row in select seg.id,seg.request_id,req.revision,approved_piece.span
-  from public.schedule_time_off_segments seg
-  join public.schedule_time_off_requests req on req.id=seg.request_id and req.workspace_id=seg.workspace_id
-  cross join lateral unnest(public.time_off_effective_ranges(seg.id)) approved_piece(span)
-  where req.workspace_id=w and req.employee_id=emp and req.request_type='time_off'
-   and req.status = 'approved' and seg.status='approved'
-   and seg.segment_date between day-3 and day+3 order by seg.id,lower(approved_piece.span) loop
+ for leave_row in select away.segment_id id,away.request_id,away.revision,away.span
+  from app_private.leave_spans(w,array[emp],coalesce(span,day_span)) away
+  where not away.pending order by away.segment_id,lower(away.span) loop
   leave_span:=leave_row.span*coalesce(span,day_span);
   if not isempty(leave_span) then
    leave_ranges:=leave_ranges+tstzmultirange(leave_span);
@@ -16223,15 +16249,17 @@ begin
     where e.workspace_id = target_workspace_id
       and app_private.lineup_staff_eligible(target_workspace_id, place.id, e.id)
       and not exists (select 1 from on_lineup o where o.employee_id = e.id)
+  ), on_leave as materialized (
+    -- Time off in these hours, as it is now: revoked or given back hours are no time off (D1a).
+    select distinct l.employee_id
+    from app_private.leave_spans(target_workspace_id, array(select p.id from people p), tstzrange(win_from, win_to, '[)')) l
+    where not l.pending
   ), fitted as (
     select p.*,
       array(select j.id from unnest(p.job_ids) as k (id) join public.jobs j on j.id = k.id
             where case when target is not null then j.id = (target ->> 'job_id')::uuid
                        else j.department_id is not distinct from department end) as fits,
-      exists (select 1 from public.schedule_time_off_segments s
-              join public.schedule_time_off_requests q on q.id = s.request_id and q.workspace_id = s.workspace_id
-              where s.workspace_id = target_workspace_id and q.employee_id = p.id and q.request_type = 'time_off'
-                and s.status = 'approved' and s.starts_at < win_to and s.ends_at > win_from) as off,
+      exists (select 1 from on_leave o where o.employee_id = p.id) as off,
       away.location_name as away_location, away.shift_name as away_shift, away.start_time as away_start,
       away.end_time as away_end, away.overlap as away_overlap,
       here.shift_name as here_shift, here.start_time as here_start, here.end_time as here_end, here.overlap as here_overlap,
@@ -16500,16 +16528,19 @@ begin
       and closure.closed_date between place.today and place.today + 13
     group by closure.announcement_id, closure.title
   ),
+  -- Time off as it is now (D1a): the days left of it, in the zone it was asked in. A piece that
+  -- ends at midnight is that day's; the next fourteen days hold it.
   approved_off as materialized (
-    select request.id, request.employee_id, min(segment.segment_date) as first_date, max(segment.segment_date) as last_date
-    from public.schedule_time_off_segments segment
-    join public.schedule_time_off_requests request on request.id = segment.request_id
-    where segment.workspace_id = target_workspace_id
-      and segment.segment_date between local_today and local_today + 13
-      and segment.status = 'approved'
-      and request.status = 'approved'
-      and request.request_type = 'time_off'
-    group by request.id, request.employee_id
+    select away.request_id as id, away.employee_id,
+      greatest(min((lower(away.span) at time zone away.zone)::date), local_today) as first_date,
+      least(max(((upper(away.span) - interval '1 microsecond') at time zone away.zone)::date), local_today + 13) as last_date
+    from app_private.leave_spans(target_workspace_id,
+      array(select e.id from public.employee_profiles e where e.workspace_id = target_workspace_id),
+      tstzrange((local_today - 1)::timestamp at time zone 'UTC', (local_today + 15)::timestamp at time zone 'UTC', '[)')) away
+    where not away.pending
+      and (lower(away.span) at time zone away.zone)::date <= local_today + 13
+      and ((upper(away.span) - interval '1 microsecond') at time zone away.zone)::date >= local_today
+    group by away.request_id, away.employee_id
   ),
   -- Days past the next seven (those are in "Needs you") with no current publication.
   unpublished as (
@@ -31526,8 +31557,12 @@ declare findings jsonb; signatures jsonb:='[]'; s record; a jsonb; prior jsonb; 
 begin
  if payload->>'status'='past_week_closed' then return payload; end if;
  -- Who has time off waiting for a decision, read once for the whole draft.
- asking:=array(select distinct q.employee_id from public.schedule_time_off_requests q
-  where q.workspace_id=w and q.status='pending' and q.request_type='time_off');
+ asking:=array(select distinct away.employee_id from app_private.leave_spans(w,
+   array(select distinct d.employee_id from public.schedule_draft_shifts d
+    where d.workspace_id=w and d.draft_id=(payload->>'draft_id')::uuid and d.employee_id is not null),
+   (select tstzrange((min(d.scheduled_date)-2)::timestamp at time zone 'UTC',(max(d.scheduled_date)+3)::timestamp at time zone 'UTC','[)')
+    from public.schedule_draft_shifts d where d.workspace_id=w and d.draft_id=(payload->>'draft_id')::uuid)) away
+  where away.pending);
  select coalesce(jsonb_agg(f),'[]') into findings from jsonb_array_elements(payload->'findings') f
   where f->>'code' not in ('availability','availability_unknown','availability_review_pending','time_source_unresolved','overlap','double_booking','time_off','closed_location','closed_day');
  -- Publishing is asked at each location the preview is for, once.
@@ -31583,11 +31618,8 @@ begin
    if lower(shift_span)>now() then
     pending:=pending||coalesce((select jsonb_agg(jsonb_build_object('employee_id',s.employee_id,'employee_name',nullif(s.employee_name,''),
       'scheduled_date',s.scheduled_date,'location_id',s.location_id,'location_name',s.location_name,'shift_id',s.id,'request_id',r.id))
-     from (select distinct req.id from public.schedule_time_off_requests req
-      join public.schedule_time_off_segments seg on seg.request_id=req.id and seg.workspace_id=req.workspace_id
-      where req.workspace_id=w and req.employee_id=s.employee_id and req.request_type='time_off' and req.status='pending'
-       and seg.segment_date between s.scheduled_date-3 and s.scheduled_date+3
-       and public.time_off_effective_ranges(seg.id)&&shift_span) r),'[]');
+     from (select distinct away.request_id id from app_private.leave_spans(w,array[s.employee_id],shift_span) away
+      where away.pending) r),'[]');
    end if;
   end if;
  end loop;
@@ -38735,6 +38767,10 @@ REVOKE ALL ON FUNCTION "app_private"."keep_session_shift_in_session_locations"()
 
 
 REVOKE ALL ON FUNCTION "app_private"."keep_system_catalog_records"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."leave_spans"("target_workspace" "uuid", "target_people" "uuid"[], "target_window" "tstzrange") FROM PUBLIC;
 
 
 
