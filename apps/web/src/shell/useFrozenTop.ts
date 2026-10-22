@@ -91,8 +91,10 @@ export function useFrozenTop(area: HTMLElement | null, root: HTMLElement | null 
       scroller().style.scrollPaddingTop = pieces.length ? `${stack.bottom}px` : "";
     };
 
+    // A page that pins its own top (data-frozen-own) has no piece here, but
+    // its top frosts under the sky by the same mark (the phone Lineup).
     const markScrolled = () => {
-      if (pieces.length && scrolled() > 0) root.dataset.frozenScrolled = "";
+      if ((pieces.length || root.querySelector("[data-frozen-own]")) && scrolled() > 0) root.dataset.frozenScrolled = "";
       else delete root.dataset.frozenScrolled;
     };
 
