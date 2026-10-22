@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 581, last: 20261022170000_time_off_enter.sql
--- fingerprint: sha256:8435b095abfb8fbcb1947595a8fd1cfbb62f0668f6346113a1984d82b24ecd09
+-- migrations: 582, last: 20261022180000_time_off_requests_sweep.sql
+-- fingerprint: sha256:788f8e1ef9b9876c4c332e7f319bce5ec9d243d168c6fe7d36d5927cacceecc0
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -8064,7 +8064,8 @@ CREATE OR REPLACE FUNCTION "app_private"."push_shows_body"("target_type" "text",
   select (target_type, target_subject) in (
     ('schedule.published', 'schedule_publication'), ('schedule.shift_added', 'schedule_publication'),
     ('schedule.shift_changed', 'schedule_publication'), ('schedule.shift_removed', 'schedule_publication'),
-    ('people.onboarding_completed', 'onboarding_case'), ('time_off.decision_reminder', 'time_off_request'))
+    ('people.onboarding_completed', 'onboarding_case'), ('time_off.decision_reminder', 'time_off_request'),
+    ('time_off.decision_reminder', 'time_off'))
 $$;
 
 
@@ -10704,7 +10705,7 @@ declare
 begin
   select * into person from public.employee_profiles e where e.id = r.employee_id and e.workspace_id = r.workspace_id;
   name := btrim(coalesce(nullif(btrim(person.preferred_name), ''), person.first_name) || ' ' || person.last_name);
-  if what = 'requested' or (r.kind = 'leave' and what in ('approved', 'revoked', 'entered')) then
+  if what = 'requested' or (r.kind = 'leave' and what in ('approved', 'revoked', 'entered', 'reminder')) then
     asked := app_private.notify_deciders(r.workspace_id, 'time_off.decide', array(
       select a.location_id
       from public.employee_location_assignments a
@@ -10741,6 +10742,14 @@ begin
       jsonb_build_object('request_id', r.id, 'kind_of_leave', r.kind_of_leave));
   end if;
 
+  -- A day before it starts, still waiting (D6): whoever would be asked now; nothing closes.
+  if what = 'reminder' then
+    return app_private.notify('time_off.decision_reminder', r.workspace_id, asked,
+      'time_off:' || r.id::text || ':reminder', 'Time off request from ' || name || ' still waits',
+      days || ' · It starts in less than a day. Answer it before it starts.', card_url, null, 'time_off', r.id,
+      jsonb_build_object('request_id', r.id, 'kind_of_leave', r.kind_of_leave));
+  end if;
+
   -- Entered for the person (D5): approved at once; nobody was asked, so no card closes.
   if what = 'entered' then
     opened := (select count(*)::integer from public.time_off_request_releases x
@@ -10774,6 +10783,14 @@ begin
         card_url, actor, 'time_off', r.id,
         jsonb_build_object('request_id', r.id, 'outcome', what, 'shifts_opened', opened));
     end if;
+  end if;
+
+  -- Nobody answered before it started (D6): the employee hears it, as the old system's "wasn't decided in time".
+  if what = 'expired' then
+    sent := app_private.notify('time_off.decided', r.workspace_id, array[person.user_id],
+      'time_off:' || r.id::text || ':expired', 'Your time off ' || days || ' wasn''t answered in time',
+      'Nobody answered it before it started.', mine_url, null, 'time_off', r.id,
+      jsonb_build_object('request_id', r.id, 'outcome', 'expired'));
   end if;
 
   if what = 'revoked' then
@@ -10852,6 +10869,70 @@ $$;
 
 
 ALTER FUNCTION "app_private"."time_off_request_view"("r" "public"."time_off_requests") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."time_off_requests_sweep"("pass_limit" integer DEFAULT 500, "pass_time" interval DEFAULT '00:00:30'::interval) RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  started timestamptz := clock_timestamp();
+  due record;
+  r public.time_off_requests;
+  done integer := 0;
+begin
+  for due in
+    select q.id, q.workspace_id
+    from public.time_off_requests q
+    where q.status = 'pending'
+      and ((q.kind = 'leave' and (q.starts_at <= now()
+             or (q.reminded_at is null and q.starts_at - interval '1 day' <= now()
+                 and q.created_at < q.starts_at - interval '1 day')))
+        or (q.kind = 'cancel' and q.ends_at <= now()))
+    order by case when q.kind = 'cancel' then q.ends_at when q.starts_at <= now() then q.starts_at
+                  else q.starts_at - interval '1 day' end, q.id
+    limit pass_limit
+  loop
+    -- Each request on its own: one that fails is rolled back alone and kept; the rest of the pass goes on.
+    begin
+      -- Read again under its row lock: an answer or a withdrawal may have closed it. One that somebody holds
+      -- now is left for the next pass.
+      select * into r from public.time_off_requests q where q.id = due.id and q.status = 'pending'
+      for update skip locked;
+      if found then
+        if (r.kind = 'leave' and r.starts_at <= now()) or (r.kind = 'cancel' and r.ends_at <= now()) then
+          update public.time_off_requests
+          set status = 'expired', ended_at = case when r.kind = 'cancel' then r.ends_at else r.starts_at end,
+              revision = revision + 1, updated_at = now()
+          where id = r.id
+          returning * into r;
+          perform app_private.time_off_request_tell(r, 'expired', null);
+          done := done + 1;
+        elsif r.kind = 'leave' and r.reminded_at is null and r.starts_at - interval '1 day' <= now()
+              and r.created_at < r.starts_at - interval '1 day' then
+          update public.time_off_requests set reminded_at = now() where id = r.id returning * into r;
+          perform app_private.time_off_request_tell(r, 'reminder', null);
+          done := done + 1;
+        end if;
+        delete from app_private.time_off_request_sweep_failures f where f.request_id = r.id;
+      end if;
+    exception when others then
+      insert into app_private.time_off_request_sweep_failures (request_id, workspace_id, sqlstate, message)
+      values (due.id, due.workspace_id, sqlstate, sqlerrm)
+      on conflict (request_id) do update
+      set last_failed_at = now(), attempts = app_private.time_off_request_sweep_failures.attempts + 1,
+          sqlstate = excluded.sqlstate, message = excluded.message;
+      raise warning 'time-off-requests: request % of workspace % failed: % %', due.id, due.workspace_id, sqlstate, sqlerrm;
+    end;
+    -- Out of time: the request in hand is done; the rest wait for the next pass.
+    exit when clock_timestamp() - started >= pass_time;
+  end loop;
+  return done;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."time_off_requests_sweep"("pass_limit" integer, "pass_time" interval) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."time_off_shifts_at_stake"("r" "public"."time_off_requests") RETURNS "jsonb"
@@ -33423,6 +33504,24 @@ CREATE TABLE IF NOT EXISTS "app_private"."security_audit_events" (
 ALTER TABLE "app_private"."security_audit_events" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "app_private"."time_off_request_sweep_failures" (
+    "request_id" "uuid" NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "first_failed_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "last_failed_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "attempts" integer DEFAULT 1 NOT NULL,
+    "sqlstate" "text" NOT NULL,
+    "message" "text" NOT NULL
+);
+
+
+ALTER TABLE "app_private"."time_off_request_sweep_failures" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "app_private"."time_off_request_sweep_failures" IS 'A time off request (public.time_off_requests) the sweep could not remind of or expire, kept so it is seen and not only logged (BL-507).';
+
+
+
 CREATE TABLE IF NOT EXISTS "app_private"."time_off_sweep_failures" (
     "request_id" "uuid" NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -35472,6 +35571,11 @@ ALTER TABLE ONLY "app_private"."schedule_edit_undo_steps"
 
 ALTER TABLE ONLY "app_private"."security_audit_events"
     ADD CONSTRAINT "security_audit_events_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "app_private"."time_off_request_sweep_failures"
+    ADD CONSTRAINT "time_off_request_sweep_failures_pkey" PRIMARY KEY ("request_id");
 
 
 
@@ -37537,6 +37641,16 @@ ALTER TABLE ONLY "app_private"."security_audit_events"
 
 
 
+ALTER TABLE ONLY "app_private"."time_off_request_sweep_failures"
+    ADD CONSTRAINT "time_off_request_sweep_failures_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "public"."time_off_requests"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "app_private"."time_off_request_sweep_failures"
+    ADD CONSTRAINT "time_off_request_sweep_failures_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "app_private"."time_off_sweep_failures"
     ADD CONSTRAINT "time_off_sweep_failures_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "public"."schedule_time_off_requests"("id") ON DELETE CASCADE;
 
@@ -39154,6 +39268,9 @@ ALTER TABLE "app_private"."schedule_edit_undo_steps" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "app_private"."security_audit_events" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "app_private"."time_off_request_sweep_failures" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "app_private"."time_off_sweep_failures" ENABLE ROW LEVEL SECURITY;
@@ -40895,6 +41012,10 @@ REVOKE ALL ON FUNCTION "app_private"."time_off_request_tell"("r" "public"."time_
 
 
 REVOKE ALL ON FUNCTION "app_private"."time_off_request_view"("r" "public"."time_off_requests") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."time_off_requests_sweep"("pass_limit" integer, "pass_time" interval) FROM PUBLIC;
 
 
 
