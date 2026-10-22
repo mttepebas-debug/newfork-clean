@@ -245,3 +245,4 @@ supabase/tests/open_shift_offer.test.sql
 supabase/tests/manager_home_order_updates_coming_up.test.sql
 supabase/tests/time_off_leave_spans.test.sql
 supabase/tests/time_off_ask.test.sql
+supabase/tests/time_off_answer.test.sql
