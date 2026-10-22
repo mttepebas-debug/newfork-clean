@@ -22,7 +22,9 @@ export const leaveKinds: ReadonlyArray<{ readonly kind: KindOfLeave; readonly la
 
 export const leaveLabel = (kind: KindOfLeave) => leaveKinds.find((k) => k.kind === kind)?.label ?? "Time off";
 
-export const statusLook: Record<TimeOffRequestStatus, { readonly label: string; readonly tone: "warn" | "ok" | "bad" | "mute" }> = {
+export type StatusLook = { readonly label: string; readonly tone: "warn" | "ok" | "bad" | "mute" | "info" };
+
+export const statusLook: Record<TimeOffRequestStatus, StatusLook> = {
   pending: { label: "Pending", tone: "warn" },
   approved: { label: "Approved", tone: "ok" },
   declined: { label: "Declined", tone: "bad" },
@@ -31,6 +33,21 @@ export const statusLook: Record<TimeOffRequestStatus, { readonly label: string; 
   cancelled: { label: "Cancelled", tone: "mute" },
   revoked: { label: "Revoked", tone: "bad" },
 };
+
+/** D4: a cancellation waiting on approved time off, while the time off is not over. */
+export function cancellationWaiting(r: TimeOffRequestView, now: Date = new Date()): boolean {
+  return r.kind === "leave" && r.status === "approved" && r.cancellation?.status === "pending" && new Date(r.ends_at) > now;
+}
+
+/** D4: approved time off that is not over and has no cancellation waiting may be asked to cancel. */
+export function canAskToCancel(r: TimeOffRequestView, now: Date = new Date()): boolean {
+  return r.kind === "leave" && r.status === "approved" && new Date(r.ends_at) > now && r.cancellation?.status !== "pending";
+}
+
+/** The employee's pill: the status, or "Cancellation pending" while a cancellation waits. */
+export function requestLook(r: TimeOffRequestView, now: Date = new Date()): StatusLook {
+  return cancellationWaiting(r, now) ? { label: "Cancellation pending", tone: "info" } : statusLook[r.status];
+}
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -204,6 +221,24 @@ export function refusalText(reason: string | undefined): { readonly field: AskFi
   }
 }
 
+/** D4: why asking to cancel did not go through. */
+export function cancelRefusalText(reason: string | undefined): string {
+  switch (reason) {
+    case "time_off.cancel_pending":
+      return "You already asked to cancel this time off. Wait for the answer.";
+    case "time_off.not_approved":
+      return "This time off is no longer approved, so there is nothing to cancel.";
+    case "time_off.ended":
+      return "This time off is over.";
+    case "time_off.changed":
+      return "This time off changed. Check it again.";
+    case "time_off.not_found":
+      return "This time off is gone.";
+    default:
+      return "Couldn't send your cancellation request. Try again.";
+  }
+}
+
 export function withdrawRefusalText(reason: string | undefined): string {
   if (reason === "time_off.not_pending") return "This request has an answer already, so it can't be withdrawn.";
   if (reason === "time_off.changed") return "This request changed. Check it again.";
@@ -215,14 +250,14 @@ export function withdrawRefusalText(reason: string | undefined): string {
 
 const askedFor: Record<KindOfLeave, string> = { vacation: "vacation", sick: "sick time", personal: "personal time off", other: "time off" };
 
-/** "Alex Kim asks for vacation, Nov 13–16"; with hours, "…, Oct 27, 1:00 PM to 6:00 PM" (one sentence, S-151). */
+/** "Alex Kim asks for vacation, Nov 13–16" or (D4) "Alex Kim asks to cancel time off, Nov 13–16"; with hours, "…, Oct 27, 1:00 PM to 6:00 PM" (one sentence, S-151). */
 export function answerSentence(request: TimeOffDeciderView, format: TimeFormat = "12h") {
   let when: string;
   if (request.all_day || !request.start_time || !request.end_time) when = rangeShort(request);
   else if (request.start_date === request.end_date) when = `${monthDay(request.start_date)}, ${hoursText(request, format)}`;
   else
     when = `${monthDay(request.start_date)} ${clockText(request.start_time, format)} to ${monthDay(request.end_date)} ${clockText(request.end_time, format)}`;
-  const middle = ` asks for ${askedFor[request.kind_of_leave]}, `;
+  const middle = request.kind === "cancel" ? " asks to cancel time off, " : ` asks for ${askedFor[request.kind_of_leave]}, `;
   return { name: request.employee_name, middle, when, text: `${request.employee_name}${middle}${when}` };
 }
 
@@ -252,5 +287,23 @@ export function answerRefusalText(reason: string | undefined): string {
     default:
       if (reason?.startsWith("authz.")) return "You can't answer this request.";
       return "Couldn't save your answer. Try again.";
+  }
+}
+
+/** D4: why a revoke did not go through. */
+export function takeBackRefusalText(reason: string | undefined): string {
+  switch (reason) {
+    case "time_off.changed":
+      return "This time off changed. Review it again.";
+    case "time_off.not_approved":
+      return "This time off is no longer approved.";
+    case "time_off.ended":
+      return "This time off is over.";
+    case "time_off.note_required":
+      return "Write why you revoke it.";
+    case "authz.rank":
+      return "You can't revoke your own time off.";
+    default:
+      return answerRefusalText(reason);
   }
 }

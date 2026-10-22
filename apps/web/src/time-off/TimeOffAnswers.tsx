@@ -11,7 +11,13 @@ import { ListCards } from "../views/ListCards";
 import { DrawerField, DrawerSection, RequestDrawer, type DrawerNotice, type DrawerTone } from "../views/RequestDrawer";
 import { clockRange, KindIcon } from "../views/RequestsTable";
 import { LeaveIcon } from "./leave-icon";
-import { useAnswerTimeOff, useTimeOffImpact, useTimeOffToAnswer } from "./time-off-data";
+import {
+  useAnswerTimeOff,
+  useAnswerTimeOffCancellation,
+  useTakeBackTimeOff,
+  useTimeOffImpact,
+  useTimeOffToAnswer,
+} from "./time-off-data";
 import {
   answerRefusalText,
   answerSentence,
@@ -22,6 +28,7 @@ import {
   monthDay,
   rangeText,
   shiftsText,
+  takeBackRefusalText,
   type TimeFormat,
 } from "./time-off-text";
 import "./time-off-answers.css";
@@ -30,14 +37,24 @@ import "./time-off-answers.css";
 // this person may answer, one sentence each (S-151), with the four words of S-161, paged by the server; and
 // the answer drawer in the Requests drawers' language (Details · Shifts). Approving asks first when it opens
 // shifts; declining takes two clicks; the answer is said in the drawer.
+// D4: a cancellation is a request of its own ("… asks to cancel time off, …"), answered the same way without
+// shifts; approved time off that is not over is revoked from its drawer with a note (two clicks).
 
 type Status = { readonly label: string; readonly tone: "amber" | "green" | "red" | "gray"; readonly drawer: DrawerTone };
 
-/** Waiting (and not started): Needs decision. A request whose start passed unanswered: Expired. */
+/** When a request waiting stops waiting: time off at its start, a cancellation at the time off's end. */
+const waitsUntil = (request: TimeOffDeciderView) => (request.kind === "cancel" ? request.ends_at : request.starts_at);
+
+/**
+ * Waiting (and not past waitsUntil): Needs decision. Waiting past it: Expired. Time off cancelled or revoked
+ * says so (D4).
+ */
 export function answerStatus(request: TimeOffDeciderView, now: Date = new Date()): Status {
-  if (request.status === "pending" && new Date(request.starts_at) > now) return { label: "Needs decision", tone: "amber", drawer: "warn" };
+  if (request.status === "pending" && new Date(waitsUntil(request)) > now) return { label: "Needs decision", tone: "amber", drawer: "warn" };
   if (request.status === "approved") return { label: "Approved", tone: "green", drawer: "ok" };
   if (request.status === "declined") return { label: "Declined", tone: "red", drawer: "red" };
+  if (request.status === "cancelled") return { label: "Cancelled", tone: "gray", drawer: "grey" };
+  if (request.status === "revoked") return { label: "Revoked", tone: "red", drawer: "red" };
   return { label: "Expired", tone: "gray", drawer: "grey" };
 }
 
@@ -64,7 +81,7 @@ function Expires({ request, timeFormat, phone = false }: { request: TimeOffDecid
         <span className="sr-only">No expiry</span>
       </>
     );
-  const at = timeOffDeadlineAt(request.starts_at, request.time_timezone, timeFormat);
+  const at = timeOffDeadlineAt(waitsUntil(request), request.time_timezone, timeFormat);
   if (phone) return <span className="request-expires">Expires {at} {timeOffZoneName(request.time_timezone)}</span>;
   return (
     <span className="request-expires">
@@ -265,22 +282,71 @@ export function TimeOffAnswerDrawer({
   onClose: () => void;
   onBusy?: (busy: boolean) => void;
 }) {
-  const impact = useTimeOffImpact(workspaceId, request.id);
+  const isCancel = request.kind === "cancel";
+  // A cancellation opens no shift: nothing to read before answering it.
+  const impact = useTimeOffImpact(workspaceId, isCancel ? null : request.id);
   const answer = useAnswerTimeOff(workspaceId);
+  const answerCancel = useAnswerTimeOffCancellation(workspaceId);
+  const takeBack = useTakeBackTimeOff(workspaceId);
   const [answered, setAnswered] = useState<TimeOffDeciderView | null>(null);
   const [tab, setTab] = useState<Tab>("details");
   const [note, setNote] = useState("");
+  const [why, setWhy] = useState("");
   const [notice, setNotice] = useState<DrawerNotice | null>(null);
   const [asking, setAsking] = useState(false);
   // The freshest copy: the answer's, then the drawer's own read, then the list's.
   const current = answered ?? impact.data?.request ?? request;
   const status = answerStatus(current);
   const open = waiting(current);
-  const opens = open ? impact.data?.shift_count ?? null : null;
+  const opens = open && !isCancel ? impact.data?.shift_count ?? null : null;
   const first = current.employee_name.split(" ")[0] ?? current.employee_name;
   const zone = current.time_timezone;
+  const pending = answer.isPending || answerCancel.isPending || takeBack.isPending;
+  // Approved time off that is not over may be revoked.
+  const revocable = current.kind === "leave" && current.status === "approved" && new Date(current.ends_at) > new Date();
+
+  function sendCancel(verdict: "approve" | "decline") {
+    setAsking(false);
+    setNotice(null);
+    onBusy?.(true);
+    answerCancel.mutate(
+      { requestId: current.id, answer: { verdict, note: note.trim() || null, expected_revision: current.revision } },
+      {
+        onSuccess: (result) => {
+          setAnswered(result);
+          setNotice({ text: cancelAnsweredText(result) });
+        },
+        onError: (error) => {
+          const reason = (error as { reason?: string }).reason;
+          setNotice({ text: answerRefusalText(reason), tone: reason === "time_off.changed" || reason === "time_off.not_pending" ? "warning" : "error" });
+        },
+        onSettled: () => onBusy?.(false),
+      },
+    );
+  }
+
+  function sendTakeBack() {
+    setNotice(null);
+    onBusy?.(true);
+    takeBack.mutate(
+      { requestId: current.id, input: { note: why.trim(), expected_revision: current.revision } },
+      {
+        onSuccess: (result) => {
+          setAnswered(result);
+          setNotice({ text: `Revoked. ${first} is told.` });
+        },
+        onError: (error) => {
+          const reason = (error as { reason?: string }).reason;
+          setNotice({ text: takeBackRefusalText(reason), tone: reason === "time_off.changed" || reason === "time_off.not_approved" ? "warning" : "error" });
+          if (reason === "time_off.changed" || reason === "time_off.not_approved") void impact.refetch();
+        },
+        onSettled: () => onBusy?.(false),
+      },
+    );
+  }
 
   function send(verdict: "approve" | "decline") {
+    if (isCancel) return sendCancel(verdict);
     setAsking(false);
     setNotice(null);
     onBusy?.(true);
@@ -364,9 +430,14 @@ export function TimeOffAnswerDrawer({
           <DrawerField label="Asked">{monthDay(instantDay(current.created_at, zone))}</DrawerField>
         </div>
       </DrawerSection>
-      <DrawerSection title={`${first}'s note`}>
+      <DrawerSection title={isCancel ? `${first}'s reason` : `${first}'s note`}>
         {current.note ? <p className="rd-quote">{current.note}</p> : <p className="rd-empty">No note.</p>}
       </DrawerSection>
+      {current.kind === "leave" && current.status === "approved" && current.cancellation?.status === "pending" ? (
+        <DrawerSection>
+          <p className="rd-note warn">{first} asked to cancel this time off. Answer it in the list.</p>
+        </DrawerSection>
+      ) : null}
       {open ? (
         <DrawerSection title="Your answer">
           <label className="toa-note">
@@ -385,30 +456,70 @@ export function TimeOffAnswerDrawer({
         <DrawerSection title="Answer">
           <p className="rd-info">{answerLine(current)}</p>
           {current.decision_note ? <p className="rd-quote">{current.decision_note}</p> : null}
-          {current.status === "approved" ? <p className="rd-info">{shiftsText(current.shifts_opened, "went")}</p> : null}
+          {current.kind === "leave" && current.status !== "declined" && current.status !== "expired" ? (
+            <p className="rd-info">{shiftsText(current.shifts_opened, "went")}</p>
+          ) : null}
+          {current.status === "cancelled" || current.status === "revoked" ? (
+            <p className="rd-info">{endLine(current)}</p>
+          ) : null}
+          {current.status === "revoked" && current.ended_note ? <p className="rd-quote">{current.ended_note}</p> : null}
         </DrawerSection>
       )}
+      {revocable ? (
+        <DrawerSection title="Revoke time off">
+          <label className="toa-note">
+            <span className="rd-label">
+              Why are you revoking it? <span className="toa-opt">Required</span>
+            </span>
+            <textarea
+              maxLength={1000}
+              value={why}
+              placeholder={`Shown to ${first}`}
+              disabled={pending}
+              onChange={(event) => setWhy(event.target.value)}
+            />
+          </label>
+          <p className="rd-info">Only what has not started is removed. Shifts that went to open shifts stay open.</p>
+        </DrawerSection>
+      ) : null}
     </>
   );
 
   const footer: ReactNode = open ? (
     <div className="rd-foot-row">
-      <p className="rd-foot-note">{opens === null ? "Checking shifts…" : opens ? `Approving opens ${shiftsText(opens, "count")}.` : "No shift opens."}</p>
+      <p className="rd-foot-note">
+        {isCancel
+          ? "Approving removes the rest of this time off."
+          : opens === null
+            ? "Checking shifts…"
+            : opens
+              ? `Approving opens ${shiftsText(opens, "count")}.`
+              : "No shift opens."}
+      </p>
       <div className="rd-foot-actions">
         <ConfirmButton
           className="danger-button"
           confirmLabel="Confirm decline"
-          disabled={answer.isPending}
+          disabled={pending}
           onConfirm={() => send("decline")}
         >
           Decline
         </ConfirmButton>
         <Button
-          disabled={answer.isPending || !impact.data}
-          onClick={() => (impact.data && impact.data.shift_count > 0 ? setAsking(true) : send("approve"))}
+          disabled={pending || (!isCancel && !impact.data)}
+          onClick={() => (isCancel || (impact.data && impact.data.shift_count > 0) ? setAsking(true) : send("approve"))}
         >
-          {answer.isPending ? "Saving…" : "Approve"}
+          {pending ? "Saving…" : "Approve"}
         </Button>
+      </div>
+    </div>
+  ) : revocable ? (
+    <div className="rd-foot-row">
+      <p className="rd-foot-note">{new Date(current.starts_at) <= new Date() ? "It has started: only the rest is removed." : "Revoking removes all of it."}</p>
+      <div className="rd-foot-actions">
+        <ConfirmButton className="danger-button" confirmLabel="Confirm revoke" disabled={pending || !why.trim()} onConfirm={sendTakeBack}>
+          {takeBack.isPending ? "Revoking…" : "Revoke"}
+        </ConfirmButton>
       </div>
     </div>
   ) : null;
@@ -417,13 +528,17 @@ export function TimeOffAnswerDrawer({
     <>
       <RequestDrawer
         title={current.employee_name}
-        type={leaveLabel(current.kind_of_leave)}
+        type={isCancel ? "Cancel time off" : leaveLabel(current.kind_of_leave)}
         status={{ label: status.label, tone: status.drawer }}
         sub={current.location_names.join(" · ")}
-        tabs={[
-          { key: "details", label: "Details" },
-          { key: "shifts", label: "Shifts", count: open ? (impact.data?.shift_count ?? 0) : current.shifts_opened },
-        ]}
+        tabs={
+          isCancel
+            ? [{ key: "details", label: "Details" }]
+            : [
+                { key: "details", label: "Details" },
+                { key: "shifts", label: "Shifts", count: open ? (impact.data?.shift_count ?? 0) : current.shifts_opened },
+              ]
+        }
         tab={tab}
         onTab={setTab}
         notice={notice}
@@ -434,10 +549,14 @@ export function TimeOffAnswerDrawer({
       </RequestDrawer>
       <ConfirmDialog
         open={asking}
-        title="Approve time off?"
-        description={`${shiftsText(opens ?? 0, "go")} to open shifts.`}
+        title={isCancel ? `Cancel ${first}'s time off?` : "Approve time off?"}
+        description={
+          isCancel
+            ? "The rest of the time off is removed. Shifts that went to open shifts stay open."
+            : `${shiftsText(opens ?? 0, "go")} to open shifts.`
+        }
         confirmLabel="Approve"
-        busy={answer.isPending}
+        busy={pending}
         onConfirm={() => send("approve")}
         onCancel={() => setAsking(false)}
       />
@@ -445,12 +564,31 @@ export function TimeOffAnswerDrawer({
   );
 }
 
-/** "Approved by Rachel Adams, Oct 21", "Declined by …", "Expired: nobody answered before Nov 13". */
+/**
+ * "Approved by Rachel Adams, Oct 21", "Declined by …", "Expired: nobody answered before Nov 13"; time off
+ * cancelled or revoked says who ended it (D4).
+ */
 function answerLine(request: TimeOffDeciderView): string {
-  const when = request.decided_at ? `, ${monthDay(instantDay(request.decided_at, request.time_timezone))}` : "";
-  if (request.status === "approved") return `Approved by ${request.decided_by_name ?? "a manager"}${when}`;
-  if (request.status === "declined") return `Declined by ${request.decided_by_name ?? "a manager"}${when}`;
+  const day = (at: string | null) => (at ? `, ${monthDay(instantDay(at, request.time_timezone))}` : "");
+  if (request.status === "approved") return `Approved by ${request.decided_by_name ?? "a manager"}${day(request.decided_at)}`;
+  if (request.status === "declined") return `Declined by ${request.decided_by_name ?? "a manager"}${day(request.decided_at)}`;
+  if (request.status === "cancelled") return `Cancelled by ${request.ended_by_name ?? "a manager"}${day(request.ended_at)}`;
+  if (request.status === "revoked") return `Revoked by ${request.ended_by_name ?? "a manager"}${day(request.ended_at)}`;
+  if (request.kind === "cancel") return "Expired: nobody answered before the time off ended.";
   return `Expired: nobody answered before ${monthDay(request.start_date)}.`;
+}
+
+/** D4: how much of time off cancelled or revoked was used. */
+function endLine(request: TimeOffDeciderView): string {
+  if (!request.used_until) return "None of it was used. Shifts that went to open shifts stay open.";
+  return `Used until ${dayText(instantDay(request.used_until, request.time_timezone))}. Shifts that went to open shifts stay open.`;
+}
+
+/** D4: what the drawer says once a cancellation is answered. */
+function cancelAnsweredText(result: TimeOffDeciderView): string {
+  if (result.status === "approved") return "Approved. The rest of the time off is removed.";
+  if (result.status === "declined") return "Declined. The time off stays.";
+  return "This cancellation expired: the time off ended before it was answered.";
 }
 
 /** What the drawer says once the answer went through. */

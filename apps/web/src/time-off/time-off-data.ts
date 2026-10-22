@@ -10,11 +10,14 @@ import {
   type MyTimeOffShiftsQuery,
   type TimeOffAnswerInput,
   type TimeOffAskInput,
+  type TimeOffCancellationAnswerInput,
+  type TimeOffCancellationAskInput,
   type TimeOffDeciderView,
   type TimeOffImpact,
   type TimeOffRequestsPage,
   type TimeOffRequestsQuery,
   type TimeOffRequestView,
+  type TimeOffTakeBackInput,
 } from "@newfork/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
@@ -156,5 +159,71 @@ export function useMyTimeOffShifts(workspaceId: string, query: MyTimeOffShiftsQu
     queryFn: () => loadMyTimeOffShifts(workspaceId, query!),
     enabled: Boolean(workspaceId && query),
     placeholderData: keepPreviousData,
+  });
+}
+
+// Time off rebuild D4: the employee asks to cancel approved time off (a cancellation is withdrawn with
+// useWithdrawTimeOff, by its own id and revision); whoever may answer answers a cancellation and takes
+// approved time off back. Each settles every time off list.
+
+export async function askTimeOffCancellation(
+  workspaceId: string,
+  requestId: string,
+  input: TimeOffCancellationAskInput,
+): Promise<TimeOffRequestView> {
+  return timeOffRequestViewSchema.parse(
+    await apiRequest(client(), `${base(workspaceId)}/${encodeURIComponent(requestId)}/cancellation`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export async function answerTimeOffCancellation(
+  workspaceId: string,
+  requestId: string,
+  answer: TimeOffCancellationAnswerInput,
+): Promise<TimeOffDeciderView> {
+  return timeOffDeciderViewSchema.parse(
+    await apiRequest(client(), `${base(workspaceId)}/${encodeURIComponent(requestId)}/answer-cancellation`, {
+      method: "POST",
+      body: JSON.stringify(answer),
+    }),
+  );
+}
+
+export async function takeBackTimeOff(workspaceId: string, requestId: string, input: TimeOffTakeBackInput): Promise<TimeOffDeciderView> {
+  return timeOffDeciderViewSchema.parse(
+    await apiRequest(client(), `${base(workspaceId)}/${encodeURIComponent(requestId)}/take-back`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export function useAskTimeOffCancellation(workspaceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, input }: { requestId: string; input: TimeOffCancellationAskInput }) =>
+      askTimeOffCancellation(workspaceId, requestId, input),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["time-off-requests", workspaceId] }),
+  });
+}
+
+export function useAnswerTimeOffCancellation(workspaceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, answer }: { requestId: string; answer: TimeOffCancellationAnswerInput }) =>
+      answerTimeOffCancellation(workspaceId, requestId, answer),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["time-off-requests", workspaceId] }),
+  });
+}
+
+export function useTakeBackTimeOff(workspaceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, input }: { requestId: string; input: TimeOffTakeBackInput }) =>
+      takeBackTimeOff(workspaceId, requestId, input),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["time-off-requests", workspaceId] }),
   });
 }

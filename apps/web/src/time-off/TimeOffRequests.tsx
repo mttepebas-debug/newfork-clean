@@ -7,13 +7,17 @@ import { LeaveIcon } from "./leave-icon";
 import { TimeOffAskForm } from "./TimeOffAskForm";
 import { StatusPill, TimeOffDetail } from "./TimeOffDetail";
 import { TimeOffSheet } from "./TimeOffSheet";
-import { useAskTimeOff, useMyTimeOff, useWithdrawTimeOff } from "./time-off-data";
+import { useAskTimeOff, useAskTimeOffCancellation, useMyTimeOff, useWithdrawTimeOff } from "./time-off-data";
 import {
+  canAskToCancel,
+  cancellationWaiting,
+  cancelRefusalText,
   hoursText,
   leaveLabel,
   placesText,
   rangeShort,
   rangeText,
+  requestLook,
   sizeShort,
   splitRequests,
   withdrawRefusalText,
@@ -23,7 +27,7 @@ import {
 import "./time-off-requests.css";
 
 type Tab = "upcoming" | "past";
-type Sheet = { kind: "new" } | { kind: "detail"; id: string } | null;
+type Sheet = { kind: "new" } | { kind: "detail"; id: string; cancelOpen: boolean } | null;
 
 /**
  * The employee's Time off (Employee Hub → My Availability → Time off), rebuilt from scratch: Karma,
@@ -35,6 +39,8 @@ export function TimeOffRequests({ workspaceId, timeFormat }: { workspaceId: stri
   const mine = useMyTimeOff(workspaceId);
   const ask = useAskTimeOff(workspaceId);
   const withdraw = useWithdrawTimeOff(workspaceId);
+  const askCancel = useAskTimeOffCancellation(workspaceId);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("upcoming");
   const [sheet, setSheet] = useState<Sheet>(null);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
@@ -64,12 +70,12 @@ export function TimeOffRequests({ workspaceId, timeFormat }: { workspaceId: stri
   const places = data.location_names;
   const open = sheet?.kind === "detail" ? data.requests.find((r) => r.id === sheet.id) ?? null : null;
 
-  function doWithdraw(request: TimeOffRequestView, fromSheet: boolean) {
+  function doWithdraw(request: Pick<TimeOffRequestView, "id" | "revision">, fromSheet: boolean, what: "request" | "cancellation" = "request") {
     setWithdrawError(null);
     withdraw.mutate(request, {
       onSuccess: () => {
-        if (fromSheet) setSheet(null);
-        toast.success("Request withdrawn");
+        if (fromSheet && what === "request") setSheet(null);
+        toast.success(what === "request" ? "Request withdrawn" : "Cancellation request withdrawn");
       },
       onError: (error) => {
         const text = withdrawRefusalText((error as { reason?: string }).reason);
@@ -79,9 +85,24 @@ export function TimeOffRequests({ workspaceId, timeFormat }: { workspaceId: stri
     });
   }
 
-  function openDetail(id: string) {
+  function openDetail(id: string, cancelOpen = false) {
     setWithdrawError(null);
-    setSheet({ kind: "detail", id });
+    setCancelError(null);
+    setSheet({ kind: "detail", id, cancelOpen });
+  }
+
+  function doAskCancel(request: TimeOffRequestView, note: string | null) {
+    setCancelError(null);
+    askCancel.mutate(
+      { requestId: request.id, input: { note, expected_revision: request.revision, client_key: crypto.randomUUID() } },
+      {
+        onSuccess: () => {
+          setSheet((current) => (current?.kind === "detail" ? { ...current, cancelOpen: false } : current));
+          toast.success("Cancellation request sent");
+        },
+        onError: (error) => setCancelError(cancelRefusalText((error as { reason?: string }).reason)),
+      },
+    );
   }
 
   const empty = upcoming.length + past.length === 0;
@@ -115,7 +136,7 @@ export function TimeOffRequests({ workspaceId, timeFormat }: { workspaceId: stri
                     <button type="button" className="tor-row" onClick={() => openDetail(r.id)}>
                       <span className="tor-ico"><LeaveIcon kind={r.kind_of_leave} size={17} /></span>
                       <span className="tor-row-main">
-                        <span className="tor-row-top"><strong>{leaveLabel(r.kind_of_leave)}</strong><StatusPill status={r.status} /></span>
+                        <span className="tor-row-top"><strong>{leaveLabel(r.kind_of_leave)}</strong><StatusPill look={requestLook(r)} /></span>
                         <span>{rangeText(r, timeFormat)}</span>
                       </span>
                     </button>
@@ -133,7 +154,7 @@ export function TimeOffRequests({ workspaceId, timeFormat }: { workspaceId: stri
                       <tr
                         key={r.id}
                         tabIndex={0}
-                        aria-label={`${leaveLabel(r.kind_of_leave)}, ${rangeText(r, timeFormat)}, ${r.status}`}
+                        aria-label={`${leaveLabel(r.kind_of_leave)}, ${rangeText(r, timeFormat)}, ${requestLook(r).label}`}
                         onClick={() => openDetail(r.id)}
                         onKeyDown={(event) => {
                           if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
@@ -145,12 +166,14 @@ export function TimeOffRequests({ workspaceId, timeFormat }: { workspaceId: stri
                         <td><strong>{rangeShort(r)}</strong><small>{sizeShort(r)}</small></td>
                         <td><span className="tor-typecell"><LeaveIcon kind={r.kind_of_leave} size={15} />{leaveLabel(r.kind_of_leave)}</span></td>
                         <td>{hoursText(r, timeFormat)}</td>
-                        <td><StatusPill status={r.status} /></td>
+                        <td><StatusPill look={requestLook(r)} /></td>
                         <td className="tor-actcell">
                           <RowMenu
                             request={r}
                             onView={() => openDetail(r.id)}
                             onWithdraw={() => doWithdraw(r, false)}
+                            onAskCancel={() => openDetail(r.id, true)}
+                            onWithdrawCancellation={() => r.cancellation && doWithdraw(r.cancellation, false, "cancellation")}
                           />
                         </td>
                       </tr>
@@ -202,7 +225,7 @@ export function TimeOffRequests({ workspaceId, timeFormat }: { workspaceId: stri
       ) : null}
 
       {open ? (
-        <TimeOffSheet title="Time off" phone={phone} busy={withdraw.isPending} onClose={() => setSheet(null)}>
+        <TimeOffSheet title="Time off" phone={phone} busy={withdraw.isPending || askCancel.isPending} onClose={() => setSheet(null)}>
           <TimeOffDetail
             request={open}
             phone={phone}
@@ -211,6 +234,15 @@ export function TimeOffRequests({ workspaceId, timeFormat }: { workspaceId: stri
             withdrawing={withdraw.isPending}
             withdrawError={withdrawError}
             onWithdraw={() => doWithdraw(open, true)}
+            cancelBoxOpen={sheet?.kind === "detail" && sheet.cancelOpen}
+            onCancelBoxOpen={(cancelOpen) => {
+              setCancelError(null);
+              setSheet({ kind: "detail", id: open.id, cancelOpen });
+            }}
+            askingCancel={askCancel.isPending}
+            cancelError={cancelError}
+            onAskCancel={(note) => doAskCancel(open, note)}
+            onWithdrawCancellation={() => open.cancellation && doWithdraw(open.cancellation, true, "cancellation")}
           />
         </TimeOffSheet>
       ) : null}
@@ -260,14 +292,33 @@ function Tabs({
   );
 }
 
-/** The row's "⋯": View details, and Withdraw request (two clicks) while it waits for an answer. */
-function RowMenu({ request, onView, onWithdraw }: { request: TimeOffRequestView; onView: () => void; onWithdraw: () => void }) {
+/**
+ * The row's "⋯": View details; Withdraw request (two clicks) while it waits for an answer; (D4) Ask to
+ * cancel approved time off, or Withdraw cancellation (two clicks) while one waits.
+ */
+function RowMenu({
+  request,
+  onView,
+  onWithdraw,
+  onAskCancel,
+  onWithdrawCancellation,
+}: {
+  request: TimeOffRequestView;
+  onView: () => void;
+  onWithdraw: () => void;
+  onAskCancel: () => void;
+  onWithdrawCancellation: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const withdraw = useConfirmClick(() => {
     setOpen(false);
     onWithdraw();
+  });
+  const withdrawCancellation = useConfirmClick(() => {
+    setOpen(false);
+    onWithdrawCancellation();
   });
 
   useEffect(() => {
@@ -322,6 +373,19 @@ function RowMenu({ request, onView, onWithdraw }: { request: TimeOffRequestView;
               {...withdraw.confirmProps}
             >
               {withdraw.armed ? "Confirm withdraw" : "Withdraw request"}
+            </button>
+          ) : null}
+          {canAskToCancel(request) ? (
+            <button type="button" role="menuitem" onClick={() => { setOpen(false); onAskCancel(); }}>Ask to cancel</button>
+          ) : null}
+          {cancellationWaiting(request) ? (
+            <button
+              type="button"
+              role="menuitem"
+              className={`is-danger${withdrawCancellation.armed ? " is-armed" : ""}`}
+              {...withdrawCancellation.confirmProps}
+            >
+              {withdrawCancellation.armed ? "Confirm withdraw" : "Withdraw cancellation"}
             </button>
           ) : null}
         </div>

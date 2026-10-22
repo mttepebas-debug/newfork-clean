@@ -36,6 +36,10 @@ function view(overrides: Partial<TimeOffDeciderView>): TimeOffDeciderView {
     decision_note: null,
     ended_at: null,
     ended_note: null,
+    cancels_id: null,
+    ended_by_name: null,
+    used_until: null,
+    cancellation: null,
     employee_id: "735032ec-0e98-4fb1-8005-c4ede5b1726b",
     employee_name: "Alex Kim",
     location_names: ["Downtown", "Midtown"],
@@ -62,6 +66,23 @@ const dentist = view({
   decision_note: "Covered by Jo.",
   shifts_opened: 1,
 });
+// D4: Sam asks to cancel his approved time off.
+const cancelAsk = view({
+  id: "98020000-0000-4000-8000-000000000009",
+  kind: "cancel",
+  cancels_id: dentist.id,
+  kind_of_leave: "personal",
+  starts_at: dentist.starts_at,
+  ends_at: dentist.ends_at,
+  all_day: false,
+  start_date: "2026-10-27",
+  end_date: "2026-10-27",
+  start_time: "13:00",
+  end_time: "18:00",
+  note: "My appointment moved.",
+  employee_name: "Sam Lee",
+  created_at: "2026-10-22T15:00:00+00:00",
+});
 const page: TimeOffRequestsPage = { total: 2, waiting: 1, page: 1, page_size: 50, requests: [wedding, dentist] };
 const shift = {
   id: "22000000-0000-4000-8000-000000000004",
@@ -83,11 +104,19 @@ const impact: TimeOffImpact = {
   ],
 };
 
-type Routes = { list?: (path: string) => unknown; impact?: () => unknown; answer?: (body: unknown) => unknown };
+type Routes = {
+  list?: (path: string) => unknown;
+  impact?: () => unknown;
+  answer?: (body: unknown) => unknown;
+  answerCancel?: (body: unknown) => unknown;
+  takeBack?: (body: unknown) => unknown;
+};
 function answerWith(routes: Routes) {
   api.apiRequest.mockImplementation(async (_client: unknown, path: string, init?: RequestInit) => {
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
     if (path.endsWith("/impact")) return (routes.impact ?? (() => impact))();
+    if (path.endsWith("/answer-cancellation")) return (routes.answerCancel ?? (() => ({ ...cancelAsk, status: "approved", revision: 2, decided_by_name: "Rachel Adams" })))(body);
+    if (path.endsWith("/take-back")) return (routes.takeBack ?? (() => ({ ...dentist, status: "revoked", revision: 3, ended_by_name: "Rachel Adams", ended_note: body.note })))(body);
     if (path.endsWith("/answer")) return (routes.answer ?? (() => ({ ...wedding, status: "approved", revision: 2, decided_by_name: "Rachel Adams", shifts_opened: 3 })))(body);
     if (path.includes("/time-off-requests")) return (routes.list ?? (() => page))(path);
     throw new Error(`unexpected ${path}`);
@@ -123,6 +152,9 @@ function renderIt(initial = "") {
 const posts = () =>
   api.apiRequest.mock.calls.filter(([, path, init]) => String(path).endsWith("/answer") && (init as RequestInit | undefined)?.method === "POST");
 const bodyOf = (call: unknown[]) => JSON.parse(String((call[2] as RequestInit).body));
+
+const cancelPosts = (suffix: string) =>
+  api.apiRequest.mock.calls.filter(([, path, init]) => String(path).endsWith(suffix) && (init as RequestInit | undefined)?.method === "POST");
 
 describe("Requests → Time off (new)", () => {
   beforeEach(() => {
@@ -275,5 +307,100 @@ describe("Requests → Time off (new)", () => {
     answerWith({ list: () => { throw new RequestError("Workspace operation failed", undefined, undefined, 500); } });
     renderIt();
     expect(await screen.findByText("We couldn't load time off requests")).toBeTruthy();
+  });
+
+  // D4 (KARARLAR S-239 (4), (6)): a cancellation is answered like time off; approved time off is revoked
+  // with a note.
+  it("lists a cancellation as one sentence and answers it without reading shifts", async () => {
+    answerWith({ list: () => ({ ...page, total: 3, waiting: 2, requests: [cancelAsk, wedding, dentist] }) });
+    renderIt();
+    const table = await screen.findByRole("table");
+    const first = within(table).getAllByRole("row")[1]!;
+    expect(first.textContent).toContain("Sam Lee asks to cancel time off, Oct 27, 1:00 PM to 6:00 PM");
+    expect(within(first).getByText("Needs decision")).toBeTruthy();
+    fireEvent.click(first);
+    const drawer = await screen.findByRole("dialog", { name: "Review time off" });
+    expect(within(drawer).getByText("Cancel time off")).toBeTruthy();
+    expect(within(drawer).getByText("My appointment moved.")).toBeTruthy();
+    expect(within(drawer).getByText("Approving removes the rest of this time off.")).toBeTruthy();
+    expect(api.apiRequest.mock.calls.some(([, path]) => String(path).endsWith("/impact"))).toBe(false);
+    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
+    const confirm = screen.getByRole("alertdialog", { name: "Cancel Sam's time off?" });
+    expect(within(confirm).getByText("The rest of the time off is removed. Shifts that went to open shifts stay open.")).toBeTruthy();
+    expect(cancelPosts("/answer-cancellation")).toHaveLength(0);
+    fireEvent.click(within(confirm).getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(cancelPosts("/answer-cancellation")).toHaveLength(1));
+    const [, path] = cancelPosts("/answer-cancellation")[0]!;
+    expect(path).toBe(`/v1/workspaces/${workspaceId}/time-off-requests/${cancelAsk.id}/answer-cancellation`);
+    expect(bodyOf(cancelPosts("/answer-cancellation")[0]!)).toEqual({ verdict: "approve", note: null, expected_revision: 1 });
+    expect(await within(drawer).findByText("Approved. The rest of the time off is removed.")).toBeTruthy();
+  });
+
+  it("declines a cancellation with two clicks and a note", async () => {
+    answerWith({
+      list: () => ({ ...page, requests: [cancelAsk] }),
+      answerCancel: (body) => ({ ...cancelAsk, status: "declined", revision: 2, decided_by_name: "Rachel Adams", decision_note: (body as { note: string }).note }),
+    });
+    renderIt(cancelAsk.id);
+    const drawer = await screen.findByRole("dialog", { name: "Review time off" });
+    fireEvent.change(within(drawer).getByRole("textbox", { name: /Note to Sam/ }), { target: { value: "We need you that day." } });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Decline" }));
+    expect(cancelPosts("/answer-cancellation")).toHaveLength(0);
+    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm decline" }));
+    await waitFor(() => expect(cancelPosts("/answer-cancellation")).toHaveLength(1));
+    expect(bodyOf(cancelPosts("/answer-cancellation")[0]!)).toEqual({ verdict: "decline", note: "We need you that day.", expected_revision: 1 });
+    expect(await within(drawer).findByText("Declined. The time off stays.")).toBeTruthy();
+  });
+
+  it("revokes approved time off only with a note, with two clicks", async () => {
+    answerWith({ impact: () => ({ ...impact, request: dentist, shift_count: 0, hidden_shift_count: 0, locations: [] }) });
+    renderIt(dentist.id);
+    const drawer = await screen.findByRole("dialog", { name: "Review time off" });
+    const revoke = within(drawer).getByRole("button", { name: "Revoke" }) as HTMLButtonElement;
+    expect(revoke.disabled).toBe(true);
+    expect(within(drawer).getByText("Only what has not started is removed. Shifts that went to open shifts stay open.")).toBeTruthy();
+    fireEvent.change(within(drawer).getByRole("textbox", { name: /Why are you revoking it\?/ }), { target: { value: " Inventory day " } });
+    expect(revoke.disabled).toBe(false);
+    fireEvent.click(revoke);
+    expect(cancelPosts("/take-back")).toHaveLength(0);
+    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm revoke" }));
+    await waitFor(() => expect(cancelPosts("/take-back")).toHaveLength(1));
+    const [, path] = cancelPosts("/take-back")[0]!;
+    expect(path).toBe(`/v1/workspaces/${workspaceId}/time-off-requests/${dentist.id}/take-back`);
+    expect(bodyOf(cancelPosts("/take-back")[0]!)).toEqual({ note: "Inventory day", expected_revision: 1 });
+    expect(await within(drawer).findByText("Revoked. Sam is told.")).toBeTruthy();
+  });
+
+  it("says a cancellation waits on approved time off, and reads revoked time off", async () => {
+    const revoked = view({ ...dentist, id: "98020000-0000-4000-8000-000000000003", status: "revoked", ended_at: "2026-10-22T15:00:00+00:00", ended_by_name: "Rachel Adams",
+      ended_note: "Inventory day" });
+    const asked = { ...dentist, cancellation: { id: cancelAsk.id, status: "pending" as const, note: "My appointment moved.",
+      revision: 1, created_at: cancelAsk.created_at, decided_at: null, decided_by_name: null, decision_note: null } };
+    answerWith({
+      list: () => ({ ...page, requests: [asked, revoked] }),
+      impact: () => ({ ...impact, request: asked, shift_count: 0, hidden_shift_count: 0, locations: [] }),
+    });
+    renderIt(dentist.id);
+    const drawer = await screen.findByRole("dialog", { name: "Review time off" });
+    expect(within(drawer).getByText("Sam asked to cancel this time off. Answer it in the list.")).toBeTruthy();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close details" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const rows = within(screen.getByRole("table")).getAllByRole("row");
+    expect(rows.some((row) => /Revoked/.test(row.textContent ?? ""))).toBe(true);
+  });
+
+  it("says why a revoke did not go through", async () => {
+    answerWith({
+      impact: () => ({ ...impact, request: dentist, shift_count: 0, hidden_shift_count: 0, locations: [] }),
+      takeBack: () => {
+        throw new RequestError("This time off changed", "time_off.changed", undefined, 409);
+      },
+    });
+    renderIt(dentist.id);
+    const drawer = await screen.findByRole("dialog", { name: "Review time off" });
+    fireEvent.change(within(drawer).getByRole("textbox", { name: /Why are you revoking it\?/ }), { target: { value: "Inventory day" } });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Revoke" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm revoke" }));
+    expect(await within(drawer).findByText("This time off changed. Review it again.")).toBeTruthy();
   });
 });

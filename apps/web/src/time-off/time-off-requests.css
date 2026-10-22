@@ -183,3 +183,11 @@
 .tor-alert .tor-loc {
   color: var(--theme-muted);
 }
+
+/* D4: asking to cancel approved time off, and the pill while a cancellation waits */
+.tor-pill.is-info { background: var(--theme-info-soft); color: var(--theme-info-text); }
+.tor-cancelbox { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface-soft); }
+.tor-cancelbox textarea { width: 100%; min-height: 72px; padding: 8px 10px; border: 1px solid var(--theme-border-strong); border-radius: 5px; background: var(--theme-surface); color: inherit; font: inherit; font-size: 16px; resize: vertical; }
+.tor-cancelbox textarea:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 1px; }
+.tor-note-line { display: flex; gap: 8px; margin: 0; color: var(--theme-text-secondary); font-size: 13px; line-height: 1.45; }
+.tor-note-line svg { flex: none; margin-top: 2px; color: var(--theme-muted-strong); }

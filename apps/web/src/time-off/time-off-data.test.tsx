@@ -17,6 +17,8 @@ const view = {
   time_timezone: "America/Los_Angeles", start_date: "2026-10-23", end_date: "2026-10-23", start_time: null, end_time: null,
   note: null, revision: 1, created_at: "2026-10-22T16:30:00+00:00", decided_at: null, decided_by_name: null,
   decision_note: null, ended_at: null, ended_note: null,
+  // D4: what the API answers since 20261022160000.
+  cancels_id: null, ended_by_name: null, used_until: null, cancellation: null,
 };
 const mine = { time_zone: "America/Los_Angeles", today: "2026-10-22", location_names: ["Downtown"], requests: [view] };
 
