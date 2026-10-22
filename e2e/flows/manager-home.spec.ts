@@ -1,5 +1,6 @@
 import type { Browser, Page, Route } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
+import { lastLine, ownJob, personWithPassword, publishedDocument, sql, tag } from "../fixtures/documents";
 import { signIn, type Person } from "../fixtures/world";
 
 // The managers' Home, Daylight "C · Locations first" (Mert 2026-10-19, KARARLAR
@@ -39,7 +40,9 @@ const place = (id: string, name: string) => ({
   missing_documents: [] as { employee_id: string; name: string; document: string; requirement_id: string; status: string }[],
 });
 
-function answer(workspaceId: string, both: boolean, layout: unknown) {
+type Missing = { employee_id: string; name: string; document: string; requirement_id: string; status: string };
+
+function answer(workspaceId: string, both: boolean, layout: unknown, missing?: Missing[]) {
   const besiktas = {
     ...place(BESIKTAS, "Besiktas"),
     today_shifts: [
@@ -51,6 +54,7 @@ function answer(workspaceId: string, both: boolean, layout: unknown) {
     open_shifts: [{ date: date(0), starts_at: at(2), ends_at: at(6), job_name: "Server" }],
     missing_documents: [{ employee_id: "e2000000-0000-4000-8000-000000000001", name: "Sam Ortiz", document: "Alcohol Server Permit",
       requirement_id: "e2100000-0000-4000-8000-000000000001", status: "expired" }],
+    ...(missing ? { missing_documents: missing } : {}),
   };
   const kadikoy = { ...place(KADIKOY, "Kadikoy"), today_shifts: [{ starts_at: at(-1), ends_at: at(5), open: false }] };
   return {
@@ -67,14 +71,14 @@ function answer(workspaceId: string, both: boolean, layout: unknown) {
   };
 }
 
-async function open(browser: Browser, person: Person, size: typeof DESKTOP, both: boolean): Promise<Page> {
+async function open(browser: Browser, person: Person, size: typeof DESKTOP, both: boolean, missing?: Missing[]): Promise<Page> {
   const phone = size.width < 700;
   const page = await (await browser.newContext({ viewport: size, hasTouch: phone, isMobile: phone })).newPage();
   await page.route(/\/v1\/workspaces\/[^/]+\/workspace\/home$/, async (route: Route) => {
     try {
       const response = await route.fetch();
       const real = (await response.json()) as { layout: unknown };
-      await route.fulfill({ json: answer(route.request().url().split("/workspaces/")[1]!.split("/")[0]!, both, real.layout) });
+      await route.fulfill({ json: answer(route.request().url().split("/workspaces/")[1]!.split("/")[0]!, both, real.layout, missing) });
     } catch {
       // The page closed while a read was on its way: nothing to answer.
     }
@@ -126,6 +130,36 @@ test("desktop: Home, a card per location, the page narrowed from a card or a chi
   await expect(page.getByRole("region", { name: "Open shifts" }).getByText("Besiktas · Server")).toBeVisible();
   await chips.getByRole("button", { name: "All locations" }).click();
   await expect(needs(page).locator(".dl-row")).toHaveCount(2);
+});
+
+test("desktop: a Needs you line opens what it is about: the document's drawer, the request (zeynep)", async ({ browser }) => {
+  // A real document missing at Besiktas, so the drawer the line opens is the real one.
+  const jobKey = `needs-${tag()}`;
+  const job = ownJob(jobKey, `Needs you ${tag()}`);
+  const email = personWithPassword(`needs${tag()}`, "employee", ["B"], jobKey);
+  const title = `Needs you permit ${tag()}`;
+  const documentId = publishedDocument(title, [job]);
+  const [requirementId, employeeId, name] = lastLine(
+    sql(`select r.id || '|' || p.id || '|' || p.first_name || ' ' || p.last_name
+      from public.employee_onboarding_requirements r
+      join auth.users u on u.id = r.lifecycle_user_id
+      join public.employee_profiles p on p.id = r.employee_id
+      where u.email = '${email}' and r.source_id = '${documentId}';`),
+  ).split("|") as [string, string, string];
+  const page = await open(browser, "zeynep", DESKTOP, true, [
+    { employee_id: employeeId, name, document: title, requirement_id: requirementId, status: "missing" },
+  ]);
+
+  await needs(page).getByRole("link", { name: new RegExp(`${name} is working without a required document`) }).click();
+  await expect(page).toHaveURL(`/app/employees/documents?location=${BESIKTAS}&status=missing&requirement=${requirementId}`);
+  const drawer = page.getByRole("dialog", { name: title });
+  await expect(drawer).toContainText(name);
+  await expect(page.getByLabel("Document status").getByRole("button", { name: /^Missing/ })).toHaveAttribute("aria-pressed", "true");
+  await page.screenshot({ path: "artifacts/needs-you-deep-links/documents-drawer-1440.png" });
+
+  await page.goto("/app/workspace");
+  await needs(page).getByRole("link", { name: /Emre Demir asks for time off/ }).click();
+  await expect(page).toHaveURL("/app/schedule/requests?request=e3000000-0000-4000-8000-000000000001");
 });
 
 test("desktop: Customize hides a section, Cancel keeps it, Save layout keeps the choice (zeynep)", async ({ browser }) => {
