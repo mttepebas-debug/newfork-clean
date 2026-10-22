@@ -538,4 +538,11 @@
   .list-pagination-gap {
     display: none;
   }
+  /* Employees ends with the bar, and the phone page's 34 px bottom
+     (styles.css) made the band under the list thick (Mert 2026-10-21): the
+     bar keeps its 12 above and gets the same 12 below. The tab bar keeps its
+     own safe-area room (shell/phone-nav.css). */
+  .employees-page.list-page.list-page:has(> .list-pagination) {
+    padding-bottom: 12px;
+  }
 }

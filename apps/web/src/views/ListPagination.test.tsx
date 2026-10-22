@@ -87,4 +87,12 @@ describe("ListPagination on a phone", () => {
     expect(rule(/\.list-pagination-pages button\[aria-label\^="Page "\]/)).toMatch(/display\s*:\s*none/);
     expect(rule(/\.list-pagination-gap/)).toMatch(/display\s*:\s*none/);
   });
+
+  // Employees ends with the bar: under it sat the page's 34 px bottom, so the
+  // band from the list to the tab bar read thick (Mert 2026-10-21). The bar
+  // keeps its 12 above; the same 12 under it, nothing else.
+  it("keeps Employees' bar a slim band: 12 under it, as above it", () => {
+    expect(rule(/^\s*\.list-pagination\s*$/m)).not.toMatch(/margin-top/);
+    expect(rule(/\.employees-page\.list-page\.list-page:has\(> \.list-pagination\)/)).toMatch(/padding-bottom\s*:\s*12px/);
+  });
 });
