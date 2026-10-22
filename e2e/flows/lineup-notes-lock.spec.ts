@@ -33,20 +33,57 @@ test("a phone's Notes opens a draft's notes to edit and a published one's read o
   const card = phone.getByRole("region", { name: /^Kadikoy, / });
   await expect(card.getByText("Draft", { exact: true })).toBeVisible();
 
-  // The draft: a tap on Notes and the notes are there to type in, no Edit notes on the way.
+  // The draft: a tap on Notes and the notes are there to type in, no Edit notes on the way, no Save or Cancel
+  // (Mert 2026-10-21 ~6:40 PM): what is typed saves itself.
   await card.getByRole("tab", { name: "Notes" }).tap();
   const pane = phone.getByRole("tabpanel");
   const specials = pane.getByPlaceholder("Tonight's specials");
   await expect(specials).toBeVisible();
   await expect(phone.getByRole("button", { name: "Edit notes" })).toHaveCount(0);
+  await expect(pane.getByRole("button", { name: /^(Save|Cancel)$/ })).toHaveCount(0);
   await expect(pane.getByText("Staff see the notes when you publish.")).toBeVisible();
   await settled(pane);
   await phone.screenshot({ path: test.info().outputPath("lineup-notes-390-draft.png") });
-  await specials.fill("Halibut, $34");
+
+  // Held on its way, so Saving… can be seen; then Saved.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await phone.route("**/lineups/edit", async (route) => {
+    await held;
+    await route.continue();
+  });
   const saved = phone.waitForRequest((request) => request.url().endsWith("/lineups/edit") && request.method() === "POST");
-  await pane.getByRole("button", { name: "Save", exact: true }).tap();
+  await specials.fill("Halibut, $34");
   const edit = await saved;
-  await expect(pane.getByRole("region", { name: "Notes" })).toContainText("Halibut, $34");
+  const state = pane.getByRole("status");
+  await expect(state).toHaveText("Saving…");
+  await state.scrollIntoViewIfNeeded();
+  await phone.screenshot({ path: test.info().outputPath("autosave-390-saving.png") });
+  release();
+  await expect(state).toHaveText("Saved");
+  await phone.screenshot({ path: test.info().outputPath("autosave-390-saved.png") });
+  await phone.unroute("**/lineups/edit");
+
+  // Team and back: what was typed is where it was.
+  await card.getByRole("tab", { name: /^Team/ }).tap();
+  await expect(specials).toBeHidden();
+  await card.getByRole("tab", { name: /^Notes/ }).tap();
+  await expect(specials).toHaveValue("Halibut, $34");
+  await settled(pane);
+  await specials.scrollIntoViewIfNeeded();
+  await phone.screenshot({ path: test.info().outputPath("autosave-390-back.png") });
+
+  // Typed, then straight to Team: it goes as the tab changes, and a fresh page reads it.
+  await pane.getByPlaceholder("What's sold out").fill("Oysters");
+  const gone = phone.waitForResponse((response) => response.url().endsWith("/lineups/edit") && response.request().method() === "POST");
+  await card.getByRole("tab", { name: /^Team/ }).tap();
+  const answer = await gone;
+  expect(answer.ok()).toBe(true);
+  expect(answer.request().postDataJSON().notes).toEqual({ n86: "Oysters" });
+  await phone.reload();
+  await card.getByRole("tab", { name: /^Notes/ }).tap();
+  await expect(specials).toHaveValue("Halibut, $34");
+  await expect(pane.getByPlaceholder("What's sold out")).toHaveValue("Oysters");
 
   // Published from the phone's Publish.
   await phone.getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).tap();
