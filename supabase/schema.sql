@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 578, last: 20261022140000_time_off_answer.sql
--- fingerprint: sha256:4a5d9063d14cda55b1d6419f914d7ad49c45628c4bc17e60fcafd3c2f4a5b910
+-- migrations: 579, last: 20261022150000_time_off_pending_schedule.sql
+-- fingerprint: sha256:4067cb41e3eb87bf0f2165c8f10b0495768f7b8cb029733fa10a1f62d2e40fc5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -8774,14 +8774,21 @@ with location_zone as (
   from zone z
 ), leave_piece as materialized (
   -- Read once for the week and a day either side, whatever the zones (UTC-12 to UTC+14).
-  select away.employee_id, away.span
+  -- Time off waiting for an answer comes in the same read, kept apart below.
+  select away.employee_id, away.span, away.pending
   from app_private.leave_spans(target_workspace_id, target_employee_ids,
     tstzrange((target_week_start - 1)::timestamp at time zone 'UTC', (target_week_start + 9)::timestamp at time zone 'UTC', '[)')) away
-  where not away.pending
 ), leave as (
   select lp.employee_id, lt.zone_name, range_agg(lp.span * lt.span) as spans
   from leave_target lt
-  join leave_piece lp on lp.span && lt.span
+  join leave_piece lp on lp.span && lt.span and not lp.pending
+  group by lp.employee_id, lt.zone_name
+), pending_leave as (
+  -- Time off waiting for an answer (KARARLAR S-239 (9)): only a warning. It is never part of `leave`, so
+  -- nothing blocks on it and it is no conflict; the grid hands it only to who may answer it.
+  select lp.employee_id, lt.zone_name, range_agg(lp.span * lt.span) as spans
+  from leave_target lt
+  join leave_piece lp on lp.span && lt.span and lp.pending
   group by lp.employee_id, lt.zone_name
 ), clock_segments as (
   select s.zone_name,
@@ -8807,6 +8814,7 @@ with location_zone as (
       -- them only for whoever may read the note.
       'note_intervals', public.availability_ranges_json(coalesce(u.note_spans, '{}'::tstzmultirange)),
       'leave_intervals', public.availability_ranges_json(coalesce(lv.spans, '{}'::tstzmultirange)),
+      'pending_leave_intervals', public.availability_ranges_json(coalesce(pl.spans, '{}'::tstzmultirange)),
       'clock_segments', cs.segments,
       'days', (select jsonb_agg(jsonb_build_object(
                  'date', ds.work_date,
@@ -8817,13 +8825,14 @@ with location_zone as (
   cross join zone z
   left join unavailable u on u.employee_id = e.employee_id and u.zone_name = z.zone_name
   left join leave lv on lv.employee_id = e.employee_id and lv.zone_name = z.zone_name
+  left join pending_leave pl on pl.employee_id = e.employee_id and pl.zone_name = z.zone_name
   left join clock_segments cs on cs.zone_name = z.zone_name
   where not exists (select 1 from broken b where b.employee_id = e.employee_id)
 )
 select e.employee_id, lz.id, ez.unavailable, ez.leave,
   jsonb_build_object('location_id', lz.id, 'location_name', lz.name, 'timezone', lz.timezone, 'week_start', target_week_start)
   || coalesce(ez.body, jsonb_build_object('status', 'unknown', 'unavailable_intervals', '[]'::jsonb, 'employee_intervals', '[]'::jsonb, 'note_intervals', '[]'::jsonb, 'leave_intervals', '[]'::jsonb,
-       'clock_segments', '[]'::jsonb, 'days', '[]'::jsonb))
+       'pending_leave_intervals', '[]'::jsonb, 'clock_segments', '[]'::jsonb, 'days', '[]'::jsonb))
 from unnest(target_employee_ids) e(employee_id)
 cross join location_zone lz
 left join employee_zone ez on ez.employee_id = e.employee_id and ez.zone_name = lz.timezone and lz.zone_ok;
@@ -17959,6 +17968,16 @@ begin
       and reminder.employee_id = any(array(select employee.id from visible_employees employee))
       and app_private.authz_reason(actor_user_id, target_workspace_id, 'availability.note_read',
         target_person => reminder.employee_id) is null
+  ), pending_readers as materialized (
+    -- Time off waiting for an answer reaches the grid only for who may answer it, or the person
+    -- themself (KARARLAR S-239: a waiting request is read only by who decides it). Asked only for the
+    -- few people who have one this week.
+    select asking.employee_id
+    from (select distinct week.employee_id from week_availability week
+          where jsonb_array_length(coalesce(week.projection -> 'pending_leave_intervals', '[]'::jsonb)) > 0) asking
+    join visible_employees employee on employee.id = asking.employee_id
+    where employee.user_id = actor_user_id
+      or app_private.time_off_decider_reason(actor_user_id, target_workspace_id, asking.employee_id) is null
   )
   select jsonb_build_object(
     'workspace_id', target_workspace_id,
@@ -18015,13 +18034,16 @@ begin
           where assignment.employee_id = employee.id and assignment.ended_at is null), '[]'::jsonb),
         'primary_job_id', app_private.stored_primary_job(employee.id),
         -- The note's words and hours only for whoever may read the note (M12).
-        'weekly_availability', coalesce((select jsonb_agg((week.projection - 'note_intervals')
+        'weekly_availability', coalesce((select jsonb_agg((week.projection - 'note_intervals' - 'pending_leave_intervals')
             || jsonb_build_object('manager_notes', note.words,
               'note_author', note.author, 'note_edited_at', note.edited_at,
-              'note_intervals', case when note.employee_id is null then '[]'::jsonb else week.projection -> 'note_intervals' end)
+              'note_intervals', case when note.employee_id is null then '[]'::jsonb else week.projection -> 'note_intervals' end,
+              'pending_leave_intervals', case when pending_reader.employee_id is null then '[]'::jsonb
+                else week.projection -> 'pending_leave_intervals' end)
             order by week.location_id)
           from week_availability week
           left join readable_notes note on note.employee_id = employee.id
+          left join pending_readers pending_reader on pending_reader.employee_id = employee.id
           where week.employee_id = employee.id
             and exists (select 1 from public.employee_location_assignments assignment
               where assignment.employee_id = employee.id and assignment.location_id = week.location_id
@@ -32424,7 +32446,10 @@ begin
     from jsonb_array_elements(case when a->>'assessment_scope'='shift_interval' then a->'intervals' else a->'unknown_intervals' end) i limit 1;
    if lower(shift_span)>now() then
     pending:=pending||coalesce((select jsonb_agg(jsonb_build_object('employee_id',s.employee_id,'employee_name',nullif(s.employee_name,''),
-      'scheduled_date',s.scheduled_date,'location_id',s.location_id,'location_name',s.location_name,'shift_id',s.id,'request_id',r.id))
+      'scheduled_date',s.scheduled_date,'location_id',s.location_id,'location_name',s.location_name,'shift_id',s.id,'request_id',r.id,
+      -- Which table the request is in, so the web opens it where it lives (time off rebuild D3b).
+      'time_off_source',case when exists(select 1 from public.time_off_requests t where t.id=r.id and t.workspace_id=w)
+        then 'current' else 'legacy' end))
      from (select distinct away.request_id id from app_private.leave_spans(w,array[s.employee_id],shift_span) away
       where away.pending) r),'[]');
    end if;
@@ -32434,13 +32459,13 @@ begin
    'id',encode(extensions.digest(convert_to('time_off_pending|'||g.employee_id||'|'||g.scheduled_date||'|'||g.location_id||'|'||g.request_id,'UTF8'),'sha256'),'hex'),
    'code','time_off_pending','severity','soft','overrideable',false,'tier','note',
    'location_id',g.location_id,'location_name',g.location_name,'employee_id',g.employee_id,'employee_name',g.employee_name,
-   'scheduled_date',g.scheduled_date,'shift_ids',g.shift_ids,'time_off_request_id',g.request_id,
+   'scheduled_date',g.scheduled_date,'shift_ids',g.shift_ids,'time_off_request_id',g.request_id,'time_off_source',g.time_off_source,
    'message',left(coalesce(g.employee_name,'This person')||' has time off waiting for a decision on '||to_char(g.scheduled_date,'Mon FMDD'),500))
   order by g.scheduled_date,g.employee_id,g.location_id,g.request_id)
   from (select h->>'employee_id' employee_id,h->>'employee_name' employee_name,(h->>'scheduled_date')::date scheduled_date,
     h->>'location_id' location_id,h->>'location_name' location_name,h->>'request_id' request_id,
-    jsonb_agg(h->'shift_id' order by h->>'shift_id') shift_ids
-   from jsonb_array_elements(pending) h group by 1,2,3,4,5,6) g),'[]');
+    h->>'time_off_source' time_off_source,jsonb_agg(h->'shift_id' order by h->>'shift_id') shift_ids
+   from jsonb_array_elements(pending) h group by 1,2,3,4,5,6,7) g),'[]');
  -- BL-198: a draft that would undo an approved shift change is a blocker.
  findings:=findings||public.shift_exchange_draft_undoes(w,(payload->>'draft_id')::uuid,
   array(select (x->>'location_id')::uuid from jsonb_array_elements(coalesce(payload->'locations','[]'::jsonb)) x),departments,include_no_department);
