@@ -504,7 +504,15 @@ export const managerHomeLocationSchema = z.object({
   open_shifts: z.array(
     z.object({ date: homeDateSchema, starts_at: homeMomentSchema, ends_at: homeMomentSchema, job_name: z.string() }),
   ),
-  missing_documents: z.array(z.object({ employee_id: z.string().uuid(), name: z.string(), document: z.string() })),
+  missing_documents: z.array(
+    z.object({
+      employee_id: z.string().uuid(),
+      name: z.string(),
+      document: z.string(),
+      requirement_id: z.string().uuid(),
+      status: z.enum(["missing", "rejected", "expired"]),
+    }),
+  ),
 });
 export type ManagerHomeLocation = z.infer<typeof managerHomeLocationSchema>;
 

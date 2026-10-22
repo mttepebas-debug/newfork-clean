@@ -540,7 +540,8 @@ describe("WorkspacePage", () => {
         { starts_at: new Date(now + 7_200_000).toISOString(), ends_at: new Date(now + 9_000_000).toISOString(), open: true },
       ],
       missing_documents: [
-        { employee_id: "aa000000-0000-4000-8000-000000000001", name: "Sam Ortiz", document: "Alcohol Server Permit" },
+        { employee_id: "aa000000-0000-4000-8000-000000000001", name: "Sam Ortiz", document: "Alcohol Server Permit",
+          requirement_id: "ab000000-0000-4000-8000-000000000001", status: "expired" as const },
       ],
     };
     const two = {
@@ -569,6 +570,11 @@ describe("WorkspacePage", () => {
         "Sam Ortiz is working without a required document",
         "Kadikoy",
         "Emre Demir asks for time off",
+      ]);
+      // Each opens what it is about: Sam's permit, Emre's request (Mert 2026-10-22).
+      expect(within(needs()).getAllByRole("link").map((row) => row.getAttribute("href"))).toEqual([
+        `/app/employees/documents?location=${besiktas.id}&status=expired&requirement=ab000000-0000-4000-8000-000000000001`,
+        "/app/schedule/requests?request=ab000000-0000-4000-8000-000000000001",
       ]);
       expect(needs().querySelector(".dl-cnt")?.className).toContain("is-warn");
       expect(screen.getByText(/1 person on the floor across 2 locations\. 2 things need you\./)).toBeTruthy();

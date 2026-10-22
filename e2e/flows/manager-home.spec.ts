@@ -36,7 +36,7 @@ const place = (id: string, name: string) => ({
   floor_managers: [] as { name: string; starts_at: string; ends_at: string }[],
   week: week(),
   open_shifts: [] as { date: string; starts_at: string; ends_at: string; job_name: string }[],
-  missing_documents: [] as { employee_id: string; name: string; document: string }[],
+  missing_documents: [] as { employee_id: string; name: string; document: string; requirement_id: string; status: string }[],
 });
 
 function answer(workspaceId: string, both: boolean, layout: unknown) {
@@ -49,7 +49,8 @@ function answer(workspaceId: string, both: boolean, layout: unknown) {
     ],
     floor_managers: [{ name: "Lina Park", starts_at: at(-2), ends_at: at(3) }],
     open_shifts: [{ date: date(0), starts_at: at(2), ends_at: at(6), job_name: "Server" }],
-    missing_documents: [{ employee_id: "e2000000-0000-4000-8000-000000000001", name: "Sam Ortiz", document: "Alcohol Server Permit" }],
+    missing_documents: [{ employee_id: "e2000000-0000-4000-8000-000000000001", name: "Sam Ortiz", document: "Alcohol Server Permit",
+      requirement_id: "e2100000-0000-4000-8000-000000000001", status: "expired" }],
   };
   const kadikoy = { ...place(KADIKOY, "Kadikoy"), today_shifts: [{ starts_at: at(-1), ends_at: at(5), open: false }] };
   return {
