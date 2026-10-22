@@ -33,6 +33,7 @@ const tenantScopedQueryPrefixes = new Set([
   "shift-labels",
   "shift-types",
   "signature-settings",
+  "time-off-requests",
   "workspace-action-center",
   "workspace-attention",
   "workspace-dashboard",

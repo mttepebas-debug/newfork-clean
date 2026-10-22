@@ -25,6 +25,8 @@ import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssig
 import "../employee-hub/time-off.css";
 import { formatTimeOffDeadline, timeOffWallParts, timeOffZoneName } from "../employee-hub/time-off-split";
 import { isStaleTimeOff, useSubmitTimeOff } from "../schedule/requests-data";
+import { timeOffV2Enabled } from "../time-off/time-off-flag";
+import { TimeOffRequests } from "../time-off/TimeOffRequests";
 import { useAuth } from "../auth/AuthContext";
 import {
   actOnEmployeeRequest,
@@ -294,7 +296,9 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
         ))}
       </div>
       <div role="tabpanel" id={`my-${active}-panel`} aria-labelledby={`my-${active}-tab`}>
-        {timeOff ? (
+        {timeOff && timeOffV2Enabled() ? (
+          <TimeOffRequests workspaceId={model.workspace_id} timeFormat={model.settings.time_format} />
+        ) : timeOff ? (
           <AvailabilityDraftScope labels={timeOffNavigationLabels}>
             <TimeOffView model={model} refresh={refresh} />
           </AvailabilityDraftScope>
