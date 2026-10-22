@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(24);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -38,7 +38,7 @@ insert into retired (kind, name, step) values
   ('column', 'employee_terminations.active_session_id', '5.2'),
   ('permission', 'kiosk.%', '5.2'), ('permission', 'time.%', '5.2'),
   ('notification', 'time_tracking.%', '5.2'),
-  ('checklist', 'kiosk', '5.2'),
+  -- (the kiosk setup step went with the whole owner setup checklist, checklist-drop below)
   -- 5.3 the old availability system (20260924204854)
   ('table', 'availability_commands', '5.3'), ('table', 'availability_draft_impact_reviews', '5.3'),
   ('table', 'availability_events', '5.3'), ('table', 'availability_publication_locks', '5.3'),
@@ -591,6 +591,18 @@ insert into retired (kind, name, step) values
 insert into retired (kind, name, step) values
   ('column', 'workspace_memberships.employee_id', 'UYELIK-BAG'),
   ('constraint', 'workspace_memberships_employee_id_fkey', 'UYELIK-BAG');
+-- The owner setup checklist left Home, Settings and the API on 2026-10-21; its progress table, step list and
+-- three services follow (checklist-drop, Mert 2026-10-22). service_actor_has_permission and workspace.setup stay.
+insert into retired (kind, name, step) values
+  ('table', 'owner_setup_checklist_progress', 'checklist-drop'),
+  ('function', 'owner_setup_checklist_item_ids', 'checklist-drop'),
+  ('function', 'get_owner_setup_checklist_progress_service', 'checklist-drop'),
+  ('function', 'mark_owner_setup_checklist_item_service', 'checklist-drop'),
+  ('function', 'set_owner_setup_checklist_closed_service', 'checklist-drop'),
+  ('function_signature', 'app_private.owner_setup_checklist_item_ids()', 'checklist-drop'),
+  ('function_signature', 'public.get_owner_setup_checklist_progress_service(uuid, uuid)', 'checklist-drop'),
+  ('function_signature', 'public.mark_owner_setup_checklist_item_service(uuid, uuid, text)', 'checklist-drop'),
+  ('function_signature', 'public.set_owner_setup_checklist_closed_service(uuid, uuid, boolean)', 'checklist-drop');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -719,10 +731,6 @@ select is(
 select is(
   array(select r.name from retired r join pg_constraint c on c.conname = r.name where r.kind = 'constraint' order by 1),
   '{}'::text[], 'retired constraints stay gone'
-);
-select is(
-  array(select r.name from retired r where r.kind = 'checklist' and r.name = any (app_private.owner_setup_checklist_item_ids()) order by 1),
-  '{}'::text[], 'retired owner setup steps stay gone'
 );
 
 select ok(
