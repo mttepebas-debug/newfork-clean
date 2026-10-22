@@ -151,6 +151,8 @@ import {
 import { registerSignatureSettingsRoutes } from "./settings/signature-settings-routes";
 import { registerNotificationSettingsRoutes } from "./notification-settings/notification-settings-routes";
 import { createNotificationSettingsServiceFromEnvironment, type NotificationSettingsService } from "./notification-settings/notification-settings-service";
+import { registerTimeOffRequestsRoutes, timeOffRequestsReady } from "./time-off/time-off-requests-routes";
+import { createTimeOffRequestsServiceFromEnvironment, type TimeOffRequestsService } from "./time-off/time-off-requests-service";
 import { registerOnboardingApprovalRoutes } from "./settings/onboarding-approval-routes";
 import { createOnboardingApprovalServiceFromEnvironment, type OnboardingApprovalService } from "./settings/onboarding-approval-service";
 import {
@@ -222,6 +224,8 @@ export interface BuildAppOptions {
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
   readonly notificationSettingsService?: NotificationSettingsService | null;
+  /** Time off rebuild D2: the new table's employee doors (registered only where timeOffRequestsReady). */
+  readonly timeOffRequestsService?: TimeOffRequestsService | null;
   readonly onboardingApprovalService?: OnboardingApprovalService | null;
   readonly maintenanceWorker?: MaintenanceWorker | null;
   readonly maintenanceCron?: {
@@ -984,6 +988,12 @@ export function buildApp(options: BuildAppOptions = {}) {
     service: options.onboardingApprovalService === undefined ? createOnboardingApprovalServiceFromEnvironment() : options.onboardingApprovalService,
     contextResolver,
   });
+  if (timeOffRequestsReady()) {
+    registerTimeOffRequestsRoutes(app, {
+      service: options.timeOffRequestsService === undefined ? createTimeOffRequestsServiceFromEnvironment() : options.timeOffRequestsService,
+      contextResolver,
+    });
+  }
 
   return app;
 }

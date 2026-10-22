@@ -18,6 +18,7 @@ import { createDocumentLifecycleServiceWithClient } from "./employees/document-l
 import { createNotificationsService } from "./notifications/notifications-service";
 import { createLineupService } from "./lineup/lineup-service";
 import { createAvatarService } from "./avatars/avatar-service";
+import { createTimeOffRequestsService } from "./time-off/time-off-requests-service";
 
 // BL-134: whatever the database says goes through rpcFailure, so a refusal
 // keeps its status and machine key and Postgres's own sentence never reaches
@@ -86,6 +87,11 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
   ["lineup day", () => createLineupService(options).day({ actorUserId: actor, workspaceId: workspace, date: "2028-09-11" })],
   ["own avatar", () => createAvatarService(options).own(input)],
   ["last avatar", () => createAvatarService(options).last(input)],
+  ["my time off", () => createTimeOffRequestsService(options).mine(input)],
+  ["ask time off", () => createTimeOffRequestsService(options).ask({ actorUserId: actor, workspaceId: workspace, request: {
+    kind_of_leave: "vacation", start_date: "2028-09-11", end_date: "2028-09-11", all_day: true, start_time: null, end_time: null,
+    note: null, expected_timezone: "America/Los_Angeles", client_key: id } })],
+  ["withdraw time off", () => createTimeOffRequestsService(options).withdraw({ actorUserId: actor, workspaceId: workspace, requestId: id, expectedRevision: 1 })],
 ];
 
 describe.each(calls)("%s service", (_name, call) => {

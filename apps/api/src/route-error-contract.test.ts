@@ -66,6 +66,7 @@ function appFailingWith(error: unknown) {
     lineupService: service,
     avatarService: service,
     invitationService: service,
+    timeOffRequestsService: service,
   };
   return buildApp(options);
 }
@@ -93,6 +94,7 @@ const requests: ReadonlyArray<readonly [string, "GET" | "DELETE", string]> = [
   ["own avatar", "GET", `${w}/me/avatar`],
   ["own avatar removal", "DELETE", `${w}/me/avatar`],
   ["last avatar", "GET", `${w}/me/last-avatar`],
+  ["time off requests", "GET", `${w}/time-off-requests/mine`],
 ];
 
 describe.each(requests)("%s route", (_name, method, url) => {
