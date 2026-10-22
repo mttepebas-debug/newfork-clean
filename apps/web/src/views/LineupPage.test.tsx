@@ -2238,9 +2238,9 @@ describe("LineupPage, editing a draft on the desktop", () => {
       fireEvent.change(specialsBox(), { target: { value: "Halibut" } });
       fireEvent.blur(specialsBox());
       await waitFor(() => expect(noteSaves()).toHaveLength(1));
-      expect(screen.getByRole("status").textContent).toBe("Saving…");
+      expect(within(screen.getByRole("tabpanel")).getByRole("status").textContent).toBe("Saving…");
       release!();
-      await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Saved"));
+      await waitFor(() => expect(within(screen.getByRole("tabpanel")).getByRole("status").textContent).toBe("Saved"));
     });
 
     it("keeps what is typed through a tab change, sending it as the tab changes", async () => {
@@ -2248,7 +2248,8 @@ describe("LineupPage, editing a draft on the desktop", () => {
       fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
       fireEvent.change(specialsBox(), { target: { value: "Halibut" } });
       fireEvent.click(screen.getByRole("tab", { name: /^Team/ }));
-      expect(noteSaves()).toHaveLength(1);
+      // At once, not when typing would have rested.
+      await waitFor(() => expect(noteSaves()).toHaveLength(1), { timeout: 400 });
       expect(noteSaves()[0]!.body.notes).toEqual({ specials: "Halibut" });
       fireEvent.click(screen.getByRole("tab", { name: /^Notes/ }));
       expect(specialsBox().value).toBe("Halibut");
@@ -2272,7 +2273,7 @@ describe("LineupPage, editing a draft on the desktop", () => {
       expect((await screen.findByRole("alert")).textContent).toBe("Couldn't save. Trying again…");
       expect(specialsBox().value).toBe("Halibut");
       await waitFor(() => expect(noteSaves()).toHaveLength(2), { timeout: 8000 });
-      await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Saved"));
+      await waitFor(() => expect(within(screen.getByRole("tabpanel")).getByRole("status").textContent).toBe("Saved"));
       expect(screen.queryByRole("alert")).toBeNull();
     }, 15000);
 
