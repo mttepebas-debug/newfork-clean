@@ -274,18 +274,21 @@ button.mh-loc:hover {
   margin: 4px calc(-1 * var(--dl-g)) 0;
   overflow-x: auto;
   padding: 8px var(--dl-g);
-  background: color-mix(in srgb, var(--theme-page) 90%, transparent);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  /* Once the page passes under them they carry the part of Home's sky they rest on, over the page ground, so
+     no card shows between them and nothing turns grey (Mert 2026-10-21 ~18:45, as every page's frozen top).
+     useHomeFilterSky.ts writes where they rest; longhands, since the sky is several layers and each one takes
+     the size and place; the first layer is the sky's fade beside a desktop's menu (.dl-sky's mask). */
+  background-color: var(--theme-app-ground);
+  background-image: linear-gradient(90deg, var(--theme-app-ground) 0, transparent var(--dl-sky-fade, 0px)), var(--dl-sky);
+  background-position: calc(-1 * var(--mh-sky-x, 0px)) calc(-1 * var(--mh-sky-y, 0px));
+  background-repeat: no-repeat;
+  background-size: var(--mh-sky-w, 100%) 470px;
   scrollbar-width: none;
 }
-/* At rest the chips sit on the page's sky with nothing behind them; the frost
-   comes only once the greeting is gone and the page passes under them, like
-   the top bar (Mert 2026-10-21, "pillerin arkası direkt gri"). */
+/* At rest the chips sit on the page's sky with nothing behind them (Mert
+   2026-10-21, "pillerin arkası direkt gri"). */
 .mh-home:not(.is-far) .mh-filter {
   background: transparent;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
 }
 .mh-filter::-webkit-scrollbar {
   display: none;

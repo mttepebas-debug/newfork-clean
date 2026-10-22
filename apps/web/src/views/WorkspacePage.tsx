@@ -48,6 +48,7 @@ import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { HomeSection } from "../employee-hub/HomeSection";
 import { HomeNoticeDeck } from "../employee-hub/HomeNoticeDeck";
 import { useHomeScroll } from "../employee-hub/home-motion";
+import { useHomeFilterSky } from "./useHomeFilterSky";
 import { daySlot } from "../employee-hub/home-model";
 import { ago } from "../employee-hub/home-data";
 import { NotificationBell } from "../notifications/NotificationViews";
@@ -102,6 +103,7 @@ export function WorkspacePage() {
   const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
   const root = useMemo(() => ({ current: rootElement }), [rootElement]);
   const far = useHomeScroll(root);
+  useHomeFilterSky(rootElement);
   const [customizing, setCustomizing] = useState(false);
   const [draft, setDraft] = useState<HomeLayoutInput | null>(null);
   const [chosen, setChosen] = useState("all");
