@@ -26,6 +26,8 @@ const PIECES = [
 ].join(", ");
 const AREAS = ".app-main, .settings-content, .account-content-scroll";
 const TALL = "(min-height: 560px)";
+/** A piece's place in the main area's sky (placeSky). */
+const SKY = ["--frozen-sky-x", "--frozen-sky-y", "--frozen-sky-w"];
 
 /** `area` scrolls; `root` (the area, or a box around it and what sits above it) holds the pieces. */
 export function useFrozenTop(area: HTMLElement | null, root: HTMLElement | null = area) {
@@ -63,7 +65,7 @@ export function useFrozenTop(area: HTMLElement | null, root: HTMLElement | null 
     const release = (element: HTMLElement) => {
       delete element.dataset.frozenPiece;
       delete element.dataset.frozenLast;
-      for (const name of ["--frozen-top", "--frozen-gap", "--frozen-bg"]) element.style.removeProperty(name);
+      for (const name of ["--frozen-top", "--frozen-gap", "--frozen-bg", ...SKY]) element.style.removeProperty(name);
     };
 
     const background = (element: HTMLElement) => {
@@ -93,6 +95,28 @@ export function useFrozenTop(area: HTMLElement | null, root: HTMLElement | null 
 
     // A page that pins its own top (data-frozen-own) has no piece here, but
     // its top frosts under the sky by the same mark (the phone Lineup).
+    // Where each piece rests inside the main area's sky (styles.css, .app-main[data-slot]), so a stuck piece
+    // carries that part of the sky instead of the flat page ground (frozen-top.css; Mert 2026-10-21 ~18:45,
+    // "scroll yapınca header rengi griye dönüyor"). Measured with the pieces at rest.
+    const placeSky = (rests: readonly Band[]) => {
+      const painter = area.closest<HTMLElement>(".app-main");
+      if (!painter) {
+        for (const piece of pieces) for (const name of SKY) piece.style.removeProperty(name);
+        return;
+      }
+      const sky = painter.getBoundingClientRect();
+      const box = area.getBoundingClientRect();
+      // Rests are measured from the top of the area's content; the sky from the top of the main area's.
+      const down =
+        painter === area ? 0 : box.top + area.clientTop - (sky.top + painter.clientTop) + painter.scrollTop;
+      pieces.forEach((piece, index) => {
+        const left = piece.getBoundingClientRect().left - (sky.left + painter.clientLeft);
+        piece.style.setProperty("--frozen-sky-x", `${Math.round(left)}px`);
+        piece.style.setProperty("--frozen-sky-y", `${Math.round((rests[index]?.top ?? 0) + down)}px`);
+        piece.style.setProperty("--frozen-sky-w", `${painter.clientWidth}px`);
+      });
+    };
+
     const markScrolled = () => {
       if ((pieces.length || root.querySelector("[data-frozen-own]")) && scrolled() > 0) root.dataset.frozenScrolled = "";
       else delete root.dataset.frozenScrolled;
@@ -127,7 +151,9 @@ export function useFrozenTop(area: HTMLElement | null, root: HTMLElement | null 
         else delete piece.dataset.frozenLast;
         piece.style.setProperty("--frozen-bg", background(piece));
       }
-      place(stickyStack(bands()));
+      const rests = bands();
+      place(stickyStack(rests));
+      placeSky(rests);
       markScrolled();
       delete root.dataset.frozenMeasuring;
       void box.offsetHeight;
