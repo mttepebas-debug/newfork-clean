@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 573, last: 20261021222718_join_approval_switch.sql
--- fingerprint: sha256:375e9c03c760c8b9e88eadb20f0534a8526e2fa86df074f7836bda812d911553
+-- migrations: 574, last: 20261022081635_owner_setup_checklist_gone.sql
+-- fingerprint: sha256:1d611bc844a7cb7b9bbe39f05f2845b3b7a8f7d2c0e25579e9f84f7eb0af0363
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -7540,24 +7540,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."owner_documents_arrive_excused"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."owner_setup_checklist_item_ids"() RETURNS "text"[]
-    LANGUAGE "sql" IMMUTABLE
-    SET "search_path" TO ''
-    AS $$
-  select array[
-    'app_tour',
-    'scheduling_preferences',
-    'employees',
-    'documents',
-    'schedule',
-    'billing'
-  ]::text[];
-$$;
-
-
-ALTER FUNCTION "app_private"."owner_setup_checklist_item_ids"() OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."workspace_ownership_transfers" (
@@ -17031,38 +17013,6 @@ $$;
 ALTER FUNCTION "public"."get_own_legal_name_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_owner_setup_checklist_progress_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  progress public.owner_setup_checklist_progress%rowtype;
-begin
-  if actor_user_id is null then
-    raise exception 'workspace management required' using errcode = '42501';
-  end if;
-  if not public.service_actor_has_permission(actor_user_id, target_workspace_id, 'settings.general.read') then
-    raise exception 'workspace management required' using errcode = '42501';
-  end if;
-
-  select * into progress
-  from public.owner_setup_checklist_progress
-  where workspace_id = target_workspace_id
-    and user_id = actor_user_id;
-
-  return jsonb_build_object(
-    'workspace_id', target_workspace_id,
-    'user_id', actor_user_id,
-    'completed_item_ids', coalesce(progress.completed_item_ids, '{}'::text[]),
-    'closed_at', progress.closed_at
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_owner_setup_checklist_progress_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."get_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_session_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -20768,55 +20718,6 @@ $$;
 
 
 ALTER FUNCTION "public"."mark_owner_onboarding_invitation_intent_dispatched_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "dispatch_failure_message" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."mark_owner_setup_checklist_item_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  normalized_item_id text := lower(btrim(coalesce(target_item_id, '')));
-begin
-  if actor_user_id is null then
-    raise exception 'workspace management required' using errcode = '42501';
-  end if;
-  if not public.service_actor_has_permission(actor_user_id, target_workspace_id, 'settings.general.manage') then
-    raise exception 'workspace management required' using errcode = '42501';
-  end if;
-  if normalized_item_id <> all(app_private.owner_setup_checklist_item_ids()) then
-    raise exception 'valid setup checklist item required' using errcode = '22023';
-  end if;
-
-  insert into public.owner_setup_checklist_progress (
-    workspace_id,
-    user_id,
-    completed_item_ids
-  )
-  values (
-    target_workspace_id,
-    actor_user_id,
-    array[normalized_item_id]
-  )
-  on conflict (workspace_id, user_id)
-  do update set
-    completed_item_ids = (
-      select array_agg(distinct item order by item)
-      from unnest(
-        public.owner_setup_checklist_progress.completed_item_ids ||
-        excluded.completed_item_ids
-      ) item
-    ),
-    updated_at = now();
-
-  return public.get_owner_setup_checklist_progress_service(
-    actor_user_id,
-    target_workspace_id
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."mark_owner_setup_checklist_item_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."mark_schedule_edit_session_shift_source"() RETURNS "trigger"
@@ -28509,46 +28410,6 @@ $$;
 ALTER FUNCTION "public"."set_onboarding_approval_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval_required" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."set_owner_setup_checklist_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "should_close" boolean) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-begin
-  if actor_user_id is null then
-    raise exception 'workspace management required' using errcode = '42501';
-  end if;
-  if not public.service_actor_has_permission(actor_user_id, target_workspace_id, 'settings.general.manage') then
-    raise exception 'workspace management required' using errcode = '42501';
-  end if;
-
-  insert into public.owner_setup_checklist_progress (
-    workspace_id,
-    user_id,
-    completed_item_ids,
-    closed_at
-  )
-  values (
-    target_workspace_id,
-    actor_user_id,
-    '{}'::text[],
-    case when should_close then now() else null end
-  )
-  on conflict (workspace_id, user_id)
-  do update set
-    closed_at = case when should_close then now() else null end,
-    updated_at = now();
-
-  return public.get_owner_setup_checklist_progress_service(
-    actor_user_id,
-    target_workspace_id
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_owner_setup_checklist_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "should_close" boolean) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."set_signature_retention_policy_archived_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_policy_id" "uuid", "should_archive" boolean) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -33142,20 +33003,6 @@ CREATE TABLE IF NOT EXISTS "public"."owner_onboarding_invitation_intents" (
 ALTER TABLE "public"."owner_onboarding_invitation_intents" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."owner_setup_checklist_progress" (
-    "workspace_id" "uuid" NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "completed_item_ids" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
-    "closed_at" timestamp with time zone,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "owner_setup_checklist_progress_completed_item_ids_check" CHECK (("completed_item_ids" <@ ARRAY['app_tour'::"text", 'scheduling_preferences'::"text", 'employees'::"text", 'documents'::"text", 'schedule'::"text", 'billing'::"text"]))
-);
-
-
-ALTER TABLE "public"."owner_setup_checklist_progress" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."permissions" (
     "key" "text" NOT NULL,
     "label" "text" NOT NULL,
@@ -34685,11 +34532,6 @@ ALTER TABLE ONLY "public"."onboarding_events"
 
 ALTER TABLE ONLY "public"."owner_onboarding_invitation_intents"
     ADD CONSTRAINT "owner_onboarding_invitation_intents_pkey" PRIMARY KEY ("workspace_id", "employee_id");
-
-
-
-ALTER TABLE ONLY "public"."owner_setup_checklist_progress"
-    ADD CONSTRAINT "owner_setup_checklist_progress_pkey" PRIMARY KEY ("workspace_id", "user_id");
 
 
 
@@ -36950,16 +36792,6 @@ ALTER TABLE ONLY "public"."owner_onboarding_invitation_intents"
 
 
 
-ALTER TABLE ONLY "public"."owner_setup_checklist_progress"
-    ADD CONSTRAINT "owner_setup_checklist_progress_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."owner_setup_checklist_progress"
-    ADD CONSTRAINT "owner_setup_checklist_progress_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
 ALTER TABLE ONLY "public"."person_notifications"
     ADD CONSTRAINT "person_notifications_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 
@@ -38023,13 +37855,6 @@ ALTER TABLE "public"."owner_onboarding_invitation_intents" ENABLE ROW LEVEL SECU
 
 
 CREATE POLICY "owner_onboarding_invitation_intents_no_direct_access" ON "public"."owner_onboarding_invitation_intents" TO "authenticated" USING (false) WITH CHECK (false);
-
-
-
-ALTER TABLE "public"."owner_setup_checklist_progress" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "owner_setup_checklist_progress_no_direct_access" ON "public"."owner_setup_checklist_progress" AS RESTRICTIVE TO "authenticated", "anon" USING (false) WITH CHECK (false);
 
 
 
@@ -39123,10 +38948,6 @@ REVOKE ALL ON FUNCTION "app_private"."owner_documents_arrive_excused"() FROM PUB
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."owner_setup_checklist_item_ids"() FROM PUBLIC;
-
-
-
 GRANT ALL ON TABLE "public"."workspace_ownership_transfers" TO "service_role";
 GRANT SELECT ON TABLE "public"."workspace_ownership_transfers" TO "authenticated";
 
@@ -40111,11 +39932,6 @@ GRANT ALL ON FUNCTION "public"."get_own_legal_name_service"("actor_user_id" "uui
 
 
 
-REVOKE ALL ON FUNCTION "public"."get_owner_setup_checklist_progress_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_owner_setup_checklist_progress_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."get_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_session_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_session_id" "uuid") TO "service_role";
 
@@ -40408,11 +40224,6 @@ GRANT ALL ON FUNCTION "public"."mark_notifications_seen_service"("actor_user_id"
 
 REVOKE ALL ON FUNCTION "public"."mark_owner_onboarding_invitation_intent_dispatched_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "dispatch_failure_message" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."mark_owner_onboarding_invitation_intent_dispatched_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "dispatch_failure_message" "text") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."mark_owner_setup_checklist_item_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."mark_owner_setup_checklist_item_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "text") TO "service_role";
 
 
 
@@ -41011,11 +40822,6 @@ GRANT ALL ON FUNCTION "public"."set_onboarding_approval_service"("actor_user_id"
 
 
 
-REVOKE ALL ON FUNCTION "public"."set_owner_setup_checklist_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "should_close" boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."set_owner_setup_checklist_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "should_close" boolean) TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."set_signature_retention_policy_archived_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_policy_id" "uuid", "should_archive" boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_signature_retention_policy_archived_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_policy_id" "uuid", "should_archive" boolean) TO "service_role";
 
@@ -41603,10 +41409,6 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."onboarding_
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."owner_onboarding_invitation_intents" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."owner_setup_checklist_progress" TO "service_role";
 
 
 

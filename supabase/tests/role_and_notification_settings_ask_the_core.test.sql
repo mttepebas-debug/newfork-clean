@@ -21,16 +21,15 @@ end;
 $$;
 grant execute on function pg_temp.answer(text) to service_role;
 
--- 1. The old helper is asked by the setup checklist alone (Soru-16, BL-808),
--- and every function this moved asks the core.
+-- 1. No function asks the old helper (the setup checklist, its last caller,
+-- went in checklist-drop), and every function this moved asks the core.
 select is(
   array(select p.proname::text from pg_proc p
         where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
           and p.prosrc ~ '(^|[^_a-z])service_actor_has_permission\s*\('
         order by 1),
-  array['get_owner_setup_checklist_progress_service', 'mark_owner_setup_checklist_item_service',
-        'set_owner_setup_checklist_closed_service'],
-  'only the three setup checklist services still ask the old permission helper');
+  '{}'::text[],
+  'no function asks the old permission helper');
 select is(
   array(select p.oid::regprocedure::text from pg_proc p
         where p.oid = any (array[

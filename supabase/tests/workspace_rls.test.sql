@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(118);
+select plan(113);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -774,58 +774,6 @@ select throws_ok(
     '20000000-0000-4000-8000-000000000001'
   )$$,
   '22023', 'completed owner onboarding cannot be reset', 'completed owner onboarding cannot be reset'
-);
-select is(
-  (
-    public.get_owner_setup_checklist_progress_service(
-      '10000000-0000-4000-8000-000000000001',
-      '20000000-0000-4000-8000-000000000001'
-    )->'completed_item_ids'
-  ),
-  '[]'::jsonb,
-  'owner setup checklist starts empty server-side'
-);
-select is(
-  (
-    public.mark_owner_setup_checklist_item_service(
-      '10000000-0000-4000-8000-000000000001',
-      '20000000-0000-4000-8000-000000000001',
-      'schedule'
-    )->'completed_item_ids'
-  ),
-  '["schedule"]'::jsonb,
-  'owner setup checklist visit progress is persisted per user and workspace'
-);
-select is(
-  (
-    public.mark_owner_setup_checklist_item_service(
-      '10000000-0000-4000-8000-000000000001',
-      '20000000-0000-4000-8000-000000000001',
-      'billing'
-    )->'completed_item_ids'
-  ),
-  '["billing", "schedule"]'::jsonb,
-  'owner setup checklist accepts billing as a provider-deferred visit'
-);
-select throws_ok(
-  $$select public.mark_owner_setup_checklist_item_service(
-    '10000000-0000-4000-8000-000000000001',
-    '20000000-0000-4000-8000-000000000001',
-    'payroll'
-  )$$,
-  '22023',
-  'valid setup checklist item required',
-  'owner setup checklist rejects unsupported item ids'
-);
-select throws_ok(
-  $$select public.mark_owner_setup_checklist_item_service(
-    '10000000-0000-4000-8000-000000000002',
-    '20000000-0000-4000-8000-000000000001',
-    'schedule'
-  )$$,
-  '42501',
-  'workspace management required',
-  'owner setup checklist requires owner or admin workspace management access'
 );
 -- Memberships change only through the server; the owner invariant holds there too.
 reset role;

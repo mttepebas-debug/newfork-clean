@@ -166,20 +166,18 @@ select is(
 
 -- The old permission helper: FB-6.6 took documents, signature templates and
 -- onboarding off it (30 -> 11), AVAIL-002 the availability settings (11 -> 10),
--- BL-276 Settings > Roles, Settings > Notifications and the RLS helper (10 -> 3).
--- The setup checklist's three wait for who sees the checklist (SORULAR Soru-16,
--- BL-808); when they move, the helper goes. Nothing else starts asking it.
+-- BL-276 Settings > Roles, Settings > Notifications and the RLS helper (10 -> 3),
+-- and checklist-drop the setup checklist's three with the checklist (3 -> 0).
+-- No function asks it any more, and none starts again.
 select is(
   array(
     select p.proname::text from pg_proc p
     where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
       and p.prosrc ~ '(^|[^_a-z])service_actor_has_permission\s*\('
-      and p.proname not in ('get_owner_setup_checklist_progress_service', 'mark_owner_setup_checklist_item_service',
-        'set_owner_setup_checklist_closed_service')
     order by 1
   ),
   '{}'::text[],
-  'the old permission helper is asked by the three setup checklist services alone'
+  'no function asks the old permission helper'
 );
 
 -- Every document, signature template and employee onboarding entry point asks
