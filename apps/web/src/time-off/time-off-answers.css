@@ -1,0 +1,34 @@
+/* Requests → Time off's answer drawer (time off rebuild D3): only what the Requests drawer's own classes
+   (request-drawer.css) do not already give. */
+.catalog-drawer .rd .toa-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.catalog-drawer .rd .toa-type .tor-i {
+  color: var(--theme-muted-strong);
+}
+.catalog-drawer .rd .toa-note {
+  display: grid;
+  gap: 6px;
+}
+.catalog-drawer .rd .toa-note textarea {
+  min-height: 88px;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 14px;
+}
+.catalog-drawer .rd .toa-note textarea:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 1px;
+}
+.catalog-drawer .rd .toa-opt {
+  margin-left: 4px;
+  color: var(--theme-muted);
+  font-weight: 500;
+}

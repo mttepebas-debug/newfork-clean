@@ -2,6 +2,7 @@ import {
   timeOffAskRefusal,
   timeOffDayCount,
   type KindOfLeave,
+  type TimeOffDeciderView,
   type TimeOffRequestStatus,
   type TimeOffRequestView,
 } from "@newfork/shared";
@@ -208,4 +209,48 @@ export function withdrawRefusalText(reason: string | undefined): string {
   if (reason === "time_off.changed") return "This request changed. Check it again.";
   if (reason === "time_off.not_found") return "This request is gone.";
   return "Couldn't withdraw your request. Try again.";
+}
+
+// D3: what the answerer's side says.
+
+const askedFor: Record<KindOfLeave, string> = { vacation: "vacation", sick: "sick time", personal: "personal time off", other: "time off" };
+
+/** "Alex Kim asks for vacation, Nov 13–16"; with hours, "…, Oct 27, 1:00 PM to 6:00 PM" (one sentence, S-151). */
+export function answerSentence(request: TimeOffDeciderView, format: TimeFormat = "12h") {
+  let when: string;
+  if (request.all_day || !request.start_time || !request.end_time) when = rangeShort(request);
+  else if (request.start_date === request.end_date) when = `${monthDay(request.start_date)}, ${hoursText(request, format)}`;
+  else
+    when = `${monthDay(request.start_date)} ${clockText(request.start_time, format)} to ${monthDay(request.end_date)} ${clockText(request.end_time, format)}`;
+  const middle = ` asks for ${askedFor[request.kind_of_leave]}, `;
+  return { name: request.employee_name, middle, when, text: `${request.employee_name}${middle}${when}` };
+}
+
+/** "3 shifts"; "3 shifts go"; "3 shifts went to open shifts." */
+export function shiftsText(count: number, form: "count" | "go" | "went"): string {
+  const noun = count === 1 ? "1 shift" : `${count} shifts`;
+  if (form === "count") return count === 0 ? "no shifts" : noun;
+  if (form === "go") return count === 1 ? "1 shift goes" : `${noun} go`;
+  return count === 0 ? "No shift went to open shifts." : `${noun} went to open shifts.`;
+}
+
+/** Why an answer did not go through, by its reason. */
+export function answerRefusalText(reason: string | undefined): string {
+  switch (reason) {
+    case "time_off.changed":
+      return "This request changed. Review it again.";
+    case "time_off.not_pending":
+      return "This request already has an answer.";
+    case "time_off.not_found":
+      return "This request is no longer available.";
+    case "time_off.invalid":
+      return "Approve or decline. A note can be up to 1000 characters.";
+    case "authz.rank":
+      return "You can't answer your own time off request.";
+    case "authz.document_blocked":
+      return "Add your missing documents before you answer requests.";
+    default:
+      if (reason?.startsWith("authz.")) return "You can't answer this request.";
+      return "Couldn't save your answer. Try again.";
+  }
 }

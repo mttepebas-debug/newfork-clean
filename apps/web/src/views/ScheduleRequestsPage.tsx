@@ -43,6 +43,8 @@ import {
 import { ListOutline, LoadError } from "../shell/LoadState";
 import { NoAccessRoute, NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { timeOffV2Enabled } from "../time-off/time-off-flag";
+import { TimeOffAnswers } from "../time-off/TimeOffAnswers";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
 
 export function ScheduleRequestsPage() {
@@ -328,6 +330,9 @@ function ScheduleRequestsPageContent() {
   const failed = Boolean(data.failure);
   // One group to read needs no tabs: All would say the same thing.
   const tabs = requestTabsFor(allowedTypes);
+  // Time off rebuild D3: behind the time-off-v2 flag the Time off tab is the new time off's (its own list,
+  // paged by the server, and its answer drawer). The All tab and the old drawer stay until D7.
+  const newTimeOff = view.type === "time_off" && timeOffV2Enabled() && can(context, "time_off.decide");
 
   return (
     <section
@@ -438,6 +443,19 @@ function ScheduleRequestsPageContent() {
             <ListOutline label="Loading request" rows={1} columns={5} inset />
           )}
         </div>
+      ) : newTimeOff ? (
+        <TimeOffAnswers
+          workspaceId={workspaceId}
+          timeFormat={timeFormat}
+          locationId={locationId}
+          search={search}
+          page={view.page}
+          pageSize={view.pageSize}
+          onPageChange={(next) => setView({ page: next > 1 ? String(next) : null })}
+          onPageSizeChange={(size) => setView({ size: size === 50 ? null : String(size), page: null })}
+          selectedId={selectedId}
+          onSelect={selectRequest}
+        />
       ) : (
         <>
           <div className="employee-table-wrap requests-table-wrap" ref={listWrap} tabIndex={-1}>

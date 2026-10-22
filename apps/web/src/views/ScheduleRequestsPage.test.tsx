@@ -7,7 +7,7 @@ import type {
 } from "@newfork/shared";
 import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ScheduleRequestsPage } from "./ScheduleRequestsPage";
 import { PermissionRoute } from "../auth/PermissionRoute";
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
@@ -1061,5 +1061,42 @@ describe("search", () => {
     const asked = new URL(fetchRequests.mock.calls.at(-1)![0], "http://x").searchParams.get("search");
     expect(asked).toHaveLength(120);
     answer(read);
+  });
+});
+
+// Time off rebuild D3: behind the time-off-v2 flag, the Time off tab lists the new table's requests and
+// opens the new answer drawer; the other tabs and the flag-off page stay as they are.
+describe("Time off tab with the new time off", () => {
+  const newRequest = {
+    id: "98020000-0000-4000-8000-000000000001", kind: "leave", kind_of_leave: "vacation", status: "pending",
+    starts_at: "2035-01-15T00:00:00+00:00", ends_at: "2035-01-17T00:00:00+00:00", all_day: true, time_timezone: "UTC",
+    start_date: "2035-01-15", end_date: "2035-01-16", start_time: null, end_time: null, note: null, revision: 1,
+    created_at: "2035-01-09T11:00:00+00:00", decided_at: null, decided_by_name: null, decision_note: null, ended_at: null,
+    ended_note: null, employee_id: "15000000-0000-4000-8000-000000000002", employee_name: "Jo Park", location_names: ["Kadıköy"],
+    shifts_opened: 0,
+  };
+  beforeEach(() => {
+    window.localStorage.setItem("newfork:time-off-v2", "1");
+    apiRequest.mockImplementation(async (_client: unknown, path: string) => {
+      if (String(path).includes("/time-off-requests/") && String(path).endsWith("/impact"))
+        return { request: newRequest, fingerprint: "x", shift_count: 0, hidden_shift_count: 0, locations: [] };
+      if (String(path).includes("/time-off-requests")) return { total: 1, waiting: 1, page: 1, page_size: 50, requests: [newRequest] };
+      throw new Error(`unexpected ${path}`);
+    });
+  });
+  afterEach(() => window.localStorage.removeItem("newfork:time-off-v2"));
+
+  it("lists the new requests on the Time off tab and opens the answer drawer from a link", async () => {
+    renderPage(`/app/schedule/requests?type=time_off&request=${newRequest.id}`);
+    expect(await screen.findByRole("dialog", { name: "Review time off" })).toBeTruthy();
+    expect(screen.getByRole("row", { name: /Jo Park asks for vacation/ })).toBeTruthy();
+    expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
+    expect(String(apiRequest.mock.calls[0]![1])).toContain(`/v1/workspaces/${workspaceId}/time-off-requests?`);
+  });
+
+  it("keeps the All tab as it is", async () => {
+    renderPage();
+    expect(await screen.findByRole("row", { name: /Alex Kim/ })).toBeTruthy();
+    expect(screen.queryByRole("row", { name: /Jo Park/ })).toBeNull();
   });
 });
