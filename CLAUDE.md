@@ -10,13 +10,16 @@ ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngil
 ## Kod ve main
 - Ana klasör (`newfork-clean`, main) Mert'indir: orada kod değiştirilmez, dal değiştirilmez. Her oturum işini kendi worktree'sinde yapar: `git worktree add ../newfork-wt/<iş> -b task/<iş> origin/main`, sonra `pnpm.cmd install` (yoksa vitest `@vitejs/plugin-react`'i bulamaz).
 - Yasak: `git stash`, `reset --hard`, `checkout -- .`, force push, `--no-verify`, toplu `git clean`, başkasının worktree'si, isimle süreç öldürme.
-- Main'e gönderim: dokunduğun paketin lint, typecheck ve testleri yeşil → `git fetch origin && git rebase origin/main` → `git push origin HEAD:main`. Main'deki her şey Vercel'den canlıya çıkar.
+- Oturum main'e push etmez, CI koşturmaz, canlıya ya da ortak DB'ye migration uygulamaz. İş bitince dokunduğu paketin lint, typecheck ve ilgili testleri yeşil → `git push origin task/<iş>` → koordinatöre `mcp__ccd_session_mgmt__send_message` ile rapor (dal, commit'ler, testler, migration, trende koşulacak e2e, ekran görüntüsü) → bekler. Koordinatörün session_id'si `C:\Users\TheWe\Desktop\newfork-md\KOORDINATOR-PLAN.md`'nin başında.
+- Koordinatör birikenleri trenle sınar ve tek push'ta main'e gönderir. Koordinatör oturumu kod yazmaz. Main'deki her şey Vercel'den canlıya çıkar.
+- Küçük iş istisnası: koordinatör bir oturuma "main'e sen gönder" diyebilir; oturum `git fetch origin && git rebase origin/main` → `git push origin HEAD:main` yapar.
+- Mert bir oturuma doğrudan "main'e gönder" derse oturum önce koordinatöre tek satır yazar, sonra gönderir.
 - Yetki, RLS, grant, `*_service`, davet, sahiplik devri, veri silme ya da parola/oturum koduna dokunan iş main'e göndermeden önce `nf-guvenlik` ONAY'ı alır.
-- Migration'lı işte sıra: ekleyen migration önce canlıya (aşağıda), sonra kod main'e; silen migration tersine, önce onu artık kullanmayan kod main'e, CI yeşil olunca canlıdan silme. Main'e girince ortak yerel DB'ye de uygula: `node scripts/lock.mjs run db -- node scripts/db-apply.mjs`.
-- Tam test (CI) main'e girince Mert'in bilgisayarındaki runner'da koşar; `gh run watch` ile izle. Kırmızıyı gören oturum düşen testin hangi commit'ten geldiğini bulur: kendi commit'iyse hemen düzeltir, değilse o commit'i `git revert` ile geri alır ve Mert'e söyler.
+- Migration'lar koordinatörün treniyle çıkar; sıra aynı: ekleyen migration önce canlıya (aşağıda), sonra kod main'e; silen migration tersine, önce onu artık kullanmayan kod main'e, CI yeşil olunca canlıdan silme. Main'e girince koordinatör ortak yerel DB'ye uygular: `node scripts/lock.mjs run db -- node scripts/db-apply.mjs` ve `node scripts/lock.mjs run db -- node scripts/test-db.mjs --load-only`.
+- Tam test (CI) main'e girince Mert'in bilgisayarındaki runner'da koşar; koordinatör `gh run watch` ile izler. Kırmızıda düşen testin hangi commit'ten geldiğini ayırır, düzeltmeyi ilgili oturuma ya da işçiye verir; gerekirse o commit'i `git revert` ile geri aldırır ve Mert'e söyler.
 
 ## Canlı veritabanı (Supabase `hvyvyisrqyathtliyyyv`)
-- İşi yapan oturum `canli-migration` skill'iyle uygular: yedek → MCP `apply_migration` → doğrulama → dosya adı = canlı ledger sürümü.
+- Koordinatör trende `canli-migration` skill'iyle uygular: yedek → MCP `apply_migration` → doğrulama → dosya adı = canlı ledger sürümü.
 - Riskli migration (silen; yetki, RLS, grant, policy; SECURITY DEFINER ya da CREATE OR REPLACE; `*_service`; davet; sahiplik devri; veri silme; parola/oturum) `nf-guvenlik` ONAY'ı ve Mert'in "evet"iyle. `supabase db push` ve `db reset` yasak.
 
 ## Mert'le çalışma
@@ -50,7 +53,7 @@ ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngil
 - Commit: İngilizce Conventional Commits, dosyalar adıyla (`git commit -a` yok).
 
 ## Komutlar
-- `pnpm.cmd install` · `pnpm.cmd supabase:start` · `pnpm.cmd dev` (web 5555, API 5556; başka oturum boş bir port çifti alır).
+- `pnpm.cmd install` · `pnpm.cmd supabase:start` · `pnpm.cmd dev` (web 5555, API 5556; başka oturum boş bir port çifti alır; 5590–5599 CI'ın, kullanılmaz).
 - `pnpm.cmd lint` · `pnpm.cmd typecheck` · `pnpm.cmd test` · `pnpm.cmd build`; odaklı: `pnpm.cmd --filter <paket> lint` / `typecheck`, `pnpm.cmd --filter @newfork/web exec vitest run <dosya>`.
 - Ortak yerel DB'ye dokunan komut kilitle koşar: `node scripts/lock.mjs run db -- pnpm.cmd test:db` (akış testi: `node scripts/lock.mjs run db --e2e -- <komut>`); sıra `node scripts/lock.mjs status`.
 - Akış testi (tek dosya): `e2e` klasöründen `node ../scripts/lock.mjs run db --e2e -- npx playwright test flows/<dosya>`; ayrıntı `e2e/CLAUDE.md`.
