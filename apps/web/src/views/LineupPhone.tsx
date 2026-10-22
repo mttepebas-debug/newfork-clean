@@ -292,14 +292,23 @@ function LocationLineup({
   const live = shift.publish.published;
   // Read is off until the lineup is published (Mert 2026-10-17 ~12:30 PM): a draft shows Team or Notes.
   const seg: Seg = picked === "read" && !live ? "team" : picked;
-  // S-238 (Mert 2026-10-21): on a draft that can change, going to Notes opens its notes to edit, no pencil step; a
-  // published one's open read only, with nothing to edit them (Edit on the card takes the lineup back first).
+  // S-238 (Mert 2026-10-21): on a draft that can change, a tap on Notes opens its notes to edit, no pencil step; a
+  // published one's open read only, with nothing to edit them (Edit on the card takes the lineup back first). A
+  // swipe to Notes reads them, so a swipe back doesn't land on a text box (which keeps its own sideways move); a
+  // swipe leaves notes being written alone until Mert decides what it does to them.
   const [notesOpen, setNotesOpen] = useState(false);
+  const [notesDirty, setNotesDirty] = useState(false);
   const pick = (next: Seg) => {
     if (next === "notes") setNotesOpen(true);
     setSeg(next);
   };
-  const swipe = useTabSwipe({ tabs: live ? SEGS : SEGS.slice(0, 2), active: seg, enabled: open, onSelect: pick, scope: "self" });
+  const swipe = useTabSwipe({
+    tabs: live ? SEGS : SEGS.slice(0, 2),
+    active: seg,
+    enabled: open && !notesDirty,
+    onSelect: setSeg,
+    scope: "self",
+  });
   // A draft that hasn't started changes in place (the server locks the rest), as on the desktop.
   const changing = editing && lineupEditable(shift, now) ? editing : null;
   // The person panel's row, by its key: the panel reads her as the day has her now (a change moves her row).
@@ -340,7 +349,13 @@ function LocationLineup({
         <div className="lineup-phone-pane" role="tabpanel" id={panel} aria-labelledby={`${ids}seg-${seg}`}>
           {seg === "notes" ? (
             changing && notesOpen ? (
-              <NotesEditor editing={changing} shift={shift} onDone={() => setNotesOpen(false)} focusFirst={false} />
+              <NotesEditor
+                editing={changing}
+                shift={shift}
+                onDone={() => setNotesOpen(false)}
+                focusFirst={false}
+                onDirty={setNotesDirty}
+              />
             ) : (
               <NotesPane shift={shift} />
             )
