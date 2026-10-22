@@ -46,6 +46,9 @@ export function EmployeeDocumentsList(props: {
   kind?: "document" | "acknowledgement";
   employeeId?: string;
   initialRequirementId?: string | null;
+  /** Where a link opens the list (Home's Needs you); the person changes them after. */
+  initialStatus?: DocumentStatusFilter;
+  initialLocationId?: string;
   /** Account's own list: one person, so no employee column, location filter
    * or employee search. Everyone else keeps the full table. */
   personal?: boolean;
@@ -53,9 +56,9 @@ export function EmployeeDocumentsList(props: {
   const personal = props.personal ?? false;
   const { context } = useAuth();
   const query = useEmployeeDocuments(props.audience, props.userId);
-  const [filter, setFilter] = useState<DocumentStatusFilter>("all");
+  const [filter, setFilter] = useState<DocumentStatusFilter>(props.initialStatus ?? "all");
   const [search, setSearch] = useState("");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(props.initialLocationId ?? "");
   const [type, setType] = useState("");
   const [sort, setSort] = useState<{
     key: "employee_name" | "title" | "status";

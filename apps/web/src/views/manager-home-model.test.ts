@@ -39,7 +39,8 @@ const downtown: ManagerHomeLocation = {
   week: week(),
   open_shifts: [],
   missing_documents: [
-    { employee_id: "a1000000-0000-4000-8000-000000000001", name: "Jordan Lee", document: "Food Handler Card" },
+    { employee_id: "a1000000-0000-4000-8000-000000000001", name: "Jordan Lee", document: "Food Handler Card",
+      requirement_id: "d1000000-0000-4000-8000-000000000001", status: "missing" },
   ],
 };
 const harbor: ManagerHomeLocation = { ...downtown, id: B, name: "Harbor", today_shifts: [], floor_managers: [], missing_documents: [], week: week(false) };
@@ -111,6 +112,29 @@ describe("the managers' Home model", () => {
     expect(needs[1]).toMatchObject({ title: "Emre Demir asks for time off", detail: "Fri, Oct 23 – Sun, Oct 25" });
     expect(needs[3]).toMatchObject({ title: "Lina Park wants to swap a shift", locationIds: [B] });
     expect(needs[4]).toMatchObject({ title: "The next 7 days aren’t published", href: "/app/schedule?date=2026-10-20" });
+  });
+
+  it("opens what a need is about: the document, the request or the case", () => {
+    const needs = homeNeeds(home, [swap], false);
+    expect(needs.find((need) => need.kind === "docs")?.href).toBe(
+      `/app/employees/documents?location=${K}&status=missing&requirement=d1000000-0000-4000-8000-000000000001`,
+    );
+    expect(needs.find((need) => need.kind === "timeoff")?.href).toBe("/app/schedule/requests?request=7d882f38-2421-4bf0-90b3-fcd0b00913c8");
+    expect(needs.find((need) => need.kind === "swap")?.href).toBe(`/app/schedule/requests?case=${swap.id}`);
+  });
+
+  it("sends several people's documents to the list filtered to the location and the status", () => {
+    const doc = (n: number, status: "missing" | "rejected" | "expired") => ({
+      employee_id: `a100000${n}-0000-4000-8000-000000000001`, name: `Person ${n}`, document: "Food Handler Card",
+      requirement_id: `d100000${n}-0000-4000-8000-000000000001`, status,
+    });
+    const at = (missing_documents: ManagerHomeLocation["missing_documents"]) =>
+      homeNeeds({ ...home, locations: [{ ...downtown, missing_documents }] }, [], false)[0]?.href;
+    expect(at([doc(1, "expired"), doc(2, "expired")])).toBe(`/app/employees/documents?location=${K}&status=expired`);
+    // Rejected is one of Missing's on the Documents page.
+    expect(at([doc(1, "missing"), doc(2, "rejected")])).toBe(`/app/employees/documents?location=${K}&status=missing`);
+    // Two states: no one tab holds both.
+    expect(at([doc(1, "missing"), doc(2, "expired")])).toBe(`/app/employees/documents?location=${K}`);
   });
 
   it("sends nobody to Schedule from a phone", () => {

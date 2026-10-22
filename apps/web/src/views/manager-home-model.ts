@@ -121,6 +121,20 @@ const dateRange = (first: string | null, last: string | null) =>
   !first ? "" : !last || last === first ? shortDate(first) : `${shortDate(first)} – ${shortDate(last)}`;
 const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
 
+/**
+ * Documents filtered to the location and, when one tab holds every line, its
+ * status (Rejected counts as Missing there); one person's line also opens the
+ * first document's review drawer.
+ */
+function documentsHref(location: ManagerHomeLocation, onePerson: boolean): string {
+  const tabs = new Set(location.missing_documents.map((item) => (item.status === "expired" ? "expired" : "missing")));
+  const params = new URLSearchParams({ location: location.id });
+  if (tabs.size === 1) params.set("status", [...tabs][0]!);
+  const first = location.missing_documents[0];
+  if (onePerson && first) params.set("requirement", first.requirement_id);
+  return `/app/employees/documents?${params}`;
+}
+
 /** A Shift Hub case is the manager's once the people agreed (the Requests page's rule). */
 export const waitsOnManager = (item: ExchangeCase) =>
   item.status === "open" && (item.stage === "ready_for_manager" || item.stage === "awaiting_other_manager");
@@ -145,7 +159,7 @@ export function homeNeeds(home: ManagerHome, cases: readonly ExchangeCase[], pho
         title: people.length === 1 ? `${people[0]} is working without a required document` : `${people.length} people are working without a required document`,
         detail: [...shown, ...(more > 0 ? [`${more} more`] : [])].join(" · "),
         cta: "Review documents",
-        href: "/app/employees/documents",
+        href: documentsHref(location, people.length === 1),
         locationIds: [location.id],
       },
     ];
@@ -158,7 +172,7 @@ export function homeNeeds(home: ManagerHome, cases: readonly ExchangeCase[], pho
       title: `${request.employee_name} asks for time off`,
       detail: dateRange(request.first_date, request.last_date),
       cta: "Review request",
-      href: "/app/schedule/requests",
+      href: `/app/schedule/requests?request=${request.id}`,
       locationIds: request.location_ids,
     }),
   );
@@ -175,7 +189,7 @@ export function homeNeeds(home: ManagerHome, cases: readonly ExchangeCase[], pho
             : `${item.owner_name ?? "Somebody"} wants a shift covered`,
       detail: `${shortDate(item.shift.scheduled_date)} · ${item.shift.job_name}`,
       cta: item.kind === "swap" ? "Review swap" : "Review cover",
-      href: "/app/schedule/requests",
+      href: `/app/schedule/requests?case=${item.id}`,
       locationIds: inView.has(item.shift.location_id) ? [item.shift.location_id] : [],
     }),
   );

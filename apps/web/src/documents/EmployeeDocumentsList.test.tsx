@@ -318,3 +318,62 @@ describe("personal list (Account › Documents)", () => {
     expect(screen.queryByText("Nothing has been asked of you here.")).toBeNull();
   });
 });
+
+// Needs you links (Mert 2026-10-22): Home opens Documents at the location and
+// status of what it said, and one person's line opens that document.
+describe("a link from Home's Needs you", () => {
+  const downtown = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
+  const harbor = "b1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
+  const row = (id: string, employee_name: string, status: string, location: string) => ({
+    id,
+    kind: "document",
+    status,
+    title: "Food handler card",
+    employee_name,
+    employee_id: "c3d4e5f6-a7b8-4c9d-8e0f-1a2b3c4d5e6f",
+    location_ids: [location],
+    location_names: [location === downtown ? "Downtown" : "Harbor"],
+    source_id: null,
+    suspended: false,
+  });
+  afterEach(() => {
+    auth.context = null;
+  });
+  const openAt = (url: string) => {
+    auth.context = {
+      userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
+      workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", name: "Meyhouse" },
+      membership: { access: { employee: false, management: "manager" } },
+      actions: ["workspace.read", "documents.read"],
+    };
+    vi.mocked(listDocuments).mockReset().mockResolvedValue([
+      row("1", "Avery", "expired", downtown),
+      row("2", "Blake", "missing", downtown),
+      row("3", "Casey", "expired", harbor),
+    ] as never);
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={[url]}>
+          <EmployeeDocumentsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  };
+  const names = () =>
+    Array.from(document.querySelectorAll(".document-table tbody tr")).map((r) => r.querySelector("td")?.textContent ?? "");
+
+  it("filters to the location and the status it names", async () => {
+    openAt(`/app/employees/documents?location=${downtown}&status=expired`);
+    await screen.findByText("Avery");
+    expect(names().map((n) => n.includes("Avery"))).toEqual([true]);
+    expect(screen.getByRole("button", { name: /Expired/ }).getAttribute("aria-pressed")).toBe("true");
+    expect((screen.getByLabelText("Location") as HTMLSelectElement).value).toBe(downtown);
+  });
+
+  it("keeps every status when the link names none, and ignores one it does not know", async () => {
+    openAt(`/app/employees/documents?location=${downtown}&status=nonsense`);
+    await screen.findByText("Avery");
+    expect(names()).toHaveLength(2);
+    expect(screen.getByRole("button", { name: /^All/ }).getAttribute("aria-pressed")).toBe("true");
+  });
+});
