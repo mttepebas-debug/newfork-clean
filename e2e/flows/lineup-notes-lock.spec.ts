@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import type { Locator } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
 import { psql } from "../global-setup";
 import { roundLabel, roundWeek, signIn, tokenOf } from "../fixtures/world";
@@ -7,6 +8,10 @@ import { roundLabel, roundWeek, signIn, tokenOf } from "../fixtures/world";
 // S-238 (Mert 2026-10-21): on the phone, a tap on Notes opens a draft lineup's notes to edit, no pencil step. Once
 // the lineup is published, its notes open read only with nothing to edit them, and the server refuses a note
 // written past the screen until Edit takes the lineup back.
+
+// The pane slides in when its tab changes: a picture waits for it to land.
+const settled = (pane: Locator) =>
+  pane.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
 
 const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
 
@@ -35,7 +40,8 @@ test("a phone's Notes opens a draft's notes to edit and a published one's read o
   await expect(specials).toBeVisible();
   await expect(phone.getByRole("button", { name: "Edit notes" })).toHaveCount(0);
   await expect(pane.getByText("Staff see the notes when you publish.")).toBeVisible();
-  await phone.screenshot({ path: "artifacts/lineup-notes-lock/lineup-notes-390-draft.png" });
+  await settled(pane);
+  await phone.screenshot({ path: test.info().outputPath("lineup-notes-390-draft.png") });
   await specials.fill("Halibut, $34");
   const saved = phone.waitForRequest((request) => request.url().endsWith("/lineups/edit") && request.method() === "POST");
   await pane.getByRole("button", { name: "Save", exact: true }).tap();
@@ -55,7 +61,8 @@ test("a phone's Notes opens a draft's notes to edit and a published one's read o
   await expect(pane.getByRole("textbox")).toHaveCount(0);
   await expect(pane.getByRole("button")).toHaveCount(0);
   await expect(pane.locator("svg.lucide-pencil")).toHaveCount(0);
-  await phone.screenshot({ path: "artifacts/lineup-notes-lock/lineup-notes-390-published.png" });
+  await settled(pane);
+  await phone.screenshot({ path: test.info().outputPath("lineup-notes-390-published.png") });
 
   // The server holds it too: a note sent past the screen is refused until Edit takes the lineup back.
   const body = { ...edit.postDataJSON(), command_id: crypto.randomUUID(), notes: { specials: "Sneaked in" } };
