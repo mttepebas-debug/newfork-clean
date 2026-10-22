@@ -2222,6 +2222,40 @@ describe("LineupPage, editing a draft on the desktop", () => {
       expect(screen.getByPlaceholderText("Tonight's specials")).toBeTruthy();
     });
 
+    // KARARLAR §1.5 with S-238: a swipe goes to Notes and back as it did; only a tap on Notes opens the notes to
+    // edit, so the swipe back doesn't land on a text box (which keeps its own sideways move).
+    const swipe = (target: Element, dx: number) => {
+      fireEvent.touchStart(target, { touches: [{ clientX: 200, clientY: 500 }] });
+      fireEvent.touchEnd(target, { touches: [], changedTouches: [{ clientX: 200 + dx, clientY: 505 }] });
+    };
+    const selectedSeg = () => screen.getAllByRole("tab").find((tab) => tab.getAttribute("aria-selected") === "true")!.textContent;
+
+    it("goes to Notes and back on a swipe, the notes read there until a tap on Notes", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      swipe(await screen.findByRole("tabpanel"), -120);
+      expect(selectedSeg()).toMatch(/^Notes/);
+      expect(within(screen.getByRole("tabpanel")).queryByRole("textbox")).toBeNull();
+      swipe(screen.getByRole("tabpanel"), 120);
+      expect(selectedSeg()).toMatch(/^Team/);
+    });
+
+    it("leaves the notes opened by a tap with a swipe while nothing in them has changed", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+      swipe(within(screen.getByRole("tabpanel")).getByRole("heading", { name: "Specials" }), 120);
+      expect(selectedSeg()).toMatch(/^Team/);
+    });
+
+    // Until Mert decides what a swipe does to notes being written, it keeps them: the tab stays.
+    it("keeps notes being written on a swipe", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+      fireEvent.change(screen.getByPlaceholderText("Tonight's specials"), { target: { value: "Halibut" } });
+      swipe(within(screen.getByRole("tabpanel")).getByRole("heading", { name: "Specials" }), 120);
+      expect(selectedSeg()).toMatch(/^Notes/);
+      expect((screen.getByPlaceholderText("Tonight's specials") as HTMLTextAreaElement).value).toBe("Halibut");
+    });
+
     // S-238 (Mert 2026-10-21): a published lineup's notes open read only, with no button, pencil or words about it.
     it("opens a published lineup's notes locked, read only, with nothing to edit them", async () => {
       published = {
