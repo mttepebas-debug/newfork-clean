@@ -4,8 +4,11 @@ import type { ScheduleReadModel, ScheduleShift } from "@newfork/shared/schedule"
 import {
   mergeAvailabilityMarks,
   scheduleAvailabilityMarks,
+  schedulePendingTimeOff,
+  type AvailabilityRange,
   type ScheduleAvailabilityMark,
 } from "../lib/scheduleAvailabilityMark";
+import { timeOffV2Enabled } from "../../time-off/time-off-flag";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
 import { shiftsOverlap, timeMinutes } from "../lib/scheduleShiftInterval";
 import { isPendingRemovalShift } from "../lib/scheduleShiftMetadata";
@@ -17,6 +20,8 @@ export interface ScheduleCellState {
   readonly isClosedAllDay: boolean;
   readonly closedTitle: string | null;
   readonly availabilityMark: ScheduleAvailabilityMark | null;
+  /** Time off waiting for an answer that day (D3b): a warning only; null when there is none. */
+  readonly pendingTimeOff: readonly AvailabilityRange[] | null;
 }
 
 export type ScheduleCellStateMap = ReadonlyMap<string, ScheduleCellState>;
@@ -52,13 +57,24 @@ export function orderScheduleCellShifts(
     .map((item) => item.shift);
 }
 
-export function buildScheduleCellState(model: ScheduleReadModel, hideAvailability = false): ScheduleCellStateMap {
+export function buildScheduleCellState(
+  model: ScheduleReadModel,
+  hideAvailability = false,
+  options: { readonly pendingTimeOff?: boolean } = {},
+): ScheduleCellStateMap {
   const cells = new Map<string, MutableScheduleCellState>();
   for (const employee of model.employees) {
     for (const location of employee.weekly_availability ?? []) {
       for (const [date, mark] of scheduleAvailabilityMarks(location)) {
         if (hideAvailability && mark.kind === "unavailable") continue;
         ensureCell(cells, scheduleCellStateKey(location.location_id, date, employee.id)).availabilityMark = mark;
+      }
+      // Time off rebuild D3b (behind the time-off-v2 flag): time off waiting for an answer marks its days at
+      // the locations the person works at (the ones the read model projects); approved time off says more.
+      if (!options.pendingTimeOff) continue;
+      for (const [date, ranges] of schedulePendingTimeOff(location)) {
+        const cell = ensureCell(cells, scheduleCellStateKey(location.location_id, date, employee.id));
+        if (cell.availabilityMark?.kind !== "time_off") cell.pendingTimeOff = ranges;
       }
     }
     spreadTimeOff(cells, model.locations, employee);
@@ -185,7 +201,12 @@ export function useScheduleCellState(model: ScheduleReadModel, hideAvailability 
     .join("|")}|${model.employees
     .map((employee) => `${employee.id}:${employee.location_ids.join(",")}`)
     .join("|")}`;
-  return useMemo(() => buildScheduleCellState(model, hideAvailability), [model, version, hideAvailability]);
+  // Time off rebuild D3b: a development switch, read on render.
+  const pendingTimeOff = timeOffV2Enabled();
+  return useMemo(
+    () => buildScheduleCellState(model, hideAvailability, { pendingTimeOff }),
+    [model, version, hideAvailability, pendingTimeOff],
+  );
 }
 
 interface MutableScheduleCellState {
@@ -195,6 +216,7 @@ interface MutableScheduleCellState {
   isClosedAllDay: boolean;
   closedTitle: string | null;
   availabilityMark: ScheduleAvailabilityMark | null;
+  pendingTimeOff: readonly AvailabilityRange[] | null;
 }
 
 function ensureCell(
@@ -210,6 +232,7 @@ function ensureCell(
     isClosedAllDay: false,
     closedTitle: null,
     availabilityMark: null,
+    pendingTimeOff: null,
   };
   cells.set(key, next);
   return next;
@@ -280,6 +303,8 @@ function mergeCellState(
     target.availabilityMark,
     source.availabilityMark,
   );
+  const pending = [...(target.pendingTimeOff ?? []), ...(source.pendingTimeOff ?? [])];
+  target.pendingTimeOff = pending.length && target.availabilityMark?.kind !== "time_off" ? pending : null;
 }
 
 // A ghost says "conflicts" only when it really overlaps another shift that day (QA 39).

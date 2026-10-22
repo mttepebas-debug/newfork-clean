@@ -1,6 +1,13 @@
 import type { ScheduleReadModel, ScheduleShiftMutationInput } from "@newfork/shared/schedule";
 import { firstName } from "../../availability/day-availability";
-import { hoursWords, scheduleAvailabilityMarks, windowsDuringShift } from "./scheduleAvailabilityMark";
+import {
+  formatAvailabilityMarkDay,
+  hoursWords,
+  scheduleAvailabilityMarks,
+  schedulePendingTimeOff,
+  shiftMeetsRanges,
+  windowsDuringShift,
+} from "./scheduleAvailabilityMark";
 import { weeklyTargetAvailability, weeklyTargetNote } from "./scheduleWeeklyAvailability";
 
 /** What the write did, for the notice's first line. */
@@ -28,6 +35,7 @@ export function scheduleAssignNotice(
   model: Pick<ScheduleReadModel, "employees" | "settings">,
   inputs: readonly ScheduleShiftMutationInput[],
   kind: ScheduleAssignKind,
+  options: { readonly pendingTimeOff?: boolean } = {},
 ): ScheduleAssignNotice | null {
   const input = inputs.find((item) => item.employee_id);
   const employee = input && model.employees.find((item) => item.id === input.employee_id);
@@ -41,6 +49,14 @@ export function scheduleAssignNotice(
     const weekday = new Date(`${input.scheduled_date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
     const hours = windows.map((window) => hoursWords(window, timeFormat)).join(", ");
     lines.push(`${firstName(employee.display_name)} prefers not to work ${weekday}${hours ? ` ${hours}` : ""}.`);
+  }
+  // Time off rebuild D3b (KARARLAR S-239 (9), behind the time-off-v2 flag): time off waiting for an answer
+  // over the shift's hours is said the same way; the shift is written, nothing is asked.
+  if (options.pendingTimeOff) {
+    const projection = employee.weekly_availability?.find((item) => item.location_id === input.location_id);
+    const ranges = projection ? schedulePendingTimeOff(projection).get(input.scheduled_date) : undefined;
+    if (ranges && shiftMeetsRanges(ranges, input.start_time, input.end_time))
+      lines.push(`${firstName(employee.display_name)} has time off waiting for an answer on ${formatAvailabilityMarkDay(input.scheduled_date)}.`);
   }
   const note = weeklyTargetNote(employee, input);
   if (note) lines.push(note.text ? `Manager note: ${shortNote(note.text)}` : "Manager note for this day.");

@@ -495,3 +495,38 @@ describe("orderScheduleCellShifts", () => {
     ).toEqual(["hidden-default", "visible-late", "hidden-fallback"]);
   });
 });
+
+// Time off rebuild D3b (KARARLAR S-239 (9)): time off waiting for an answer marks its days, apart from
+// approved time off and only behind the time-off-v2 flag.
+describe("time off waiting for an answer", () => {
+  const week = (pending: { start_at: string; end_at: string }[], leave: { start_at: string; end_at: string }[] = []) => {
+    const base = model([]);
+    return { ...base, employees: [{ ...base.employees[0]!, location_ids: [mainLocationId],
+      weekly_availability: [{ location_id: mainLocationId, location_name: "Main", timezone: "America/Los_Angeles", week_start: base.week_start,
+        status: "ready" as const, unavailable_intervals: [], leave_intervals: leave, pending_leave_intervals: pending,
+        clock_segments: [{ start_at: "2026-08-10T07:00:00Z", end_at: "2026-08-31T07:00:00Z", offset_seconds: -7 * 3600 }],
+        days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-08-${17 + index}`, has_unavailable: false, all_day: false })),
+      }] }] } satisfies ScheduleReadModel;
+  };
+  const friday = { start_at: "2026-08-21T07:00:00Z", end_at: "2026-08-22T07:00:00Z" };
+  const tuesdayMorning = { start_at: "2026-08-18T16:00:00Z", end_at: "2026-08-18T20:00:00Z" };
+
+  it("marks the days asked, at the person's own location only", () => {
+    const cells = buildScheduleCellState(week([friday, tuesdayMorning]), false, { pendingTimeOff: true });
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-21", employeeId))?.pendingTimeOff).toEqual([{ from: 0, to: 1440 }]);
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-18", employeeId))?.pendingTimeOff).toEqual([{ from: 540, to: 780 }]);
+    expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-21", employeeId))?.pendingTimeOff ?? null).toBeNull();
+    // A warning, not time off: no red cell, Add shift stays.
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-21", employeeId))?.availabilityMark).toBeNull();
+  });
+
+  it("gives way to approved time off the same day", () => {
+    const cells = buildScheduleCellState(week([friday], [friday]), false, { pendingTimeOff: true });
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-21", employeeId))?.pendingTimeOff ?? null).toBeNull();
+  });
+
+  it("marks nothing with the flag off, as today", () => {
+    expect(buildScheduleCellState(week([friday]))).toEqual(buildScheduleCellState(week([])));
+    expect(buildScheduleCellState(week([friday]), false, { pendingTimeOff: false })).toEqual(buildScheduleCellState(week([])));
+  });
+});

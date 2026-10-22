@@ -82,3 +82,39 @@ describe("the short notice after a shift lands on a preference (Müsaitlik terci
     expect(scheduleAssignNotice(model, [{ ...input, employee_id: null }], "add")).toBeNull();
   });
 });
+
+// Time off rebuild D3b (KARARLAR S-239 (9)): a shift on time off waiting for an answer is written at once;
+// the same short notice says so, behind the time-off-v2 flag. Nothing is asked.
+describe("the short notice on time off waiting for an answer", () => {
+  const waitingMonday = { start_at: "2035-01-15T08:00:00Z", end_at: "2035-01-16T08:00:00Z" };
+  const waitingMorning = { start_at: "2035-01-15T17:00:00Z", end_at: "2035-01-15T21:00:00Z" };
+
+  it("names the person and the day", () => {
+    const model = modelWith(projection({ pending_leave_intervals: [waitingMonday] }));
+    expect(scheduleAssignNotice(model, [input], "add", { pendingTimeOff: true })).toEqual({
+      title: "Shift added to Maria Lopez.",
+      lines: ["Maria has time off waiting for an answer on Mon, Jan 15."],
+    });
+  });
+
+  it("comes after the preference line", () => {
+    const model = modelWith(projection({ unavailable_intervals: [afterSix], pending_leave_intervals: [waitingMonday] }));
+    expect(scheduleAssignNotice(model, [input], "add", { pendingTimeOff: true })?.lines).toEqual([
+      "Maria prefers not to work Mon after 6:00 PM.",
+      "Maria has time off waiting for an answer on Mon, Jan 15.",
+    ]);
+  });
+
+  it("says nothing when the shift misses the hours asked", () => {
+    const model = modelWith(projection({ pending_leave_intervals: [waitingMorning] }));
+    expect(scheduleAssignNotice(model, [input], "add", { pendingTimeOff: true })).toBeNull();
+    expect(scheduleAssignNotice(model, [{ ...input, start_time: "08:00", end_time: "12:00" }], "add", { pendingTimeOff: true })?.lines)
+      .toEqual(["Maria has time off waiting for an answer on Mon, Jan 15."]);
+  });
+
+  it("says nothing with the flag off, as today", () => {
+    const model = modelWith(projection({ pending_leave_intervals: [waitingMonday] }));
+    expect(scheduleAssignNotice(model, [input], "add")).toBeNull();
+    expect(scheduleAssignNotice(model, [input], "add", { pendingTimeOff: false })).toBeNull();
+  });
+});

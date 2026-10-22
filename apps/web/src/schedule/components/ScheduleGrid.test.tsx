@@ -335,6 +335,60 @@ describe("ScheduleGrid", () => {
     ]);
   });
 
+  // Time off rebuild D3b (KARARLAR S-239 (9)): while editing, a day of time off waiting for an answer
+  // shows a dashed red edge and a small ring that says when; never on the published week, never without
+  // the time-off-v2 flag. Add shift stays.
+  describe("time off waiting for an answer", () => {
+    const pendingModel = () => {
+      const base = scheduleModel();
+      return scheduleModel({
+        employees: [{ ...base.employees[0]!, weekly_availability: [{ location_id: locationId, location_name: "Main Dining", timezone: "America/Los_Angeles",
+          week_start: base.week_start, status: "ready", unavailable_intervals: [], employee_intervals: [], leave_intervals: [],
+          pending_leave_intervals: [{ start_at: "2026-08-21T07:00:00Z", end_at: "2026-08-22T07:00:00Z" }],
+          clock_segments: [{ start_at: "2026-08-10T07:00:00Z", end_at: "2026-08-31T07:00:00Z", offset_seconds: -7 * 3600 }],
+          days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-08-${17 + index}`, has_unavailable: false, all_day: false })) }] }],
+        shifts: [],
+      });
+    };
+    const flag = (on: boolean) => (on ? window.localStorage.setItem("newfork:time-off-v2", "1") : window.localStorage.removeItem("newfork:time-off-v2"));
+
+    it("marks the day while editing and says when", () => {
+      flag(true);
+      try {
+        const model = pendingModel();
+        const { container } = renderGrid({ model, session: editSession(model) });
+        const cells = [...container.querySelectorAll<HTMLElement>(".schedule-cell[data-pending-time-off='true']")];
+        expect(cells.map((cell) => cell.dataset.date)).toEqual(["2026-08-21"]);
+        expect(cells[0]!.querySelector(".schedule-cell-add-action")).not.toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: "Alex Rivera: time off waiting for an answer on Fri, Aug 21" }));
+        expect([...screen.getByRole("dialog").querySelectorAll("p")].map((line) => line.textContent)).toEqual([
+          "Time off waiting for an answer: Fri, Aug 21, all day",
+        ]);
+      } finally {
+        flag(false);
+      }
+    });
+
+    it("draws nothing on the published week", () => {
+      flag(true);
+      try {
+        const { container } = renderGrid({ model: pendingModel(), session: null });
+        expect(container.querySelector("[data-pending-time-off='true']")).toBeNull();
+        expect(screen.queryByRole("button", { name: /time off waiting for an answer/ })).toBeNull();
+      } finally {
+        flag(false);
+      }
+    });
+
+    it("draws nothing with the flag off, as today", () => {
+      flag(false);
+      const model = pendingModel();
+      const { container } = renderGrid({ model, session: editSession(model) });
+      expect(container.querySelector("[data-pending-time-off='true']")).toBeNull();
+      expect(screen.queryByRole("button", { name: /time off waiting for an answer/ })).toBeNull();
+    });
+  });
+
   it.each(["separate", "unified"] as const)(
     "fits one visible location into seven columns in %s mode",
     (layout) => {

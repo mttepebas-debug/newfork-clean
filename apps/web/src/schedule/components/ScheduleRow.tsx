@@ -25,6 +25,7 @@ import type { ShiftDragState } from "../hooks/useSingleShiftPointerDrag";
 import {
   formatAvailabilityMarkDay,
   formatAvailabilityMarkLine,
+  formatPendingTimeOffLine,
   isFullDayTimeOff,
   nameCellShowsAvailabilityMark,
 } from "../lib/scheduleAvailabilityMark";
@@ -304,6 +305,8 @@ export const ScheduleRow = memo(function ScheduleRow({
             : null;
           // Mert, 2026-10-10: full-day approved time off opens no Add shift.
           const canAddShift = editing && !isFullDayTimeOff(availabilityMark);
+          // Time off rebuild D3b (KARARLAR S-239 (9)): time off waiting for an answer, only while editing.
+          const pendingTimeOff = editing && employee ? (derivedCellState?.pendingTimeOff ?? null) : null;
           const cellKey = `${rowKey}-${location.id}-${day}`;
           const editorOwnsCell = Boolean(
             activeEditorTarget &&
@@ -384,6 +387,7 @@ export const ScheduleRow = memo(function ScheduleRow({
               data-unassigned-frozen={isUnassignedRow && unassignedFrozen}
               data-closed={Boolean(closure)}
               data-availability-kind={availabilityMark?.kind}
+              data-pending-time-off={pendingTimeOff ? "true" : undefined}
               data-overlap={cellHasOverlap}
               title={closure?.title}
               data-editing={editing}
@@ -527,6 +531,14 @@ export const ScheduleRow = memo(function ScheduleRow({
                   className="schedule-availability-mark-corner"
                   label={`${employee.display_name}: unavailable on ${formatAvailabilityMarkDay(day)}`}
                   lines={availabilityMark.windows.map((window) => formatAvailabilityMarkLine(day, window, timeFormat))}
+                />
+              ) : null}
+              {/* A small red ring, top left: a request, not time off yet. A card in the cell keeps the edge only. */}
+              {pendingTimeOff && employee && displayStacks.length === 0 ? (
+                <AvailabilityMarkButton
+                  className="schedule-pending-time-off-mark"
+                  label={`${employee.display_name}: time off waiting for an answer on ${formatAvailabilityMarkDay(day)}`}
+                  lines={[formatPendingTimeOffLine(day, pendingTimeOff, timeFormat)]}
                 />
               ) : null}
             </div>

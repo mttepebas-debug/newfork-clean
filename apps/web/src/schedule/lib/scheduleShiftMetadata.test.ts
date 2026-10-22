@@ -23,6 +23,7 @@ function cellState(conflictingShiftIds: readonly string[]): ScheduleCellState {
     isClosedAllDay: false,
     closedTitle: null,
     availabilityMark: null,
+    pendingTimeOff: null,
   };
 }
 

@@ -8686,6 +8686,24 @@ button.workspace-switcher-item:hover:not(:disabled) {
     animation: none;
   }
 }
+/* A note's way to what it names, in a new tab (the time off note, D3b). */
+.schedule-publish-finding-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  color: var(--theme-accent);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.schedule-publish-finding-link:hover {
+  text-decoration: underline;
+}
+.schedule-publish-finding-link:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
 .schedule-publish-finding-row > p {
   margin: 0;
   color: #53645d;
@@ -10125,6 +10143,26 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-availability-mark-window p {
   margin: 0;
+}
+/* Time off waiting for an answer (time off rebuild D3b, KARARLAR S-239 (9)): a warning, not time off. While
+   editing, a dashed red edge inside the cell and no fill, apart from approved time off's solid edge and pink;
+   an empty cell also gets a small red ring, top left, that says when. Inside :where(), like time off's edge,
+   so a drag colour replaces it. */
+.schedule-cell:where([data-pending-time-off="true"]) {
+  outline: 1px dashed var(--theme-time-off);
+  outline-offset: -2px;
+}
+.schedule-pending-time-off-mark {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 1;
+  color: var(--theme-time-off);
+}
+.schedule-pending-time-off-mark::before {
+  box-sizing: border-box;
+  border: 2px solid currentColor;
+  background: transparent;
 }
 @keyframes schedule-availability-spotlight-in {
   from {

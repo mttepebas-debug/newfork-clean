@@ -11,6 +11,7 @@ import {
   formatAvailabilityRange,
   scheduleAvailabilityMarks,
 } from "../lib/scheduleAvailabilityMark";
+import { timeOffV2Enabled } from "../../time-off/time-off-flag";
 
 type PublishPreflightTier = "blocker" | "risk" | "note";
 export type PublishPreflightBlockReason =
@@ -27,6 +28,20 @@ const blockReasonText: Readonly<Record<PublishPreflightBlockReason, string>> = {
 };
 
 type SchedulePublishFinding = SchedulePublicationPreview["findings"][number];
+
+/**
+ * Where a time off note opens its request (time off rebuild D3b): behind the time-off-v2 flag, a request in
+ * the new table opens the new answer drawer. Anything else keeps today's note with no link, so a new id
+ * never reaches the old drawer (or an old id the new one).
+ */
+export function pendingTimeOffHref(
+  finding: Pick<SchedulePublishFinding, "code" | "time_off_request_id" | "time_off_source">,
+  timeOffV2: boolean,
+): string | null {
+  if (!timeOffV2 || finding.code !== "time_off_pending" || finding.time_off_source !== "current" || !finding.time_off_request_id)
+    return null;
+  return `/app/schedule/requests?type=time_off&request=${encodeURIComponent(finding.time_off_request_id)}`;
+}
 
 // "Unavailable after 2:00 PM": the hours behind an availability line, read
 // from the week the Schedule already holds (G14). Null when it is not there.
@@ -157,6 +172,7 @@ export function PublishPreflightPanel({
   const overrideable = publishOverrideableBlockers(preview);
   const risks = publishGatingRisks(preview);
   const informational = publishInformationalFindings(preview);
+  const timeOffV2 = timeOffV2Enabled();
   const newConflicts = publishNewAvailabilityFindings(preview);
   const availabilityLook = publishAvailabilityLook(preview);
   // Another rule's conflict accepted at the last publish stays listed (KK-132);
@@ -265,6 +281,10 @@ export function PublishPreflightPanel({
           title="Notes and already-live issues"
           findings={informational}
           locations={locations}
+          linkFor={(finding) => {
+            const href = pendingTimeOffHref(finding, timeOffV2);
+            return href ? { href, label: `Review ${finding.employee_name ?? "this person"}'s time off request` } : null;
+          }}
         >
           <small className="schedule-publish-finding-note-copy">
             These do not stop this publish — they either pre-date it or are informational.
@@ -346,16 +366,7 @@ function AvailabilityDot() {
   return <span className="schedule-availability-tip-dot" aria-hidden="true">!</span>;
 }
 
-function FindingGroup({
-  title,
-  tone,
-  findings,
-  locations,
-  children,
-}: {
-  readonly title: string;
-  readonly tone: "hard" | "soft" | "risk" | "note";
-  readonly findings: readonly {
+function FindingGroup<F extends {
     readonly id: string;
     readonly message: string;
     readonly location_id: string;
@@ -364,8 +375,20 @@ function FindingGroup({
     readonly fix_hint?: string | null;
     readonly location_name?: string | null;
     readonly date?: string | null;
-  }[];
+  }>({
+  title,
+  tone,
+  findings,
+  locations,
+  linkFor,
+  children,
+}: {
+  readonly title: string;
+  readonly tone: "hard" | "soft" | "risk" | "note";
+  readonly findings: readonly F[];
   readonly locations: readonly ScheduleLocation[];
+  /** A row that opens something elsewhere: a new tab, so the publish stays where it is. */
+  readonly linkFor?: (finding: F) => { readonly href: string; readonly label: string } | null;
   readonly children?: ReactNode;
 }) {
   return (
@@ -393,6 +416,15 @@ function FindingGroup({
               finding.location_id}
           </small>
           {finding.fix_hint ? <p>{finding.fix_hint}</p> : null}
+          {(() => {
+            const link = linkFor?.(finding);
+            return link ? (
+              <a className="schedule-publish-finding-link" href={link.href} target="_blank" rel="noopener noreferrer" aria-label={link.label}>
+                Review request
+                <ArrowUpRight size={14} aria-hidden />
+              </a>
+            ) : null;
+          })()}
         </div>
       ))}
     </section>

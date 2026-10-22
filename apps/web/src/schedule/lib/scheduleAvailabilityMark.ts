@@ -56,6 +56,33 @@ export function scheduleAvailabilityMarks(projection: Projection): Map<string, S
   return marks;
 }
 
+/**
+ * Time off waiting for an answer, by local date (time off rebuild D3b, KARARLAR S-239 (9)): only a
+ * warning, kept apart from the marks above; approved time off and availability never read it.
+ */
+export function schedulePendingTimeOff(projection: Projection): Map<string, readonly AvailabilityRange[]> {
+  const days = new Map<string, readonly AvailabilityRange[]>();
+  if (projection.status !== "ready") return days;
+  for (const { date } of projection.days) {
+    const ranges = (projection.pending_leave_intervals ?? []).flatMap((interval) => rangeOnDay(interval, date, projection) ?? []);
+    if (ranges.length) days.set(date, ranges);
+  }
+  return days;
+}
+
+/** "Time off waiting for an answer: Fri, Nov 13, all day" (or its hours). */
+export function formatPendingTimeOffLine(day: string, ranges: readonly AvailabilityRange[], timeFormat: "12h" | "24h"): string {
+  return `Time off waiting for an answer: ${formatAvailabilityMarkDay(day)}, ${ranges.map((range) => hoursWords(range, timeFormat)).join(", ")}`;
+}
+
+/** Whether a shift's clock runs into any of the ranges; an overnight shift counts to the end of its day. */
+export function shiftMeetsRanges(ranges: readonly AvailabilityRange[], startTime: string, endTime: string): boolean {
+  const from = clockMinutes(startTime);
+  const end = clockMinutes(endTime);
+  const to = end <= from ? 1440 : end;
+  return ranges.some((range) => range.from < to && range.to > from);
+}
+
 /** Approved time off over the whole local day (Mert, 2026-10-10: its cell opens no Add shift). */
 export function isFullDayTimeOff(mark: ScheduleAvailabilityMark | null): boolean {
   if (mark?.kind !== "time_off") return false;
