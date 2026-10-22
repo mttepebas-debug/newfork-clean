@@ -384,8 +384,8 @@ select is(
   (select jsonb_object_keys_sorted
    from (select array_agg(k order by k) jsonb_object_keys_sorted
          from jsonb_object_keys((public.my_time_off_service(tests.user('ta:ann'), tests.id('ta')) -> 'requests') -> 0) k) s),
-  -- D4 added cancellation, cancels_id, ended_by_name and used_until.
-  array['all_day', 'cancellation', 'cancels_id', 'created_at', 'decided_at', 'decided_by_name', 'decision_note', 'end_date',
+  -- D4 added cancellation, cancels_id, ended_by_name and used_until; D5 added_by_name.
+  array['added_by_name', 'all_day', 'cancellation', 'cancels_id', 'created_at', 'decided_at', 'decided_by_name', 'decision_note', 'end_date',
     'end_time', 'ended_at', 'ended_by_name', 'ended_note', 'ends_at', 'id', 'kind', 'kind_of_leave', 'note', 'revision',
     'start_date', 'start_time', 'starts_at', 'status', 'time_timezone', 'used_until'],
   'each request says what the screen shows'

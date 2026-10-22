@@ -253,6 +253,10 @@ insert into service_class values
   -- Time off rebuild D4: the employee asks to cancel their approved time off; whoever may answer takes it back.
   ('ask_time_off_cancellation_service', 'time_off.request_own'),
   ('take_back_time_off_service', 'time_off.decide'),
+  -- Time off rebuild D5: whoever may answer enters approved time off for somebody (time_off_decider_why).
+  ('enter_time_off_service', 'time_off.decide'),
+  ('enter_time_off_impact_service', 'time_off.decide'),
+  ('time_off_entry_people_service', 'time_off.decide'),
   ('sync_expiring_document_todos_service', 'exempt:worker'),
   ('terminate_employee_service', 'employee.terminate'),
   ('touch_workspace_membership_service', 'account.self'),
