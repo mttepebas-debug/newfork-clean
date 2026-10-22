@@ -2199,27 +2199,98 @@ describe("LineupPage, editing a draft on the desktop", () => {
     });
 
     // S-238 (Mert 2026-10-21): on a draft, a tap on Notes opens the notes to edit, with no pencil step; no field takes
-    // focus, so the phone's keyboard doesn't jump up on its own.
-    it("opens the notes to edit with a tap on Notes and sends only the ones that changed", async () => {
+    // focus, so the phone's keyboard doesn't jump up on its own. Mert ~6:40 PM: no Save or Cancel; what is typed
+    // saves itself a moment later (or when the box is left) and stays through a tab change.
+    const specialsBox = () => screen.getByPlaceholderText("Tonight's specials") as HTMLTextAreaElement;
+    const noteSaves = () => sent.filter(({ body }) => body.action === "set_notes");
+
+    it("opens the notes to edit with a tap on Notes and saves what is typed by itself, only what changed", async () => {
       renderPage(`/app/schedule/lineup?location=${downtown}`);
       fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
-      const specials = within(screen.getByRole("tabpanel")).getByPlaceholderText("Tonight's specials");
+      const panel = screen.getByRole("tabpanel");
+      const specials = within(panel).getByPlaceholderText("Tonight's specials");
       expect(document.activeElement).not.toBe(specials);
-      expect(screen.getByText("Staff see the notes when you publish.")).toBeTruthy();
+      expect(within(panel).getByText("Staff see the notes when you publish.")).toBeTruthy();
+      expect(within(panel).queryByRole("button", { name: "Save" })).toBeNull();
+      expect(within(panel).queryByRole("button", { name: "Cancel" })).toBeNull();
       fireEvent.change(specials, { target: { value: "Halibut, $34" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
-      await waitFor(() => expect(sent).toHaveLength(1));
-      expect(sent[0]!.body).toMatchObject({ ...target(), action: "set_notes", notes: { specials: "Halibut, $34" } });
-      await waitFor(() => expect(screen.queryByPlaceholderText("Tonight's specials")).toBeNull());
+      expect(noteSaves()).toHaveLength(0);
+      await waitFor(() => expect(noteSaves()).toHaveLength(1));
+      expect(noteSaves()[0]!.body).toMatchObject({ ...target(), action: "set_notes", notes: { specials: "Halibut, $34" } });
+      expect(Object.keys(noteSaves()[0]!.body.notes as object)).toEqual(["specials"]);
+      await waitFor(() => expect(within(panel).getByRole("status").textContent).toBe("Saved"));
+      expect(specialsBox().value).toBe("Halibut, $34");
     });
 
-    it("opens the notes to edit again with a tap on Notes after Cancel", async () => {
+    it("saves at once when the box is left, saying Saving… on the way", async () => {
+      const realEdit = api.getMockImplementation()!;
+      let release: (() => void) | null = null;
+      api.mockImplementation(async (client, path, init) => {
+        if (path.endsWith("/lineups/edit")) {
+          const answer = realEdit(client, path, init);
+          await new Promise<void>((resolve) => (release = resolve));
+          return answer;
+        }
+        return realEdit(client, path, init);
+      });
       renderPage(`/app/schedule/lineup?location=${downtown}`);
       fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
-      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(screen.queryByPlaceholderText("Tonight's specials")).toBeNull();
-      fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
-      expect(screen.getByPlaceholderText("Tonight's specials")).toBeTruthy();
+      fireEvent.change(specialsBox(), { target: { value: "Halibut" } });
+      fireEvent.blur(specialsBox());
+      await waitFor(() => expect(noteSaves()).toHaveLength(1));
+      expect(screen.getByRole("status").textContent).toBe("Saving…");
+      release!();
+      await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Saved"));
+    });
+
+    it("keeps what is typed through a tab change, sending it as the tab changes", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+      fireEvent.change(specialsBox(), { target: { value: "Halibut" } });
+      fireEvent.click(screen.getByRole("tab", { name: /^Team/ }));
+      expect(noteSaves()).toHaveLength(1);
+      expect(noteSaves()[0]!.body.notes).toEqual({ specials: "Halibut" });
+      fireEvent.click(screen.getByRole("tab", { name: /^Notes/ }));
+      expect(specialsBox().value).toBe("Halibut");
+    });
+
+    it("keeps what is typed when it doesn't save, says so and tries again", async () => {
+      const realEdit = api.getMockImplementation()!;
+      let fails = 1;
+      api.mockImplementation(async (client, path, init) => {
+        if (path.endsWith("/lineups/edit") && fails > 0) {
+          fails -= 1;
+          sent.push({ path: "edit", body: JSON.parse(String(init?.body)) as Record<string, unknown> });
+          throw new RequestError("Down", "server_error", undefined, 500);
+        }
+        return realEdit(client, path, init);
+      });
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+      fireEvent.change(specialsBox(), { target: { value: "Halibut" } });
+      fireEvent.blur(specialsBox());
+      expect((await screen.findByRole("alert")).textContent).toBe("Couldn't save. Trying again…");
+      expect(specialsBox().value).toBe("Halibut");
+      await waitFor(() => expect(noteSaves()).toHaveLength(2), { timeout: 8000 });
+      await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Saved"));
+      expect(screen.queryByRole("alert")).toBeNull();
+    }, 15000);
+
+    it("keeps what is typed when the lineup has gone out meanwhile, and says Edit takes it back", async () => {
+      const realEdit = api.getMockImplementation()!;
+      api.mockImplementation(async (client, path, init) => {
+        if (path.endsWith("/lineups/edit")) {
+          sent.push({ path: "edit", body: JSON.parse(String(init?.body)) as Record<string, unknown> });
+          throw new RequestError("Live", "lineup.live", undefined, 400);
+        }
+        return realEdit(client, path, init);
+      });
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+      fireEvent.change(specialsBox(), { target: { value: "Halibut" } });
+      fireEvent.blur(specialsBox());
+      expect((await screen.findByRole("alert")).textContent).toBe("This lineup is published. Take it back with Edit first.");
+      expect(specialsBox().value).toBe("Halibut");
     });
 
     // KARARLAR §1.5 with S-238: a swipe goes to Notes and back as it did; only a tap on Notes opens the notes to
@@ -2239,21 +2310,15 @@ describe("LineupPage, editing a draft on the desktop", () => {
       expect(selectedSeg()).toMatch(/^Team/);
     });
 
-    it("leaves the notes opened by a tap with a swipe while nothing in them has changed", async () => {
+    it("leaves notes being written with a swipe off the boxes, keeping and sending them", async () => {
       renderPage(`/app/schedule/lineup?location=${downtown}`);
       fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+      fireEvent.change(specialsBox(), { target: { value: "Halibut" } });
       swipe(within(screen.getByRole("tabpanel")).getByRole("heading", { name: "Specials" }), 120);
       expect(selectedSeg()).toMatch(/^Team/);
-    });
-
-    // Until Mert decides what a swipe does to notes being written, it keeps them: the tab stays.
-    it("keeps notes being written on a swipe", async () => {
-      renderPage(`/app/schedule/lineup?location=${downtown}`);
-      fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
-      fireEvent.change(screen.getByPlaceholderText("Tonight's specials"), { target: { value: "Halibut" } });
-      swipe(within(screen.getByRole("tabpanel")).getByRole("heading", { name: "Specials" }), 120);
-      expect(selectedSeg()).toMatch(/^Notes/);
-      expect((screen.getByPlaceholderText("Tonight's specials") as HTMLTextAreaElement).value).toBe("Halibut");
+      await waitFor(() => expect(noteSaves()).toHaveLength(1));
+      fireEvent.click(screen.getByRole("tab", { name: /^Notes/ }));
+      expect(specialsBox().value).toBe("Halibut");
     });
 
     // S-238 (Mert 2026-10-21): a published lineup's notes open read only, with no button, pencil or words about it.
