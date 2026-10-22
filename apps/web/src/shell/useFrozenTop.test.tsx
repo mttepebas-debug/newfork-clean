@@ -83,6 +83,95 @@ describe("useFrozenTop on a page that pins its own top", () => {
   });
 });
 
+function SkyArea() {
+  const [main, setMain] = useState<HTMLElement | null>(null);
+  useFrozenTop(main);
+  return (
+    <main className="app-main" data-slot="night" ref={setMain} style={{ overflowY: "auto" }}>
+      <section className="requests-page">
+        <header className="catalog-page-header">
+          <h1>Requests</h1>
+        </header>
+      </section>
+    </main>
+  );
+}
+
+// Every page's frozen top kept the sky only at rest: once the page moved it took the flat page ground, grey
+// against the sky (Mert 2026-10-21 ~18:45, the same on Requests, Announcements, Settings …). A piece now learns
+// where it rests inside the main area's sky, and carries that part of it.
+describe("a frozen top under the sky", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+    vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+      run(0);
+      return 1;
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("gives each piece its place in the main area's sky", () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const header = this.matches(".catalog-page-header");
+      const left = header ? 16 : 0;
+      const top = header ? 56 : 56;
+      return { top, bottom: top + 60, left, right: 390, width: 390 - left, height: 60, x: left, y: top, toJSON: () => ({}) } as DOMRect;
+    });
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 390 });
+    const { container } = render(<SkyArea />);
+    const header = container.querySelector<HTMLElement>(".catalog-page-header")!;
+    expect(header.dataset.frozenPiece).toBe("");
+    expect(header.style.getPropertyValue("--frozen-sky-x")).toBe("16px");
+    expect(header.style.getPropertyValue("--frozen-sky-y")).toBe("0px");
+    expect(header.style.getPropertyValue("--frozen-sky-w")).toBe("390px");
+    // @ts-expect-error put the prototype back
+    delete HTMLElement.prototype.clientWidth;
+  });
+
+  it("paints the sky on a stuck piece in layers, and on the gap above it, never the flat ground alone", () => {
+    const css = readFileSync("src/shell/frozen-top.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const body = (selector: string) =>
+      [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .filter(([, head]) => head!.replace(/\s+/g, " ").trim() === selector)
+        .map(([, , b]) => b!)
+        .join(";");
+    expect(body(".app-main[data-slot]:not(:has(.dl-home)) [data-frozen-piece][data-frozen-piece]")).toMatch(
+      /box-shadow\s*:\s*none/,
+    );
+    // Behind the piece's content, across the main area's width and over the gap above it.
+    const sky = body(".app-main[data-slot]:not(:has(.dl-home)) [data-frozen-piece][data-frozen-piece]::before");
+    expect(sky).toMatch(/z-index\s*:\s*-1/);
+    expect(sky).toMatch(/top\s*:\s*calc\(-1 \* var\(--frozen-gap, 0px\)\)/);
+    expect(sky).toMatch(/left\s*:\s*calc\(-1 \* var\(--frozen-sky-x, 0px\)\)/);
+    expect(sky).toMatch(/width\s*:\s*var\(--frozen-sky-w, 100%\)/);
+    expect(sky).toMatch(/background-color\s*:\s*var\(--frozen-bg\)/);
+    expect(sky).toMatch(/background-image\s*:\s*var\(--page-sky, none\)/);
+    expect(sky).toMatch(/background-position\s*:\s*0 calc\(var\(--frozen-gap, 0px\) - var\(--frozen-sky-y, 0px\)\)/);
+    expect(sky).toMatch(/background-size\s*:\s*100% 470px/);
+    expect(sky).toMatch(/background-repeat\s*:\s*no-repeat/);
+    // The page's sky is one value for the main area and its pieces, the desktop's edge fade included.
+    const styles = readFileSync("src/styles.css", "utf8");
+    expect(styles).toMatch(/--page-sky\s*:\s*var\(--dl-sky\)/);
+    expect(styles).toMatch(/--page-sky\s*:\s*linear-gradient\(90deg, var\(--theme-app-ground\) 0, transparent 96px\), var\(--dl-sky\)/);
+  });
+});
+
 describe("the phone Lineup's pinned top", () => {
   const read = (path: string) => readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
   const ruleBody = (css: string, selector: string) =>

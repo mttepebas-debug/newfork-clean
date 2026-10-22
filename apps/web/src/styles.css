@@ -3788,14 +3788,16 @@ button.workspace-switcher-item:hover:not(:disabled) {
   --drawer-sky: radial-gradient(70% 160% at 100% 0%, var(--theme-sky-night-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-night) 0%, var(--theme-surface) 100%);
 }
 .app-main[data-slot]:not(:has(.dl-home)) {
-  background-image: var(--dl-sky);
+  /* One value for the page and its frozen top (shell/frozen-top.css). */
+  --page-sky: var(--dl-sky);
+  background-image: var(--page-sky);
   background-repeat: no-repeat;
   background-size: 100% 470px;
   background-attachment: local;
 }
 @media (min-width: 721px) {
   .app-main[data-slot]:not(:has(.dl-home)) {
-    background-image: linear-gradient(90deg, var(--theme-app-ground) 0, transparent 96px), var(--dl-sky);
+    --page-sky: linear-gradient(90deg, var(--theme-app-ground) 0, transparent 96px), var(--dl-sky);
   }
 }
 /* Pages that painted their own ground let the sky through. */
