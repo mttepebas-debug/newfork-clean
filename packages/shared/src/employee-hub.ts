@@ -78,6 +78,9 @@ export const employeeHubReadModelSchema = z.object({
   team_shifts: z.array(employeeHubShiftSchema),
   requests: z.array(employeeHubRequestSchema),
   team: z.array(employeeHubTeamMemberSchema),
+  // The days of the range with time off the person has, old system and new alike (time off rebuild D3).
+  // Optional while an API without it may answer.
+  leave_days: z.array(z.string().date()).optional(),
 });
 export type EmployeeHubReadModel = z.infer<typeof employeeHubReadModelSchema>;
 

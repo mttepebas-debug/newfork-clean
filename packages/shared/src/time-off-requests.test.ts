@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   myTimeOffSchema,
+  myTimeOffShiftsQuerySchema,
+  myTimeOffShiftsSchema,
+  timeOffAnswerInputSchema,
   timeOffAskInputSchema,
   timeOffAskRefusal,
   timeOffDayCount,
+  timeOffImpactSchema,
+  timeOffRequestsPageSchema,
+  timeOffRequestsQuerySchema,
 } from "./time-off-requests";
 
 const now = { date: "2026-10-22", time: "09:30" };
@@ -102,5 +108,100 @@ describe("myTimeOffSchema", () => {
       ],
     };
     expect(myTimeOffSchema.parse(read)).toEqual(read);
+  });
+});
+
+// Time off rebuild D3: real answers of the database, from a rolled-back transaction (world fx).
+const deciderView = {
+  id: "e0f676c1-5683-4b2d-9027-186e01391231",
+  kind: "leave",
+  note: "Family visit",
+  status: "pending",
+  all_day: true,
+  ends_at: "2028-09-20T21:00:00+00:00",
+  end_date: "2028-09-20",
+  end_time: null,
+  ended_at: null,
+  revision: 1,
+  starts_at: "2028-09-18T21:00:00+00:00",
+  created_at: "2026-10-22T11:46:48.965226+00:00",
+  decided_at: null,
+  ended_note: null,
+  start_date: "2028-09-19",
+  start_time: null,
+  employee_id: "735032ec-0e98-4fb1-8005-c4ede5b1726b",
+  decision_note: null,
+  employee_name: "Ali Person",
+  kind_of_leave: "vacation",
+  shifts_opened: 0,
+  time_timezone: "Europe/Istanbul",
+  location_names: ["Kadikoy", "Besiktas"],
+  decided_by_name: null,
+} as const;
+
+describe("the answer's shapes", () => {
+  it("reads what the database answers", () => {
+    const impact = {
+      request: deciderView,
+      locations: [
+        {
+          shifts: [
+            {
+              id: "7167d145-e686-4a7f-be0a-f667fc84e830",
+              ends_at: "2028-09-19T12:00:00+00:00",
+              end_time: "15:00",
+              job_name: "Cook",
+              timezone: "Europe/Istanbul",
+              starts_at: "2028-09-19T06:00:00+00:00",
+              start_time: "09:00",
+              scheduled_date: "2028-09-19",
+            },
+          ],
+          location_id: "fd234463-4d76-48ad-8401-a14a28638dca",
+          location_name: "Kadikoy",
+        },
+      ],
+      fingerprint: "11611d0e7f9542616aa542c39e615471",
+      shift_count: 2,
+      hidden_shift_count: 1,
+    };
+    expect(timeOffImpactSchema.parse(impact)).toEqual(impact);
+    const page = { page: 1, total: 1, waiting: 1, requests: [deciderView], page_size: 50 };
+    expect(timeOffRequestsPageSchema.parse(page)).toEqual(page);
+    const shifts = {
+      count: 2,
+      shifts: [
+        {
+          id: "7167d145-e686-4a7f-be0a-f667fc84e830",
+          end_time: "15:00",
+          job_name: "Cook",
+          start_time: "09:00",
+          location_name: "Kadikoy",
+          scheduled_date: "2028-09-19",
+        },
+      ],
+    };
+    expect(myTimeOffShiftsSchema.parse(shifts)).toEqual(shifts);
+  });
+
+  it("asks an approval for the shifts it opens, a decline for nothing", () => {
+    expect(timeOffAnswerInputSchema.safeParse({ verdict: "approve", note: null, expected_revision: 1, expected_impact: null }).success).toBe(false);
+    expect(timeOffAnswerInputSchema.safeParse({ verdict: "approve", note: "Enjoy", expected_revision: 1, expected_impact: "abc" }).success).toBe(true);
+    expect(timeOffAnswerInputSchema.safeParse({ verdict: "decline", note: null, expected_revision: 1, expected_impact: null }).success).toBe(true);
+    expect(timeOffAnswerInputSchema.safeParse({ verdict: "maybe", note: null, expected_revision: 1, expected_impact: null }).success).toBe(false);
+    expect(timeOffAnswerInputSchema.safeParse({ verdict: "decline", note: "x".repeat(1001), expected_revision: 1, expected_impact: null }).success).toBe(false);
+  });
+
+  it("reads a list question from an address, with its defaults", () => {
+    expect(timeOffRequestsQuerySchema.parse({})).toEqual({ view: "all", search: "", sort: "needs_decision", page: 1, page_size: 50 });
+    expect(timeOffRequestsQuerySchema.parse({ page: "2", page_size: "25", sort: "starts" })).toMatchObject({ page: 2, page_size: 25 });
+    expect(timeOffRequestsQuerySchema.safeParse({ page_size: "30" }).success).toBe(false);
+    expect(timeOffRequestsQuerySchema.safeParse({ sort: "name" }).success).toBe(false);
+  });
+
+  it("asks the form's shifts with both hours or none", () => {
+    expect(myTimeOffShiftsQuerySchema.safeParse({ start: "2028-09-19", end: "2028-09-20" }).success).toBe(true);
+    expect(myTimeOffShiftsQuerySchema.safeParse({ start: "2028-09-19", end: "2028-09-19", from: "08:00", to: "24:00" }).success).toBe(true);
+    expect(myTimeOffShiftsQuerySchema.safeParse({ start: "2028-09-19", end: "2028-09-19", from: "08:00" }).success).toBe(false);
   });
 });

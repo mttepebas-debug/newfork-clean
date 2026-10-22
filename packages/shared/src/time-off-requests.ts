@@ -138,3 +138,120 @@ export function timeOffAskRefusal(
   if (end - start > timeOffMostDays * 1440) return "time_off.too_long";
   return start <= dayNumber(now.date) * 1440 + minutes(now.time) ? "time_off.started" : null;
 }
+
+// Time off rebuild D3 (KARARLAR S-239): a manager, an admin or the owner answers. The database
+// (answer_time_off_service, time_off_impact_service, time_off_requests_service, my_time_off_shifts_service)
+// decides who may and what an approval opens; these are the shapes.
+
+/** A request as the people who answer it read it: the employee's view, who asked, where they work. */
+export const timeOffDeciderViewSchema = timeOffRequestViewSchema.extend({
+  employee_id: id,
+  employee_name: z.string(),
+  location_names: z.array(z.string()),
+  shifts_opened: z.number().int().min(0),
+});
+export type TimeOffDeciderView = z.infer<typeof timeOffDeciderViewSchema>;
+
+export const timeOffRequestsViews = ["all", "open", "closed"] as const;
+export const timeOffRequestsSorts = ["needs_decision", "starts", "newest"] as const;
+export const timeOffRequestsPageSizes = [25, 50, 100] as const;
+
+/** Requests → Time off's question: which requests, in what order, which page. Paged and sorted by the server. */
+export const timeOffRequestsQuerySchema = z
+  .object({
+    view: z.enum(timeOffRequestsViews).default("all"),
+    location_id: id.optional(),
+    search: z.string().max(200).default(""),
+    sort: z.enum(timeOffRequestsSorts).default("needs_decision"),
+    page: z.coerce.number().int().min(1).default(1),
+    page_size: z.coerce
+      .number()
+      .int()
+      .refine((size) => (timeOffRequestsPageSizes as readonly number[]).includes(size))
+      .default(50),
+    request_id: id.optional(),
+  })
+  .strict();
+export type TimeOffRequestsQuery = z.input<typeof timeOffRequestsQuerySchema>;
+
+/** One page of it: how many match, how many wait for an answer, and the page's requests. */
+export const timeOffRequestsPageSchema = z.object({
+  total: z.number().int().min(0),
+  waiting: z.number().int().min(0),
+  page: z.number().int().min(1),
+  page_size: z.number().int(),
+  requests: z.array(timeOffDeciderViewSchema),
+});
+export type TimeOffRequestsPage = z.infer<typeof timeOffRequestsPageSchema>;
+
+export const timeOffOpeningShiftSchema = z.object({
+  id,
+  scheduled_date: day,
+  start_time: clock,
+  end_time: clock,
+  job_name: z.string(),
+  starts_at: instant,
+  ends_at: instant,
+  timezone: z.string(),
+});
+export type TimeOffOpeningShift = z.infer<typeof timeOffOpeningShiftSchema>;
+
+/** What approving would open, location by location; the locations whose schedule the reader cannot see only count. */
+export const timeOffImpactSchema = z.object({
+  request: timeOffDeciderViewSchema,
+  fingerprint: z.string(),
+  shift_count: z.number().int().min(0),
+  hidden_shift_count: z.number().int().min(0),
+  locations: z.array(z.object({ location_id: id, location_name: z.string(), shifts: z.array(timeOffOpeningShiftSchema) })),
+});
+export type TimeOffImpact = z.infer<typeof timeOffImpactSchema>;
+
+/** The answer, given on what was read: the revision, and for an approval the shifts' print. */
+export const timeOffAnswerInputSchema = z
+  .object({
+    verdict: z.enum(["approve", "decline"]),
+    note: z.string().max(1000).nullable(),
+    expected_revision: z.number().int().min(1),
+    expected_impact: z.string().nullable(),
+  })
+  .strict()
+  .refine((input) => input.verdict === "decline" || input.expected_impact !== null, {
+    message: "An approval says which shifts it opens",
+    path: ["expected_impact"],
+  });
+export type TimeOffAnswerInput = z.infer<typeof timeOffAnswerInputSchema>;
+
+/** Every reason an answer is refused besides the authorization core's. */
+export const timeOffAnswerReasons = ["time_off.invalid", "time_off.changed", "time_off.not_pending", "time_off.not_found"] as const;
+export type TimeOffAnswerReason = (typeof timeOffAnswerReasons)[number];
+
+/** The employee form's question: the days, and the hours unless it is all day. */
+export const myTimeOffShiftsQuerySchema = z
+  .object({
+    start: day,
+    end: day,
+    from: clock.optional(),
+    to: endClock.optional(),
+  })
+  .strict()
+  .refine((query) => (query.from === undefined) === (query.to === undefined), {
+    message: "Both hours, or neither",
+    path: ["from"],
+  });
+export type MyTimeOffShiftsQuery = z.infer<typeof myTimeOffShiftsQuerySchema>;
+
+/** The person's published shifts in those days and hours that have not started: what an approval would open. */
+export const myTimeOffShiftsSchema = z.object({
+  count: z.number().int().min(0),
+  shifts: z.array(
+    z.object({
+      id,
+      location_name: z.string(),
+      job_name: z.string(),
+      scheduled_date: day,
+      start_time: clock,
+      end_time: clock,
+    }),
+  ),
+});
+export type MyTimeOffShifts = z.infer<typeof myTimeOffShiftsSchema>;
