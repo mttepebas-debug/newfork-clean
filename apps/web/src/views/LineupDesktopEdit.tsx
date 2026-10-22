@@ -637,12 +637,15 @@ export function NotesEditor({
   shift,
   onDone,
   focusFirst = true,
+  onDirty,
 }: {
   readonly editing: LineupEditing;
   readonly shift: LineupShift;
   readonly onDone: () => void;
   /** Its first note takes focus (the desktop's Edit notes); the phone's, opened by a tap on Notes, waits for a tap. */
   readonly focusFirst?: boolean;
+  /** Whether a note has changed and isn't saved; false again once the editor goes. */
+  readonly onDirty?: (dirty: boolean) => void;
 }) {
   const edit = useLineupEdit(editing.workspaceId, editing.date);
   const [values, setValues] = useState<Record<NoteKey, string>>(() => ({ ...shift.publish.notes }));
@@ -652,6 +655,9 @@ export function NotesEditor({
     if (focusFirst) first.current?.focus();
   }, [focusFirst]);
   const changed = NOTE_FIELDS.filter(([key]) => values[key] !== shift.publish.notes[key]).map(([key]) => key);
+  const dirty = changed.length > 0;
+  useEffect(() => onDirty?.(dirty), [dirty, onDirty]);
+  useEffect(() => () => onDirty?.(false), [onDirty]);
   return (
     <section className="lineup-notes lineup-edit-notes" aria-label="Edit notes">
       {NOTE_FIELDS.map(([key, label, Icon, placeholder, max], index) => (
