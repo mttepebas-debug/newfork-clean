@@ -46,6 +46,10 @@ describe("decisionFor", () => {
     expect(decisionFor(notice({ subject_id: null }))).toBeNull();
     expect(decisionFor(notice({ type: "shift_changes.approval_needed", subject_type: "shift_exchange" }))).toBeNull();
   });
+
+  it("offers none on the new time off's card: Review opens it in Requests → Time off (time off rebuild D3)", () => {
+    expect(decisionFor(notice({ subject_type: "time_off", url: "/app/schedule/requests?type=time_off&request=98020000-0000-4000-8000-000000000001" }))).toBeNull();
+  });
 });
 
 describe("resolutionLabel", () => {

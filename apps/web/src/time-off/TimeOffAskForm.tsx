@@ -1,9 +1,11 @@
 import type { TimeOffAskInput } from "@newfork/shared";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
 import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { LeaveIcon } from "./leave-icon";
+import { useMyTimeOffShifts } from "./time-off-data";
 import {
   clockText,
+  dayText,
   draftProblems,
   leaveKinds,
   leaveLabel,
@@ -54,6 +56,7 @@ function Field({ label, children, hint, message }: { label: ReactNode; children:
  * and hours, the note. A refusal stays beside its field and the form keeps everything typed.
  */
 export function TimeOffAskForm({
+  workspaceId,
   formId,
   phone,
   zone,
@@ -62,6 +65,7 @@ export function TimeOffAskForm({
   sending,
   onSend,
 }: {
+  workspaceId: string;
   formId: string;
   phone: boolean;
   zone: string | null;
@@ -96,6 +100,14 @@ export function TimeOffAskForm({
   }
   if (refusal?.field && !shown[refusal.field]) shown[refusal.field] = refusal.text;
   const end = draft.end || draft.start;
+  // The phone's box (Karma): the shifts an approval would open, once the days and hours stand.
+  const rangeReady = Boolean(draft.start) && !problems.dates && !problems.time;
+  const shifts = useMyTimeOffShifts(
+    workspaceId,
+    phone && rangeReady
+      ? { start: draft.start, end, ...(draft.allDay ? {} : { from: draft.from, to: draft.to }) }
+      : null,
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -258,6 +270,24 @@ export function TimeOffAskForm({
       {kindField}
       {dates}
       {note}
+      {phone && rangeReady && shifts.data?.count ? (
+        <div className="tor-alert" role="note">
+          <Info size={18} aria-hidden className="tor-i" />
+          <div>
+            <strong>
+              {shifts.data.count === 1 ? "1 shift goes to open shifts if approved" : `${shifts.data.count} shifts go to open shifts if approved`}
+            </strong>
+            <ul>
+              {shifts.data.shifts.map((shift) => (
+                <li key={shift.id}>
+                  {dayText(shift.scheduled_date)}, {clockText(shift.start_time, timeFormat)} to {clockText(shift.end_time, timeFormat)}{" "}
+                  <span className="tor-loc">{shift.location_name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : null}
       {refusal && !refusal.field ? (
         <p className="tor-err" role="alert"><AlertCircle size={15} aria-hidden /><span>{refusal.text}</span></p>
       ) : null}

@@ -68,10 +68,16 @@ const mine: MyTimeOff = {
   requests: [wedding, dentist, moving],
 };
 
-function answer(routes: { mine?: () => unknown; ask?: (body: unknown) => unknown; withdraw?: (body: unknown) => unknown }) {
+function answer(routes: {
+  mine?: () => unknown;
+  ask?: (body: unknown) => unknown;
+  withdraw?: (body: unknown) => unknown;
+  shifts?: (path: string) => unknown;
+}) {
   api.apiRequest.mockImplementation(async (_client: unknown, path: string, init?: RequestInit) => {
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
     if (path.endsWith("/time-off-requests/mine")) return (routes.mine ?? (() => mine))();
+    if (path.includes("/time-off-requests/my-shifts?")) return (routes.shifts ?? (() => ({ count: 0, shifts: [] })))(path);
     if (path.endsWith("/withdraw")) return (routes.withdraw ?? (() => ({ ...wedding, status: "withdrawn", revision: 2 })))(body);
     if (path.endsWith("/time-off-requests") && init?.method === "POST") return (routes.ask ?? (() => wedding))(body);
     throw new Error(`unexpected ${path}`);
@@ -225,6 +231,55 @@ describe("Time off (new)", () => {
     expect(within(form).getByRole("combobox", { name: "Type" })).toBeTruthy();
     expect(within(form).queryByRole("radiogroup")).toBeNull();
     expect(within(form).getByRole("button", { name: "Cancel" })).toBeTruthy();
+  });
+
+  it("shows an answer with who gave it and their note, approved or declined", async () => {
+    const declined = request({
+      id: "98020000-0000-4000-8000-000000000004",
+      kind_of_leave: "sick",
+      status: "declined",
+      starts_at: "2026-11-20T08:00:00+00:00",
+      ends_at: "2026-11-21T08:00:00+00:00",
+      start_date: "2026-11-20",
+      end_date: "2026-11-20",
+      decided_at: "2026-10-21T18:00:00+00:00",
+      decided_by_name: "Rachel Adams",
+      decision_note: "We are short that day.",
+    });
+    answer({ mine: () => ({ ...mine, requests: [{ ...dentist, decision_note: "Enjoy." }, declined] }) });
+    renderIt();
+    fireEvent.click(await screen.findByRole("row", { name: /Personal/ }));
+    let dialog = screen.getByRole("dialog", { name: "Time off" });
+    expect(within(dialog).getByText("Rachel Adams, Oct 21")).toBeTruthy();
+    expect(within(dialog).getByText("Rachel Adams wrote").parentElement!.textContent).toBe("Rachel Adams wroteEnjoy.");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Past 1" }));
+    fireEvent.click(await screen.findByRole("row", { name: /Sick/ }));
+    dialog = screen.getByRole("dialog", { name: "Time off" });
+    expect(within(dialog).getByText("Declined", { selector: "strong" })).toBeTruthy();
+    expect(within(dialog).getByText("Rachel Adams wrote").parentElement!.textContent).toBe("Rachel Adams wroteWe are short that day.");
+  });
+
+  it("on a phone says which shifts would go to open shifts if the days are approved", async () => {
+    phoneWidth(true);
+    answer({
+      shifts: () => ({
+        count: 2,
+        shifts: [
+          { id: "22000000-0000-4000-8000-000000000004", location_name: "Downtown", job_name: "Server", scheduled_date: "2026-10-23", start_time: "09:00", end_time: "15:00" },
+          { id: "22000000-0000-4000-8000-000000000005", location_name: "Midtown", job_name: "Cook", scheduled_date: "2026-10-23", start_time: "17:00", end_time: "22:00" },
+        ],
+      }),
+    });
+    renderIt();
+    fireEvent.click(await screen.findByRole("button", { name: "Request time off" }));
+    const form = screen.getByRole("dialog", { name: "Request time off" });
+    expect(within(form).queryByRole("note")).toBeNull();
+    fireEvent.click(within(form).getByRole("button", { name: "Tomorrow" }));
+    const box = await within(form).findByRole("note");
+    expect(box.textContent).toBe("2 shifts go to open shifts if approvedFri, Oct 23, 9:00 AM to 3:00 PM DowntownFri, Oct 23, 5:00 PM to 10:00 PM Midtown");
+    const asked = api.apiRequest.mock.calls.map(([, path]) => String(path)).filter((path) => path.includes("/my-shifts?"));
+    expect(asked.at(-1)).toBe(`/v1/workspaces/${workspaceId}/time-off-requests/my-shifts?start=2026-10-23&end=2026-10-23`);
   });
 
   it("says when nothing is there yet, and when the list could not load", async () => {

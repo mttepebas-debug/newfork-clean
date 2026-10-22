@@ -132,6 +132,22 @@ describe("NotificationsPanel", () => {
     expect(screen.getByTestId("where").textContent).toBe("/app/employees");
   });
 
+  // Time off rebuild D3: the new time off's cards carry their own links; the person deciding reviews it in
+  // Requests → Time off, the employee reads the answer in My Availability → Time off.
+  it("opens the new time off's cards where each reader answers or reads them", async () => {
+    const asked = `/app/schedule/requests?type=time_off&request=${requestId}`;
+    answer({ all: feedPage([notice({ subject_type: "time_off", url: asked })]) });
+    const first = mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Review" }));
+    expect(screen.getByTestId("where").textContent).toBe(asked);
+    first.unmount();
+    answer({ all: feedPage([notice({ type: "time_off.decided", topic: "time_off", needs_action: false, subject_type: "time_off",
+      title: "Your time off Oct 21 is approved", url: "/app/employee-hub/my-availability?section=time-off" })]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
+    fireEvent.click(await screen.findByRole("button", { name: /^(Unread: )?Your time off Oct 21 is approved$/ }));
+    expect(screen.getByTestId("where").textContent).toBe("/app/employee-hub/my-availability?section=time-off");
+  });
+
   it("marks everything read", async () => {
     answer({ all: feedPage([notice()]) });
     mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);

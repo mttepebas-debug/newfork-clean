@@ -31,7 +31,8 @@ export function weekDays(model: Model, start: string, openDates: readonly string
     const shifts = model.shifts
       .filter((shift) => shift.scheduled_date === date && (!shift.employee_id || shift.employee_id === model.employee.id))
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
-    const timeOff = model.requests.some(
+    // The read's leave_days when it has them (old and new time off alike, time off rebuild D3).
+    const timeOff = model.leave_days ? model.leave_days.includes(date) : model.requests.some(
       (request) =>
         request.kind === "time_off" &&
         request.request_type !== "time_off_cancellation" &&

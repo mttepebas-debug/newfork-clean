@@ -76,6 +76,13 @@ describe("My shifts: what each day says", () => {
   });
 });
 
+describe("My shifts: the server's leave days (time off rebuild D3)", () => {
+  it("marks the days the read says are off, and nothing from the requests once it says so", () => {
+    const days = weekDays({ ...model([timeOff(1, "2026-08-26")]), leave_days: ["2026-08-27", "2026-08-28"] }, "2026-08-24");
+    expect(days.filter((day) => day.timeOff).map((day) => day.date)).toEqual(["2026-08-27", "2026-08-28"]);
+  });
+});
+
 describe("My shifts: the two weeks of the switch", () => {
   it("is This week and Next week, open on the week the address names", () => {
     expect(switchWeeks("2026-08-24", null, "monday")).toEqual({ starts: ["2026-08-24", "2026-08-31"], labels: ["This week", "Next week"], open: 0 });

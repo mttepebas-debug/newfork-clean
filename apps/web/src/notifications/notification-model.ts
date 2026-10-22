@@ -62,7 +62,10 @@ export function dayGroup(createdAt: string, now: Date): DayGroup {
 /**
  * The inline decision a row offers. Only time off has one today: its card
  * names the request (subject), and the verdict goes through the endpoint
- * Requests uses. Every other open request is opened with Review.
+ * Requests uses. Every other open request is opened with Review, the new
+ * time off's too (subject "time_off", time off rebuild D3): its card links to
+ * Requests → Time off for whoever answers and to My Availability → Time off for
+ * the employee.
  */
 export type Decision = { readonly kind: "time_off"; readonly requestId: string };
 export function decisionFor(item: NotificationItem): Decision | null {

@@ -151,3 +151,35 @@
   .tor-head .tor-new { justify-self: stretch; width: 100%; justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) { .tor-skel span { animation: none; } }
+
+/* D3: the phone form's box, the shifts an approval would open (Karma's alert). */
+.tor-alert {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.tor-alert > .tor-i {
+  margin-top: 1px;
+  color: var(--theme-info-text);
+}
+.tor-alert strong {
+  color: var(--theme-text);
+}
+.tor-alert ul {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--theme-text-secondary);
+}
+.tor-alert .tor-loc {
+  color: var(--theme-muted);
+}
