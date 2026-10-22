@@ -68,9 +68,9 @@ select is(
   jsonb_build_object('code', 'time_off_pending', 'severity', 'soft', 'overrideable', false, 'tier', 'note',
     'location_id', tests.id('tp:K'), 'location_name', (select l.name from public.locations l where l.id = tests.id('tp:K')),
     'employee_id', tests.id('tp:ali'), 'employee_name', 'Ali Person', 'scheduled_date', tests.week(1) + 2,
-    'time_off_request_id', tests.id('tp:ali:leave'),
+    'time_off_request_id', tests.id('tp:ali:leave'), 'time_off_source', 'legacy',
     'message', 'Ali Person has time off waiting for a decision on ' || to_char(tests.week(1) + 2, 'Mon FMDD')),
-  'the note says who, where, when and which request');
+  'the note says who, where, when and which request, and that it is in the old table');
 select ok((select bool_and(length(n ->> 'id') = 64) from owner_preview, pg_temp.notes(p) n), 'each note has a stable id');
 select is((select p ->> 'status' from owner_preview), 'publish_ready', 'a note alone leaves the week ready to publish');
 
