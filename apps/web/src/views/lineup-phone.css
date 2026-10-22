@@ -1100,3 +1100,18 @@
     animation: none;
   }
 }
+
+/* S-238 (Mert 2026-10-21 ~6:40 PM): the phone's notes save themselves; Saving… and Saved sit at the bar's end,
+   a save that didn't go through takes its own line under "Staff see the notes when you publish." */
+.lineup-phone-pane .lineup-edit-notes-acts {
+  min-height: 44px;
+}
+.lineup-phone-pane .lineup-edit-notes-acts > .lineup-notes-state {
+  margin-right: 0;
+  white-space: nowrap;
+}
+.lineup-phone-pane .lineup-edit-notes-acts > .lineup-notes-state.lineup-edit-msg {
+  flex-basis: 100%;
+  color: var(--theme-danger);
+  white-space: normal;
+}

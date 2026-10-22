@@ -624,40 +624,29 @@ function SectionName({ name, onRename }: { readonly name: string; readonly onRen
   );
 }
 
-const NOTE_FIELDS = [
+export const NOTE_FIELDS = [
   ["specials", "Specials", Sparkles, "Tonight's specials", 500],
   ["n86", "86s", Ban, "What's sold out", 500],
   ["shift_notes", "Shift notes", MessageSquareText, "Anything the team should know", 1000],
 ] as const;
-type NoteKey = (typeof NOTE_FIELDS)[number][0];
+export type NoteKey = (typeof NOTE_FIELDS)[number][0];
 
 /** Edit notes (S-178 ek b; the design's notesPane): the three notes in place; only the ones changed are sent. */
 export function NotesEditor({
   editing,
   shift,
   onDone,
-  focusFirst = true,
-  onDirty,
 }: {
   readonly editing: LineupEditing;
   readonly shift: LineupShift;
   readonly onDone: () => void;
-  /** Its first note takes focus (the desktop's Edit notes); the phone's, opened by a tap on Notes, waits for a tap. */
-  readonly focusFirst?: boolean;
-  /** Whether a note has changed and isn't saved; false again once the editor goes. */
-  readonly onDirty?: (dirty: boolean) => void;
 }) {
   const edit = useLineupEdit(editing.workspaceId, editing.date);
   const [values, setValues] = useState<Record<NoteKey, string>>(() => ({ ...shift.publish.notes }));
   const [refused, setRefused] = useState<string | null>(null);
   const first = useRef<HTMLTextAreaElement | null>(null);
-  useEffect(() => {
-    if (focusFirst) first.current?.focus();
-  }, [focusFirst]);
+  useEffect(() => first.current?.focus(), []);
   const changed = NOTE_FIELDS.filter(([key]) => values[key] !== shift.publish.notes[key]).map(([key]) => key);
-  const dirty = changed.length > 0;
-  useEffect(() => onDirty?.(dirty), [dirty, onDirty]);
-  useEffect(() => () => onDirty?.(false), [onDirty]);
   return (
     <section className="lineup-notes lineup-edit-notes" aria-label="Edit notes">
       {NOTE_FIELDS.map(([key, label, Icon, placeholder, max], index) => (

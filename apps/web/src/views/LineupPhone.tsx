@@ -40,9 +40,10 @@ import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../sched
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
 import { useTabSwipe } from "../shell/useTabSwipe";
-import { CopyTextButton, NotesEditor, SectionsWindow, type LineupEditing } from "./LineupDesktopEdit";
+import { CopyTextButton, SectionsWindow, type LineupEditing } from "./LineupDesktopEdit";
 import { AddStaffButton, EmptyDepartment, OutGroups, StaffWindow, teamDepartments, type StaffPlace } from "./LineupDesktopStaff";
 import { LineupPersonCircle } from "./LineupPersonCircle";
+import { PhoneNotesEditor } from "./LineupPhoneNotes";
 import { PersonSheet } from "./LineupPhoneStaff";
 import "./lineup-phone.css";
 
@@ -294,21 +295,15 @@ function LocationLineup({
   const seg: Seg = picked === "read" && !live ? "team" : picked;
   // S-238 (Mert 2026-10-21): on a draft that can change, a tap on Notes opens its notes to edit, no pencil step; a
   // published one's open read only, with nothing to edit them (Edit on the card takes the lineup back first). A
-  // swipe to Notes reads them, so a swipe back doesn't land on a text box (which keeps its own sideways move); a
-  // swipe leaves notes being written alone until Mert decides what it does to them.
+  // swipe to Notes reads them, so a swipe back doesn't land on a text box (which keeps its own sideways move).
+  // What is typed saves itself and stays while another tab is shown (Mert ~6:40 PM).
   const [notesOpen, setNotesOpen] = useState(false);
-  const [notesDirty, setNotesDirty] = useState(false);
+  const [notesUnsaved, setNotesUnsaved] = useState(false);
   const pick = (next: Seg) => {
     if (next === "notes") setNotesOpen(true);
     setSeg(next);
   };
-  const swipe = useTabSwipe({
-    tabs: live ? SEGS : SEGS.slice(0, 2),
-    active: seg,
-    enabled: open && !notesDirty,
-    onSelect: setSeg,
-    scope: "self",
-  });
+  const swipe = useTabSwipe({ tabs: live ? SEGS : SEGS.slice(0, 2), active: seg, enabled: open, onSelect: setSeg, scope: "self" });
   // A draft that hasn't started changes in place (the server locks the rest), as on the desktop.
   const changing = editing && lineupEditable(shift, now) ? editing : null;
   // The person panel's row, by its key: the panel reads her as the day has her now (a change moves her row).
@@ -318,6 +313,9 @@ function LocationLineup({
   const [staff, setStaff] = useState<StaffPlace | null>(null);
   const [sectionsOpen, setSectionsOpen] = useState(false);
   const joined = open && seg === "team" && teamEmpty(shift, changing);
+  // The notes being written: on a draft that can change, or kept on screen, read only, when it went out (or its
+  // shift began) before they saved.
+  const writing = editing && notesOpen && (changing || notesUnsaved) ? editing : null;
   const panel = `${ids}panel`;
   return (
     <div className={`lineup-phone-block${stacked ? " is-stacked" : ""}`} ref={swipe.root}>
@@ -347,16 +345,17 @@ function LocationLineup({
       </LineupCard>
       {open ? (
         <div className="lineup-phone-pane" role="tabpanel" id={panel} aria-labelledby={`${ids}seg-${seg}`}>
+          {writing ? (
+            <PhoneNotesEditor
+              editing={writing}
+              shift={shift}
+              locked={!changing}
+              hidden={seg !== "notes"}
+              onUnsaved={setNotesUnsaved}
+            />
+          ) : null}
           {seg === "notes" ? (
-            changing && notesOpen ? (
-              <NotesEditor
-                editing={changing}
-                shift={shift}
-                onDone={() => setNotesOpen(false)}
-                focusFirst={false}
-                onDirty={setNotesDirty}
-              />
-            ) : (
+            writing ? null : (
               <NotesPane shift={shift} />
             )
           ) : seg === "read" ? (
