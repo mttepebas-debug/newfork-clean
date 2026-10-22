@@ -1,8 +1,19 @@
 import {
   myTimeOffSchema,
+  myTimeOffShiftsSchema,
+  timeOffDeciderViewSchema,
+  timeOffImpactSchema,
+  timeOffRequestsPageSchema,
   timeOffRequestViewSchema,
   type MyTimeOff,
+  type MyTimeOffShifts,
+  type MyTimeOffShiftsQuery,
+  type TimeOffAnswerInput,
   type TimeOffAskInput,
+  type TimeOffDeciderView,
+  type TimeOffImpact,
+  type TimeOffRequestsPage,
+  type TimeOffRequestsQuery,
   type TimeOffRequestView,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
@@ -17,6 +28,14 @@ export interface TimeOffRequestsService {
   mine(input: Actor): Promise<MyTimeOff>;
   ask(input: Actor & { readonly request: TimeOffAskInput }): Promise<TimeOffRequestView>;
   withdraw(input: Actor & { readonly requestId: string; readonly expectedRevision: number }): Promise<TimeOffRequestView>;
+  /** D3: the requests this person may answer, one page. */
+  list(input: Actor & { readonly query: TimeOffRequestsQuery }): Promise<TimeOffRequestsPage>;
+  /** D3: what approving would open. */
+  impact(input: Actor & { readonly requestId: string }): Promise<TimeOffImpact>;
+  /** D3: the answer. */
+  answer(input: Actor & { readonly requestId: string; readonly answer: TimeOffAnswerInput }): Promise<TimeOffDeciderView>;
+  /** D3: the employee form's shifts in the days asked. */
+  myShifts(input: Actor & { readonly query: MyTimeOffShiftsQuery }): Promise<MyTimeOffShifts>;
 }
 
 interface RpcClient {
@@ -68,6 +87,46 @@ export function createTimeOffRequestsService(options: { url: string; serviceRole
         await call("withdraw_time_off_service", input, {
           target_request_id: input.requestId,
           expected_revision: input.expectedRevision,
+        }),
+      );
+    },
+    async list(input) {
+      const q = input.query;
+      return timeOffRequestsPageSchema.parse(
+        await call("time_off_requests_service", input, {
+          target_view: q.view ?? "all",
+          target_location_id: q.location_id ?? null,
+          target_search: q.search ?? "",
+          target_sort: q.sort ?? "needs_decision",
+          target_page: q.page ?? 1,
+          target_page_size: q.page_size ?? 50,
+          target_request_id: q.request_id ?? null,
+        }),
+      );
+    },
+    async impact(input) {
+      return timeOffImpactSchema.parse(await call("time_off_impact_service", input, { target_request_id: input.requestId }));
+    },
+    async answer(input) {
+      const a = input.answer;
+      return timeOffDeciderViewSchema.parse(
+        await call("answer_time_off_service", input, {
+          target_request_id: input.requestId,
+          verdict: a.verdict,
+          note: a.note,
+          expected_revision: a.expected_revision,
+          expected_impact: a.expected_impact,
+        }),
+      );
+    },
+    async myShifts(input) {
+      const q = input.query;
+      return myTimeOffShiftsSchema.parse(
+        await call("my_time_off_shifts_service", input, {
+          first_day: q.start,
+          last_day: q.end,
+          from_clock: q.from ?? null,
+          to_clock: q.to ?? null,
         }),
       );
     },

@@ -3,7 +3,11 @@ import {
   type ActiveWorkspaceContext,
   type AuthzAction,
   type MyTimeOff,
+  type MyTimeOffShifts,
+  type TimeOffDeciderView,
+  type TimeOffImpact,
   type TimeOffRequestView,
+  type TimeOffRequestsPage,
 } from "@newfork/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
@@ -60,12 +64,23 @@ const request: TimeOffRequestView = {
   ended_note: null,
 };
 const mine: MyTimeOff = { time_zone: "America/Los_Angeles", today: "2026-10-22", location_names: ["Downtown"], requests: [request] };
+// D3: the answerer's side.
+const decided: TimeOffDeciderView = { ...request, employee_id: "735032ec-0e98-4fb1-8005-c4ede5b1726b", employee_name: "Ali Person",
+  location_names: ["Downtown"], shifts_opened: 0 };
+const listed: TimeOffRequestsPage = { total: 1, waiting: 1, page: 1, page_size: 50, requests: [decided] };
+const impact: TimeOffImpact = { request: decided, fingerprint: "11611d0e7f9542616aa542c39e615471", shift_count: 0, hidden_shift_count: 0, locations: [] };
+const answered: TimeOffDeciderView = { ...decided, status: "approved", revision: 2, decided_by_name: "Mk Person" };
+const shifts: MyTimeOffShifts = { count: 0, shifts: [] };
 
 function serviceMock(): TimeOffRequestsService {
   return {
     mine: vi.fn().mockResolvedValue(mine),
     ask: vi.fn().mockResolvedValue(request),
     withdraw: vi.fn().mockResolvedValue({ ...request, status: "withdrawn", revision: 2 }),
+    list: vi.fn().mockResolvedValue(listed),
+    impact: vi.fn().mockResolvedValue(impact),
+    answer: vi.fn().mockResolvedValue(answered),
+    myShifts: vi.fn().mockResolvedValue(shifts),
   };
 }
 
@@ -83,20 +98,25 @@ const ask = {
   client_key: "5b1d0c9e-0f7e-4c8a-9a51-6f5f2b0c4d11",
 };
 const withdraw = { expected_revision: 1 };
+const answer = { verdict: "approve", note: "Enjoy", expected_revision: 1, expected_impact: "11611d0e7f9542616aa542c39e615471" };
 
-// Each route, the action the core must have listed for it, and a valid body.
+// Each route, the action the core must have listed for it, a valid body, and what it answers.
 const routes = [
-  ["GET", `${base}/mine`, "employee_hub.read", undefined],
-  ["POST", base, "time_off.request_own", ask],
-  ["POST", `${base}/${requestId}/withdraw`, "time_off.request_own", withdraw],
+  ["GET", `${base}/mine`, "employee_hub.read", undefined, mine],
+  ["POST", base, "time_off.request_own", ask, request],
+  ["POST", `${base}/${requestId}/withdraw`, "time_off.request_own", withdraw, { ...request, status: "withdrawn", revision: 2 }],
+  ["GET", `${base}/my-shifts?start=2026-10-30&end=2026-11-01`, "time_off.request_own", undefined, shifts],
+  ["GET", base, "time_off.decide", undefined, listed],
+  ["GET", `${base}/${requestId}/impact`, "time_off.decide", undefined, impact],
+  ["POST", `${base}/${requestId}/answer`, "time_off.decide", answer, answered],
 ] as const;
 
 describe("time off requests routes", () => {
-  it.each(routes)("%s %s answers with what the database answers", async (method, url, action, payload) => {
+  it.each(routes)("%s %s answers with what the database answers", async (method, url, action, payload, expected) => {
     const app = buildApp({ timeOffRequestsService: serviceMock(), contextResolver: { resolve: async () => contextWith([action]) } });
     const response = await app.inject({ method, url, headers: auth, ...(payload ? { payload } : {}) });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual(url.endsWith("/mine") ? mine : url.endsWith("/withdraw") ? { ...request, status: "withdrawn", revision: 2 } : request);
+    expect(response.json()).toEqual(expected);
     await app.close();
   });
 
@@ -134,10 +154,20 @@ describe("time off requests routes", () => {
     await app.inject({ method: "GET", url: `${base}/mine`, headers: auth });
     await app.inject({ method: "POST", url: base, headers: auth, payload: ask });
     await app.inject({ method: "POST", url: `${base}/${requestId}/withdraw`, headers: auth, payload: withdraw });
+    await app.inject({ method: "GET", url: `${base}?view=open&sort=starts&page=2&page_size=25&search=ali`, headers: auth });
+    await app.inject({ method: "GET", url: `${base}/${requestId}/impact`, headers: auth });
+    await app.inject({ method: "POST", url: `${base}/${requestId}/answer`, headers: auth, payload: answer });
+    await app.inject({ method: "GET", url: `${base}/my-shifts?start=2026-10-30&end=2026-10-30&from=09:00&to=24:00`, headers: auth });
     const actor = { actorUserId: userId, workspaceId };
     expect(service.mine).toHaveBeenCalledExactlyOnceWith(actor);
     expect(service.ask).toHaveBeenCalledExactlyOnceWith({ ...actor, request: ask });
     expect(service.withdraw).toHaveBeenCalledExactlyOnceWith({ ...actor, requestId, expectedRevision: 1 });
+    expect(service.list).toHaveBeenCalledExactlyOnceWith({ ...actor, query: { view: "open", sort: "starts", page: 2, page_size: 25, search: "ali" } });
+    expect(service.impact).toHaveBeenCalledExactlyOnceWith({ ...actor, requestId });
+    expect(service.answer).toHaveBeenCalledExactlyOnceWith({ ...actor, requestId, answer });
+    expect(service.myShifts).toHaveBeenCalledExactlyOnceWith({ ...actor, query: { start: "2026-10-30", end: "2026-10-30", from: "09:00", to: "24:00" } });
+    const smuggledAnswer = await app.inject({ method: "POST", url: `${base}/${requestId}/answer`, headers: auth, payload: { ...answer, actor_user_id: spoofed } });
+    expect(smuggledAnswer.statusCode).toBe(400);
     const smuggled = await app.inject({ method: "POST", url: base, headers: auth, payload: { ...ask, actor_user_id: spoofed } });
     expect(smuggled.statusCode).toBe(400);
     await app.close();
@@ -152,13 +182,51 @@ describe("time off requests routes", () => {
     ["POST", `${base}/${requestId}/withdraw`, { expected_revision: 0 }],
     ["POST", `${base}/${requestId}/withdraw`, {}],
     ["POST", `${base}/not-an-id/withdraw`, withdraw],
-  ] as const)("%s %s refuses a body it cannot read", async (method, url, payload) => {
+    ["POST", `${base}/${requestId}/answer`, { ...answer, verdict: "maybe" }],
+    ["POST", `${base}/${requestId}/answer`, { ...answer, expected_impact: null }],
+    ["POST", `${base}/${requestId}/answer`, { ...answer, note: "x".repeat(1001) }],
+    ["POST", `${base}/${requestId}/answer`, { ...answer, expected_revision: 0 }],
+    ["POST", `${base}/not-an-id/answer`, answer],
+    ["GET", `${base}/not-an-id/impact`, undefined],
+    ["GET", `${base}?page_size=30`, undefined],
+    ["GET", `${base}?sort=name`, undefined],
+    ["GET", `${base}?location_id=somewhere`, undefined],
+    ["GET", `${base}/my-shifts?start=2026-10-30`, undefined],
+    ["GET", `${base}/my-shifts?start=2026-10-30&end=2026-10-31&from=09:00`, undefined],
+    ["GET", `${base}/my-shifts?start=10/30/2026&end=2026-10-31`, undefined],
+  ] as const)("%s %s refuses a question it cannot read", async (method, url, payload) => {
     const service = serviceMock();
     const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
-    const response = await app.inject({ method, url, headers: auth, payload });
+    const response = await app.inject({ method, url, headers: auth, ...(payload ? { payload } : {}) });
     expect(response.statusCode).toBe(400);
-    expect(service.ask).not.toHaveBeenCalled();
-    expect(service.withdraw).not.toHaveBeenCalled();
+    expect(Object.values(service).every((fn) => vi.mocked(fn).mock.calls.length === 0)).toBe(true);
+    await app.close();
+  });
+
+  it.each([
+    ["PT409", "time_off.changed", 409],
+    ["PT409", "time_off.not_pending", 409],
+    ["22023", "time_off.invalid", 400],
+    ["P0002", "time_off.not_found", 404],
+    ["42501", "authz.rank", 403],
+    ["42501", "authz.document_blocked", 403],
+  ] as const)("passes an answer's %s %s through as %i with its reason", async (code, hint, status) => {
+    const service = serviceMock();
+    vi.mocked(service.answer).mockRejectedValue(rpcFailure({ message: "Refused", code, hint }));
+    const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
+    const response = await app.inject({ method: "POST", url: `${base}/${requestId}/answer`, headers: auth, payload: answer });
+    expect(response.statusCode).toBe(status);
+    expect(response.json()).toMatchObject({ reason: hint });
+    await app.close();
+  });
+
+  it("lets a decline go without a picture of the shifts", async () => {
+    const service = serviceMock();
+    const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(["time_off.decide"]) } });
+    const decline = { verdict: "decline", note: null, expected_revision: 1, expected_impact: null };
+    const response = await app.inject({ method: "POST", url: `${base}/${requestId}/answer`, headers: auth, payload: decline });
+    expect(response.statusCode).toBe(200);
+    expect(service.answer).toHaveBeenCalledExactlyOnceWith({ actorUserId: userId, workspaceId, requestId, answer: decline });
     await app.close();
   });
 

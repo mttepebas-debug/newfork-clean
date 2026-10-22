@@ -1,4 +1,11 @@
-import { timeOffAskInputSchema, timeOffWithdrawInputSchema, type AuthzAction } from "@newfork/shared";
+import {
+  myTimeOffShiftsQuerySchema,
+  timeOffAnswerInputSchema,
+  timeOffAskInputSchema,
+  timeOffRequestsQuerySchema,
+  timeOffWithdrawInputSchema,
+  type AuthzAction,
+} from "@newfork/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { authorize, resolveActor, type WorkspaceContextResolver } from "../auth/workspace-context";
@@ -57,5 +64,41 @@ export function registerTimeOffRequestsRoutes(
     return reply.send(
       await options.service.withdraw({ ...actor, requestId: params.data.id, expectedRevision: body.data.expected_revision }),
     );
+  });
+
+  // D3: who may answer reads the list, what approving would open, and answers. The gate is the core's list
+  // (time_off.decide somewhere); the database asks again for the person and refuses their own request.
+  app.get("/v1/workspaces/:workspaceId/time-off-requests", async (request, reply) => {
+    const actor = await gate(request, "time_off.decide");
+    const query = timeOffRequestsQuerySchema.safeParse(request.query);
+    if (!query.success) return reply.status(400).send({ error: "Choose a view, a sort and a page" });
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.list({ ...actor, query: query.data }));
+  });
+
+  app.get("/v1/workspaces/:workspaceId/time-off-requests/my-shifts", async (request, reply) => {
+    const actor = await gate(request, "time_off.request_own");
+    const query = myTimeOffShiftsQuerySchema.safeParse(request.query);
+    if (!query.success) return reply.status(400).send({ error: "Choose the days, and both hours unless it is all day" });
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.myShifts({ ...actor, query: query.data }));
+  });
+
+  app.get("/v1/workspaces/:workspaceId/time-off-requests/:id/impact", async (request, reply) => {
+    const actor = await gate(request, "time_off.decide");
+    const params = requestParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid time off request required" });
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.impact({ ...actor, requestId: params.data.id }));
+  });
+
+  app.post("/v1/workspaces/:workspaceId/time-off-requests/:id/answer", async (request, reply) => {
+    const actor = await gate(request, "time_off.decide");
+    const params = requestParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid time off request required" });
+    const body = timeOffAnswerInputSchema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "Approve or decline what you reviewed" });
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.answer({ ...actor, requestId: params.data.id, answer: body.data }));
   });
 }

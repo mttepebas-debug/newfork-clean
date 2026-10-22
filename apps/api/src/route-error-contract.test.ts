@@ -95,6 +95,9 @@ const requests: ReadonlyArray<readonly [string, "GET" | "DELETE", string]> = [
   ["own avatar removal", "DELETE", `${w}/me/avatar`],
   ["last avatar", "GET", `${w}/me/last-avatar`],
   ["time off requests", "GET", `${w}/time-off-requests/mine`],
+  ["time off to answer", "GET", `${w}/time-off-requests`],
+  ["time off impact", "GET", `${w}/time-off-requests/98020000-0000-4000-8000-000000000001/impact`],
+  ["time off shifts", "GET", `${w}/time-off-requests/my-shifts?start=2028-09-11&end=2028-09-12`],
 ];
 
 describe.each(requests)("%s route", (_name, method, url) => {
