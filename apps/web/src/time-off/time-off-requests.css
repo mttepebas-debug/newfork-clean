@@ -106,6 +106,7 @@
 .tor-quote { margin: 0; padding: 8px 12px; border: 1px solid var(--theme-border); border-radius: 6px; background: var(--theme-surface-soft); color: var(--theme-text-body); font-size: 13px; line-height: 1.45; }
 .tor-quote span { display: block; margin-bottom: 2px; color: var(--theme-muted); font-size: 12px; font-weight: 650; }
 .tor-row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tor-row-actions .nf-button { min-height: 36px; padding: 0 12px; font-size: 13.5px; }
 .tor-row-actions .nf-button.is-armed { border-color: var(--theme-danger-strong); background: var(--theme-danger-strong); color: var(--theme-on-accent); }
 
 /* the form */
