@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(64);
+select plan(67);
 
 -- Time off rebuild D4 (KARARLAR S-239 (4), (6), (1)): approved time off is cancelled by a request the
 -- employee sends and one manager answers, or taken back (revoked) by whoever may answer it, with a note.
@@ -62,7 +62,7 @@ $$;
 create function pg_temp.cancel_of(label text) returns public.time_off_requests language sql as $$
   select c from public.time_off_requests c
   where c.kind = 'cancel' and c.cancels_id = (select value from fixture where key = label)
-  order by c.created_at desc, c.id desc limit 1
+  order by c.status = 'pending' desc, c.created_at desc, c.id desc limit 1
 $$;
 create function pg_temp.answer_cancel(person text, label text, verdict text, note text default null)
 returns jsonb
@@ -191,6 +191,8 @@ select is(public.my_time_off_service(tests.user('tc:ali'), tests.id('tc')) -> 'r
 
 -- 5. He asks again and Kadikoy's manager approves: nothing of it had started, so all of it goes. The shifts
 -- the approval opened stay open.
+-- ponytail: one transaction has one now(); the declined cancellation is moved an hour back so the new one is the last.
+update public.time_off_requests set created_at = now() - interval '1 hour' where id = (pg_temp.cancel_of('ali')).id;
 select pg_temp.ask_cancel('ali', 'ali');
 select is(pg_temp.answer_cancel('mk', 'ali', 'approve') ->> 'status', 'approved', 'a manager approves the cancellation');
 select is(
@@ -296,7 +298,11 @@ select is(
 select is(
   (select row(c.status, pg_temp.open_cards(c.id))::text from pg_temp.cancel_of('eve') c),
   row('withdrawn', 0)::text, 'her cancellation waiting closes, and its cards');
-select is(pg_temp.told('time_off.decided', (select value from fixture where key = 'eve')),
+select is(
+  (select array_agg(i.label order by i.label) from public.person_notifications n
+   join tests.ids i on i.id = n.user_id and i.label like 'tc:%:user'
+   where n.type_key = 'time_off.decided' and n.subject_id = (select value from fixture where key = 'eve')
+     and n.data ->> 'outcome' = 'revoked'),
   array['tc:eve:user', 'tc:mia:user', 'tc:mk:user'], 'she hears it, and so do the others who may answer');
 select is(
   (select row(n.title, n.body, n.data ->> 'outcome')::text from public.person_notifications n
