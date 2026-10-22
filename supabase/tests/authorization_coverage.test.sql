@@ -245,6 +245,11 @@ insert into service_class values
   ('ask_time_off_service', 'time_off.request_own'),
   ('withdraw_time_off_service', 'time_off.request_own'),
   ('my_time_off_service', 'employee_hub.read'),
+  -- Time off rebuild D3: who may answer (app_private.time_off_decider_why asks the core), and the form's shifts.
+  ('answer_time_off_service', 'time_off.decide'),
+  ('time_off_impact_service', 'time_off.decide'),
+  ('time_off_requests_service', 'time_off.decide'),
+  ('my_time_off_shifts_service', 'time_off.request_own'),
   ('sync_expiring_document_todos_service', 'exempt:worker'),
   ('terminate_employee_service', 'employee.terminate'),
   ('touch_workspace_membership_service', 'account.self'),
