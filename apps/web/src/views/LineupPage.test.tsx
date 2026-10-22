@@ -2196,17 +2196,46 @@ describe("LineupPage, editing a draft on the desktop", () => {
       expect(sent[0]).toEqual({ path: "sections", body: { action: "add", location_id: downtown, name: "Deck" } });
     });
 
-    it("edits the notes in the Notes tab and sends only the ones that changed", async () => {
+    // S-238 (Mert 2026-10-21): on a draft, a tap on Notes opens the notes to edit, with no pencil step; no field takes
+    // focus, so the phone's keyboard doesn't jump up on its own.
+    it("opens the notes to edit with a tap on Notes and sends only the ones that changed", async () => {
       renderPage(`/app/schedule/lineup?location=${downtown}`);
       fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
-      fireEvent.click(screen.getByRole("button", { name: "Edit notes" }));
-      const specials = screen.getByPlaceholderText("Tonight's specials");
-      expect(document.activeElement).toBe(specials);
+      const specials = within(screen.getByRole("tabpanel")).getByPlaceholderText("Tonight's specials");
+      expect(document.activeElement).not.toBe(specials);
+      expect(screen.getByText("Staff see the notes when you publish.")).toBeTruthy();
       fireEvent.change(specials, { target: { value: "Halibut, $34" } });
       fireEvent.click(screen.getByRole("button", { name: "Save" }));
       await waitFor(() => expect(sent).toHaveLength(1));
       expect(sent[0]!.body).toMatchObject({ ...target(), action: "set_notes", notes: { specials: "Halibut, $34" } });
       await waitFor(() => expect(screen.queryByPlaceholderText("Tonight's specials")).toBeNull());
+    });
+
+    it("opens the notes to edit again with a tap on Notes after Cancel", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.queryByPlaceholderText("Tonight's specials")).toBeNull();
+      fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+      expect(screen.getByPlaceholderText("Tonight's specials")).toBeTruthy();
+    });
+
+    // S-238 (Mert 2026-10-21): a published lineup's notes open read only, with no button, pencil or words about it.
+    it("opens a published lineup's notes locked, read only, with nothing to edit them", async () => {
+      published = {
+        [lunch]: {
+          status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: false,
+          notes: { specials: "Halibut", n86: "", shift_notes: "" },
+        },
+      };
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("tab", { name: "Notes 1" }));
+      const panel = screen.getByRole("tabpanel");
+      expect(within(panel).queryByRole("textbox")).toBeNull();
+      expect(within(panel).queryByRole("button")).toBeNull();
+      expect(within(panel).getByText("Halibut")).toBeTruthy();
+      expect(within(panel).queryByText(/unpublish/i)).toBeNull();
+      expect(panel.querySelector("svg.lucide-pencil, .lineup-edit-notes")).toBeNull();
     });
 
     it("copies the lineup as text from Read's No app heading", async () => {
