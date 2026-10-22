@@ -84,26 +84,48 @@ describe("useFrozenTop on a page that pins its own top", () => {
 });
 
 describe("the phone Lineup's pinned top", () => {
-  const css = readFileSync("src/views/lineup-phone.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-  const ruleBody = (selector: string) =>
+  const read = (path: string) => readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const ruleBody = (css: string, selector: string) =>
     [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
       .filter(([, head]) => head!.replace(/\s+/g, " ").trim() === selector)
       .map(([, , body]) => body)
       .join(";");
+  // The main area's sky (styles.css .app-main[data-slot]) held where the top rests, on the page ground: at the
+  // top it is the sky itself, and once the page moves it never turns grey (Mert 2026-10-21 ~18:45).
+  // Longhands: the sky is several gradient layers, and a shorthand would size only the last one.
+  const sky = (body: string) => {
+    expect(body).toMatch(/background-color\s*:\s*var\(--theme-app-ground\)/);
+    expect(body).toMatch(/background-image\s*:\s*var\(--dl-sky, none\)/);
+    expect(body).toMatch(/background-size\s*:\s*100% 470px/);
+    expect(body).toMatch(/background-repeat\s*:\s*no-repeat/);
+    expect(body).toMatch(/background-position\s*:\s*0 0/);
+    expect(body).not.toMatch(/background\s*:/);
+  };
 
-  it("paints no ground of its own at rest, so the sky shows through", () => {
-    expect(ruleBody(".lineup-phone-page .lineup-phone-head")).not.toMatch(/background\s*:\s*var\(--theme-page\)/);
-    expect(ruleBody(".lineup-phone-page.list-page .lineup-phone-head > .catalog-page-header")).not.toMatch(
-      /background/,
-    );
-    expect(ruleBody(".app-main:not([data-frozen-scrolled]) > .lineup-phone-page .lineup-phone-head")).toMatch(
-      /background\s*:\s*transparent/,
+  it("matches the main area's sky size", () => {
+    expect(ruleBody(read("src/styles.css"), ".app-main[data-slot]:not(:has(.dl-home))")).toMatch(
+      /background-size\s*:\s*100% 470px/,
     );
   });
 
-  it("frosts what passes under it once the page moves", () => {
-    const head = ruleBody(".lineup-phone-page .lineup-phone-head");
-    expect(head).toMatch(/background\s*:\s*color-mix\(in srgb, var\(--theme-app-ground\) 70%, transparent\)/);
-    expect(head).toMatch(/backdrop-filter\s*:\s*saturate\(1\.6\) blur\(18px\)/);
+  it("carries the sky on the manager's phone Lineup, with no grey of its own", () => {
+    const css = read("src/views/lineup-phone.css");
+    const head = ruleBody(css, ".lineup-phone-page .lineup-phone-head");
+    sky(head);
+    expect(css).not.toMatch(/theme-app-ground\) 70%/);
+    expect(ruleBody(css, ".lineup-phone-page.list-page .lineup-phone-head > .catalog-page-header")).not.toMatch(
+      /background/,
+    );
+  });
+
+  it("carries the sky on the employee's phone Lineup once the page moves", () => {
+    const css = read("src/employee-hub/employee-lineup.css");
+    // The phone rule sits after the base rule, so it is the one that holds on a phone.
+    const pins = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, head]) => head!.trim() === ".employee-hub-page > .employee-lineup-pin")
+      .map(([, , body]) => body!);
+    const pin = pins.at(-1)!;
+    sky(pin);
+    expect(pin).toMatch(/backdrop-filter\s*:\s*none/);
   });
 });

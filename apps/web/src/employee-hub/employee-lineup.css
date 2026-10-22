@@ -148,6 +148,10 @@
 .app-main:not([data-frozen-scrolled]) > .employee-hub-page > .employee-lineup-pin { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (max-width: 720px) {
   .employee-hub-page > .employee-lineup-pin { margin: -16px calc(-1 * var(--eh-gutter, 16px)) 0; padding: 16px var(--eh-gutter, 16px) 0; }
+  /* On a phone the pin spans the main area, so once the page moves it carries the page's own sky, held where it
+     rests (styles.css, .app-main[data-slot]: 100% x 470 px on the page ground), not a grey frost (Mert 2026-10-21,
+     as the manager's phone Lineup, views/lineup-phone.css). Longhands: the sky is several layers, each takes the size. */
+  .employee-hub-page > .employee-lineup-pin { background-color: var(--theme-app-ground); background-image: var(--dl-sky, none); background-position: 0 0; background-repeat: no-repeat; background-size: 100% 470px; -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
 /* A phone's list frame (views/list-page-frozen.css, Mert 2026-10-19 ~06:30 AM, CALISAN-SCROLL): the header and
