@@ -7,6 +7,7 @@ import { blankDraft, Field, FieldMessage, KindField, RangeFields, SummaryCard } 
 import { TimeOffSheet } from "./TimeOffSheet";
 import { useEnterTimeOff, useTimeOffEntryImpact, useTimeOffEntryPeople } from "./time-off-data";
 import { clockText, dayText, entryDraftProblems, entryRefusalText, shiftsText, type AskDraft, type AskField, type TimeFormat } from "./time-off-text";
+import "./time-off-requests.css";
 
 type EntryField = AskField | "person";
 
