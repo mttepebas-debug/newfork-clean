@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 574, last: 20261022081635_owner_setup_checklist_gone.sql
--- fingerprint: sha256:1d611bc844a7cb7b9bbe39f05f2845b3b7a8f7d2c0e25579e9f84f7eb0af0363
+-- migrations: 575, last: 20261022092428_manager_home_document_links.sql
+-- fingerprint: sha256:7623d810bf6c97063ebad02d56a19653e0048bbf694766d40e1f07312cf857fe
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -16604,12 +16604,14 @@ begin
         -- S-206: whoever works here without a required document, as the documents rule lets the actor see.
         'missing_documents', coalesce((
           select jsonb_agg(jsonb_build_object('employee_id', missing.employee_id, 'name', missing.name,
-            'document', missing.title) order by missing.name, missing.title)
+            'document', missing.title, 'requirement_id', missing.id, 'status', missing.state)
+            order by missing.name, missing.title, missing.id)
           from (
-            select distinct requirement.employee_id, person.name, requirement.title
+            select requirement.id, requirement.employee_id, person.name, requirement.title, obligation.state
             from public.employee_onboarding_requirements requirement
             join person on person.id = requirement.employee_id
             join public.employee_profiles profile on profile.id = requirement.employee_id and profile.archived_at is null
+            cross join lateral (select app_private.document_obligation_state(requirement, now()) as state) obligation
             where requirement.workspace_id = target_workspace_id
               and requirement.kind = 'document'
               and requirement.required
@@ -16618,9 +16620,9 @@ begin
                 select 1 from public.employee_location_assignments assignment
                 where assignment.employee_id = requirement.employee_id and assignment.location_id = place.id
                   and assignment.ended_at is null)
-              and app_private.document_obligation_state(requirement, now()) in ('missing', 'rejected', 'expired')
+              and obligation.state in ('missing', 'rejected', 'expired')
               and app_private.authz_check(me, documents_rule, null, requirement.employee_id, null) is null
-            order by person.name, requirement.title
+            order by person.name, requirement.title, requirement.id
             limit 20
           ) missing
         ), '[]'::jsonb)

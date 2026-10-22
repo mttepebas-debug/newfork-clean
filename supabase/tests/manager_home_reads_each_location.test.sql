@@ -115,6 +115,13 @@ select is((select array_agg(o ->> 'job_name') from jsonb_array_elements(pg_temp.
 -- S-206: working without a required document, by the documents rule.
 select is((select array_agg((d ->> 'name') || ' · ' || (d ->> 'document')) from jsonb_array_elements(pg_temp.place('owner', 'K') -> 'missing_documents') d),
   array['Emre Person · Food handler card'], 'the owner sees Emre without his food handler card');
+-- Needs you links: the line names the requirement and its state, so Home opens that document.
+select is(pg_temp.place('owner', 'K') -> 'missing_documents' -> 0 ->> 'requirement_id',
+  (select r.id::text from public.employee_onboarding_requirements r
+   where r.employee_id = tests.id('mh:emre') and r.source_id = tests.id('mh:doc:type')),
+  'the line carries the food handler card''s requirement id');
+select is(pg_temp.place('owner', 'K') -> 'missing_documents' -> 0 ->> 'status', 'missing',
+  'and its state');
 select is((select array_agg(d ->> 'name') from jsonb_array_elements(pg_temp.place('ayse', 'K') -> 'missing_documents') d),
   array['Emre Person'], 'Ayse (Manager, reads documents) sees it too');
 select is(pg_temp.place('sena', 'K') -> 'missing_documents', '[]'::jsonb,
