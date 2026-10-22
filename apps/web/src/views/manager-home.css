@@ -279,6 +279,14 @@ button.mh-loc:hover {
   backdrop-filter: blur(14px);
   scrollbar-width: none;
 }
+/* At rest the chips sit on the page's sky with nothing behind them; the frost
+   comes only once the greeting is gone and the page passes under them, like
+   the top bar (Mert 2026-10-21, "pillerin arkası direkt gri"). */
+.mh-home:not(.is-far) .mh-filter {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 .mh-filter::-webkit-scrollbar {
   display: none;
 }
