@@ -32,3 +32,10 @@
   color: var(--theme-muted);
   font-weight: 500;
 }
+/* A shift row has no avatar: the day and hours take the whole row. */
+.catalog-drawer .rd .rd-row.toa-shift {
+  grid-template-columns: minmax(0, 1fr);
+}
+.catalog-drawer .rd .rd-group + .rd-group {
+  margin-top: 10px;
+}

@@ -326,7 +326,7 @@ export function TimeOffAnswerDrawer({
             <div key={place.location_id} className="rd-group">
               <div className="rd-group-head">{place.location_name}</div>
               {place.shifts.map((shift) => (
-                <div key={shift.id} className="rd-row">
+                <div key={shift.id} className="rd-row toa-shift">
                   <div className="rd-row-main">
                     <b>{dayText(shift.scheduled_date)}</b>
                     <span>
