@@ -59,13 +59,13 @@
   height: 12px;
   border-radius: 3px;
 }
+/* The swatches wear the day marks' own colours (.avt-dots i, .avr-dot): the
+   soft tile grounds read as grey and cream next to them (Mert 2026-10-21). */
 .avt-legend i.is-free {
-  border: 1px solid color-mix(in srgb, var(--theme-accent) 50%, var(--theme-surface));
-  background: var(--theme-success-soft);
+  background: var(--theme-accent);
 }
 .avt-legend i.is-blocked {
-  border: 1px solid color-mix(in srgb, var(--theme-availability) 45%, var(--theme-surface));
-  background: var(--theme-availability-soft);
+  background: var(--theme-availability);
 }
 
 /* ---------- the people and the chosen week ---------- */
