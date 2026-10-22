@@ -1356,6 +1356,9 @@ export const scheduleWeeklyLocationSchema = z
     note_author: z.string().nullable().optional(),
     note_edited_at: z.string().datetime({ offset: true }).nullable().optional(),
     leave_intervals: z.array(scheduleWeeklyIntervalSchema),
+    // Time off waiting for an answer (KARARLAR S-239 (9)): only a warning, never a block. The grid gets
+    // it only for who may answer it or the person; [] for anybody else. Absent in an older reply.
+    pending_leave_intervals: z.array(scheduleWeeklyIntervalSchema).optional(),
     clock_segments: z.array(
       scheduleWeeklyIntervalSchema.extend({ offset_seconds: z.number().int() }),
     ),
@@ -1372,6 +1375,7 @@ export const scheduleWeeklyLocationSchema = z
       [
         ...value.unavailable_intervals,
         ...value.leave_intervals,
+        ...(value.pending_leave_intervals ?? []),
         ...value.clock_segments,
       ].some(
         (interval) =>
@@ -1888,6 +1892,8 @@ export const schedulePublishFindingSchema = z.object({
   draft_employee_name: z.string().trim().min(1).max(161).nullable().optional(),
   // time_off_pending only: the request waiting for a decision.
   time_off_request_id: z.string().uuid().optional(),
+  // time_off_pending only: the request's table, "current" (the new time off) or "legacy" (until D8).
+  time_off_source: z.enum(["current", "legacy"]).optional(),
 });
 export type SchedulePublishFinding = z.infer<
   typeof schedulePublishFindingSchema
