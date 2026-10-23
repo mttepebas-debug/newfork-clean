@@ -84,8 +84,9 @@ async function checkStrips(page: Page, strips: [string, string][], list: boolean
       soft(tab.fontSize, `${path}: label size`).toBe("14px");
       soft(tab.before, `${path}: the tab is its label`).toBe(0);
     }
+    // Each box is rounded on its own, so a gap can read one pixel off.
     for (let i = 1; i < m.tabs.length; i++)
-      soft(m.tabs[i]!.left - m.tabs[i - 1]!.left - m.tabs[i - 1]!.width, `${path}: 24 px between labels`).toBe(24);
+      soft(Math.abs(m.tabs[i]!.left - m.tabs[i - 1]!.left - m.tabs[i - 1]!.width - 24), `${path}: 24 px between labels`).toBeLessThanOrEqual(1);
     soft(m.tabs[0]!.textLeft, `${path}: first label in line with the title`).toBe(m.titleLeft);
     const open = m.tabs.find((tab) => tab.open)!;
     soft(m.sliding, `${path}: the line is placed`).toBe(true);
