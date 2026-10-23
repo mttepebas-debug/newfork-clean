@@ -67,6 +67,7 @@ supabase/tests/member_avatars.test.sql
 supabase/tests/membership_two_access_slots.test.sql
 supabase/tests/net_access_stays_out_of_reach.test.sql
 supabase/tests/no_management_view_of_self.test.sql
+supabase/tests/notice_core.test.sql
 supabase/tests/onboarding_approval_switch.test.sql
 supabase/tests/onboarding_composite_tenant_constraints.test.sql
 supabase/tests/one_workspace_cannot_see_another.test.sql
