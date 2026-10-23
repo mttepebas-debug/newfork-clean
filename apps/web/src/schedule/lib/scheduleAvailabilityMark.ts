@@ -70,9 +70,9 @@ export function schedulePendingTimeOff(projection: Projection): Map<string, read
   return days;
 }
 
-/** "Time off waiting for an answer: Fri, Nov 13, all day" (or its hours). */
+/** "Fri, Nov 13, all day" (or its hours): the window's line under "<name> asked for time off". */
 export function formatPendingTimeOffLine(day: string, ranges: readonly AvailabilityRange[], timeFormat: "12h" | "24h"): string {
-  return `Time off waiting for an answer: ${formatAvailabilityMarkDay(day)}, ${ranges.map((range) => hoursWords(range, timeFormat)).join(", ")}`;
+  return `${formatAvailabilityMarkDay(day)}, ${ranges.map((range) => hoursWords(range, timeFormat)).join(", ")}`;
 }
 
 /** Whether a shift's clock runs into any of the ranges; an overnight shift counts to the end of its day. */

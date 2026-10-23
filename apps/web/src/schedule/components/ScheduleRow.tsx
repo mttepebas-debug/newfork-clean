@@ -533,12 +533,19 @@ export const ScheduleRow = memo(function ScheduleRow({
                   lines={availabilityMark.windows.map((window) => formatAvailabilityMarkLine(day, window, timeFormat))}
                 />
               ) : null}
-              {/* A small red ring, top left: a request, not time off yet. A card in the cell keeps the edge only. */}
+              {/* "Requested" in the middle (Mert, 2026-10-23, D): a request, not time off yet. A card in the cell
+                  keeps the edge only. */}
               {pendingTimeOff && employee && displayStacks.length === 0 ? (
                 <AvailabilityMarkButton
                   className="schedule-pending-time-off-mark"
-                  label={`${employee.display_name}: time off waiting for an answer on ${formatAvailabilityMarkDay(day)}`}
-                  lines={[formatPendingTimeOffLine(day, pendingTimeOff, timeFormat)]}
+                  windowClassName="schedule-pending-time-off-window"
+                  text="Requested"
+                  label={`Requested: ${employee.display_name}, time off waiting for an answer on ${formatAvailabilityMarkDay(day)}`}
+                  lines={[
+                    `${employee.display_name} asked for time off`,
+                    formatPendingTimeOffLine(day, pendingTimeOff, timeFormat),
+                    "Waiting for an answer. A shift written here stays until it is approved.",
+                  ]}
                 />
               ) : null}
             </div>

@@ -10144,26 +10144,58 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-availability-mark-window p {
   margin: 0;
 }
-/* Time off waiting for an answer (time off rebuild D3b, KARARLAR S-239 (9)): a warning, not time off. While
-   editing, a dashed red edge inside the cell and no fill, apart from approved time off's solid edge and pink;
-   an empty cell also gets a small red ring, top left, that says when. Inside :where(), like time off's edge,
-   so a drag colour replaces it. */
+/* Time off waiting for an answer (time off rebuild D3b, KARARLAR S-239 (9)): a warning, not time off.
+   Mert, 2026-10-23 (Schedule Kararları tab 5, D): approved time off is a filled pink block that says "Time
+   off"; a request is the same block outlined. While editing, a thin amber edge inside the cell (4.0:1 on
+   white, 3.3:1 on a closed day's pink) and, in an empty cell, "Requested" in the middle in time off's type,
+   which opens the window. Its
+   white ground keeps Add shift's words from printing through it; the rest of the cell still adds a shift.
+   A card in the cell keeps the edge only. Inside :where(), like time off's edge, so a drag colour replaces it. */
 .schedule-cell:where([data-pending-time-off="true"]) {
-  outline: 1px dashed var(--theme-time-off);
-  outline-offset: -2px;
+  outline: 1px solid color-mix(in srgb, var(--theme-warning-border) 60%, var(--theme-warning));
+  outline-offset: -1px;
 }
-.schedule-pending-time-off-mark {
+.schedule-availability-mark.schedule-pending-time-off-mark {
   position: absolute;
-  top: 5px;
-  left: 5px;
+  inset: 0;
   z-index: 1;
-  color: var(--theme-time-off);
+  width: max-content;
+  height: 22px;
+  margin: auto;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-warning-text);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  line-height: 22px;
+  text-transform: uppercase;
 }
-.schedule-pending-time-off-mark::before {
-  box-sizing: border-box;
-  border: 2px solid currentColor;
-  background: transparent;
+.schedule-availability-mark.schedule-pending-time-off-mark::before {
+  content: none;
 }
+.schedule-availability-mark.schedule-pending-time-off-mark:hover,
+.schedule-availability-mark.schedule-pending-time-off-mark[aria-expanded="true"] {
+  transform: none;
+  background: var(--theme-warning-soft);
+}
+/* Its window: who asked first, then when, then a quieter line. */
+.schedule-pending-time-off-window {
+  max-width: 320px;
+  white-space: normal;
+  font-weight: 500;
+}
+.schedule-pending-time-off-window p:first-child {
+  font-weight: 700;
+}
+.schedule-pending-time-off-window p:nth-child(3) {
+  margin-top: 2px;
+  color: var(--theme-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 @keyframes schedule-availability-spotlight-in {
   from {
     background-color: var(--theme-surface);

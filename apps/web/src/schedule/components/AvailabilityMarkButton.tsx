@@ -5,7 +5,8 @@
 // A press on another "!" closes this window and opens that one. Any scroll
 // outside the window closes it too (Mert, 2026-10-09, item 15 B).
 // The name's "!" also tints that person's unavailable days while its window is
-// open (Mert, 2026-10-09, item 1 A).
+// open (Mert, 2026-10-09, item 1 A). Time off waiting for an answer opens its
+// window from a "Requested" word instead.
 import { useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
 
@@ -61,10 +62,13 @@ function setSpotlight(employeeId: string | null) {
 }`;
 }
 
-export function AvailabilityMarkButton({ lines, label, className = "", insideButton = false, spotlightEmployeeId }: {
+export function AvailabilityMarkButton({ lines, label, className = "", insideButton = false, spotlightEmployeeId, text = "!", windowClassName = "" }: {
   readonly lines: readonly string[];
   readonly label: string;
   readonly className?: string;
+  /** What the button shows ("!" by default). */
+  readonly text?: string;
+  readonly windowClassName?: string;
   /** The name's "!": while open, this person's unavailable days are tinted. */
   readonly spotlightEmployeeId?: string;
   /** On a shift card, itself a button: a focusable span, since a button cannot hold a button. */
@@ -152,18 +156,18 @@ export function AvailabilityMarkButton({ lines, label, className = "", insideBut
             toggle(event.currentTarget);
           }}
         >
-          !
+          {text}
         </span>
       ) : (
         <button {...props} ref={button as RefObject<HTMLButtonElement>} type="button">
-          !
+          {text}
         </button>
       )}
       {open && rect
         ? createPortal(
             <div
               ref={card}
-              className="schedule-availability-mark-window"
+              className={`schedule-availability-mark-window ${windowClassName}`.trim()}
               role="dialog"
               aria-label={label}
               style={{ top: rect.bottom + 6, left: Math.max(8, Math.min(rect.left - 8, window.innerWidth - 400)) }}
