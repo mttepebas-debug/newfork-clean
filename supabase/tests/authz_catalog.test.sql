@@ -158,7 +158,7 @@ select is(
     'settings.organization.write', 'settings.roles.read',
     'settings.roles.write',
     'settings.scheduling.write', 'settings.shift_catalog.read', 'settings.signature_templates.read',
-    'time_off.decide', 'time_off.decide_alone', 'time_off.request_own', 'time_off.revoke', 'workspace.accept_ownership', 'workspace.close',
+    'time_off.decide', 'time_off.decide_alone', 'time_off.request_own', 'workspace.accept_ownership', 'workspace.close',
     'workspace.create', 'workspace.read', 'workspace.setup', 'workspace.todos', 'workspace.transfer_ownership'
   ]::text[],
   'the core answers for exactly these actions'

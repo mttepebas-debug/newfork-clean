@@ -95,13 +95,12 @@ insert into public.schedule_location_publications (id, workspace_id, location_id
 select tests.remember('ho:pub:K', gen_random_uuid()), tests.id('ho'), tests.id('ho:K'),
   (now() at time zone l.timezone)::date, 1, 'current', pg_temp.u('owner')
 from public.locations l where l.id = tests.id('ho:K');
--- Emre asks for three days off and the owner approves.
-select tests.remember('ho:off', (public.submit_time_off_service(pg_temp.u('emre'), tests.id('ho'),
-  jsonb_build_array(jsonb_build_object('segment_date', current_date + 3), jsonb_build_object('segment_date', current_date + 4),
-    jsonb_build_object('segment_date', current_date + 5)),
-  'Family', 'Europe/Istanbul', gen_random_uuid()) ->> 'request_id')::uuid);
-select public.decide_time_off_service(pg_temp.u('owner'), tests.id('ho'), tests.id('ho:off'), 'approve', '',
-  app_private.time_off_impact(tests.id('ho'), tests.id('ho:off')) ->> 'fingerprint');
+-- Emre asks for three days off and the owner approves (time off rebuild D8: in the time off table).
+select tests.remember('ho:off', (public.ask_time_off_service(pg_temp.u('emre'), tests.id('ho'), 'vacation',
+  current_date + 3, current_date + 5, true, null, null, 'Family', 'Europe/Istanbul', gen_random_uuid()) ->> 'id')::uuid);
+select public.answer_time_off_service(pg_temp.u('owner'), tests.id('ho'), r.id, 'approve', null, r.revision,
+  app_private.time_off_shifts_print(app_private.time_off_shifts_at_stake(r)))
+from public.time_off_requests r where r.id = tests.id('ho:off');
 -- Ayse approved a cover of a Kadikoy shift (the row goes straight in: this test reads it).
 set local session_replication_role = replica;
 insert into public.shift_exchange_cases (id, workspace_id, kind, audience, status, offered_source_id, owner_id, offered_snapshot,

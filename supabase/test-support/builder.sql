@@ -399,11 +399,12 @@ $$;
 drop function if exists tests.time_off(text, text, integer);
 
 -- Approved time off for a test about what leave does to a draft, an
--- assignment or a read, not about deciding it. Built in today's shape: a
--- pending request with its period snapshotted in `place`'s time zone (whole
--- day without clocks), then approved.
--- ponytail: skips the votes, so no published shift is opened; a test about the
--- decision files tests.leave and decides with decide_time_off_service.
+-- assignment or a read, not about answering it: one approved request in the
+-- time off table (time off rebuild D8), in `place`'s time zone; the whole day
+-- without clocks, else from start_time to end_time (past midnight when the end
+-- is not after the start). Its `effective` is all of it.
+-- ponytail: no answer is given, so no published shift is opened; a test about
+-- the answer asks with tests.leave and answers with answer_time_off_service.
 create or replace function tests.approved_leave(
   w uuid, employee uuid, by_user uuid, place uuid, day date,
   start_time time default null, end_time time default null, rid uuid default gen_random_uuid()
@@ -413,48 +414,40 @@ language plpgsql
 set search_path = ''
 as $$
 declare
-  resolved jsonb := public.time_off_resolve_period(jsonb_strip_nulls(jsonb_build_object('segment_date', day,
-    'start_time', to_char(start_time, 'HH24:MI'), 'end_time', to_char(end_time, 'HH24:MI'))),
-    (select l.timezone from public.locations l where l.id = place));
+  zone text := (select l.timezone from public.locations l where l.id = place);
+  whole boolean := start_time is null or end_time is null;
+  starts timestamptz := (day + coalesce(start_time, '00:00'::time)) at time zone zone;
+  ends timestamptz := case
+    when whole then (day + 1)::timestamp at time zone zone
+    when end_time > start_time then (day + end_time) at time zone zone
+    else (day + 1 + end_time) at time zone zone end;
 begin
-  insert into public.schedule_time_off_requests (id, workspace_id, employee_id, created_by) values (rid, w, employee, by_user);
-  insert into public.schedule_time_off_segments (workspace_id, request_id, segment_date, start_time, end_time, time_timezone, starts_at, ends_at, ends_next_day)
-  values (w, rid, day, start_time, end_time, resolved ->> 'time_timezone', (resolved ->> 'starts_at')::timestamptz,
-    (resolved ->> 'ends_at')::timestamptz, (resolved ->> 'ends_at')::timestamptz > ((day + 1)::timestamp at time zone (resolved ->> 'time_timezone')));
-  update public.schedule_time_off_segments set status = 'approved' where request_id = rid;
-  update public.schedule_time_off_requests set status = 'approved', revision = revision + 1 where id = rid;
+  insert into public.time_off_requests (id, workspace_id, employee_id, starts_at, ends_at, all_day, time_timezone,
+    kind_of_leave, status, effective, decided_by, decided_at, created_by, client_key)
+  values (rid, w, employee, starts, ends, whole, zone, 'vacation', 'approved',
+    tstzmultirange(tstzrange(starts, ends, '[)')), by_user, now(), by_user, gen_random_uuid());
   return rid;
 end;
 $$;
 
--- A time-off request the person sends from Employee Hub: no location, whole
--- days from the Wednesday of tests.week(n) for `days` days in a row, in the
--- person's primary location's time zone (or Istanbul for somebody with no
--- location, as their device would say). Label: <w>:<label>:time_off (the
--- latest one).
+-- A time-off request the person sends from Employee Hub (ask_time_off_service): whole days from the
+-- Wednesday of tests.week(n) for `days` days in a row, in their primary location's time zone. Label:
+-- <w>:<label>:time_off (the latest one).
 create or replace function tests.leave(w text, person_label text, n integer default 0, days integer default 1)
 returns uuid
 language plpgsql
 set search_path = ''
 as $$
 declare
-  employee uuid := tests.id(w || ':' || person_label);
-  zone_name text := coalesce((
-    select l.timezone from public.employee_location_assignments a
-    join public.locations l on l.id = a.location_id
-    where a.employee_id = employee and a.ended_at is null
-    order by a.is_primary desc, a.assigned_at limit 1
-  ), 'Europe/Istanbul');
+  first_day date := tests.week(n) + 2;
   sent jsonb;
 begin
-  sent := public.submit_time_off_service(
-    tests.user(w || ':' || person_label), tests.id(w),
-    (select jsonb_agg(jsonb_build_object('segment_date', tests.week(n) + 2 + d) order by d)
-     from generate_series(0, days - 1) d),
-    'test world', zone_name, gen_random_uuid()
+  sent := public.ask_time_off_service(
+    tests.user(w || ':' || person_label), tests.id(w), 'vacation', first_day, first_day + days - 1, true, null, null,
+    'test world', app_private.time_off_timezone(tests.id(w), tests.id(w || ':' || person_label)), gen_random_uuid()
   );
   perform tests.settle();
-  return tests.remember(w || ':' || person_label || ':time_off', (sent ->> 'request_id')::uuid);
+  return tests.remember(w || ':' || person_label || ':time_off', (sent ->> 'id')::uuid);
 end;
 $$;
 

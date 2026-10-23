@@ -87,7 +87,8 @@ select tests.approved_leave(w,second_emp,second_user,loc,start_day,'18:00','20:0
 select is(public.shift_exchange_preview(manager,w,cid,aid)->>'allowed','false','accepted employee cannot override new approved leave') from ws,state;
 select throws_ok($$select pg_temp.command(manager,jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',result->>'revision','fingerprint',preview->>'fingerprint')) from ws,state$$,'PT409',null,'final write rechecks true blockers');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),0::bigint,'blocked transfer creates no acceptance evidence');
-update public.schedule_time_off_requests set status='pending' where id='ad427000-0000-4000-8000-000000000050';
+-- Waiting for an answer: no `effective` hours yet (time off rebuild D8).
+update public.time_off_requests set status='pending',effective='{}',decided_by=null,decided_at=null where id='ad427000-0000-4000-8000-000000000050';
 update state set preview=(select public.shift_exchange_preview(manager,w,cid,aid) from ws);
 update state set result=(select pg_temp.command(manager,jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',result->>'revision','fingerprint',preview->>'fingerprint')) from ws);
 select is(result->>'status','completed','actual manager command completes with no extra availability override') from state;

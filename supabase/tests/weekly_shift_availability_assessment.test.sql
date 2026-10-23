@@ -106,7 +106,9 @@ select is(pg_temp.weekly_assess()->>'operation','blocked','approved leave stays 
 select is(pg_temp.weekly_assess()->'leave'->0->'intervals'->0->>'start_at','2035-01-16T02:00:00.000000Z','leave is evaluated in its own saved location timezone');
 select is((select count(*) from jsonb_array_elements(pg_temp.weekly_assess()->'reasons') x where x->>'code'='availability'),1::bigint,
  'one combined availability reason independent of approved leave');
-update public.schedule_time_off_requests set status='pending',revision=revision+1 where id='ad419000-0000-4000-8000-000000000003';
+-- Waiting for an answer: no `effective` hours yet (time off rebuild D8).
+update public.time_off_requests set status='pending',effective='{}',decided_by=null,decided_at=null,revision=revision+1
+ where id='ad419000-0000-4000-8000-000000000003';
 select is(pg_temp.weekly_assess()->>'operation','allowed','pending leave does not add a hard block');
 select ok(not has_function_privilege('authenticated','public.assess_weekly_shift_availability(uuid,uuid,jsonb)','execute'),'employee cannot query raw manager intervals');
 select ok(not has_function_privilege('service_role','public.assess_weekly_shift_availability(uuid,uuid,jsonb)','execute'),'internal evaluator has no exposed impersonation RPC');
