@@ -126,6 +126,8 @@ export const targetedAuthzActions = {
   "documents.read": { person: true, permission: "employee_documents.read" },
   "documents.review": { person: true, permission: "employee_documents.review" },
   "documents.self": { person: true, permission: null, own: true, restrictedOk: true },
+  // One's own time off list on Employee hub (KARARLAR S-239).
+  "employee_hub.read": { permission: null, own: true, employeeTarget: true },
   "employee.archive": { person: true, permission: "employees.archive" },
   // ROL-CIFT 4.1: the owner, with nobody above, on their own record (KARARLAR S-165).
   "employee.change_own_access": { person: true, permission: null, ownerOnly: true },
@@ -173,10 +175,9 @@ export const targetedAuthzActions = {
   "settings.roles.read": { permission: "roles.read" },
   "settings.documents.read": { permission: "documents.read" },
   "settings.signature_templates.read": { permission: "documents.read" },
+  // Answering, taking back and entering time off all ask who may answer (KARARLAR S-239).
   "time_off.decide": { person: true, permission: "schedule.time_off_requests.manage" },
-  "time_off.decide_alone": { person: true, permission: "schedule.time_off_requests.manage" },
   "time_off.request_own": { permission: null, own: true, employeeTarget: true },
-  "time_off.revoke": { person: true, permission: "schedule.time_off_requests.manage" },
   "workspace.close": { permission: null, ownerOnly: true },
   // The managers' Home and its card layout (KARARLAR S-210, KK-36).
   "workspace.todos": { permission: "workspace.read" },
@@ -419,14 +420,14 @@ export function expected<A extends TargetedAuthzAction>(
 
     case "time_off.decide":
     case "requests.read":
-      // One decision chain (KARARLAR S-164, S-169): the managers of every
-      // location the person works at vote, the person aside, whatever the
-      // person's rank; an admin and the owner decide at every step (FB-6.3).
-      // Only they read it in the Requests queue (FB-6.3.8c).
-      if (isSelf) return false;
+      // Who may answer (KARARLAR S-239): one answer from any manager of one of
+      // the person's locations, an admin or the owner, whatever the person's
+      // rank; nobody their own. The same people take it back, enter it and
+      // read it in Requests. Time off is the employee side's: nobody has any
+      // for somebody without the employee slot.
+      if (person?.hasEmployee === false || isSelf) return false;
       return high || shares;
 
-    case "time_off.revoke":
     case "documents.review":
     case "onboarding.review":
       // Management's, one rank up, nobody their own: the managers of every
@@ -435,12 +436,6 @@ export function expected<A extends TargetedAuthzAction>(
       if (actor.role === "owner") return true;
       if (actor.role === "admin") return targetRank < rankOf.admin;
       return person?.role === "employee" && shares;
-
-    case "time_off.decide_alone":
-      // At once and final: an admin or the owner, whatever the person's rank
-      // (S-169); never their own.
-      if (isSelf) return false;
-      return high;
 
     case "onboarding.legal_name":
       // An admin or the owner, one rank up; a manager never (FB-6.6 S1).
@@ -464,6 +459,7 @@ export function expected<A extends TargetedAuthzAction>(
     case "notifications.write_own":
     case "avatar.self":
     case "time_off.request_own":
+    case "employee_hub.read":
       return true; // own actions, answered above
   }
 }
