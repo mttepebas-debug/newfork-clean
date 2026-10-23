@@ -83,6 +83,9 @@ test("time off waiting for an answer: a mark while editing, a short notice on th
   await expect(fridayCell).not.toHaveAttribute("data-availability-kind", "time_off");
 
   const ring = page.getByRole("button", { name: `${person.name}: time off waiting for an answer on ${weekdayDate(friday)}`, exact: true });
+  // Its window closes on any scroll (Mert, 2026-10-09): a row below the fold is brought into view first,
+  // or the scroll of the click itself closes the window it opened.
+  await ring.scrollIntoViewIfNeeded();
   await ring.click();
   await expect(page.getByRole("dialog", { name: `${person.name}: time off waiting for an answer on ${weekdayDate(friday)}` }))
     .toContainText(`Time off waiting for an answer: ${weekdayDate(friday)}, all day`);
