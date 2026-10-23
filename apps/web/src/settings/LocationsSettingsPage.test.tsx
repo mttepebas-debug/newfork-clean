@@ -230,13 +230,14 @@ describe("Locations add button on a phone", () => {
     expect(add.closest(".catalog-toolbar-filter-row")).toBeTruthy();
     expect(add.closest(".catalog-toolbar-status-row")).toBeNull();
   });
-  it("moves it beside the tabs, short label Add, on a phone", async () => {
+  // KARARLAR S-253 (Mert 2026-10-23): never in the tab row; beside the first box, short label Add.
+  it("keeps it in the box row, short label Add, on a phone", async () => {
     stubPhoneWidth();
     page();
     await screen.findByRole("button", { name: /^Main/ });
     const add = screen.getByRole("button", { name: "New location" });
-    expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
-    expect(add.closest(".catalog-toolbar-filter-row")).toBeNull();
+    expect(add.closest(".catalog-toolbar-filter-row")).toBeTruthy();
+    expect(add.closest(".catalog-toolbar-status-row")).toBeNull();
     expect(add.querySelector(".list-add-short")?.textContent).toBe("Add");
   });
 });

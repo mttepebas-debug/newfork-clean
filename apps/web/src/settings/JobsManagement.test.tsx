@@ -870,14 +870,15 @@ describe("catalog navigation", () => {
     expect(screen.getByTestId("url").textContent).toContain(`jobId=${jobId}`);
   });
 
-  // Decision 10: on a phone the add button sits in the tab row, right of Archived.
-  it("puts New job in the tab row on a phone", async () => {
+  // Decision 10, changed by KARARLAR S-253: on a phone the add button sits beside the first box.
+  it("keeps New job in the box row on a phone", async () => {
     stubPhoneWidth();
     page();
     await screen.findByRole("rowgroup", { name: "Service" });
     const add = screen.getByRole("button", { name: "New job" });
-    expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
-    expect(add.closest(".catalog-toolbar-filter-row")).toBeNull();
+    // KARARLAR S-253 (Mert 2026-10-23): never in the tab row; beside the first box.
+    expect(add.closest(".catalog-toolbar-filter-row")).toBeTruthy();
+    expect(add.closest(".catalog-toolbar-status-row")).toBeNull();
   });
 
   it("outlines the list while loading and offers Try again when it fails", async () => {

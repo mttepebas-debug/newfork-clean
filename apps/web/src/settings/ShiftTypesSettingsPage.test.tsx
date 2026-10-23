@@ -416,16 +416,14 @@ describe("shift catalog list", () => {
     expect(container.querySelector(".catalog-page-actions")).toBeNull();
   });
 
-  // Mert 2026-10-14: on a phone "+ Add" sits at the right end of the tab row.
-  it("puts New shift type beside the tabs on a phone", async () => {
+  // KARARLAR S-253 (Mert 2026-10-23): on a phone "+ Add" sits beside the first box, never in the tab row.
+  it("keeps New shift type in the box row on a phone", async () => {
     stubPhoneWidth();
     const { container } = renderList();
     await screen.findByRole("button", { name: "Edit Lunch" });
     const add = screen.getByRole("button", { name: "New shift type" });
-    expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
-    expect(
-      container.querySelector(".catalog-toolbar-filter-row .list-add-button"),
-    ).toBeNull();
+    expect(add.closest(".catalog-toolbar-filter-row")).toBeTruthy();
+    expect(container.querySelector(".catalog-toolbar-status-row .list-add-button")).toBeNull();
   });
 
   it("closes the list with archived types, marked Archived and restorable", async () => {

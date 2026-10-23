@@ -37,10 +37,9 @@ function body(path: string, selector: string, media = "") {
 }
 
 describe("the sky stays whole on a phone", () => {
-  it("leaves no grey backing behind an add button in the tab row (Important Dates, Settings lists)", () => {
-    const add = body("src/views/list-page.css", ".list-page.list-page .catalog-toolbar-status-row .catalog-tab-add", phone);
-    expect(add).toMatch(/background\s*:\s*transparent/);
-    expect(add).not.toMatch(/--theme-page/);
+  // The add button left the tab row altogether (KARARLAR S-253), and with it the grey backing behind it.
+  it("keeps no add button, and so no backing, in the tab row", () => {
+    expect(readFileSync("src/views/list-page.css", "utf8")).not.toMatch(/catalog-tab-add/);
   });
 
   it("gives Requests' add button the list pages' shape, as on Employees", () => {

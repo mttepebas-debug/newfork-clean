@@ -1,7 +1,7 @@
-import { createEvent, fireEvent, render, screen } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EDGE_BAND, swipeStep, useTabSwipe } from "./useTabSwipe";
+import { EDGE_BAND, swipeStep, tabLineRef, useTabSwipe } from "./useTabSwipe";
 
 // KARARLAR §1.5 (Mert 2026-10-17): on a phone, a sideways swipe on a tabbed page's content moves to the
 // next or previous tab and stops at the ends. jsdom has no real touch, so these send the touch events a
@@ -355,5 +355,49 @@ describe("the open tab's line", () => {
     vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }));
     render(<Page />);
     expect(row().dataset.tabLine).toBeUndefined();
+  });
+});
+
+// KARARLAR S-253 (Mert 2026-10-23): a list page's status tabs - buttons marked .active, no swipe - get the
+// same sliding line as a page's own tabs.
+describe("a list page's status tabs", () => {
+  const BOXES: Record<string, { left: number; width: number }> = { all: { left: 16, width: 20 }, time: { left: 60, width: 55 } };
+  function Statuses() {
+    const [tab, setTab] = useState("all");
+    return (
+      <div className="catalog-status-tabs" data-testid="row" ref={tabLineRef}>
+        {Object.keys(BOXES).map((key) => (
+          <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
+            {key}
+          </button>
+        ))}
+      </div>
+    );
+  }
+  beforeEach(() => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query.includes("max-width"),
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const box = this.tagName === "BUTTON" ? BOXES[this.textContent ?? ""] : undefined;
+      return { left: box?.left ?? 16, width: box?.width ?? 358, top: 0, height: 44, right: 0, bottom: 44, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("sits under the .active tab and moves with it", async () => {
+    render(<Statuses />);
+    const row = screen.getByTestId("row");
+    expect(row.dataset.tabLine).toBe("");
+    expect(row.style.getPropertyValue("--tab-line-x")).toBe("0px");
+    expect(row.style.getPropertyValue("--tab-line-w")).toBe("20px");
+    fireEvent.click(screen.getByRole("button", { name: "time" }));
+    await waitFor(() => expect(row.style.getPropertyValue("--tab-line-x")).toBe("44px"));
+    expect(row.style.getPropertyValue("--tab-line-w")).toBe("55px");
   });
 });
