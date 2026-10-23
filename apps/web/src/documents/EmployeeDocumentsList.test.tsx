@@ -120,6 +120,8 @@ describe("personal list (Account › Documents)", () => {
       { ...excused, id: "0f1e2d3c-4b5a-4968-8776-655443322110", title: "ServSafe", approved_id: null },
     ] as never);
     renderList(true);
+    // Exempt reads as done: it sits under Completed (KARARLAR S-255).
+    fireEvent.click(await screen.findByRole("button", { name: /^Completed/ }));
     expect(await screen.findByRole("cell", { name: "On file" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "Exempt" })).toBeTruthy();
   });
@@ -182,29 +184,17 @@ describe("personal list (Account › Documents)", () => {
       row("5", "missing", "Emery"),
       row("6", "pending_review", "Finley"),
     ] as never);
-    // A manager's list: the person's own list puts what they must do first.
     renderList(false, false);
-    await screen.findByText("Avery");
+    await screen.findByText("Finley");
+    fireEvent.click(screen.getByRole("button", { name: /^To do/ }));
     fireEvent.click(screen.getByRole("button", { name: /Status/ }));
     const chips = () =>
       Array.from(document.querySelectorAll("tbody .list-chip")).map((c) => c.textContent);
-    expect(chips()).toEqual([
-      "Needs review",
-      "Missing",
-      "Expired",
-      "Rejected",
-      "Paused",
-      "Completed",
-    ]);
+    expect(chips()).toEqual(["Missing", "Expired", "Rejected"]);
     fireEvent.click(screen.getByRole("button", { name: /Status/ }));
-    expect(chips()).toEqual([
-      "Completed",
-      "Paused",
-      "Rejected",
-      "Expired",
-      "Missing",
-      "Needs review",
-    ]);
+    expect(chips()).toEqual(["Rejected", "Expired", "Missing"]);
+    fireEvent.click(screen.getByRole("button", { name: /^Completed/ }));
+    expect(chips()).toEqual(["Completed", "Paused"]);
   });
 
   // BL-855: loading and a failed load sit where the rows go, not under the
@@ -319,6 +309,111 @@ describe("personal list (Account › Documents)", () => {
   });
 });
 
+// KARARLAR S-255: Needs review · To do · Completed, no All.
+describe("status tabs", () => {
+  const row = (n: number, status: string, employee_name: string) => ({
+    id: `10000000-0000-4000-8000-00000000000${n}`,
+    kind: "document",
+    status,
+    title: "Food handler card",
+    employee_name,
+    employee_id: "c3d4e5f6-a7b8-4c9d-8e0f-1a2b3c4d5e6f",
+    location_ids: ["a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"],
+    location_names: ["Downtown"],
+    source_id: null,
+    suspended: false,
+  });
+  const rows = [
+    row(0, "pending_review", "Avery"),
+    row(1, "timezone_required", "Blake"),
+    row(2, "missing", "Casey"),
+    row(3, "grace", "Drew"),
+    row(4, "rejected", "Emery"),
+    row(5, "expired", "Finley"),
+    row(6, "completed", "Gray"),
+    row(7, "exempt", "Harper"),
+    row(8, "paused", "Indy"),
+    row(9, "removed", "Jules"),
+  ];
+  const renderList = (selfOnly: boolean, extra: { initialRequirementId?: string; personal?: boolean } = {}) =>
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter>
+          <EmployeeDocumentsList
+            audience={{ workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", selfOnly }}
+            userId="d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"
+            canReview={false}
+            {...extra}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  const tabs = () =>
+    Array.from(document.querySelectorAll(".catalog-status-tabs button")).map((b) => b.textContent);
+  const pressed = () =>
+    document.querySelector(".catalog-status-tabs button[aria-pressed='true']")?.textContent;
+  const names = () =>
+    Array.from(document.querySelectorAll(".document-table tbody tr")).map((r) =>
+      (r.querySelector("td")?.textContent ?? "").replace("Downtown", ""),
+    );
+
+  it("counts each tab by its group and never shows a removed one", async () => {
+    vi.mocked(listDocuments).mockReset().mockResolvedValue(rows as never);
+    renderList(false);
+    await screen.findByText("Avery");
+    expect(tabs()).toEqual(["Needs review2", "To do4", "Completed3"]);
+    expect(names()).toEqual(["Avery", "Blake"]);
+    fireEvent.click(screen.getByRole("button", { name: /^To do/ }));
+    expect(names()).toEqual(["Casey", "Drew", "Emery", "Finley"]);
+    fireEvent.click(screen.getByRole("button", { name: /^Completed/ }));
+    expect(names()).toEqual(["Gray", "Harper", "Indy"]);
+    expect(screen.queryByText("Jules")).toBeNull();
+  });
+
+  it("opens a manager's list on Needs review and the person's own on To do", async () => {
+    vi.mocked(listDocuments).mockReset().mockResolvedValue(rows as never);
+    const manager = renderList(false);
+    await screen.findByText("Avery");
+    expect(pressed()).toBe("Needs review2");
+    manager.unmount();
+    renderList(true);
+    await screen.findByText("Casey");
+    expect(pressed()).toBe("To do4");
+  });
+
+  it("opens on the tab of the document a link opens", async () => {
+    vi.mocked(listDocuments).mockReset().mockResolvedValue(rows as never);
+    renderList(false, { initialRequirementId: "10000000-0000-4000-8000-000000000006" });
+    await screen.findByText("Gray");
+    expect(pressed()).toBe("Completed3");
+  });
+
+  it("tells an empty tab apart from a list with no documents at all", async () => {
+    vi.mocked(listDocuments).mockReset().mockResolvedValue([rows[6]] as never);
+    renderList(false);
+    expect(await screen.findByRole("heading", { name: "Nothing to review" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "No documents yet" })).toBeNull();
+    expect(screen.queryByText("No documents match these filters.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^To do/ }));
+    expect(screen.getByRole("heading", { name: "Nothing to do" })).toBeTruthy();
+  });
+
+  it("says no documents yet on whichever tab is open when there are none", async () => {
+    vi.mocked(listDocuments).mockReset().mockResolvedValue([] as never);
+    renderList(false);
+    expect(await screen.findByRole("heading", { name: "No documents yet" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Completed/ }));
+    expect(screen.getByRole("heading", { name: "No documents yet" })).toBeTruthy();
+  });
+
+  it("says the person's own tab is clear in one line", async () => {
+    vi.mocked(listDocuments).mockReset().mockResolvedValue([rows[6]] as never);
+    renderList(true, { personal: true });
+    expect(await screen.findByText("Nothing to do.")).toBeTruthy();
+    expect(screen.queryByText("No documents match these filters.")).toBeNull();
+  });
+});
+
 // Needs you links (Mert 2026-10-22): Home opens Documents at the location and
 // status of what it said, and one person's line opens that document.
 describe("a link from Home's Needs you", () => {
@@ -362,18 +457,26 @@ describe("a link from Home's Needs you", () => {
   const names = () =>
     Array.from(document.querySelectorAll(".document-table tbody tr")).map((r) => r.querySelector("td")?.textContent ?? "");
 
-  it("filters to the location and the status it names", async () => {
-    openAt(`/app/employees/documents?location=${downtown}&status=expired`);
+  it("filters to the location and the tab it names", async () => {
+    openAt(`/app/employees/documents?location=${downtown}&status=to_do`);
     await screen.findByText("Avery");
-    expect(names().map((n) => n.includes("Avery"))).toEqual([true]);
-    expect(screen.getByRole("button", { name: /Expired/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(names().map((n) => n.replace("Downtown", ""))).toEqual(["Avery", "Blake"]);
+    expect(screen.getByRole("button", { name: /^To do/ }).getAttribute("aria-pressed")).toBe("true");
     expect((screen.getByLabelText("Location") as HTMLSelectElement).value).toBe(downtown);
   });
 
-  it("keeps every status when the link names none, and ignores one it does not know", async () => {
-    openAt(`/app/employees/documents?location=${downtown}&status=nonsense`);
+  // KARARLAR S-255: links made before the three tabs still land.
+  it.each(["missing", "expired"])("opens an old %s link on To do", async (status) => {
+    openAt(`/app/employees/documents?location=${downtown}&status=${status}`);
     await screen.findByText("Avery");
+    expect(screen.getByRole("button", { name: /^To do/ }).getAttribute("aria-pressed")).toBe("true");
     expect(names()).toHaveLength(2);
-    expect(screen.getByRole("button", { name: /^All/ }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it.each(["all", "nonsense"])("opens a %s link on the opening tab", async (status) => {
+    openAt(`/app/employees/documents?location=${downtown}&status=${status}`);
+    // The link's location narrows the list, so the empty tab reads as a filter miss.
+    await screen.findByRole("heading", { name: "No documents match these filters." });
+    expect(screen.getByRole("button", { name: /^Needs review/ }).getAttribute("aria-pressed")).toBe("true");
   });
 });

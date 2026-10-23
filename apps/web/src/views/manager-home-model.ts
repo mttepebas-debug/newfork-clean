@@ -122,14 +122,12 @@ const dateRange = (first: string | null, last: string | null) =>
 const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
 
 /**
- * Documents filtered to the location and, when one tab holds every line, its
- * status (Rejected counts as Missing there); one person's line also opens the
- * first document's review drawer.
+ * Documents filtered to the location, on To do: every state Home lists
+ * (missing, rejected, expired) sits there (KARARLAR S-255); one person's line
+ * also opens the first document's review drawer.
  */
 function documentsHref(location: ManagerHomeLocation, onePerson: boolean): string {
-  const tabs = new Set(location.missing_documents.map((item) => (item.status === "expired" ? "expired" : "missing")));
-  const params = new URLSearchParams({ location: location.id });
-  if (tabs.size === 1) params.set("status", [...tabs][0]!);
+  const params = new URLSearchParams({ location: location.id, status: "to_do" });
   const first = location.missing_documents[0];
   if (onePerson && first) params.set("requirement", first.requirement_id);
   return `/app/employees/documents?${params}`;
