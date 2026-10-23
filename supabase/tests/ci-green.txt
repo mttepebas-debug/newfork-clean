@@ -231,3 +231,4 @@ supabase/tests/time_off_pending_schedule.test.sql
 supabase/tests/time_off_cancel_and_take_back.test.sql
 supabase/tests/time_off_enter.test.sql
 supabase/tests/time_off_requests_sweep.test.sql
+supabase/tests/time_off_doors_close_with_the_workspace.test.sql
