@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(68);
+select plan(70);
 
 -- Time off rebuild D4 (KARARLAR S-239 (4), (6), (1)): approved time off is cancelled by a request the
 -- employee sends and one manager answers, or taken back (revoked) by whoever may answer it, with a note.
@@ -235,6 +235,16 @@ select is(
   (select row(r ->> 'kind', r ->> 'status')::text
    from jsonb_array_elements(public.time_off_requests_service(tests.user('tc:mk'), tests.id('tc'), target_view => 'open') -> 'requests') r),
   row('cancel', 'pending')::text, 'its cancellation waits even though the time off started');
+-- D7: Home lists a cancellation only to whoever may answer it. Bea works at Kadikoy only: Besiktas's manager
+-- may not answer her, so his Home leaves it out; Kadikoy's manager's Home has it.
+select is(
+  (select count(*)::integer from jsonb_array_elements(public.get_manager_home_service(tests.user('tc:mb'), tests.id('tc')) -> 'time_off') t
+   where t ->> 'id' = (pg_temp.cancel_of('bea')).id::text),
+  0, 'a manager who may not answer Bea does not see her cancellation on Home');
+select is(
+  (select count(*)::integer from jsonb_array_elements(public.get_manager_home_service(tests.user('tc:mk'), tests.id('tc')) -> 'time_off') t
+   where t ->> 'id' = (pg_temp.cancel_of('bea')).id::text and t ->> 'kind' = 'cancel'),
+  1, 'her own location''s manager does');
 select pg_temp.answer_cancel('mia', 'bea', 'approve');
 select is(
   (select row(r.status, r.effective = tstzmultirange(tstzrange(now() - interval '1 day', now(), '[)')))::text from pg_temp.req('bea') r),
