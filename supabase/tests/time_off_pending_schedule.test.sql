@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(24);
 
 -- Time off rebuild D3b (KARARLAR S-239 (9)): time off waiting for an answer is only a warning on the
 -- Schedule. The week's availability carries its hours apart, as pending_leave_intervals, beside the
@@ -37,7 +37,7 @@ insert into fixture values
     true, null, null, 'Trip', 'Europe/Istanbul', gen_random_uuid()) ->> 'id')::uuid),
   ('cem', (public.ask_time_off_service(tests.user('tw:cem'), tests.id('tw'), 'personal', tests.week(1) + 3, tests.week(1) + 3,
     false, '09:00', '13:00', null, 'Europe/Istanbul', gen_random_uuid()) ->> 'id')::uuid);
--- Bea asks the old way (still live until D7), Wednesday too.
+-- Bea asks through tests.leave, Wednesday too: the old way until D8, the new table since.
 insert into fixture values ('bea', tests.leave('tw', 'bea', 1));
 
 create function pg_temp.week(person text) returns table (leave tstzmultirange, projection jsonb) language sql as $$
@@ -70,7 +70,7 @@ select is((select pg_temp.spans(projection -> 'pending_leave_intervals') from pg
   array[tstzrange(pg_temp.local(tests.week(1) + 3, '09:00'), pg_temp.local(tests.week(1) + 3, '13:00'), '[)')],
   'Cem''s hours are his hours');
 select is((select jsonb_array_length(projection -> 'pending_leave_intervals') from pg_temp.week('bea')), 1,
-  'a request still waiting in the old table is there too');
+  'Bea''s waiting Wednesday is there too');
 select is((select projection -> 'pending_leave_intervals' from pg_temp.week('mk')), '[]'::jsonb,
   'somebody who asked nothing has an empty list');
 select is((select projection ->> 'status' from pg_temp.week('ali')), 'ready', 'and the week stays ready');
@@ -81,7 +81,7 @@ select is(pg_temp.spans(pg_temp.grid_week('mk', 'ali') -> 'pending_leave_interva
   array[tstzrange(pg_temp.local(tests.week(1) + 2, '00:00'), pg_temp.local(tests.week(1) + 3, '00:00'), '[)')],
   'the Kadikoy manager, who may answer it, reads Ali''s waiting hours in the grid');
 select is(jsonb_array_length(pg_temp.grid_week('mk', 'bea') -> 'pending_leave_intervals'), 1,
-  'and Bea''s old one');
+  'and Bea''s');
 select is(pg_temp.grid_week('fl', 'ali') -> 'pending_leave_intervals', '[]'::jsonb,
   'a manager whose role does not decide time off reads none');
 select is(pg_temp.grid_week('fl', 'ali') -> 'leave_intervals', '[]'::jsonb, 'and nothing approved either: there is none');
@@ -122,7 +122,7 @@ $$;
 select is((select p ->> 'status' from owner_preview), 'publish_ready', 'the week is ready to publish');
 select is(pg_temp.note('ali') ->> 'time_off_request_id', (select value::text from fixture where key = 'ali'), 'Ali''s note names his request');
 select is(pg_temp.note('ali') ->> 'time_off_source', 'current', 'and says it is in the new table');
-select is(pg_temp.note('bea') ->> 'time_off_source', 'legacy', 'Bea''s says the old one');
+-- time off rebuild D8: a note on a request in the old table ('legacy') went with the old time off.
 select is(pg_temp.note('cem'), null, 'Cem''s afternoon shift misses his morning: no note');
 
 -- S-243: the note is read only by who may answer the request, as on the grid. Fl publishes K but does not

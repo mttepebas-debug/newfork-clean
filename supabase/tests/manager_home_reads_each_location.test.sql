@@ -80,9 +80,9 @@ select tests.id('mh'), c.id, tests.id('mh:emre'), 'document', tests.id('mh:doc:t
     "assignment_scope": "future_onboarding", "period_days": null, "suspend_on_overdue": false, "extra_fields": []}'::jsonb
 from public.employee_onboarding_cases c where c.employee_id = tests.id('mh:emre');
 
--- Emre asks for a day off in ten days.
-select public.submit_time_off_service(pg_temp.u('emre'), tests.id('mh'),
-  jsonb_build_array(jsonb_build_object('segment_date', current_date + 10)), 'Wedding', 'Europe/Istanbul', gen_random_uuid());
+-- Emre asks for a day off in ten days (time off rebuild D8: in the time off table).
+select public.ask_time_off_service(pg_temp.u('emre'), tests.id('mh'), 'vacation', current_date + 10, current_date + 10,
+  true, null, null, 'Wedding', 'Europe/Istanbul', gen_random_uuid());
 
 -- Who opens it, and which locations they see.
 select is(pg_temp.refusal($$select pg_temp.home('emre')$$), '42501 authz.missing_permission',

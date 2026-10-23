@@ -99,8 +99,9 @@ select is(public.time_off_assignment_impact(tests.id('wa'), tests.id('wa:emre'),
   '[]'::jsonb, 'leave after the shift ends does not');
 
 select tests.leave('wa', 'emre', 2);
-select public.decide_time_off_service(tests.user('wa:owner'), tests.id('wa'), tests.id('wa:emre:time_off'), 'approve', '',
-  app_private.time_off_impact(tests.id('wa'), tests.id('wa:emre:time_off')) ->> 'fingerprint');
+select public.answer_time_off_service(tests.user('wa:owner'), tests.id('wa'), r.id, 'approve', null, r.revision,
+  app_private.time_off_shifts_print(app_private.time_off_shifts_at_stake(r)))
+from public.time_off_requests r where r.id = tests.id('wa:emre:time_off');
 select ok(pg_temp.one(tests.week(2), 'emre', 'K') -> 'leave_intervals'
   @> public.availability_ranges_json(tstzmultirange(tstzrange((tests.week(2) + 2)::timestamp at time zone 'Europe/Istanbul', (tests.week(2) + 3)::timestamp at time zone 'Europe/Istanbul'))),
   'approved leave is part of the week');

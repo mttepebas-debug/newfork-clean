@@ -107,7 +107,8 @@ select is((select start_time::text from public.schedule_published_shifts where i
 select is((select revision from public.shift_exchange_cases where id=cid),revision+1,'a history failure restores request revision') from state where n=1;
 select tests.approved_leave(w,second_emp,second_user,other_loc,start_day+1,'19:00','20:00','ad428000-0000-4000-8000-000000000050') from ws;
 select is(public.shift_exchange_preview(manager_b,w,cid,aid)->>'allowed','false','retained acceptance still cannot bypass approved leave at the new time') from ws,state where n=1;
-update public.schedule_time_off_requests set status='pending' where id='ad428000-0000-4000-8000-000000000050';
+-- Waiting for an answer: no `effective` hours yet (time off rebuild D8).
+update public.time_off_requests set status='pending',effective='{}',decided_by=null,decided_at=null where id='ad428000-0000-4000-8000-000000000050';
 select is(pg_temp.command(manager_b,jsonb_build_object('action','approve','case_id',cid,'application_id',aid,
  'expected_revision',(select revision from public.shift_exchange_cases where id=cid),
  'fingerprint',public.shift_exchange_preview(manager_b,w,cid,aid)->>'fingerprint'))->>'status','completed','current scoped manager completes the changed shift without employee re-acceptance') from ws,state where n=1;

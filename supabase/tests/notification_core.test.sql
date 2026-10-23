@@ -3,7 +3,7 @@ create extension if not exists pgtap with schema extensions;
 select no_plan();
 
 -- BILDIRIM-07 (KARARLAR S-91, S-92, S-95, S-123): the new notification system's core.
---   (a) the catalog: 63 types, three levels, default channels, retention;
+--   (a) the catalog: 62 types, three levels, default channels, retention;
 --   (b) "will it go": required > owner turned it off > channel closed > the person's choice > default;
 --       in-app is not in that order: every notice the owner did not turn off reaches the list;
 --   (c) who gets one: members only, never the person who did it, one notice per event and person;
@@ -50,11 +50,12 @@ $$;
 -- (a) The catalog --------------------------------------------------------------------------------------
 
 -- 63: availability raises no notification (KARARLAR S-133, BILDIRIM-U7).
-select is((select count(*)::integer from public.notification_types), 63, '(a) the catalog lists the 63 types of the plan');
+-- 62: the shortened time off notice (important) went with the old time off (time off rebuild D8).
+select is((select count(*)::integer from public.notification_types), 62, '(a) the catalog lists the 62 types of the plan');
 select is(
   (select jsonb_object_agg(level, n) from (select level, count(*)::integer n from public.notification_types group by level) x),
-  '{"required": 14, "important": 41, "optional": 8}'::jsonb,
-  '(a) 14 required, 41 important, 8 optional');
+  '{"required": 14, "important": 40, "optional": 8}'::jsonb,
+  '(a) 14 required, 40 important, 8 optional');
 select is(
   array(select key from public.notification_types where level = 'optional' order by key),
   array['people.invitation_cancelled', 'people.invitation_declined', 'people.joined',
@@ -219,18 +220,19 @@ select throws_ok($$select app_private.notify('no.such_type', tests.id('nc'), arr
 select throws_ok($$select app_private.notify('schedule.published', tests.id('nc'), array[pg_temp.u('nc:ali')], 'p:6', '  ')$$,
   '22023', null, '(c) a notice says something');
 
--- A notice that asks for a decision closes for everybody when the first one decides.
+-- A notice that asks for a decision closes for everybody when the first one decides. Time off rebuild D8: the old
+-- request's subject ('time_off_request') went with the old time off; the new one's cards are about 'time_off'.
 select app_private.notify('time_off.requested', tests.id('nc'), array[pg_temp.u('nc:ayse'), pg_temp.u('nc:owner'), pg_temp.u('nc:zeynep')],
   'time_off.requested:r1', 'Time off request from Ali Person', target_actor => pg_temp.u('nc:ali'),
-  target_subject_type => 'time_off_request', target_subject_id => '00000000-0000-0000-0000-0000000000a1');
-select is(app_private.notification_resolve(tests.id('nc'), 'time_off_request', '00000000-0000-0000-0000-0000000000a1',
+  target_subject_type => 'time_off', target_subject_id => '00000000-0000-0000-0000-0000000000a1');
+select is(app_private.notification_resolve(tests.id('nc'), 'time_off', '00000000-0000-0000-0000-0000000000a1',
     'approved', pg_temp.u('nc:ayse')),
   3, '(c) the first decision closes every decider''s card');
 select is(
   (select jsonb_agg(distinct jsonb_build_object('resolution', resolution, 'by', resolved_by = pg_temp.u('nc:ayse'), 'at', resolved_at is not null))
    from public.person_notifications where subject_id = '00000000-0000-0000-0000-0000000000a1'),
   '[{"at": true, "by": true, "resolution": "approved"}]'::jsonb, '(c) as "approved by" the one who decided');
-select is(app_private.notification_resolve(tests.id('nc'), 'time_off_request', '00000000-0000-0000-0000-0000000000a1',
+select is(app_private.notification_resolve(tests.id('nc'), 'time_off', '00000000-0000-0000-0000-0000000000a1',
     'declined', pg_temp.u('nc:owner')),
   0, '(c) a closed card stays as it was decided');
 
@@ -285,7 +287,7 @@ select is(
   (select jsonb_agg(i ->> 'type') from jsonb_array_elements(public.get_notification_feed_service(pg_temp.u('nc:ayse'), tests.id('nc'), 'needs_action') -> 'items') i),
   null, '(d) a decided card leaves "Needs action"');
 select app_private.notify('time_off.requested', tests.id('nc'), array[pg_temp.u('nc:ayse')], 'time_off.requested:r2', 'Time off request from Emre Person',
-  target_subject_type => 'time_off_request', target_subject_id => '00000000-0000-0000-0000-0000000000a2');
+  target_subject_type => 'time_off', target_subject_id => '00000000-0000-0000-0000-0000000000a2');
 select is(
   (select jsonb_agg(i ->> 'title') from jsonb_array_elements(public.get_notification_feed_service(pg_temp.u('nc:ayse'), tests.id('nc'), 'needs_action') -> 'items') i),
   '["Time off request from Emre Person"]'::jsonb, '(d) an open one is in it');
@@ -339,12 +341,13 @@ select is(pg_temp.why('schedule.published', tests.id('nc'), 'nc:ali', 'email'), 
 select is((select count(*)::integer from public.notification_preferences where user_id = pg_temp.u('nc:ali') and workspace_id = tests.id('other')), 0,
   '(e) a choice is for one workspace');
 
+-- 54 always sent: the shortened time off notice went with the old time off (time off rebuild D8).
 select is(
   (select jsonb_build_object('email', s -> 'email_enabled', 'push', s -> 'push_enabled', 'sms', s -> 'sms_available',
      'muted', (select jsonb_agg(o ->> 'key') from jsonb_array_elements(s -> 'optional') o where not (o ->> 'enabled')::boolean),
      'optional', jsonb_array_length(s -> 'optional'), 'always', jsonb_array_length(s -> 'always_sent'))
    from (select public.get_notification_workspace_settings_service(pg_temp.u('nc:zeynep'), tests.id('nc')) s) x),
-  '{"email": true, "push": true, "sms": false, "muted": ["shift_changes.open_shift_available"], "optional": 8, "always": 55}'::jsonb,
+  '{"email": true, "push": true, "sms": false, "muted": ["shift_changes.open_shift_available"], "optional": 8, "always": 54}'::jsonb,
   '(e) an admin reads the workspace settings: the channels, the eight optional types, and what is always sent');
 select public.save_notification_workspace_settings_service(pg_temp.u('nc:zeynep'), tests.id('nc'),
   '{"email_enabled": true, "push_enabled": true, "sms_enabled": false, "muted_types": []}');

@@ -85,14 +85,15 @@ select is((select count(*)::integer from jsonb_array_elements(model->'team') tea
 select is((select count(*)::integer from jsonb_array_elements(model->'team') teammate where teammate->>'display_name'='Sam Person'),0,'team excludes employees only at other locations') from hub_state;
 
 -- FB-6.3.7: the request names no location; every location Alex works at decides.
-update hub_state set result=public.submit_time_off_service(tests.user('eh:alex'),tests.id('eh'),
-  jsonb_build_array(jsonb_build_object('segment_date',current_date+10),jsonb_build_object('segment_date',current_date+11)),'Personal',
-  (select timezone from public.locations where id=tests.id('eh:K')),gen_random_uuid());
-update hub_state set request_id=(result->>'request_id')::uuid;
+-- Time off rebuild D8: asked, refused and withdrawn in the time off table (one row, no date segments).
+update hub_state set result=public.ask_time_off_service(tests.user('eh:alex'),tests.id('eh'),'vacation',current_date+10,current_date+11,
+  true,null,null,'Personal',(select timezone from public.locations where id=tests.id('eh:K')),gen_random_uuid());
+update hub_state set request_id=(result->>'id')::uuid;
 select is(result->>'status','pending','time off submission creates a pending request') from hub_state;
-select is((select count(*)::integer from public.schedule_time_off_segments segment join hub_state state on state.request_id=segment.request_id),2,'time off submission stores immutable date segments');
-select throws_ok(format($$select public.submit_time_off_service(%L,%L,jsonb_build_array(jsonb_build_object('segment_date',current_date+10)),'Overlap',%L,gen_random_uuid())$$,tests.user('eh:alex'),tests.id('eh'),(select timezone from public.locations where id=tests.id('eh:K'))),'23514','overlapping time off request exists','overlapping request is rejected');
-select is((public.employee_request_action_service(tests.user('eh:alex'),tests.id('eh'),(select request_id from hub_state),'time_off','cancel',1)->>'status'),'cancelled','employee can cancel own pending time off');
+select is((select array[(r.starts_at at time zone r.time_timezone)::date,(r.ends_at at time zone r.time_timezone)::date-1]
+  from public.time_off_requests r join hub_state state on state.request_id=r.id),array[current_date+10,current_date+11],'time off submission stores the two days asked');
+select throws_ok(format($$select public.ask_time_off_service(%L,%L,'vacation',current_date+10,current_date+10,true,null,null,'Overlap',%L,gen_random_uuid())$$,tests.user('eh:alex'),tests.id('eh'),(select timezone from public.locations where id=tests.id('eh:K'))),'PT409','You already have time off or a request in these hours','overlapping request is rejected');
+select is((public.withdraw_time_off_service(tests.user('eh:alex'),tests.id('eh'),(select request_id from hub_state),1)->>'status'),'withdrawn','employee can withdraw own pending time off');
 
 select * from finish();
 rollback;

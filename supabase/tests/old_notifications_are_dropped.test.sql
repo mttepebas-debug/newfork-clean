@@ -89,11 +89,12 @@ select is(array(select policyname::text from pg_policies where policyname ~ 'not
 select is(array(select jobname::text from cron.job where jobname ~ 'notif' order by 1),
   array['notification-dispatch', 'notification-heartbeat', 'notification-retention'],
   '(a) no scheduled job sends notifications but the new system''s: its one dispatcher for every channel and its heartbeat (BILDIRIM-DAGITICI) and the one that deletes expired ones');
--- The domain work they served is still here.
+-- The domain work they served is still here. Time off rebuild D8: the old time-off sweep (time_off_sweep) went
+-- with the old time off; the new requests' sweep does its work (time off rebuild D6).
 select ok(to_regprocedure('public.record_account_security_event_service(uuid, text, jsonb)') is not null
   and to_regprocedure('public.shift_exchange_emit(uuid, uuid, uuid, uuid, text, text, text)') is not null
   and to_regprocedure('app_private.announcement_release(uuid)') is not null
-  and to_regprocedure('app_private.time_off_sweep(integer)') is not null,
+  and to_regprocedure('app_private.time_off_requests_sweep(integer, interval)') is not null,
   '(a) the domain work stays: security audit, exchange history, announcement release, time-off sweep');
 
 -- (b) ----------------------------------------------------------------------------------------------
