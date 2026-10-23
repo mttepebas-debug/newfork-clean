@@ -313,7 +313,7 @@ describe("time off requests routes", () => {
     ["PT409", "time_off.changed", 409],
     ["PT409", "time_off.not_pending", 409],
     ["22023", "time_off.invalid", 400],
-    ["P0002", "time_off.not_found", 404],
+    ["42501", "authz.out_of_scope", 403],
     ["42501", "authz.rank", 403],
     ["42501", "authz.document_blocked", 403],
   ] as const)("passes an answer's %s %s through as %i with its reason", async (code, hint, status) => {
@@ -363,7 +363,7 @@ describe("time off requests routes", () => {
     ["answerCancellation", `${base}/${cancellationId}/answer-cancellation`, answerCancel, "42501", "authz.rank", 403],
     ["takeBack", `${base}/${requestId}/take-back`, takeBack, "22023", "time_off.note_required", 400],
     ["takeBack", `${base}/${requestId}/take-back`, takeBack, "PT409", "time_off.changed", 409],
-    ["takeBack", `${base}/${requestId}/take-back`, takeBack, "P0002", "time_off.not_found", 404],
+    ["takeBack", `${base}/${requestId}/take-back`, takeBack, "42501", "authz.out_of_scope", 403],
     ["takeBack", `${base}/${requestId}/take-back`, takeBack, "42501", "authz.rank", 403],
   ] as const)("D4 %s at %s passes %s %s through as %i", async (method, url, payload, code, hint, status) => {
     const service = serviceMock();
@@ -381,7 +381,7 @@ describe("time off requests routes", () => {
     ["enter", "POST", `${base}/entries`, enter, "PT409", "time_off.changed", 409],
     ["enter", "POST", `${base}/entries`, enter, "22023", "time_off.past", 400],
     ["enter", "POST", `${base}/entries`, enter, "22023", "time_off.no_employee_access", 400],
-    ["enter", "POST", `${base}/entries`, enter, "P0002", "time_off.not_found", 404],
+    ["enter", "POST", `${base}/entries`, enter, "42501", "authz.out_of_scope", 403],
     ["enter", "POST", `${base}/entries`, enter, "42501", "authz.rank", 403],
     ["entryImpact", "GET", `${base}/entries/impact?employee_id=${mariaId}&start=2026-10-21&end=2026-10-22`, undefined, "22023", "time_off.past", 400],
     ["entryImpact", "GET", `${base}/entries/impact?employee_id=${mariaId}&start=2026-10-22&end=2026-10-22`, undefined, "42501", "authz.out_of_scope", 403],
@@ -396,13 +396,14 @@ describe("time off requests routes", () => {
     await app.close();
   });
 
-  it("answers a request that is not there with 404 and its reason", async () => {
+  // BL-354: the database answers a request that is not there as one out of reach, so the id tells nothing.
+  it("answers a request that is not there as one out of reach", async () => {
     const service = serviceMock();
-    vi.mocked(service.withdraw).mockRejectedValue(rpcFailure({ message: "Time off request not found", code: "P0002", hint: "time_off.not_found" }));
+    vi.mocked(service.withdraw).mockRejectedValue(rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.out_of_scope" }));
     const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
     const response = await app.inject({ method: "POST", url: `${base}/${requestId}/withdraw`, headers: auth, payload: withdraw });
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toMatchObject({ reason: "time_off.not_found" });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ reason: "authz.out_of_scope" });
     await app.close();
   });
 
