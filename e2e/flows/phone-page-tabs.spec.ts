@@ -1,6 +1,9 @@
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
-import { signIn } from "../fixtures/world";
+import { roundWeek, signIn } from "../fixtures/world";
+import { psql } from "../global-setup";
 
 // A page's own tabs on a phone, one standard on every page (KARARLAR S-253, Mert 2026-10-23, widening S-152):
 // the employee's Schedule · Lineup, My Availability, Shift hub and My documents, and every list page's status
@@ -10,6 +13,9 @@ import { signIn } from "../fixtures/world";
 
 const PHONE = { width: 390, height: 844 };
 const soft = expect.configure({ soft: true });
+const world: { readonly run: string } = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8"));
+const sql = (query: string) => execSync(psql, { input: query, encoding: "utf8" }).trim();
+const last = (text: string) => text.split(/\r?\n/).at(-1)!;
 const STRIPS: [string, string][] = [
   ["/app/employee-hub/schedule", ".employee-schedule-tabs"],
   ["/app/employee-hub/schedule/lineup", ".employee-schedule-tabs"],
@@ -128,6 +134,45 @@ test("a list page's status tabs on a phone follow the same standard, and the lin
   const now = moved.tabs.find((tab) => tab.open)!;
   soft(now, "Past is open").toBeTruthy();
   soft(moved.line, "the line moved to Past").toEqual({ height: "2px", bottom: "0px", x: now.left, width: now.width });
+});
+
+// Requests' "All" got its count after the line was placed, and the line kept the bare label's width: 18 px under
+// a 30 px tab, in a full CI run where earlier specs had left requests open (main CI 2026-10-23). Here a fresh
+// employee's request is open and the lists wait until the line is placed, so the count always comes after it.
+test("Requests' line grows with All when its count comes in after the line is placed", async ({ browser }) => {
+  const label = `pptabs${Math.random().toString(36).slice(2, 7)}`;
+  const day = sql(`select tests.week(${roundWeek(812)}) + 2;`);
+  const [id, revision] = last(
+    sql(`
+    select tests.person('${world.run}', '${label}', 'employee', array['K'], array['cook']);
+    select r ->> 'id', r ->> 'revision' from public.ask_time_off_service(tests.user('${world.run}:${label}'), tests.id('${world.run}'),
+      'vacation', '${day}'::date, '${day}'::date, true, null, null, null,
+      app_private.time_off_timezone(tests.id('${world.run}'), tests.id('${world.run}:${label}')), gen_random_uuid()) r;`),
+  ).split("|") as [string, string];
+  try {
+    const page = await (await browser.newContext({ viewport: PHONE, hasTouch: true, isMobile: true })).newPage();
+    await signIn(page, "zeynep");
+    await expect(page).not.toHaveURL(/\/sign-in/);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(/\/(time-off-requests|shift-exchanges)\?/, async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.goto("/app/schedule/requests");
+    const strip = page.locator(STATUS).first();
+    await expect(strip).toHaveAttribute("data-tab-line", "", { timeout: 30_000 });
+    const all = strip.getByRole("button", { name: /^All/ });
+    await expect(all.locator("strong")).toHaveCount(0);
+    release();
+    await expect(all.locator("strong")).toBeVisible();
+    await page.waitForTimeout(400);
+    const m = await measure(page, STATUS);
+    const open = m.tabs.find((tab) => tab.open)!;
+    expect(m.line, "the line under All with its count").toEqual({ height: "2px", bottom: "0px", x: open.left, width: open.width });
+  } finally {
+    sql(`select public.withdraw_time_off_service(tests.user('${world.run}:${label}'), tests.id('${world.run}'), '${id}', ${revision});`);
+  }
 });
 
 // KARARLAR S-254 (Mert 2026-10-23), Requests' one exception to S-253: on a phone "+ Add" stands at the right end
