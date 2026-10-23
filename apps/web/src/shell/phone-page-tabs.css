@@ -104,6 +104,9 @@
   :root:root:root:root .my-documents-page > .employee-documents-list {
     margin-top: 10px;
   }
+  :root:root:root:root .sx-root .sx-filters {
+    margin-top: 10px;
+  }
   /* Labels only: My Availability's tab icons stay on the desktop. */
   :root:root:root:root .employee-weekly-workspace > .weekly-preferences-tabs > button svg {
     display: none;

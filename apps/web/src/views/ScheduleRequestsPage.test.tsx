@@ -713,9 +713,9 @@ describe("Time off tab", () => {
     expect(screen.getByRole("button", { name: "Add time off" })).toBeTruthy();
   });
 
-  // Mert 2026-10-23: on a phone Add sits beside the location list at the right edge, the search under
-  // them (the Employees row); on a computer it stays at the row's end.
-  it("puts Add beside the location list on a phone", async () => {
+  // KARARLAR S-253 (Mert 2026-10-23, after requests-add-top): on a phone Add is never in the tab row; it ends
+  // the first box row, beside the location list, the search under them. On a computer it stays at the row's end.
+  it("puts Add beside the location list on a phone, short label Add", async () => {
     const before = window.matchMedia;
     window.matchMedia = ((media: string) => ({
       matches: media === "(max-width: 720px)",
@@ -726,8 +726,10 @@ describe("Time off tab", () => {
     try {
       renderPage("/app/schedule/requests?type=time_off");
       await screen.findByRole("row", { name: /Alex Kim asks for/ });
-      const locations = screen.getByRole("combobox", { name: "Filter by location" });
-      expect(locations.nextElementSibling).toBe(screen.getByRole("button", { name: "Add time off" }));
+      const add = screen.getByRole("button", { name: "Add time off" });
+      expect(add.closest(".catalog-toolbar-status-row")).toBeNull();
+      expect(screen.getByRole("combobox", { name: "Filter by location" }).nextElementSibling).toBe(add);
+      expect(add.querySelector(".list-add-short")?.textContent).toBe("Add");
     } finally {
       window.matchMedia = before;
     }
