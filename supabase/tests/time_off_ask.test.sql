@@ -8,9 +8,9 @@ select plan(59);
 -- runs from the first day's local midnight to the midnight after the last day; with hours, the first day's
 -- clock to the last day's (24:00 is the next midnight). A clock the zone skips is refused; a clock it repeats
 -- is its first time. Refused: a start that has passed (All day today has started), more than 31 days, and
--- hours that touch time off the person already has or asked for, in the old tables or the new one
--- (app_private.leave_spans). The new table's requests join leave_spans: what is approved as `effective`,
--- what waits as the hours asked, while it has not started.
+-- hours that touch time off the person already has or asked for (app_private.leave_spans). The new
+-- table's requests join leave_spans: what is approved as `effective`, what waits as the hours asked,
+-- while it has not started. Since D8 the old tables are gone and leave_spans reads this table only.
 --
 -- World ta: Kadikoy (Istanbul, UTC+3 all year) and Besiktas, moved to Los Angeles for the clock tests.
 --   ann, bob, cid, dan, eve - employees at Kadikoy
@@ -98,7 +98,7 @@ select is(
   'somebody else''s request key is refused, and their request is not shown'
 );
 
--- 2. Overlap, in the new table and the old ones.
+-- 2. Overlap: with a request waiting, and with approved time off.
 select is(
   pg_temp.refusal($$select pg_temp.ask('ann', 'personal', pg_temp.today() + 12, pg_temp.today() + 14, true)$$),
   'PT409 time_off.overlap',
@@ -114,18 +114,19 @@ select is(
   'PT409 time_off.overlap',
   'the last hour of an all-day request is part of it'
 );
--- Cid asked the old way (tests.leave: the Wednesday of tests.week(0)); Bob has approved time off the old way.
+-- Cid asked through tests.leave (the Wednesday of tests.week(0), all day); Bob has approved time off
+-- (tests.approved_leave). Both were the old tables' until D8; they are this table's now.
 select tests.leave('ta', 'cid', 0, 1);
 select tests.approved_leave(tests.id('ta'), tests.id('ta:bob'), tests.user('ta:owner'), tests.id('ta:K'), pg_temp.today() + 20);
 select is(
   pg_temp.refusal($$select pg_temp.ask('cid', 'vacation', tests.week(0) + 2, tests.week(0) + 2, false, '09:00', '10:00')$$),
   'PT409 time_off.overlap',
-  'hours inside a request waiting in the old tables are refused'
+  'hours inside a whole day waiting for an answer are refused'
 );
 select is(
   pg_temp.refusal($$select pg_temp.ask('bob', 'vacation', pg_temp.today() + 19, pg_temp.today() + 21, true)$$),
   'PT409 time_off.overlap',
-  'days that touch approved time off in the old tables are refused'
+  'days that touch approved time off are refused'
 );
 select is(
   pg_temp.ask('bob', 'vacation', pg_temp.today() + 21, pg_temp.today() + 22, true) ->> 'status',
@@ -327,8 +328,9 @@ select is(
 );
 select is(
   pg_temp.refusal($$select public.withdraw_time_off_service(tests.user('ta:eve'), tests.id('ta'), gen_random_uuid(), 1)$$),
-  'P0002 time_off.not_found',
-  'a request that is not there is not found'
+  -- D8 (BL-354): as somebody else's, so an id does not tell whether it is a request.
+  '42501 authz.out_of_scope',
+  'a request that is not there answers as somebody else''s'
 );
 select is(
   pg_temp.refusal($$select public.withdraw_time_off_service(tests.user('ta:eve'), tests.id('ta'), (select value from fixture where key = 'eve:w'), 7)$$),
@@ -397,25 +399,30 @@ select is(
   row((pg_temp.today() + 6)::text, (pg_temp.today() + 6)::text, '18:00', '24:00')::text,
   'hours ending at midnight read back as 24:00 on their day'
 );
+-- Bob's approved day (tests.approved_leave) is in this table too since D8.
 select is(
-  (select row(x ->> 'start_date', x ->> 'end_date', x ->> 'start_time')::text
+  (select array_agg(row(x ->> 'start_date', x ->> 'end_date', x ->> 'start_time')::text order by x ->> 'start_date')
    from jsonb_array_elements(public.my_time_off_service(tests.user('ta:bob'), tests.id('ta')) -> 'requests') x),
-  row((pg_temp.today() + 21)::text, (pg_temp.today() + 22)::text, null)::text,
-  'All day reads back as its first and last day, and Bob reads only his own'
+  array[row((pg_temp.today() + 20)::text, (pg_temp.today() + 20)::text, null)::text,
+    row((pg_temp.today() + 21)::text, (pg_temp.today() + 22)::text, null)::text],
+  'All day reads back as its first and last day, and Bob reads only his own: his approved day and his request'
 );
 
--- 9. Closing the employee side withdraws what waits in the new table too.
+-- 9. Closing the employee side withdraws what waits. Cid has two requests waiting: tests.leave's
+-- Wednesday (the old tables' until D8) and the day below.
 select pg_temp.ask('cid', 'personal', pg_temp.today() + 3, pg_temp.today() + 3, true);
 select is(
   (app_private.employee_side_impact(tests.id('ta'), tests.id('ta:cid')) ->> 'time_off_withdrawn')::integer,
   2,
-  'the impact counts the old and the new request waiting'
+  'the impact counts both requests waiting'
 );
 select app_private.close_employee_side(tests.id('ta'), tests.id('ta:cid'), tests.user('ta:owner'), 'access_dropped');
 select is(
-  (select array_agg(row(r.status, r.ended_by, r.ended_note)::text) from public.time_off_requests r where r.employee_id = tests.id('ta:cid')),
-  array[row('withdrawn', tests.user('ta:owner'), 'This person no longer works shifts here.')::text],
-  'closing the employee side withdraws the new request, saying why'
+  (select array_agg(row(r.status, r.ended_by, r.ended_note)::text order by r.starts_at) from public.time_off_requests r
+   where r.employee_id = tests.id('ta:cid')),
+  array[row('withdrawn', tests.user('ta:owner'), 'This person no longer works shifts here.')::text,
+    row('withdrawn', tests.user('ta:owner'), 'This person no longer works shifts here.')::text],
+  'closing the employee side withdraws both requests, saying why'
 );
 
 -- 10. The doors.

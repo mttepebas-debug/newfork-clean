@@ -75,35 +75,37 @@ select is(
 );
 
 -- 3. An unknown time-off request answers as one out of reach (BL-354) ----------------------
+-- Time off rebuild D8: deciding and shortening went with the old time off (the decision preview before it); the new
+-- request's doors are answering, what answering would open, and taking approved time off back.
 
 select is(
-  pg_temp.answer(format($$select public.decide_time_off_service(%L, %L, %L, 'deny', '', null)$$,
+  pg_temp.answer(format($$select public.answer_time_off_service(%L, %L, %L, 'decline', '', 1, null)$$,
     tests.user('m:ayse'), tests.id('m'), gen_random_uuid())),
-  pg_temp.answer(format($$select public.decide_time_off_service(%L, %L, %L, 'deny', '', null)$$,
+  pg_temp.answer(format($$select public.answer_time_off_service(%L, %L, %L, 'decline', '', 1, null)$$,
     tests.user('m:ayse'), tests.id('m'), tests.id('m:veli:time_off'))),
-  'deciding: an unknown request gets the answer a request at another location gets'
+  'answering: an unknown request gets the answer a request at another location gets'
 );
 select is(
-  pg_temp.refusal(format($$select public.decide_time_off_service(%L, %L, %L, 'deny', '', null)$$,
+  pg_temp.refusal(format($$select public.answer_time_off_service(%L, %L, %L, 'decline', '', 1, null)$$,
     tests.user('m:ayse'), tests.id('m'), gen_random_uuid())),
   '42501 authz.out_of_scope', 'and that answer is out of scope'
 );
 select is(
-  pg_temp.answer(format($$select public.preview_time_off_assignment_decision_service(%L, %L, %L, 1, 'approve', '[]')$$,
+  pg_temp.answer(format($$select public.time_off_impact_service(%L, %L, %L)$$,
     tests.user('m:ayse'), tests.id('m'), gen_random_uuid())),
-  pg_temp.answer(format($$select public.preview_time_off_assignment_decision_service(%L, %L, %L, 1, 'approve', '[]')$$,
+  pg_temp.answer(format($$select public.time_off_impact_service(%L, %L, %L)$$,
     tests.user('m:ayse'), tests.id('m'), tests.id('m:veli:time_off'))),
   'previewing: the same'
 );
 select is(
-  pg_temp.answer(format($$select public.shorten_time_off_service(%L, %L, %L, 1, '[]', '', gen_random_uuid())$$,
+  pg_temp.answer(format($$select public.take_back_time_off_service(%L, %L, %L, 'Short staffed', 1)$$,
     tests.user('m:ayse'), tests.id('m'), gen_random_uuid())),
-  pg_temp.answer(format($$select public.shorten_time_off_service(%L, %L, %L, 1, '[]', '', gen_random_uuid())$$,
+  pg_temp.answer(format($$select public.take_back_time_off_service(%L, %L, %L, 'Short staffed', 1)$$,
     tests.user('m:ayse'), tests.id('m'), tests.id('m:veli:time_off'))),
-  'shortening: the same'
+  'taking back: the same'
 );
 select is(
-  pg_temp.refusal(format($$select public.shorten_time_off_service(%L, %L, %L, 1, '[]', '', gen_random_uuid())$$,
+  pg_temp.refusal(format($$select public.take_back_time_off_service(%L, %L, %L, 'Short staffed', 1)$$,
     tests.user('m:ayse'), tests.id('m'), gen_random_uuid())),
   '42501 authz.out_of_scope', 'and that answer is out of scope'
 );
