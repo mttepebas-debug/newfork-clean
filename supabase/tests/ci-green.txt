@@ -227,6 +227,7 @@ supabase/tests/notify_time_off.test.sql
 supabase/tests/notify_schedule.test.sql
 supabase/tests/notification_topics_by_right.test.sql
 supabase/tests/notification_feed_pages.test.sql
+supabase/tests/notice_documents.test.sql
 supabase/tests/notify_documents.test.sql
 supabase/tests/sms_channel_gate.test.sql
 supabase/tests/notify_announcements.test.sql
