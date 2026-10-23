@@ -182,7 +182,11 @@ export const timeOffRequestsViews = ["all", "open", "closed"] as const;
 export const timeOffRequestsSorts = ["needs_decision", "starts", "newest"] as const;
 export const timeOffRequestsPageSizes = [25, 50, 100] as const;
 
-/** Requests → Time off's question: which requests, in what order, which page. Paged and sorted by the server. */
+/**
+ * Requests → Time off's question: which requests, in what order, which page. Paged and sorted by the server. A query
+ * keeps the keys it knows and drops the rest, as every read in the API does: the host's rewrite adds one of its own
+ * (live, 23 Oct 2026, every read refused with 400). Who and where come from the token and the address, never the query.
+ */
 export const timeOffRequestsQuerySchema = z
   .object({
     view: z.enum(timeOffRequestsViews).default("all"),
@@ -196,8 +200,7 @@ export const timeOffRequestsQuerySchema = z
       .refine((size) => (timeOffRequestsPageSizes as readonly number[]).includes(size))
       .default(50),
     request_id: id.optional(),
-  })
-  .strict();
+  });
 export type TimeOffRequestsQuery = z.input<typeof timeOffRequestsQuerySchema>;
 
 /** One page of it: how many match, how many wait for an answer, and the page's requests. */
@@ -263,7 +266,7 @@ export const myTimeOffShiftsQuerySchema = z
     from: clock.optional(),
     to: endClock.optional(),
   })
-  .strict()
+  // Not strict: see timeOffRequestsQuerySchema.
   .refine((query) => (query.from === undefined) === (query.to === undefined), {
     message: "Both hours, or neither",
     path: ["from"],
@@ -360,7 +363,7 @@ export const timeOffEntryImpactQuerySchema = z
     from: clock.optional(),
     to: endClock.optional(),
   })
-  .strict()
+  // Not strict: see timeOffRequestsQuerySchema.
   .refine((query) => (query.from === undefined) === (query.to === undefined), {
     message: "Both hours, or neither",
     path: ["from"],
