@@ -76,9 +76,9 @@ test("management: My documents only for somebody the workspace asks, on a phone 
   const sheet = phone.getByRole("dialog", { name: "More" });
   const row = sheet.getByRole("link", { name: "My documents, 1 waiting on you" });
   await expect(row).toBeVisible();
-  // Just above Account.
+  // Then the view switch, right above Account (Mert 2026-10-23): ... My documents, Employee view, Account.
   const labels = await sheet.locator("nav a .phone-more-label").allTextContents();
-  expect(labels.indexOf("My documents")).toBe(labels.indexOf("Account") - 1);
+  expect(labels.slice(-3)).toEqual(["My documents", "Employee view", "Account"]);
   await row.tap();
   await expect(phone).toHaveURL(/\/app\/my-documents$/);
   await expect(phone.getByRole("heading", { level: 1, name: /^My documents/ })).toBeVisible();
