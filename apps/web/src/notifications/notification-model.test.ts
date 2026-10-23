@@ -67,7 +67,16 @@ describe("resolutionLabel", () => {
     expect(resolutionLabel({ resolution: "approved", resolved_by: "someone-else", resolved_by_name: "Maria Lopez" }, me)).toBe("Approved by Maria Lopez");
     expect(resolutionLabel({ resolution: "declined", resolved_by: "someone-else", resolved_by_name: "Maria Lopez" }, me)).toBe("Declined by Maria Lopez");
     expect(resolutionLabel({ resolution: "approved", resolved_by: me, resolved_by_name: "Ayse Person" }, me)).toBe("You approved");
-    expect(resolutionLabel({ resolution: "expired", resolved_by: null, resolved_by_name: null }, me)).toBe("Not decided in time");
+    expect(resolutionLabel({ resolution: "expired", resolved_by: null, resolved_by_name: null, type: "time_off.requested" }, me)).toBe("Not decided in time");
+  });
+
+  // A request nobody decided in time is one thing; a shift whose day passed or an offer that ran out is another.
+  it("says expired plainly for what is not a request waiting on a decision", () => {
+    const me = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
+    expect(resolutionLabel({ resolution: "expired", resolved_by: null, type: "shift_changes.approval_needed" }, me)).toBe("Not decided in time");
+    expect(resolutionLabel({ resolution: "expired", resolved_by: null, type: "schedule.shifts_unassigned" }, me)).toBe("Expired");
+    expect(resolutionLabel({ resolution: "expired", resolved_by: null, type: "people.ownership_transfer_requested" }, me)).toBe("Expired");
+    expect(resolutionLabel({ resolution: "restored", resolved_by: null, type: "documents.access_changed" }, me)).toBe("Restored");
   });
 
   it("says what the person did on cards they answered themselves", () => {

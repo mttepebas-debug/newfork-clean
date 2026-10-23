@@ -85,10 +85,12 @@ export function isNewNotice(item: Pick<NotificationItem, "id" | "seen_at">, fres
  * and the core names them (S-247 (3)), else "Approved".
  */
 export function resolutionLabel(
-  item: Pick<NotificationItem, "resolution" | "resolved_by" | "resolved_by_name">,
+  item: Pick<NotificationItem, "resolution" | "resolved_by" | "resolved_by_name"> & Partial<Pick<NotificationItem, "type">>,
   viewerId: string | undefined,
 ): string | null {
   if (!item.resolution) return null;
+  // Only a request waiting on someone's decision is "not decided in time"; a past shift or an offer runs out.
+  if (item.resolution === "expired" && item.type && !/^(time_off|shift_changes)\./.test(item.type)) return "Expired";
   // [someone else did it, the reader did it, names the one who did it]
   const words: Record<string, [string, string, boolean]> = {
     approved: ["Approved", "You approved", true],
@@ -105,6 +107,7 @@ export function resolutionLabel(
     acknowledged: ["Acknowledged", "You acknowledged", false],
     fixed: ["Fixed", "You fixed it", true],
     removed: ["Removed", "You removed it", true],
+    restored: ["Restored", "Restored", false],
   };
   const known = words[item.resolution];
   const mine = Boolean(viewerId) && item.resolved_by === viewerId;
@@ -118,7 +121,7 @@ export function resolutionLabel(
 
 /** How it closed and when: "You approved · 2m ago". */
 export function resolvedLine(
-  item: Pick<NotificationItem, "resolution" | "resolved_by" | "resolved_by_name" | "resolved_at">,
+  item: Pick<NotificationItem, "resolution" | "resolved_by" | "resolved_by_name" | "resolved_at"> & Partial<Pick<NotificationItem, "type">>,
   viewerId: string | undefined,
   now: Date,
   timeFormat: TimeFormat = "12h",
