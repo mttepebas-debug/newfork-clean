@@ -342,24 +342,44 @@ export const documentPublishCommandSchema = documentApplyCommandSchema.extend({
   publication_revision: revision,
 });
 
+/** The Documents list's tabs, by whose move it is (KARARLAR S-255). */
 export const documentStatusFilters = [
-  "all",
-  "pending_review",
-  "missing",
-  "expired",
+  "needs_review",
+  "to_do",
   "completed",
 ] as const;
 export type DocumentStatusFilter = (typeof documentStatusFilters)[number];
+const documentStatusGroups: Record<
+  DocumentStatusFilter,
+  readonly DocumentObligationStatus[]
+> = {
+  needs_review: ["pending_review", "timezone_required"],
+  to_do: ["missing", "grace", "rejected", "expired"],
+  completed: ["completed", "exempt", "paused"],
+};
+/** The tab a status sits under; a removed one sits under none. */
+export function documentStatusFilterOf(
+  status: DocumentObligationStatus,
+): DocumentStatusFilter | null {
+  return (
+    documentStatusFilters.find((filter) =>
+      documentStatusGroups[filter].includes(status),
+    ) ?? null
+  );
+}
 export function documentMatchesStatus(
   status: DocumentObligationStatus,
   filter: DocumentStatusFilter,
 ): boolean {
-  if (filter === "all") return status !== "removed";
-  if (filter === "missing")
-    return ["missing", "grace", "rejected", "timezone_required"].includes(
-      status,
-    );
-  return status === filter;
+  return documentStatusGroups[filter].includes(status);
+}
+/** A link's `status`, old tab names included; "all" and unknown open the list's own first tab. */
+export function documentStatusFilterFromLink(
+  value: string | null | undefined,
+): DocumentStatusFilter | undefined {
+  if (value === "missing" || value === "expired") return "to_do";
+  if (value === "pending_review") return "needs_review";
+  return documentStatusFilters.find((filter) => filter === value);
 }
 
 /** Jobs apply across the employee's assigned locations; departments belong to jobs. */
