@@ -76,8 +76,10 @@ test("a manager approves time off, the shift in it goes to open shifts, and the 
 
   const { drawer } = await openForAyse(browser, name);
   await expect(drawer.getByText("Approving opens 1 shift.")).toBeVisible();
+  // Mert 2026-10-23: the head says what the drawer is and until when it waits.
+  await expect(drawer.getByText("Time off request", { exact: true })).toBeVisible();
+  await expect(drawer.getByText(/^Answer by: /)).toBeVisible();
   await drawer.getByRole("tab", { name: /Shifts/ }).click();
-  // The drawer's head names the person's locations too; the shift's own location is in the Shifts panel.
   await expect(drawer.getByRole("tabpanel", { name: /Shifts/ }).getByText("Kadikoy")).toBeVisible();
   await drawer.getByRole("button", { name: "Approve", exact: true }).click();
   const confirm = drawer.page().getByRole("alertdialog", { name: "Approve time off?" });

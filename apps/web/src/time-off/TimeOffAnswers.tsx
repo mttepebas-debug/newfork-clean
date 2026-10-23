@@ -8,7 +8,7 @@ import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { ListOutline, LoadError } from "../shell/LoadState";
 import { ListPagination, type ListPageSize } from "../views/ListPagination";
 import { ListCards } from "../views/ListCards";
-import { DrawerField, DrawerSection, RequestDrawer, type DrawerNotice } from "../views/RequestDrawer";
+import { DrawerSection, RequestDrawer, type DrawerNotice } from "../views/RequestDrawer";
 import { clockRange, KindIcon } from "../views/RequestsTable";
 import { LeaveIcon } from "./leave-icon";
 import {
@@ -24,11 +24,11 @@ import {
   answerStatus,
   waitsUntil,
   dayText,
+  edgeText,
   instantDay,
   leaveLabel,
   lengthText,
   monthDay,
-  rangeText,
   shiftsText,
   takeBackRefusalText,
   type TimeFormat,
@@ -41,6 +41,8 @@ import "./time-off-answers.css";
 // shifts; declining takes two clicks; the answer is said in the drawer.
 // D4: a cancellation is a request of its own ("… asks to cancel time off, …"), answered the same way without
 // shifts; approved time off that is not over is revoked from its drawer with a note (two clicks).
+// Mert 2026-10-23: the drawer's head says whose request it is, what it is and until when it waits; Details
+// lists Name, Type, When (Start, End), Length, Asked.
 
 const waiting = (request: TimeOffDeciderView) => answerStatus(request).label === "Needs decision";
 
@@ -403,17 +405,44 @@ export function TimeOffAnswerDrawer({
   const details = (
     <>
       <DrawerSection>
-        <div className="rd-grid">
-          <DrawerField label="Type">
-            <span className="toa-type">
-              <LeaveIcon kind={current.kind_of_leave} size={15} />
-              {leaveLabel(current.kind_of_leave)}
-            </span>
-          </DrawerField>
-          <DrawerField label="Length">{lengthText(current)}</DrawerField>
-          <DrawerField label="When">{rangeText(current, timeFormat)}</DrawerField>
-          <DrawerField label={current.added_by_name ? "Added" : "Asked"}>{monthDay(instantDay(current.created_at, zone))}</DrawerField>
-        </div>
+        <dl className="toa-facts">
+          <div>
+            <dt>Name</dt>
+            <dd>{current.employee_name}</dd>
+          </div>
+          <div>
+            <dt>Type</dt>
+            <dd>
+              <span className="toa-type">
+                <LeaveIcon kind={current.kind_of_leave} size={15} />
+                {leaveLabel(current.kind_of_leave)}
+              </span>
+            </dd>
+          </div>
+          <div className="toa-when">
+            <dt>When</dt>
+            <dd>
+              <dl>
+                <div>
+                  <dt>Start</dt>
+                  <dd>{edgeText(current, "start", timeFormat)}</dd>
+                </div>
+                <div>
+                  <dt>End</dt>
+                  <dd>{edgeText(current, "end", timeFormat)}</dd>
+                </div>
+              </dl>
+            </dd>
+          </div>
+          <div>
+            <dt>Length</dt>
+            <dd>{lengthText(current)}</dd>
+          </div>
+          <div>
+            <dt>{current.added_by_name ? "Added" : "Asked"}</dt>
+            <dd>{monthDay(instantDay(current.created_at, zone))}</dd>
+          </div>
+        </dl>
       </DrawerSection>
       <DrawerSection title={isCancel ? `${first}'s reason` : current.added_by_name ? `${current.added_by_name}'s note` : `${first}'s note`}>
         {current.note ? <p className="rd-quote">{current.note}</p> : <p className="rd-empty">No note.</p>}
@@ -512,10 +541,11 @@ export function TimeOffAnswerDrawer({
   return (
     <>
       <RequestDrawer
+        icon={<KindIcon kind="time_off" />}
         title={current.employee_name}
-        type={isCancel ? "Cancel time off" : leaveLabel(current.kind_of_leave)}
+        kicker={isCancel ? "Time off cancellation" : "Time off request"}
         status={{ label: status.label, tone: status.drawer }}
-        sub={current.location_names.join(" · ")}
+        sub={open ? `Answer by: ${timeOffDeadlineAt(waitsUntil(current), zone, timeFormat)} ${timeOffZoneName(zone)}` : undefined}
         tabs={
           isCancel
             ? [{ key: "details", label: "Details" }]

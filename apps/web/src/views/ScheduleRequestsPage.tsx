@@ -34,6 +34,7 @@ import { NoAccessRoute, NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { AnswerDrawerFrame, TimeOffAnswers } from "../time-off/TimeOffAnswers";
 import { TimeOffEntry } from "../time-off/TimeOffEntry";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 
 export function ScheduleRequestsPage() {
   const [params] = useSearchParams();
@@ -58,6 +59,7 @@ function ScheduleRequestsPageContent() {
   const view = readRequestsParams(params, allowedTypes);
   const [locationId, setLocationId] = useState("");
   const [search, setSearch] = useState("");
+  const phone = useListPhoneWidth();
   const [selectedId, setSelectedId] = useState(params.get("request") ?? "");
   const [addingTimeOff, setAddingTimeOff] = useState(false);
   // EKRAN-02 C2 (H2): the swap whose review window is open over the list. The
@@ -242,6 +244,9 @@ function ScheduleRequestsPageContent() {
   // D5: whoever may answer adds approved time off for somebody from the Time off tab's filter row (or from the one
   // list of a reader who reads only time off).
   const canAdd = can(context, "time_off.decide") && (timeOffTab || (canReadTimeOff && !tabs.length));
+  // On a phone Add sits beside the location list at the right edge, the search under them, as on
+  // Employees (Mert 2026-10-23).
+  const addButton = canAdd ? <ListAddButton label="Add time off" shortLabel="Add" onClick={() => setAddingTimeOff(true)} /> : null;
 
   return (
     <section
@@ -302,6 +307,7 @@ function ScheduleRequestsPageContent() {
               </option>
             ))}
           </select>
+          {phone ? addButton : null}
           <label className="requests-search toolbar-search">
             <Search size={16} aria-hidden />
             <input
@@ -315,7 +321,7 @@ function ScheduleRequestsPageContent() {
               }}
             />
           </label>
-          {canAdd ? <ListAddButton label="Add time off" shortLabel="Add" onClick={() => setAddingTimeOff(true)} /> : null}
+          {phone ? null : addButton}
         </div>
       </div>
 

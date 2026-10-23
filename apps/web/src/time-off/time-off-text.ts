@@ -104,6 +104,13 @@ export function rangeText(r: Range, format: TimeFormat = "12h"): string {
   return `${dayText(r.start_date)} ${clockText(r.start_time, format)} to ${dayText(r.end_date)} ${clockText(r.end_time, format)}`;
 }
 
+/** One end of the time off, its day and time (Mert 2026-10-23, Details → When): "Fri, Nov 13, all day", "Tue, Oct 27, 1:00 PM". */
+export function edgeText(r: Range, edge: "start" | "end", format: TimeFormat = "12h"): string {
+  const day = dayText(edge === "start" ? r.start_date : r.end_date);
+  if (r.all_day || !r.start_time || !r.end_time) return `${day}, all day`;
+  return `${day}, ${clockText(edge === "start" ? r.start_time : r.end_time, format)}`;
+}
+
 const minutesOf = (time: string) => +time.slice(0, 2) * 60 + +time.slice(3, 5);
 
 /** "4 days", "5 hours", "2 days, part time". */

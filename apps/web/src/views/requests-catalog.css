@@ -297,6 +297,16 @@
   .requests-page .catalog-table-empty .nf-button {
     min-height: 44px;
   }
+  /* The location list and "+ Add" share one row, Add at the right edge, the search under them, as on
+     Employees (Mert 2026-10-23). */
+  .requests-page.list-page.list-page .catalog-toolbar-filter-row:has(> .list-add-button) .toolbar-filter-select {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 calc(100% - 120px);
+  }
+  .requests-page.list-page.list-page .catalog-toolbar .list-add-button {
+    flex: 0 0 auto;
+  }
   /* Pages: back, the current page, next; the range line says where you are. */
   .requests-page .list-pagination select,
   .requests-page .list-pagination-pages button {

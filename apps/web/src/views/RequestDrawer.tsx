@@ -1,19 +1,24 @@
 import { ArrowUpRight, X } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import { useId, useRef, type PointerEvent, type ReactNode } from "react";
 import { Link } from "react-router";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { WindowAlert } from "../shell/WindowAlert";
 import "./request-drawer.css";
 
 // Mert, 2026-10-11: every Requests drawer (time off, cover, open shift) speaks
 // the Important Dates drawer's language: a header with the type and the status,
 // underline tabs, hairline sections, and a footer that holds the decision.
+// Mert, 2026-10-23: on a phone the Requests review drawers (.requests-review-drawer) are a card from the
+// bottom with a handle: pulled down by its head, or a tap on the dimmed list, it closes.
 
 export type DrawerTone = "warn" | "ok" | "red" | "grey";
 export type DrawerTab<Key extends string> = { key: Key; label: string; count?: number };
 export type DrawerNotice = { text: string; tone?: "warning" | "error" };
 
 export function RequestDrawer<Key extends string>({
+  icon,
   title,
+  kicker,
   type,
   status,
   sub,
@@ -27,8 +32,12 @@ export function RequestDrawer<Key extends string>({
   footerAlert,
   children,
 }: {
+  /** The request's kind, left of the title; the sub line then sits under the title too. */
+  icon?: ReactNode;
   title: string;
-  /** A second word after the title (time off names its type); left out when the title says it. */
+  /** What the drawer is, under the title ("Time off request"). */
+  kicker?: string;
+  /** A second word after the title; left out when the title says it. */
   type?: string;
   /** Left out for a request that closed without a decision. */
   status?: { label: string; tone: DrawerTone };
@@ -48,34 +57,88 @@ export function RequestDrawer<Key extends string>({
   children: ReactNode;
 }) {
   const id = useId();
+  const phone = useListPhoneWidth();
+  const root = useRef<HTMLDivElement>(null);
+  const pull = useRef<{ sheet: HTMLElement; y: number; dy: number } | null>(null);
+  const sheet = () => (phone ? root.current?.closest<HTMLElement>(".requests-review-drawer") ?? null : null);
+  const subLine =
+    sub || scheduleHref ? (
+      <p className="rd-sub">
+        {sub ? <span>{sub}</span> : null}
+        {scheduleHref ? (
+          <Link to={scheduleHref}>
+            Open in Schedule <ArrowUpRight size={14} aria-hidden />
+          </Link>
+        ) : null}
+      </p>
+    ) : null;
+
+  // The card follows the finger down; past a quarter of its height (at most 140 px) it closes.
+  function release() {
+    const held = pull.current;
+    pull.current = null;
+    if (!held) return;
+    held.sheet.classList.remove("is-dragging");
+    held.sheet.classList.add("is-settling");
+    if (held.dy > Math.min(140, held.sheet.offsetHeight / 4)) {
+      held.sheet.style.transform = "translateY(100%)";
+      window.setTimeout(onClose, 180);
+    } else {
+      held.sheet.style.transform = "";
+    }
+  }
+  const pullHandlers = {
+    onPointerDown: (event: PointerEvent<HTMLElement>) => {
+      const card = sheet();
+      if (!card || (event.target as HTMLElement).closest("button, a, input, textarea, select")) return;
+      event.preventDefault();
+      card.classList.remove("is-settling");
+      card.classList.add("is-dragging");
+      pull.current = { sheet: card, y: event.clientY, dy: 0 };
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    },
+    onPointerMove: (event: PointerEvent<HTMLElement>) => {
+      const held = pull.current;
+      if (!held) return;
+      held.dy = Math.max(0, event.clientY - held.y);
+      held.sheet.style.transform = held.dy ? `translateY(${held.dy}px)` : "";
+    },
+    onPointerUp: release,
+    onPointerCancel: release,
+  };
+
+  // On a phone the card keeps its height when a shorter tab opens, so the head does not jump.
+  function switchTo(key: Key) {
+    const card = sheet();
+    if (card) card.style.minHeight = `${card.offsetHeight}px`;
+    onTab(key);
+  }
+
   return (
-    <div className="rd">
-      <header className="rd-head">
+    <div className="rd" ref={root}>
+      <header className="rd-head" {...pullHandlers}>
+        <span className="rd-grab" aria-hidden />
         <div className="rd-head-row">
-          <h2>
-            {title}
-            {type ? (
-              <>
-                {" "}
-                <span className="rd-type">{type}</span>
-              </>
-            ) : null}{" "}
-            {status ? <span className={`rd-chip ${status.tone}`}>{status.label}</span> : null}
-          </h2>
+          {icon ? <span className="rd-head-icon">{icon}</span> : null}
+          <div className="rd-head-text">
+            <h2>
+              {title}
+              {type ? (
+                <>
+                  {" "}
+                  <span className="rd-type">{type}</span>
+                </>
+              ) : null}{" "}
+              {status ? <span className={`rd-chip ${status.tone}`}>{status.label}</span> : null}
+            </h2>
+            {kicker ? <p className="rd-kicker">{kicker}</p> : null}
+            {icon ? subLine : null}
+          </div>
           <button type="button" className="rd-close" aria-label="Close details" onClick={onClose}>
             <X size={18} aria-hidden />
           </button>
         </div>
-        {sub || scheduleHref ? (
-          <p className="rd-sub">
-            {sub ? <span>{sub}</span> : null}
-            {scheduleHref ? (
-              <Link to={scheduleHref}>
-                Open in Schedule <ArrowUpRight size={14} aria-hidden />
-              </Link>
-            ) : null}
-          </p>
-        ) : null}
+        {icon ? null : subLine}
         {notice ? (
           <p
             className={notice.tone ? `request-drawer-notice ${notice.tone}` : "request-drawer-notice"}
@@ -93,7 +156,7 @@ export function RequestDrawer<Key extends string>({
             const at = tabs.findIndex((item) => item.key === tab);
             const next = tabs[(at + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]!;
             event.preventDefault();
-            onTab(next.key);
+            switchTo(next.key);
             event.currentTarget.querySelector<HTMLElement>(`[data-tab="${next.key}"]`)?.focus();
           }}
         >
@@ -107,7 +170,7 @@ export function RequestDrawer<Key extends string>({
               aria-selected={item.key === tab}
               aria-controls={`${id}-panel`}
               tabIndex={item.key === tab ? 0 : -1}
-              onClick={() => onTab(item.key)}
+              onClick={() => switchTo(item.key)}
             >
               {item.label}
               {item.count ? <span className="rd-badge">{item.count}</span> : null}
