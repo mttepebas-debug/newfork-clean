@@ -452,7 +452,9 @@
   }
   /* A page with tabs puts its add button at the right end of the tab row,
      8 px above the line, and keeps it in view while the tabs scroll (Mert
-     2026-10-14). On a computer it stays at the end of the filter row. */
+     2026-10-14). On a computer it stays at the end of the filter row. No
+     backing of its own: the page's colour behind it was a grey patch on the
+     sky (KARARLAR S-252). */
   .list-page.list-page .catalog-toolbar-status-row .catalog-tab-add {
     position: sticky;
     right: 0;
@@ -461,7 +463,7 @@
     align-self: flex-start;
     margin-left: auto;
     padding-left: 8px;
-    background: var(--theme-page);
+    background: transparent;
   }
   .list-page.list-page .catalog-tab-add .list-add-button {
     height: 32px;

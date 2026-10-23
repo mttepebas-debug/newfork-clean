@@ -84,6 +84,9 @@ export function ReleaseDeck({
       <div className="sx-deck" data-own-drag="" {...(visible.length ? { role: "group", "aria-label": "Released shifts" } : {})}>
         {left === 0 && !leaving ? (
           <div className="sx-deck-empty">
+            <span className="sx-deck-empty-icon" aria-hidden>
+              <Check size={22} />
+            </span>
             <b>You’re all caught up</b>
             New shifts your teammates release show up here.
           </div>

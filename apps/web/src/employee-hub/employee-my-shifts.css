@@ -3,12 +3,13 @@
    border-subtle, #c2352a → danger). */
 .ems { padding-bottom: 24px; color: var(--theme-text); font-size: 15px; line-height: 1.4; letter-spacing: -.006em; font-variant-numeric: tabular-nums; }
 .ems :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; letter-spacing: inherit; }
-/* The week switch with an arrow on each side (QA 60): the arrows are the switch's height and its well. */
+/* The week switch with an arrow on each side (QA 60): the arrows are the switch's height. Both are outlines
+   on the page's sky, not grey wells (KARARLAR S-252); the white pill marks the week. */
 .ems-nav { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 8px; margin-bottom: 14px; }
-.ems-step { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 13px; color: var(--theme-muted); background: var(--theme-surface-muted); box-shadow: inset 0 0 0 1px var(--theme-border-subtle); transition: color .2s; }
+.ems-step { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 13px; color: var(--theme-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--theme-border-control); transition: color .2s; }
 .ems-step:hover { color: var(--theme-text); }
 .ems-step:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
-.ems-seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 13px; background: var(--theme-surface-muted); box-shadow: inset 0 0 0 1px var(--theme-border-subtle); }
+.ems-seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 13px; background: transparent; box-shadow: inset 0 0 0 1px var(--theme-border-control); }
 .ems-seg button { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; height: 36px; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--theme-muted); text-align: center; transition: color .2s; }
 .ems-seg button[aria-selected="true"] { color: var(--theme-text); }
 .ems-seg button:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }

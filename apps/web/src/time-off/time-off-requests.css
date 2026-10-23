@@ -58,10 +58,11 @@
 .tor-pill.is-bad { background: var(--theme-danger-soft); color: var(--theme-danger-strong); }
 .tor-pill.is-mute { background: var(--theme-surface-muted); color: var(--theme-muted-strong); }
 
-.tor-empty { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1px dashed var(--theme-border-strong); border-radius: 8px; }
+/* No time off yet: a line under the Request button, then the icon and words, no card (KARARLAR S-250, S-252). */
+.tor-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 16px 8px; border-top: 1px solid var(--theme-border); text-align: center; }
 .tor-empty p { margin: 0; color: var(--theme-text-secondary); font-size: 14px; line-height: 1.45; }
 .tor-empty strong { color: var(--theme-text); }
-.tor-empty-ic { display: grid; flex: none; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--theme-accent-soft); color: var(--theme-accent); }
+.tor-empty-ic { display: grid; flex: none; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--theme-accent-soft); color: var(--theme-accent); }
 .tor-skel { display: grid; gap: 12px; }
 .tor-skel span { height: 18px; border-radius: 6px; background: var(--theme-surface-muted); animation: tor-pulse 1.2s ease-in-out infinite; }
 .tor-skel span:first-child { width: 36%; height: 22px; }

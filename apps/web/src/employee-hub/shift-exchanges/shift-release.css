@@ -578,18 +578,28 @@
   font-size: 12px;
   text-align: center;
 }
+/* Nothing to look at: a line under the filters, then the icon and words on the page's sky, no card
+   (KARARLAR S-250, S-252), placed as on the list pages. */
 .sx-deck-empty {
   display: grid;
   gap: 4px;
   justify-items: center;
-  align-content: center;
-  height: 100%;
-  padding: 28px 16px;
-  border: 1px dashed var(--theme-border-strong);
-  border-radius: 16px;
+  align-content: start;
+  padding: 56px 16px 40px;
+  border-top: 1px solid var(--theme-border);
   color: var(--theme-text-secondary);
   font-size: 13px;
   text-align: center;
+}
+.sx-deck-empty-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent);
 }
 .sx-deck-empty b {
   color: var(--theme-text);

@@ -158,9 +158,12 @@ export function EmployeeDocumentsList(props: {
         />
       ) : null}
       {nothingAsked ? (
-        <p className="employee-documents-none">
-          Nothing has been asked of you here.
-        </p>
+        <div className="employee-documents-none">
+          <span className="employee-documents-none-icon" aria-hidden>
+            <FileText size={22} />
+          </span>
+          <p>Nothing has been asked of you here.</p>
+        </div>
       ) : null}
       {nothingAsked ? null : <>
       <div className="catalog-toolbar">
