@@ -208,7 +208,7 @@ const deciderView = {
   time_timezone: "Europe/Istanbul",
   location_names: ["Kadikoy", "Besiktas"],
   decided_by_name: null,
-  // D4 (the same service's answer since 20261022160000).
+  // D4 (the same service's answer since 20261023033810).
   cancels_id: null,
   used_until: null,
   cancellation: null,
