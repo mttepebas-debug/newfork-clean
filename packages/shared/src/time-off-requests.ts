@@ -206,6 +206,10 @@ export const timeOffRequestsPageSchema = z.object({
   waiting: z.number().int().min(0),
   page: z.number().int().min(1),
   page_size: z.number().int(),
+  // D7: the page's clock and its location filter (the locations whose time off this person answers). Optional
+  // while the database without them answers too.
+  time_format: z.enum(["12h", "24h"]).nullish().transform((format) => format ?? "12h"),
+  locations: z.array(z.object({ id, name: z.string() })).default([]),
   requests: z.array(timeOffDeciderViewSchema),
 });
 export type TimeOffRequestsPage = z.infer<typeof timeOffRequestsPageSchema>;

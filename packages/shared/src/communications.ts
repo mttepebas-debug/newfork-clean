@@ -599,6 +599,8 @@ export const managerHomeSchema = z.object({
       id: z.string().uuid(),
       employee_id: z.string().uuid(),
       employee_name: z.string(),
+      // D7: leave is time off asked for; cancel, approved time off its person asks to cancel.
+      kind: z.enum(["leave", "cancel"]).default("leave"),
       first_date: homeDateSchema.nullable(),
       last_date: homeDateSchema.nullable(),
       location_ids: z.array(z.string().uuid()),

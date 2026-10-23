@@ -244,7 +244,10 @@ describe("the answer's shapes", () => {
     };
     expect(timeOffImpactSchema.parse(impact)).toEqual(impact);
     const page = { page: 1, total: 1, waiting: 1, requests: [deciderView], page_size: 50 };
-    expect(timeOffRequestsPageSchema.parse(page)).toEqual(page);
+    // An API before D7 sends no time format or locations: 12h and none.
+    expect(timeOffRequestsPageSchema.parse(page)).toEqual({ ...page, time_format: "12h", locations: [] });
+    const said = { ...page, time_format: "24h", locations: [{ id: deciderView.id, name: "Kadikoy" }] };
+    expect(timeOffRequestsPageSchema.parse(said)).toEqual(said);
     const shifts = {
       count: 2,
       shifts: [
@@ -329,7 +332,7 @@ describe("D4 cancellation and take back", () => {
       ],
       page_size: 50
     };
-    expect(timeOffRequestsPageSchema.parse(page)).toEqual(page);
+    expect(timeOffRequestsPageSchema.parse(page)).toEqual({ ...page, time_format: "12h", locations: [] });
   });
 
   it("asks to cancel with an optional note, on a revision and a key", () => {
@@ -479,5 +482,29 @@ describe("D5 time off entered for somebody", () => {
     expect(timeOffEntryRefusal(allDay("2026-11-01", "2026-12-02"), today)).toBe("time_off.too_long");
     expect(timeOffEntryRefusal(allDay("2026-11-02", "2026-11-01"), today)).toBe("time_off.order");
     expect(timeOffEntryRefusal(hours("2026-11-01", "15:00", "2026-11-01", "10:00"), today)).toBe("time_off.order");
+  });
+});
+
+describe("D7 the old time off is gone", () => {
+  it("exports none of the old contracts", async () => {
+    const shared: Record<string, unknown> = await import("./index");
+    for (const name of ["timeOffRequestSchema", "scheduleRequestsReadModelSchema", "scheduleRequestEventSchema", "timeOffSegmentStatusSchema",
+      "employeeRequestActionInputSchema", "employeeHubMutationResultSchema", "employeeHubRequestSchema", "timeOffVerdictInputSchema",
+      "timeOffRevokeInputSchema", "timeOffShortenInputSchema", "timeOffSubmitInputSchema", "timeOffCancellationRequestInputSchema",
+      "timeOffPeriodInputSchema", "timeOffProgressSchema", "timeOffOpenedShiftCount", "timeOffApprovalAsksFirst"])
+      expect(name in shared, name).toBe(false);
+  });
+  it("names the new statuses, not the old ones", async () => {
+    const { timeOffRequestStatusSchema } = await import("./index");
+    for (const status of ["pending", "approved", "declined", "withdrawn", "expired", "cancelled", "revoked"])
+      expect(timeOffRequestStatusSchema.safeParse(status).success, status).toBe(true);
+    expect(timeOffRequestStatusSchema.safeParse("denied").success).toBe(false);
+  });
+  it("keeps no decision window in Settings and reads the hub's days off as a list", async () => {
+    const { schedulingSettingsSchema, employeeHubReadModelSchema } = await import("./index");
+    const settings = { workspace_id: "af9c0000-0000-4000-8000-000000000001", week_start_day: "monday", schedule_deadline_day: "friday", time_format: "12h" };
+    expect(schedulingSettingsSchema.parse({ ...settings, time_off_lead_hours: 24 })).not.toHaveProperty("time_off_lead_hours");
+    expect(employeeHubReadModelSchema.shape.leave_days.parse(undefined)).toEqual([]);
+    expect(employeeHubReadModelSchema.shape).not.toHaveProperty("requests");
   });
 });

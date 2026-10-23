@@ -11,13 +11,6 @@ import {
   rolePermissionDependencies,
 } from "./role-permissions";
 export * from "./role-permissions";
-import {
-  timeOffCancellationContextSchema,
-  timeOffPeriodReadSchema,
-  timeOffProgressSchema,
-  timeOffReleasedAssignmentSchema,
-} from "./time-off";
-export * from "./time-off";
 import { shiftAvailabilityAssessmentSchema, scheduleConflictRulesSchema } from "./availability-assessment";
 import { shiftTimeBasisSchema, shiftTimeSnapshotSchema } from "./availability";
 import { announcementCategorySchema, announcementDaySchema } from "./communications";
@@ -1165,8 +1158,6 @@ export const schedulingSettingsSchema = z.object({
   conflict_rules: scheduleConflictRulesSchema.optional(),
   conflict_rules_revision: z.number().int().positive().optional(),
   time_format: scheduleTimeFormatSchema,
-  // Settings > Scheduling: a request must be decided this many hours before it starts.
-  time_off_lead_hours: z.number().int().min(0).max(720).optional(),
 });
 export type SchedulingSettings = z.infer<typeof schedulingSettingsSchema>;
 export const schedulingSettingsInputSchema = schedulingSettingsSchema.omit({
@@ -2409,66 +2400,6 @@ export const updateScheduleExportScheduleInputSchema =
   });
 export type UpdateScheduleExportScheduleInput = z.infer<
   typeof updateScheduleExportScheduleInputSchema
->;
-
-export const scheduleRequestEventSchema = z.object({
-  released_assignments: z.array(timeOffReleasedAssignmentSchema).optional(),
-  id: z.string().uuid(),
-  action: z.string().trim().min(1).max(48),
-  actor_name: z.string().trim().min(1).max(160),
-  note: z.string().max(1000),
-  created_at: z.string().datetime({ offset: true }),
-});
-export type ScheduleRequestEvent = z.infer<typeof scheduleRequestEventSchema>;
-
-export const timeOffRequestStatusSchema = z.enum([
-  "pending",
-  "approved",
-  "denied",
-  "revoked",
-]);
-export const timeOffSegmentStatusSchema = z.enum([
-  "pending",
-  "approved",
-  "denied",
-]);
-export const timeOffRequestSegmentSchema = timeOffPeriodReadSchema;
-export const timeOffRequestSchema = z.object({
-  id: z.string().uuid(),
-  employee_id: z.string().uuid(),
-  employee_name: z.string().trim().min(1).max(160),
-  request_type: z.enum(["time_off", "time_off_cancellation"]),
-  cancellation: timeOffCancellationContextSchema.optional(),
-  reason: z.string().max(1000),
-  status: timeOffRequestStatusSchema,
-  start_date: z.string().date(),
-  end_date: z.string().date(),
-  revision: z.number().int().positive(),
-  created_at: z.string().datetime({ offset: true }),
-  decide_by: z.string().datetime({ offset: true }).nullable().optional(),
-  conflict_count: z.number().int().nonnegative(),
-  segments: z.array(timeOffRequestSegmentSchema),
-  events: z.array(scheduleRequestEventSchema),
-  // Pending requests only; null once closed.
-  progress: timeOffProgressSchema.nullable().optional(),
-});
-export type TimeOffRequest = z.infer<typeof timeOffRequestSchema>;
-
-export const scheduleRequestsReadModelSchema = z.object({
-  workspace_id: z.string().uuid(),
-  time_format: z.enum(["12h", "24h"]).optional(),
-  locations: z.array(
-    z.object({
-      id: z.string().uuid(),
-      name: z.string().trim().min(1).max(120),
-    }),
-  ),
-  time_off_pending_count: z.number().int().nonnegative(),
-  time_off_next_cursor: z.string().datetime({ offset: true }).nullable(),
-  time_off_requests: z.array(timeOffRequestSchema),
-});
-export type ScheduleRequestsReadModel = z.infer<
-  typeof scheduleRequestsReadModelSchema
 >;
 
 export const customRoleAccessClassSchema = z.enum(["manager", "employee"]);
