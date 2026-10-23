@@ -45,7 +45,6 @@ const context = {
     "schedule.read",
     "requests.read",
     "time_off.decide",
-    "time_off.revoke",
     "exchange.read",
     "exchange.approve",
   ],

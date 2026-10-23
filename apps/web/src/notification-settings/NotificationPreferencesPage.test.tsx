@@ -32,7 +32,7 @@ function preferences(overrides: Partial<NotificationPreferences["channels"]> = {
         email: { choice: true, default: false }, push: { choice: null, default: true } },
       { key: "shift_changes", name: "Shift changes", level: "important", description: "Someone asks you to cover or swap, and the answers to your own asks.",
         email: { choice: false, default: true }, push: { choice: null, default: true } },
-      { key: "time_off", name: "Time off", level: "important", description: "Decisions on your time off, and approved time off that was shortened.",
+      { key: "time_off", name: "Time off", level: "important", description: "Decisions on your time off.",
         email: { choice: null, default: true }, push: { choice: null, default: true } },
     ],
   };
@@ -106,7 +106,7 @@ describe("Account > Notifications", () => {
     const requests = within(table).getByRole("rowheader", { name: /^My requests/ });
     expect(
       within(requests).getByText(
-        "Someone asks you to cover or swap, and the answers to your own asks. Decisions on your time off, and approved time off that was shortened.",
+        "Someone asks you to cover or swap, and the answers to your own asks. Decisions on your time off.",
       ),
     ).toBeTruthy();
     expect(within(requests).queryByText("Optional")).toBeNull();
