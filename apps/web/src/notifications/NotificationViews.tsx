@@ -13,13 +13,14 @@ import "./notifications.css";
 /** A person's own notification choices (Account → Notifications). */
 export const notificationSettingsPath = "/account/preferences/notifications";
 
-function useReadAll(workspaceId: string) {
+/** Mark all as read; `say` tells the outcome (a toast, or a line inside the phone's full-screen list, which toasts sit behind). */
+function useReadAll(workspaceId: string, say: (message: string, ok: boolean) => void = (message, ok) => (ok ? toast.success(message) : toast.error(message))) {
   const read = useMarkNotificationsRead(workspaceId);
   const unread = useNotificationCounts(workspaceId).data?.unread_count ?? 0;
   return {
     disabled: unread === 0 || read.isPending,
     run: () =>
-      read.mutate({ all: true }, { onSuccess: () => toast.success("All marked as read"), onError: () => toast.error("Couldn't mark them as read") }),
+      read.mutate({ all: true }, { onSuccess: () => say("All marked as read", true), onError: () => say("Couldn't mark them as read", false) }),
   };
 }
 
@@ -101,7 +102,8 @@ export function NotificationsSheet({
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const dialog = useRef<HTMLDialogElement>(null);
   const panelId = useId();
-  const readAll = useReadAll(workspaceId);
+  const [said, setSaid] = useState<{ message: string; ok: boolean } | null>(null);
+  const readAll = useReadAll(workspaceId, (message, ok) => setSaid({ message, ok }));
   useEffect(() => {
     const node = dialog.current;
     if (node && !node.open) node.showModal?.();
@@ -132,6 +134,9 @@ export function NotificationsSheet({
         <button type="button" className="ni-link ni-sheet-readall" disabled={readAll.disabled} onClick={readAll.run}>
           Mark all as read
         </button>
+        <p className={said && !said.ok ? "ni-sheet-said is-error" : "ni-sheet-said"} role="status">
+          {said?.message}
+        </p>
       </div>
     </dialog>
   );

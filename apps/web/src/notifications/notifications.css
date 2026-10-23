@@ -229,10 +229,35 @@
 .ni-row-title:disabled {
   cursor: default;
 }
+/* S-247: the title's button covers the row, so a click or tap anywhere on it opens the notice;
+   Review and the row's tools sit above it. The focus ring goes round the whole row. */
+.ni-row-title::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+.ni-row-title:disabled::after {
+  content: none;
+}
+.ni-row-title:focus-visible {
+  outline: none;
+}
+.ni-row:has(.ni-row-title:focus-visible) {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
+.ni-row:has(.ni-row-title:not(:disabled)) {
+  cursor: pointer;
+}
+.ni-row-actions,
+.ni-row-tools {
+  position: relative;
+  z-index: 1;
+}
 .ni-row.is-unread .ni-row-title {
   font-weight: 750;
 }
-.ni-row-title:hover:not(:disabled) {
+.ni-row:hover .ni-row-title:not(:disabled) {
   text-decoration: underline;
 }
 .ni-row-body {
@@ -316,6 +341,15 @@
 }
 .ni-state {
   padding: 16px 18px;
+}
+/* A refresh that failed keeps the rows; this line says so above them. */
+.ni-refresh-error {
+  margin: 0;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  background: var(--theme-danger-surface);
+  color: var(--theme-danger);
+  font-size: 13px;
 }
 .ni-more {
   display: flex;
@@ -437,7 +471,17 @@
   overflow: auto;
 }
 .ni-sheet-readall {
-  margin: 12px 16px 24px;
+  margin: 12px 16px 0;
+}
+/* The outcome of Mark all as read, in the list: toasts sit behind the full-screen list. */
+.ni-sheet-said {
+  min-height: 18px;
+  margin: 6px 16px 24px;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+}
+.ni-sheet-said.is-error {
+  color: var(--theme-danger);
 }
 .ni-sheet .ni-row-actions .nf-button {
   min-height: 44px;

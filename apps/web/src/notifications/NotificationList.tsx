@@ -14,18 +14,13 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { Fragment, useRef, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router";
+import { useAuth } from "../auth/AuthContext";
+import { resolveTimeInputFormat, type TimeFormat } from "../schedule/timeInput";
 import { LinesOutline, LoadError } from "../shell/LoadState";
-import {
-  dayGroup,
-  emptyTitle,
-  relativeTime,
-  resolutionLabel,
-  rowLook,
-  type TileIcon,
-} from "./notification-model";
-import { useMarkNotificationsRead, useNotificationCounts, useNotificationFeed } from "./notifications-data";
+import { arrivalLabel, arrivalTitle, emptyTitle, isNewNotice, resolvedLine, rowLook, type TileIcon } from "./notification-model";
+import { useMarkNotificationsRead, useMarkNotificationsSeen, useNotificationCounts, useNotificationFeed } from "./notifications-data";
 import "./notifications.css";
 import { useViewAddress } from "../shell/view-address";
 
@@ -103,10 +98,21 @@ export function NotificationTabs({
   );
 }
 
+/** The clock the list's times read from; it ticks once a minute while the list is open. */
+function useMinuteClock(fixed: Date | undefined): Date {
+  const [now, setNow] = useState(() => fixed ?? new Date());
+  useEffect(() => {
+    if (fixed) return;
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [fixed]);
+  return fixed ?? now;
+}
+
 /**
- * The list itself, newest first, grouped by day. A row's title opens its link
- * and reads it; an open time off request decides inline; another open request
- * opens with Review.
+ * The list itself, newest first: what came since the list was last opened under New, the rest under
+ * Earlier (S-247 (2)). Showing the list marks it seen; a row stays where it is while the list is open.
+ * A row opens its link and reads it; an open request also offers Review.
  */
 export function NotificationList({
   workspaceId,
@@ -115,7 +121,7 @@ export function NotificationList({
   panelId,
   wide = false,
   onNavigate,
-  now = new Date(),
+  now: fixedNow,
 }: {
   readonly workspaceId: string;
   readonly viewerId: string | undefined;
@@ -128,9 +134,25 @@ export function NotificationList({
 }) {
   const feed = useNotificationFeed(workspaceId, filter);
   const read = useMarkNotificationsRead(workspaceId);
+  const { mutate: markSeen } = useMarkNotificationsSeen(workspaceId);
   const navigate = useNavigate();
   const viewAddress = useViewAddress();
+  const { account } = useAuth();
+  const timeFormat = resolveTimeInputFormat(account?.timeFormat, "12h");
+  const now = useMinuteClock(fixedNow);
   const labelledBy = `${panelId}-tab-${filter}`;
+  // What this opening of the list showed as new; it stays New after the core marks it seen.
+  const [fresh] = useState(() => new Set<string>());
+  const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
+  const unseen = items
+    .filter((item) => !item.seen_at && !fresh.has(item.id))
+    .map((item) => item.id)
+    .join(",");
+  useEffect(() => {
+    if (!unseen) return;
+    for (const id of unseen.split(",")) fresh.add(id);
+    markSeen();
+  }, [unseen, fresh, markSeen]);
 
   if (feed.isPending)
     return (
@@ -138,7 +160,7 @@ export function NotificationList({
         <LinesOutline label="Loading notifications" lines={4} />
       </div>
     );
-  if (feed.isError)
+  if (feed.isError && !feed.data)
     return (
       <div id={panelId} role="tabpanel" aria-labelledby={labelledBy} className="ni-state">
         <LoadError
@@ -152,13 +174,25 @@ export function NotificationList({
       </div>
     );
 
-  const items = feed.data.pages.flatMap((page) => page.items);
+  // A failed refresh keeps the rows already on screen (with retry:false one miss would wipe them).
+  const refreshFailed = feed.isError ? (
+    <p className="ni-refresh-error">
+      Couldn't refresh.{" "}
+      <button type="button" className="ni-link" disabled={feed.isRefetching} onClick={() => void feed.refetch()}>
+        Retry
+      </button>
+    </p>
+  ) : null;
+
   if (!items.length)
     return (
-      <div id={panelId} role="tabpanel" aria-labelledby={labelledBy} className="ni-empty">
-        <BellOff size={22} aria-hidden />
-        <strong>{emptyTitle(filter)}</strong>
-        <span>New updates will show up here.</span>
+      <div id={panelId} role="tabpanel" aria-labelledby={labelledBy}>
+        {refreshFailed}
+        <div className="ni-empty">
+          <BellOff size={22} aria-hidden />
+          <strong>{emptyTitle(filter)}</strong>
+          <span>New updates will show up here.</span>
+        </div>
       </div>
     );
 
@@ -171,32 +205,41 @@ export function NotificationList({
     }
   };
 
-  let group = "";
+  const newOnes = items.filter((item) => isNewNotice(item, fresh));
+  const earlier = items.filter((item) => !isNewNotice(item, fresh));
+  const sections = newOnes.length
+    ? [
+        { heading: "New", rows: newOnes },
+        { heading: "Earlier", rows: earlier },
+      ]
+    : [{ heading: null, rows: earlier }];
   return (
     <div id={panelId} role="tabpanel" aria-labelledby={labelledBy}>
+      {refreshFailed}
       <ul className="ni-list" aria-label="Notifications">
-        {items.map((item) => {
-          const heading = dayGroup(item.created_at, now);
-          const startsGroup = heading !== group;
-          group = heading;
-          return (
-            <Fragment key={item.id}>
-              {startsGroup ? (
+        {sections.map((section) =>
+          section.rows.length ? (
+            <Fragment key={section.heading ?? "all"}>
+              {section.heading ? (
                 <li className="ni-group" aria-hidden>
-                  {heading}
+                  {section.heading}
                 </li>
               ) : null}
-              <NotificationRow
-                item={item}
-                viewerId={viewerId}
-                wide={wide}
-                now={now}
-                onOpen={() => open(item)}
-                onRead={() => read.mutate({ ids: [item.id] })}
-              />
+              {section.rows.map((item) => (
+                <NotificationRow
+                  key={item.id}
+                  item={item}
+                  viewerId={viewerId}
+                  wide={wide}
+                  now={now}
+                  timeFormat={timeFormat}
+                  onOpen={() => open(item)}
+                  onRead={() => read.mutate({ ids: [item.id] })}
+                />
+              ))}
             </Fragment>
-          );
-        })}
+          ) : null,
+        )}
       </ul>
       {feed.hasNextPage ? (
         <div className="ni-more">
@@ -219,6 +262,7 @@ function NotificationRow({
   viewerId,
   wide,
   now,
+  timeFormat,
   onOpen,
   onRead,
 }: {
@@ -226,6 +270,7 @@ function NotificationRow({
   readonly viewerId: string | undefined;
   readonly wide: boolean;
   readonly now: Date;
+  readonly timeFormat: TimeFormat;
   readonly onOpen: () => void;
   readonly onRead: () => void;
 }) {
@@ -233,7 +278,7 @@ function NotificationRow({
   const Icon = icons[look.icon];
   const unread = !item.read_at;
   const open = item.needs_action && !item.resolved_at;
-  const resolved = resolutionLabel(item, viewerId);
+  const resolved = resolvedLine(item, viewerId, now, timeFormat);
   const classes = ["ni-row", unread ? "is-unread" : "", item.resolved_at ? "is-resolved" : "", wide ? "is-wide" : ""]
     .filter(Boolean)
     .join(" ");
@@ -244,6 +289,7 @@ function NotificationRow({
         <Icon size={16} />
       </span>
       <div className="ni-row-text">
+        {/* The title's button covers the whole row (S-247): a tap anywhere on it opens the notice. */}
         <button type="button" className="ni-row-title" onClick={onOpen} disabled={!item.url && !unread}>
           {unread ? <span className="sr-only">Unread: </span> : null}
           {item.title}
@@ -255,7 +301,10 @@ function NotificationRow({
               <span className="ni-need">Needs action</span> ·{" "}
             </>
           ) : null}
-          {look.label} · <time dateTime={item.created_at}>{relativeTime(item.created_at, now)}</time>
+          {look.label} ·{" "}
+          <time dateTime={item.created_at} title={arrivalTitle(item.created_at, timeFormat)}>
+            {arrivalLabel(item.created_at, now, timeFormat)}
+          </time>
         </p>
         {resolved ? (
           <span className="ni-chip">

@@ -86,23 +86,70 @@ afterEach(() => {
 });
 
 describe("NotificationsPanel", () => {
-  it("lists the rows by day with their counts and leaves the badge on opening", async () => {
-    answer({
-      all: feedPage([
-        notice(),
-        notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", type: "schedule.published", area: "schedule", topic: "my_schedule",
-          needs_action: false, title: "Your schedule for Oct 19–25 is out", body: "4 shifts · 26 hours.", url: "/app/employee-hub/schedule",
-          subject_type: null, subject_id: null, read_at: "2026-10-16T17:00:00Z", created_at: "2026-10-01T10:00:00Z" }),
-      ]),
-    });
+  const published = notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", type: "schedule.published", area: "schedule", topic: "my_schedule",
+    needs_action: false, title: "Your schedule for Oct 19–25 is out", body: "4 shifts · 26 hours.", url: "/app/employee-hub/schedule",
+    subject_type: null, subject_id: null, seen_at: "2026-10-16T17:00:00Z", read_at: "2026-10-16T17:00:00Z", created_at: "2026-10-01T10:00:00Z" });
+  const sections = (dialog: HTMLElement) =>
+    [...dialog.querySelectorAll(".ni-group, .ni-row-title")].map((node) =>
+      node.classList.contains("ni-group") ? `# ${node.textContent}` : node.textContent?.replace(/^Unread: /, ""),
+    );
+
+  // S-247 (2): what came since the list was last opened is New, the rest Earlier; the badge stays the unread count.
+  it("puts what came since the last look under New and the rest under Earlier, with the tabs' counts", async () => {
+    answer({ all: feedPage([notice(), published]) });
     mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
     const dialog = screen.getByRole("dialog", { name: "Notifications" });
     expect(await within(dialog).findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ })).toBeTruthy();
-    expect(within(dialog).getByText("Earlier")).toBeTruthy();
+    expect(sections(dialog)).toEqual(["# New", "Time off request from Tom Becker", "# Earlier", "Your schedule for Oct 19–25 is out"]);
     expect(within(dialog).getByRole("tab", { name: "Needs action, 1" })).toBeTruthy();
     expect(within(dialog).getByRole("tab", { name: "Unread, 2" })).toBeTruthy();
-    expect(calls("/seen")).toHaveLength(0);
     expect(within(dialog).getByRole("link", { name: /See all notifications/ }).getAttribute("href")).toBe("/app/notifications");
+  });
+
+  it("marks the list seen once it shows, and keeps New where it is while the list stays open", async () => {
+    answer({ all: feedPage([notice(), published]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
+    const dialog = screen.getByRole("dialog", { name: "Notifications" });
+    await within(dialog).findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ });
+    await waitFor(() => expect(calls("/seen")).toHaveLength(1));
+    // The core now says it was seen; this opening still shows it as new.
+    answer({ all: feedPage([notice({ seen_at: "2026-10-16T18:00:00Z" }), published]) });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Mark all as read" }));
+    await waitFor(() => expect(calls("/read")).toHaveLength(1));
+    await waitFor(() => expect(calls("filter=all").length).toBeGreaterThan(1));
+    expect(sections(dialog)).toEqual(["# New", "Time off request from Tom Becker", "# Earlier", "Your schedule for Oct 19–25 is out"]);
+    expect(calls("/seen")).toHaveLength(1);
+  });
+
+  it("has no headings when nothing is new", async () => {
+    answer({ all: feedPage([published]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
+    const dialog = screen.getByRole("dialog", { name: "Notifications" });
+    await within(dialog).findByRole("button", { name: /Your schedule for Oct 19–25 is out$/ });
+    expect(sections(dialog)).toEqual(["Your schedule for Oct 19–25 is out"]);
+    expect(calls("/seen")).toHaveLength(0);
+  });
+
+  it("gives each time its full day, clock time and zone on hover", async () => {
+    answer({ all: feedPage([published]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
+    await screen.findByRole("button", { name: /Your schedule for Oct 19–25 is out$/ });
+    const time = document.querySelector("time")!;
+    expect(time.getAttribute("dateTime")).toBe(published.created_at);
+    expect(time.getAttribute("title")).toMatch(/^\w+day, (September 30|October 1), 2026 at \d{1,2}:\d{2} (AM|PM) \S/);
+  });
+
+  it("keeps the rows it has when a refresh fails, with a retry", async () => {
+    answer({ all: feedPage([notice()]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
+    await screen.findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ });
+    answer({ all: new Error("down") });
+    fireEvent.click(screen.getByRole("button", { name: "Mark all as read" }));
+    expect(await screen.findByText("Couldn't refresh.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ })).toBeTruthy();
+    answer({ all: feedPage([notice({ read_at: "2026-10-16T18:00:00Z" })]) });
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.queryByText("Couldn't refresh.")).toBeNull());
   });
 
   it("opens a row's link and reads it", async () => {
@@ -245,7 +292,7 @@ describe("an open time off card", () => {
   it("shows how a decided request closed instead of Review", async () => {
     answer({ all: feedPage([notice({ resolved_at: "2026-10-16T17:00:00Z", resolution: "approved", resolved_by: me })]) });
     mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    expect(await screen.findByText("You approved")).toBeTruthy();
+    expect(await screen.findByText(/^You approved · /)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Review" })).toBeNull();
   });
 });
@@ -284,5 +331,20 @@ describe("NotificationBell", () => {
     expect(await screen.findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Notifications" })).toBeNull());
+  });
+
+  // The full-screen list sits above the page, toasts included: it says the outcome itself.
+  it("says inside the list that everything was marked read", async () => {
+    answer({ all: feedPage([notice()]) }, { unseen_count: 0, unread_count: 1, needs_action_count: 1 });
+    HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    };
+    mount(<NotificationBell workspaceId={w} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Notifications, 1 unread" }));
+    const readAll = await screen.findByRole("button", { name: "Mark all as read" });
+    await waitFor(() => expect((readAll as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(readAll);
+    await waitFor(() => expect(screen.getByText("All marked as read").getAttribute("role")).toBe("status"));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 });
