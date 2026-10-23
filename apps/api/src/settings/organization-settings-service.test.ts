@@ -26,17 +26,19 @@ describe("shared scheduling travel policy", () => {
   it.each([-1, 241, 30.5, null, "30"])("rejects invalid minimum %s before a write", (minimum) => {
     expect(schedulingSettingsInputSchema.safeParse({ ...settings, minimum_travel_minutes: minimum }).success).toBe(false);
   });
-  it("reads and saves the time-off decision lead time (Settings > Scheduling, FB-6.3)", async () => {
+  // Time off rebuild D7: the old decision window is no longer read, sent or saved.
+  it("neither reads nor saves the old time-off decision window", async () => {
     let columns = "";
     const row = { workspace_id: workspaceId, ...settings, time_off_lead_hours: 48 };
     const from = vi.fn(() => ({ select: (picked: string) => { columns = picked; return { eq: () => ({ single: async () => ({ data: row, error: null }) }) }; } }));
-    const rpc = vi.fn(async () => ({ data: row, error: null }));
+    const rpc = vi.fn(async (_name: string, _args: { settings: Record<string, unknown> }) => ({ data: row, error: null }));
     const service = createOrganizationSettingsServiceWithClient({ rpc, from } as never);
-    expect((await service.readSchedulingSettings({ workspaceId })).time_off_lead_hours).toBe(48);
-    expect(columns.split(",")).toContain("time_off_lead_hours");
+    expect(await service.readSchedulingSettings({ workspaceId })).not.toHaveProperty("time_off_lead_hours");
+    expect(columns.split(",")).not.toContain("time_off_lead_hours");
     const input = schedulingSettingsInputSchema.parse({ ...settings, time_off_lead_hours: 48 });
-    expect((await service.updateSchedulingSettings({ workspaceId, actorUserId, settings: input })).time_off_lead_hours).toBe(48);
-    for (const hours of [-1, 721, 2.5]) expect(schedulingSettingsInputSchema.safeParse({ ...settings, time_off_lead_hours: hours }).success).toBe(false);
+    expect(input).not.toHaveProperty("time_off_lead_hours");
+    expect(await service.updateSchedulingSettings({ workspaceId, actorUserId, settings: input })).not.toHaveProperty("time_off_lead_hours");
+    expect(rpc.mock.calls[0]?.[1].settings).not.toHaveProperty("time_off_lead_hours");
   });
   it("retains a transaction conflict code for the API retry response", async () => {
     const service = createOrganizationSettingsServiceWithClient({ from: vi.fn(), rpc: vi.fn(async () => ({

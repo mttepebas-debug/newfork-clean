@@ -2,13 +2,10 @@ import {
   employeePersonalTasksSchema,
   type EmployeePersonalTask,
   type EmployeePersonalTaskInput,
-  employeeHubMutationResultSchema,
   employeeHubReadModelSchema,
   scheduleReadModelSchema,
-  type EmployeeHubMutationResult,
   type EmployeeHubReadModel,
   type ScheduleReadModel,
-  type EmployeeRequestActionInput,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { rpcFailure } from "../http-error";
@@ -34,11 +31,6 @@ export interface EmployeeHubService {
     workspaceId: string;
     targetDate: string;
   }): Promise<ScheduleReadModel>;
-  actOnRequest(input: {
-    actorUserId: string;
-    workspaceId: string;
-    action: EmployeeRequestActionInput;
-  }): Promise<EmployeeHubMutationResult>;
 }
 
 export function createEmployeeHubService(options: {
@@ -127,18 +119,6 @@ export function createEmployeeHubService(options: {
             undefined,
         })),
       };
-    },
-    async actOnRequest(input) {
-      return employeeHubMutationResultSchema.parse(
-        await rpc("employee_request_action_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-          target_request_id: input.action.request_id,
-          target_kind: input.action.kind,
-          target_action: input.action.action,
-          target_expected_revision: input.action.expected_revision,
-        }),
-      );
     },
   };
 }

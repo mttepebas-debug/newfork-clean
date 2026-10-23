@@ -14,7 +14,6 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
 import { rpcFailure } from "../http-error";
-import { timeOffRequestsReady } from "./time-off-requests-routes";
 import type { TimeOffRequestsService } from "./time-off-requests-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -74,7 +73,7 @@ const mine: MyTimeOff = { time_zone: "America/Los_Angeles", today: "2026-10-22",
 // D3: the answerer's side.
 const decided: TimeOffDeciderView = { ...request, employee_id: "735032ec-0e98-4fb1-8005-c4ede5b1726b", employee_name: "Ali Person",
   location_names: ["Downtown"], shifts_opened: 0 };
-const listed: TimeOffRequestsPage = { total: 1, waiting: 1, page: 1, page_size: 50, requests: [decided] };
+const listed: TimeOffRequestsPage = { total: 1, waiting: 1, page: 1, page_size: 50, time_format: "12h", locations: [], requests: [decided] };
 const impact: TimeOffImpact = { request: decided, fingerprint: "11611d0e7f9542616aa542c39e615471", shift_count: 0, hidden_shift_count: 0, locations: [] };
 const answered: TimeOffDeciderView = { ...decided, status: "approved", revision: 2, decided_by_name: "Mk Person" };
 const shifts: MyTimeOffShifts = { count: 0, shifts: [] };
@@ -392,28 +391,17 @@ describe("time off requests routes", () => {
   });
 });
 
-describe("time off requests gate", () => {
+describe("time off requests in production", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it("is open outside production, and in production only once TIME_OFF_READY is true", () => {
-    expect(timeOffRequestsReady({ NODE_ENV: "test" })).toBe(true);
-    expect(timeOffRequestsReady({ NODE_ENV: "development" })).toBe(true);
-    expect(timeOffRequestsReady({ NODE_ENV: "production" })).toBe(false);
-    expect(timeOffRequestsReady({ NODE_ENV: "production", TIME_OFF_READY: "1" })).toBe(false);
-    expect(timeOffRequestsReady({ NODE_ENV: "production", TIME_OFF_READY: "true" })).toBe(true);
-  });
-
-  it("leaves the routes out of a production app until then", async () => {
+  // D7: no switch any more; the routes are there wherever the API runs.
+  it("registers the routes with no TIME_OFF_READY", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("TIME_OFF_READY", "");
-    const closed = buildApp({ timeOffRequestsService: serviceMock(), contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
-    expect((await closed.inject({ method: "GET", url: `${base}/mine`, headers: auth })).statusCode).toBe(404);
-    await closed.close();
-    vi.stubEnv("TIME_OFF_READY", "true");
-    const open = buildApp({ timeOffRequestsService: serviceMock(), contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
-    expect((await open.inject({ method: "GET", url: `${base}/mine`, headers: auth })).statusCode).toBe(200);
-    await open.close();
+    const app = buildApp({ timeOffRequestsService: serviceMock(), contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
+    expect((await app.inject({ method: "GET", url: `${base}/mine`, headers: auth })).statusCode).toBe(200);
+    await app.close();
   });
 });

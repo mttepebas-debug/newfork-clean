@@ -1,7 +1,4 @@
-import {
-  employeePersonalTaskInputSchema,
-  employeeRequestActionInputSchema,
-} from "@newfork/shared";
+import { employeePersonalTaskInputSchema } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
@@ -113,35 +110,6 @@ export function registerEmployeeHubRoutes(
           actorUserId: context.userId,
           workspaceId: params.data.workspaceId,
           ...query.data,
-        }),
-      );
-    },
-  );
-  app.post(
-    "/v1/workspaces/:workspaceId/employee-hub/request-action",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      const body = employeeRequestActionInputSchema.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid request action required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Employee Hub service is not configured" });
-      return reply.send(
-        await options.service.actOnRequest({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          action: body.data,
         }),
       );
     },

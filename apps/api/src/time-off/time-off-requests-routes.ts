@@ -18,14 +18,6 @@ import type { TimeOffRequestsService } from "./time-off-requests-service";
 
 const requestParams = z.object({ id: z.string().uuid() });
 
-/**
- * The new time off's routes open only where it is ready: everywhere but production, and in production once
- * TIME_OFF_READY is "true" (time off rebuild, removed in D7 with the old system).
- */
-export function timeOffRequestsReady(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.NODE_ENV !== "production" || env.TIME_OFF_READY === "true";
-}
-
 // Time off rebuild D2 (KARARLAR S-239): the employee's own time off in the new table. The gate is the core's
 // list of actions; the database asks the core again for the request itself and decides every rule.
 export function registerTimeOffRequestsRoutes(

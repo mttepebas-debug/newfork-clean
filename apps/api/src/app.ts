@@ -66,11 +66,6 @@ import {
   registerScheduleExportCronRoutes,
   type ScheduleExportCronRouteOptions,
 } from "./schedule/schedule-export-cron-routes";
-import { registerScheduleRequestsRoutes } from "./schedule/schedule-requests-routes";
-import {
-  createScheduleRequestsService,
-  type ScheduleRequestsService,
-} from "./schedule/schedule-requests-service";
 import {
   createScheduleReadService,
   type ScheduleReadService,
@@ -119,22 +114,12 @@ import {
 } from "./settings/document-types-service";
 import { registerOrganizationSettingsRoutes } from "./settings/organization-settings-routes";
 import { registerSettingsReadsRoutes } from "./settings/settings-reads-routes";
-import { registerTimeOffShortenRoutes } from "./time-off/time-off-shorten-routes";
-import {
-  createTimeOffShortenService,
-  type TimeOffShortenService,
-} from "./time-off/time-off-shorten-service";
-import { registerTimeOffVotingRoutes } from "./time-off/time-off-voting-routes";
 import { registerNotificationRoutes } from "./notifications/notifications-routes";
 import type { NotificationsService } from "./notifications/notifications-service";
 import { registerLineupRoutes } from "./lineup/lineup-routes";
 import { registerAvatarRoutes } from "./avatars/avatar-routes";
 import type { AvatarService } from "./avatars/avatar-service";
 import type { LineupService } from "./lineup/lineup-service";
-import {
-  createTimeOffVotingService,
-  type TimeOffVotingService,
-} from "./time-off/time-off-voting-service";
 import {
   createSettingsReadsService,
   type SettingsReadsService,
@@ -151,7 +136,7 @@ import {
 import { registerSignatureSettingsRoutes } from "./settings/signature-settings-routes";
 import { registerNotificationSettingsRoutes } from "./notification-settings/notification-settings-routes";
 import { createNotificationSettingsServiceFromEnvironment, type NotificationSettingsService } from "./notification-settings/notification-settings-service";
-import { registerTimeOffRequestsRoutes, timeOffRequestsReady } from "./time-off/time-off-requests-routes";
+import { registerTimeOffRequestsRoutes } from "./time-off/time-off-requests-routes";
 import { createTimeOffRequestsServiceFromEnvironment, type TimeOffRequestsService } from "./time-off/time-off-requests-service";
 import { registerOnboardingApprovalRoutes } from "./settings/onboarding-approval-routes";
 import { createOnboardingApprovalServiceFromEnvironment, type OnboardingApprovalService } from "./settings/onboarding-approval-service";
@@ -210,21 +195,18 @@ export interface BuildAppOptions {
   readonly onboardingService?: EmployeeOnboardingService | null;
   readonly scheduleService?: ScheduleReadService | null;
   readonly scheduleExportCron?: Partial<ScheduleExportCronRouteOptions>;
-  readonly scheduleRequestsService?: ScheduleRequestsService | null;
   readonly employeeHubService?: EmployeeHubService | null;
   readonly communicationService?: CommunicationService | null;
   readonly documentTypesService?: DocumentTypesService | null;
   readonly organizationSettingsService?: OrganizationSettingsService | null;
   readonly settingsReadsService?: SettingsReadsService | null;
-  readonly timeOffShortenService?: TimeOffShortenService | null;
-  readonly timeOffVotingService?: TimeOffVotingService | null;
   readonly notificationsService?: NotificationsService | null;
   readonly lineupService?: LineupService | null;
   readonly avatarService?: AvatarService | null;
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
   readonly notificationSettingsService?: NotificationSettingsService | null;
-  /** Time off rebuild D2: the new table's employee doors (registered only where timeOffRequestsReady). */
+  /** Time off (rebuild D2–D7): the new table's routes, the employee's and the answerers'. */
   readonly timeOffRequestsService?: TimeOffRequestsService | null;
   readonly onboardingApprovalService?: OnboardingApprovalService | null;
   readonly maintenanceWorker?: MaintenanceWorker | null;
@@ -385,9 +367,6 @@ export function buildApp(options: BuildAppOptions = {}) {
     options.onboardingService ?? createOnboardingServiceFromEnvironment();
   const scheduleService =
     options.scheduleService ?? createScheduleServiceFromEnvironment();
-  const scheduleRequestsService =
-    options.scheduleRequestsService ??
-    createScheduleRequestsServiceFromEnvironment();
   const employeeHubService =
     options.employeeHubService ?? createEmployeeHubServiceFromEnvironment();
   const communicationService =
@@ -403,10 +382,6 @@ export function buildApp(options: BuildAppOptions = {}) {
     createOrganizationSettingsServiceFromEnvironment();
   const settingsReadsService =
     options.settingsReadsService ?? createSettingsReadsServiceFromEnvironment();
-  const timeOffShortenService =
-    options.timeOffShortenService ?? createTimeOffShortenServiceFromEnvironment();
-  const timeOffVotingService =
-    options.timeOffVotingService ?? createTimeOffVotingServiceFromEnvironment();
   const rolesService =
     options.rolesService ?? createRolesServiceFromEnvironment();
   const signatureSettingsService =
@@ -917,10 +892,6 @@ export function buildApp(options: BuildAppOptions = {}) {
         : options.notificationPush.verifySession,
     config: options.notificationPush?.config ?? (() => notificationChannelsConfigFromEnvironment(process.env)),
   });
-  registerScheduleRequestsRoutes(app, {
-    service: scheduleRequestsService,
-    contextResolver,
-  });
   registerEmployeeHubRoutes(app, {
     service: employeeHubService,
     contextResolver,
@@ -957,14 +928,6 @@ export function buildApp(options: BuildAppOptions = {}) {
     service: organizationSettingsService,
     contextResolver,
   });
-  registerTimeOffShortenRoutes(app, {
-    service: timeOffShortenService,
-    contextResolver,
-  });
-  registerTimeOffVotingRoutes(app, {
-    service: timeOffVotingService,
-    contextResolver,
-  });
   registerNotificationRoutes(app, { service: options.notificationsService, contextResolver });
   registerLineupRoutes(app, { service: options.lineupService, contextResolver });
   registerAvatarRoutes(app, { service: options.avatarService });
@@ -988,12 +951,10 @@ export function buildApp(options: BuildAppOptions = {}) {
     service: options.onboardingApprovalService === undefined ? createOnboardingApprovalServiceFromEnvironment() : options.onboardingApprovalService,
     contextResolver,
   });
-  if (timeOffRequestsReady()) {
-    registerTimeOffRequestsRoutes(app, {
-      service: options.timeOffRequestsService === undefined ? createTimeOffRequestsServiceFromEnvironment() : options.timeOffRequestsService,
-      contextResolver,
-    });
-  }
+  registerTimeOffRequestsRoutes(app, {
+    service: options.timeOffRequestsService === undefined ? createTimeOffRequestsServiceFromEnvironment() : options.timeOffRequestsService,
+    contextResolver,
+  });
 
   return app;
 }
@@ -1169,14 +1130,6 @@ function createScheduleServiceFromEnvironment(): ScheduleReadService | null {
   return createScheduleReadService({ url, serviceRoleKey });
 }
 
-function createScheduleRequestsServiceFromEnvironment(): ScheduleRequestsService | null {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && serviceRoleKey
-    ? createScheduleRequestsService({ url, serviceRoleKey })
-    : null;
-}
-
 function createEmployeeHubServiceFromEnvironment(): EmployeeHubService | null {
   const url = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1198,22 +1151,6 @@ function createDocumentTypesServiceFromEnvironment(): DocumentTypesService | nul
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return url && serviceRoleKey
     ? createDocumentTypesService({ url, serviceRoleKey })
-    : null;
-}
-
-function createTimeOffShortenServiceFromEnvironment(): TimeOffShortenService | null {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && serviceRoleKey
-    ? createTimeOffShortenService({ url, serviceRoleKey })
-    : null;
-}
-
-function createTimeOffVotingServiceFromEnvironment(): TimeOffVotingService | null {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && serviceRoleKey
-    ? createTimeOffVotingService({ url, serviceRoleKey })
     : null;
 }
 

@@ -4,7 +4,6 @@ import { rpcFailure } from "./http-error";
 import { authzActionKeys, type ActiveWorkspaceContext } from "@newfork/shared";
 import type { EmployeeOnboardingService } from "./employees/onboarding-service";
 import type { ScheduleReadService } from "./schedule/schedule-service";
-import type { ScheduleRequestsService } from "./schedule/schedule-requests-service";
 import type { EmployeeHubService } from "./employee-hub/employee-hub-service";
 import type { CommunicationService } from "./communications/communication-service";
 
@@ -461,43 +460,6 @@ describe("api app", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it("forwards a revision-guarded employee request action", async () => {
-    const calls: unknown[] = [];
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      employeeHubService: {
-        actOnRequest: async (input: unknown) => {
-          calls.push(input);
-          return {
-            status: "cancelled",
-            request_id: "98200000-0000-4000-8000-000000000001",
-            revision: 2,
-          };
-        },
-      } as unknown as EmployeeHubService,
-    });
-    const action = {
-      request_id: "98200000-0000-4000-8000-000000000001",
-      kind: "time_off",
-      action: "cancel",
-      expected_revision: 1,
-    };
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/employee-hub/request-action`,
-      headers: { authorization: "Bearer valid-token" },
-      payload: action,
-    });
-    expect(response.statusCode).toBe(200);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        action,
-      },
-    ]);
-  });
-
   it("forwards the authenticated actor to the manager Workspace service", async () => {
     const calls: unknown[] = [];
     const app = buildApp({
@@ -668,136 +630,26 @@ describe("api app", () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it("forwards Schedule Requests filters and cursors", async () => {
-    const calls: unknown[] = [];
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      scheduleRequestsService: {
-        get: async (input: Parameters<ScheduleRequestsService["get"]>[0]) => {
-          calls.push(input);
-          return {
-            workspace_id: resolvedContext.workspace.id,
-            locations: [],
-            time_off_pending_count: 0,
-            time_off_next_cursor: null,
-            time_off_requests: [],
-          };
-        },
-      } as unknown as ScheduleRequestsService,
-    });
-    const cursor = "2026-08-17T12:00:00.000Z";
-    const response = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests?time_off_queue=closed&search=alex&limit=25&time_off_cursor=${encodeURIComponent(cursor)}`,
-      headers: { authorization: "Bearer valid-token" },
-    });
-    expect(response.statusCode).toBe(200);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        timeOffQueue: "closed",
-        locationId: null,
-        search: "alex",
-        timeOffCursor: cursor,
-        limit: 25,
-      },
-    ]);
-  });
-
-  // EKRAN-02 B1 (R2-21): one read route; the header-workspace copy is gone.
-  it("has one Schedule Requests read route", async () => {
-    const get = vi.fn();
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      scheduleRequestsService: { get } as unknown as ScheduleRequestsService,
-    });
-    const read = await app.inject({
-      method: "GET",
-      url: "/schedule/requests?time_off_queue=closed",
-      headers: { authorization: "Bearer valid-token" },
-    });
-    expect(read.statusCode).toBe(404);
-    expect(get).not.toHaveBeenCalled();
-  });
-
-  // R2-21: who may read is the authorization core's answer, not the route's.
-  it("answers Schedule Requests with the core's no for a member who may read neither list", async () => {
-    const get = vi.fn(async () => {
-      throw rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.out_of_scope", details: "requests.read" });
-    });
-    const app = buildApp({
-      contextResolver: { resolve: async () => ({ ...resolvedContext, permissions: [], actions: [] }) },
-      scheduleRequestsService: { get } as unknown as ScheduleRequestsService,
-    });
-    const response = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests`,
-      headers: { authorization: "Bearer valid-token" },
-    });
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ reason: "authz.out_of_scope" });
-    expect(get).toHaveBeenCalledTimes(1);
-  });
-
-  it("asks a Schedule Requests reader without a session to sign in", async () => {
-    const get = vi.fn();
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      scheduleRequestsService: { get } as unknown as ScheduleRequestsService,
-    });
-    const response = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests`,
-    });
-    expect(response.statusCode).toBe(401);
-    expect(response.json()).toMatchObject({ reason: "session.required" });
-    expect(get).not.toHaveBeenCalled();
-  });
-
-  it("returns generic not found for Schedule Requests workspace mismatches", async () => {
-    const get = vi.fn();
-    const app = buildApp({
-      contextResolver: { resolve: async () => workspaceMismatchContext() },
-      scheduleRequestsService: {
-        get,
-      } as unknown as ScheduleRequestsService,
-    });
-    const workspaceId = resolvedContext.workspace.id;
-    const requests = [
-      {
-        method: "GET" as const,
-        url: `/v1/workspaces/${workspaceId}/schedule/requests?time_off_queue=closed&search=alex&limit=25`,
-      },
-    ];
-
-    for (const request of requests) {
-      const response = await app.inject({
-        ...request,
-        headers: { authorization: "Bearer valid-token" },
-      });
-      expect(response.statusCode).toBe(404);
-      expect(response.json()).toEqual({ error: "Workspace not found" });
-    }
-    expect(get).not.toHaveBeenCalled();
-  });
-
-  it("has no old time-off decision, viewed or approval-preview route (FB-6.3.7)", async () => {
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      scheduleRequestsService: { get: vi.fn() } as unknown as ScheduleRequestsService,
-    });
+  // Time off rebuild D7: the old time off's routes are gone; the new ones live under /time-off-requests.
+  it("has none of the old time off routes", async () => {
+    const app = buildApp({ contextResolver: { resolve: async () => resolvedContext } });
+    const w = `/v1/workspaces/${resolvedContext.workspace.id}`;
     const requestId = "97200000-0000-4000-8000-000000000001";
-    for (const prefix of [`/v1/workspaces/${resolvedContext.workspace.id}`, ""])
-      for (const step of ["decision", "viewed", "assignment-preview"]) {
-        const response = await app.inject({
-          method: "POST",
-          url: `${prefix}/schedule/requests/time-off/${requestId}/${step}`,
-          headers: { authorization: "Bearer valid-token" },
-          payload: { expected_revision: 1, action: "approve" },
-        });
-        expect(response.statusCode).toBe(404);
-      }
+    const gone = [
+      ["GET", `${w}/schedule/requests`],
+      ["POST", `${w}/employee-hub/request-action`],
+      ["POST", `${w}/time-off`],
+      ["POST", `${w}/time-off/${requestId}/cancellation`],
+      ["POST", `${w}/time-off/${requestId}/verdict`],
+      ["POST", `${w}/time-off/${requestId}/revoke`],
+      ["POST", `${w}/time-off/${requestId}/shorten`],
+      ["POST", `${w}/schedule/requests/time-off/${requestId}/decision`],
+    ] as const;
+    for (const [method, url] of gone) {
+      const response = await app.inject({ method, url, headers: { authorization: "Bearer valid-token" }, payload: method === "POST" ? {} : undefined });
+      expect(response.statusCode, url).toBe(404);
+    }
+    await app.close();
   });
 
   it("prepares and retries employee invitations only inside the authorized workspace", async () => {

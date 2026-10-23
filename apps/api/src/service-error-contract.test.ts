@@ -6,7 +6,6 @@ import { createEmployeeHubService } from "./employee-hub/employee-hub-service";
 import { createEmployeeCreateService } from "./employees/employee-create-service";
 import { createEmployeeInvitationService } from "./employees/invitation-service";
 import { createEmployeeDirectoryService } from "./employees/employee-directory-service";
-import { createScheduleRequestsService } from "./schedule/schedule-requests-service";
 import { createDocumentTypesService } from "./settings/document-types-service";
 import { createJobsManagementService } from "./settings/jobs-management-service";
 import { createOrganizationSettingsService } from "./settings/organization-settings-service";
@@ -72,7 +71,6 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
     access: { employee_role_id: id, management_role_id: null, managed_location_ids: [] },
   })],
   ["employee directory", () => createEmployeeDirectoryService(options).list(input)],
-  ["schedule requests", () => createScheduleRequestsService(options).get(input)],
   ["document types", () => createDocumentTypesService(options).targetOptions(input)],
   ["jobs management", () => createJobsManagementService(jobsClient).deleteJob(input, id)],
   ["organization settings", () => createOrganizationSettingsService(options).readSchedulingSettings(input)],

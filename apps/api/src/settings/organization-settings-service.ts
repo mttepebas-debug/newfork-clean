@@ -70,7 +70,7 @@ export function createOrganizationSettingsServiceWithClient(
       const { data, error } = await client
         .from("workspace_scheduling_settings")
         .select(
-          "workspace_id,week_start_day,schedule_deadline_day,time_format,minimum_travel_minutes,minimum_rest_minutes,conflict_rules,conflict_rules_revision,time_off_lead_hours",
+          "workspace_id,week_start_day,schedule_deadline_day,time_format,minimum_travel_minutes,minimum_rest_minutes,conflict_rules,conflict_rules_revision",
         )
         .eq("workspace_id", input.workspaceId)
         .single();
