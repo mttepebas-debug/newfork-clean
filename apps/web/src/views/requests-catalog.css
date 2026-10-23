@@ -293,6 +293,14 @@
     height: 44px;
     min-height: 44px;
   }
+  /* The search box is 44 high on a phone, as on every list page (KARARLAR S-253). */
+  .requests-catalog-page .catalog-toolbar .requests-search.toolbar-search {
+    min-height: 44px;
+    height: 44px;
+  }
+  .requests-catalog-page .catalog-toolbar .requests-search.toolbar-search input {
+    height: 42px;
+  }
   .requests-page .catalog-toolbar-status-row[data-more="right"] {
     mask-image: linear-gradient(to right, var(--theme-text) calc(100% - 32px), transparent);
   }

@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Clock3,
   RefreshCw,
+  Search,
   ShieldCheck,
   Users,
   X,
@@ -602,6 +603,7 @@ export function ShiftExchangeHub({ workspaceId, zone }: { workspaceId: string; z
         </label>
         <label className="sx-filter-search">
           <span className="sx-sr">Search shifts</span>
+          <Search size={16} aria-hidden />
           <input
             type="search"
             value={search}

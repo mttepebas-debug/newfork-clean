@@ -1,3 +1,4 @@
+import { tabLineRef } from "../shell/useTabSwipe";
 import {
   documentMatchesStatus,
   documentStatusFilters,
@@ -168,7 +169,7 @@ export function EmployeeDocumentsList(props: {
       {nothingAsked ? null : <>
       <div className="catalog-toolbar">
         <div className="catalog-toolbar-status-row">
-          <div className="catalog-status-tabs" aria-label="Document status">
+          <div className="catalog-status-tabs" ref={tabLineRef} aria-label="Document status">
             {documentStatusFilters.map((status) =>
               (() => {
                 const count = items.filter(

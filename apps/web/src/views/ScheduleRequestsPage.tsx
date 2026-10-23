@@ -31,6 +31,7 @@ import {
 
 import { ListOutline, LoadError } from "../shell/LoadState";
 import { NoAccessRoute, NoAccessState } from "../shell/NoAccessState";
+import { tabLineRef } from "../shell/useTabSwipe";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { AnswerDrawerFrame, TimeOffAnswers } from "../time-off/TimeOffAnswers";
 import { TimeOffEntry } from "../time-off/TimeOffEntry";
@@ -260,6 +261,7 @@ function ScheduleRequestsPageContent() {
         <TabRow chosen={view.type}>
           <div
             className="catalog-status-tabs"
+            ref={tabLineRef}
             role="group"
             aria-label="Request type"
             onKeyDown={(event) => {

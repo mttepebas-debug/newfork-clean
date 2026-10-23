@@ -1,3 +1,4 @@
+import { tabLineRef } from "../shell/useTabSwipe";
 import { useQuery } from "@tanstack/react-query";
 import {
   Archive,
@@ -293,6 +294,7 @@ export default function EmployeesPage() {
         <div className="employee-toolbar-controls catalog-toolbar-status-row">
           <div
             className="catalog-status-tabs"
+            ref={tabLineRef}
             role="group"
             aria-label="Employee status"
           >

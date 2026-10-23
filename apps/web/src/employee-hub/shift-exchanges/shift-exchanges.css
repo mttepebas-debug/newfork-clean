@@ -173,6 +173,21 @@ main.app-main:has(.sx-root)::-webkit-scrollbar {
   flex: 1;
   min-width: min(240px, 100%);
 }
+/* The magnifier sits in the search box, as on every list page (KARARLAR S-253). */
+.sx-filters .sx-filter-search {
+  position: relative;
+}
+.sx-filters .sx-filter-search svg {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  color: var(--theme-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.sx-root .sx-filters .sx-filter-search input {
+  padding-left: 38px;
+}
 .sx-root :is(input:not([type="radio"]), select, textarea) {
   background: var(--sx-card);
   border: 1px solid var(--sx-border);
@@ -883,4 +898,18 @@ main.app-main:has(.sx-root)::-webkit-scrollbar {
 .sx-root .sx-time-off-action:hover {
   background: var(--sx-tint);
   border-color: var(--sx-green);
+}
+/* The boxes as on every list page on a phone (KARARLAR S-253): 10 px under the tab line and apart, 44 high, the
+   control edge. */
+@media (max-width: 720px) {
+  .sx-filters {
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .sx-filters :is(select, input[type="search"]) {
+    height: 44px;
+    min-height: 44px;
+    border-color: var(--theme-border-control);
+    border-radius: 6px;
+  }
 }

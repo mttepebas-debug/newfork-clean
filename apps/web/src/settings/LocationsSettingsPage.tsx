@@ -1,3 +1,4 @@
+import { tabLineRef } from "../shell/useTabSwipe";
 import { CatalogDrawer } from "./CatalogDrawer";
 import { SettingsListHeader } from "./SettingsListHeader";
 import {
@@ -13,9 +14,7 @@ import { useId, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
   ListAddButton,
-  TabRowAdd,
 } from "../views/CatalogPageHeader";
-import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { CatalogSortButton, nextCatalogSort } from "../views/CatalogSortButton";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
@@ -75,7 +74,6 @@ export default function LocationsSettingsPage() {
   const canEdit =
     context?.permissions.includes("settings.locations.manage") ?? false;
   const queryClient = useQueryClient();
-  const phone = useListPhoneWidth();
   const workspaceId = context?.workspace.id ?? "";
   const queryKey = ["organization-locations", workspaceId];
   const locations = useQuery({
@@ -237,6 +235,7 @@ export default function LocationsSettingsPage() {
         <div className="catalog-toolbar-status-row">
           <div
             className="catalog-status-tabs"
+            ref={tabLineRef}
             role="tablist"
             onKeyDown={onTabListKeyDown}
             aria-label="Location status"
@@ -260,7 +259,6 @@ export default function LocationsSettingsPage() {
               </button>
             ))}
           </div>
-          {phone && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}
         </div>
         <div className="catalog-toolbar-filter-row">
           <label className="job-search toolbar-search">
@@ -272,7 +270,7 @@ export default function LocationsSettingsPage() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          {phone ? null : addButton}
+          {addButton}
         </div>
       </div>
       {editing ? (

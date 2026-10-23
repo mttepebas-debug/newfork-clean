@@ -1,8 +1,8 @@
+import { tabLineRef } from "../shell/useTabSwipe";
 import type { ReactNode } from "react";
 import { CalendarClock } from "lucide-react";
 import { SettingsListHeader } from "./SettingsListHeader";
 import { useLocation, useNavigate } from "react-router";
-import { TabRowAdd } from "../views/CatalogPageHeader";
 
 type CatalogTab = "types" | "labels";
 
@@ -19,22 +19,18 @@ export function ShiftCatalogHeader({ titleId }: { titleId: string }) {
   );
 }
 
-/** The tab row, with the filter row under it when the list is ready. A phone
- * passes the add button as `add`, for the tab row's right end. */
+/** The tab row, with the filter row under it when the list is ready (the add button in it, KARARLAR S-253). */
 export function ShiftCatalogToolbar({
   disabled = false,
-  add,
   children,
 }: {
   disabled?: boolean;
-  add?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <div className="job-catalog-toolbar catalog-toolbar">
       <div className="catalog-toolbar-status-row">
         <ShiftCatalogTabs disabled={disabled} />
-        {add ? <TabRowAdd>{add}</TabRowAdd> : null}
       </div>
       {children}
     </div>
@@ -53,6 +49,7 @@ export function ShiftCatalogTabs({ disabled = false }: { disabled?: boolean }) {
   return (
     <div
       className="catalog-status-tabs"
+      ref={tabLineRef}
       role="tablist"
       aria-label="Shift catalog sections"
       onKeyDown={(event) => {

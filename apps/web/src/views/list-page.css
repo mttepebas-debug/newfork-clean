@@ -450,24 +450,27 @@
     min-height: 44px;
     height: 44px;
   }
-  /* A page with tabs puts its add button at the right end of the tab row,
-     8 px above the line, and keeps it in view while the tabs scroll (Mert
-     2026-10-14). On a computer it stays at the end of the filter row. No
-     backing of its own: the page's colour behind it was a grey patch on the
-     sky (KARARLAR S-252). */
-  .list-page.list-page .catalog-toolbar-status-row .catalog-tab-add {
-    position: sticky;
-    right: 0;
-    display: flex;
-    flex: 0 0 auto;
-    align-self: flex-start;
-    margin-left: auto;
-    padding-left: 8px;
-    background: transparent;
+  /* The add button is never in the tab row: it ends the first box row, and the boxes after the first go on
+     under them the full width (KARARLAR S-253, Mert 2026-10-23). Announcements keeps its own two rows. */
+  .list-page.list-page:not(.announcements-page) .catalog-toolbar-filter-row:has(> .list-add-button) {
+    flex-wrap: wrap;
   }
-  .list-page.list-page .catalog-tab-add .list-add-button {
-    height: 32px;
-    min-height: 32px;
+  .list-page.list-page:not(.announcements-page) .catalog-toolbar .catalog-toolbar-filter-row:has(> .list-add-button) > * {
+    order: 2;
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+  }
+  .list-page.list-page:not(.announcements-page) .catalog-toolbar .catalog-toolbar-filter-row:has(> .list-add-button) > :first-child {
+    order: 0;
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+  .list-page.list-page:not(.announcements-page) .catalog-toolbar .catalog-toolbar-filter-row > .list-add-button.list-add-button {
+    order: 1;
+    flex: 0 0 auto;
+    width: auto;
   }
 }
 

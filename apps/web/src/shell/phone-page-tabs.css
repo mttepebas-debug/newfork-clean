@@ -1,43 +1,52 @@
-/* A page's own tabs on a phone (S-152; Mert 2026-10-17, variant D "sola
-   dayalı, çizgi sekme kadar": https://claude.ai/artifact/VNjTwRo6fqWqwJoNPFNrEr
-   → "Telefonda sekmeler"). Only the three strips that switch a page: the
-   employee's Schedule · Lineup, My Availability's Availability · Time Off
-   Requests and Shift hub's Available Shifts · My requests · History. Tabs
-   inside a page's content (the shift card's Team · Notes, the manager's
-   Lineup, Account → Documents, list filters) keep their own look ("onun
-   dışında hiçbir yeri elleme"). Every tab is as wide as its label with 12 px
-   on each side; the first label lines up with the page (the strip runs edge
-   to edge, so its padding is the page's side margin less 12 px); the open tab
-   gets one 2 px green line as wide as the tab, the same on all three ("çizgilerin
-   kalınlıkları eşit olsun"), over a 1 px line across the screen; more tabs
-   than fit scroll sideways. A strip that scrolls sideways cuts whatever hangs
-   over its edge, so both lines are drawn inside it. useTabSwipe says where
-   the open tab is (--tab-line-x, --tab-line-w, data-tab-line) and the line
-   slides there; until it has, the tab's own border marks it. A desktop is
-   untouched. `:root:root:root:root` lifts these over each page's own sheet,
-   whichever loads later. */
+/* A page's own tabs on a phone, one standard on every page (KARARLAR S-253, Mert 2026-10-23, widening S-152's
+   variant D "sola dayalı, çizgi sekme kadar"): the strip under the title on the employee's Schedule · Lineup,
+   My Availability, Shift Hub and My documents, the manager's person Availability page, and every list page's
+   status tabs (Requests, Employees, Documents, Important Dates, Locations, Jobs, Shift catalog,
+   Settings → Documents). Tabs inside a page's content (the shift card's Team · Notes, the manager's Lineup,
+   Notifications' filters, a second row of filters under the tabs) keep their own look.
+   The strip stays inside the page's 16 px sides; its labels start on the title's edge, as wide as their
+   words and 24 px apart, 14 px, 44 high; the open one dark at 600, the others muted at 500. One 2 px green
+   line under the open label sits on a 1 px line in the title line's colour; more tabs than fit scroll
+   sideways, so both lines are drawn inside the strip. useTabLine says where the open tab is
+   (--tab-line-x, --tab-line-w, data-tab-line) and the line slides there, still with reduced motion; until
+   it has, the tab's own border marks it. A desktop is untouched. `:root:root:root:root` lifts these over
+   each page's own sheet, whichever loads later. */
 
 @media (max-width: 720px) {
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs) {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs) {
     display: flex;
     flex-wrap: nowrap;
-    gap: 0;
-    margin-inline: calc(50% - 50vw);
-    padding-inline: calc(50vw - 50% - 12px);
-    border-bottom: 0;
-    box-shadow: inset 0 -1px 0 var(--theme-border-subtle);
+    gap: 24px;
+    width: auto;
+    margin-inline: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: inset 0 -1px 0 var(--theme-border);
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
   }
+  /* A list page's status row lends its line to the strip, which fills it (the add button no longer sits in
+     it), and scrolls it when the tabs are wider than the screen. */
+  :root:root:root:root .list-page.list-page .catalog-toolbar-status-row {
+    height: 44px;
+    min-height: 44px;
+    border-bottom: 0;
+  }
+  :root:root:root:root .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs {
+    flex: 1 0 auto;
+    overflow: visible;
+  }
   /* The sliding line is placed in the strip (a frozen strip is already sticky). */
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs):not([data-frozen-piece]) {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs):not([data-frozen-piece]) {
     position: relative;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs)::-webkit-scrollbar {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs)::-webkit-scrollbar {
     display: none;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs) > :is(a, button) {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs) > :is(a, button) {
     position: relative;
     display: inline-flex;
     flex: none;
@@ -47,29 +56,31 @@
     height: 44px;
     min-height: 44px;
     margin: 0;
-    padding: 0 12px;
+    padding: 0;
     border: 0;
     border-bottom: 2px solid transparent;
     border-radius: 0;
     background: none;
+    box-shadow: none;
     color: var(--theme-muted);
     font-size: 14px;
     font-weight: 500;
     white-space: nowrap;
     text-decoration: none;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs) > :is(a, button):hover {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs) > :is(a, button):hover {
+    background: none;
     color: var(--theme-text);
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs) > :is([aria-current="page"], [aria-selected="true"]) {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs) > :is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .active) {
     border-bottom-color: var(--theme-accent);
     color: var(--theme-text);
     font-weight: 600;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs)[data-tab-line] > :is([aria-current="page"], [aria-selected="true"]) {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs)[data-tab-line] > :is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .active) {
     border-bottom-color: transparent;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs)[data-tab-line]::after {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs)[data-tab-line]::after {
     content: "";
     position: absolute;
     left: 0;
@@ -81,10 +92,17 @@
     transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1), width 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
     pointer-events: none;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs) > :is(a, button):focus-visible {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs) > :is(a, button):focus-visible {
     outline: 2px solid var(--theme-focus);
     outline-offset: -2px;
     border-radius: 2px;
+  }
+  /* The first box sits 10 px under the tab line; a page's content (cards, a list) 16 px. */
+  :root:root:root:root .employee-schedule-tabs {
+    margin-bottom: 10px;
+  }
+  :root:root:root:root .my-documents-page > .employee-documents-list {
+    margin-top: 10px;
   }
   /* Labels only: My Availability's tab icons stay on the desktop. */
   :root:root:root:root .employee-weekly-workspace > .weekly-preferences-tabs > button svg {
@@ -95,7 +113,7 @@
     position: static;
   }
   @media (prefers-reduced-motion: reduce) {
-    :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs)[data-tab-line]::after {
+    :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs)[data-tab-line]::after {
       transition: none;
     }
   }

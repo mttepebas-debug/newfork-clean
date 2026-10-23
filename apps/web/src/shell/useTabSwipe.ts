@@ -160,43 +160,84 @@ export function useTabSwipe<T extends string>({
     }
   }, [active, phone, tabs]);
 
-  // The open tab's line (S-152, Mert 2026-10-17, D): the tab row learns where the open tab is, and
-  // phone-page-tabs.css draws the line there on a page's own tab strips and slides it when the tab
-  // changes. A page that draws a new tab row for the new tab (Schedule → Lineup) starts its line where
-  // the last row's was, so it slides across too. A row that comes once the page has loaded gets its line then.
-  const line = useRef<{ x: number; w: number } | null>(null);
+  const tabLine = useTabLine(active);
+
+  const setTabs = useCallback<RefCallback<HTMLElement>>(
+    (element) => {
+      tabRow.current = element;
+      tabLine(element);
+    },
+    [tabLine],
+  );
+  return { root: setRoot, tabs: setTabs };
+}
+
+/** The open tab: a page's own tab (aria-current, aria-selected) or a list's status tab (aria-pressed, .active). */
+const OPEN_TAB = ':scope > [aria-current="page"], :scope > [aria-selected="true"], :scope > [aria-pressed="true"], :scope > .active';
+type Line = { x: number; w: number };
+
+/** Puts the open tab's line on the row (--tab-line-x, --tab-line-w, data-tab-line), starting from `from` when
+    the row has none yet so it slides from there. Returns where it is now. */
+function placeTabLine(row: HTMLElement, from: Line | null): Line | null {
+  const open = row.querySelector<HTMLElement>(OPEN_TAB);
+  if (!open) {
+    delete row.dataset.tabLine;
+    return null;
+  }
+  const box = row.getBoundingClientRect();
+  const tab = open.getBoundingClientRect();
+  const next = { x: Math.round(tab.left - box.left + row.scrollLeft - row.clientLeft), w: Math.round(tab.width) };
+  const set = ({ x, w }: Line) => {
+    row.style.setProperty("--tab-line-x", `${x}px`);
+    row.style.setProperty("--tab-line-w", `${w}px`);
+  };
+  if (row.dataset.tabLine === undefined && from) {
+    set(from);
+    row.dataset.tabLine = "";
+    getComputedStyle(row, "::after").getPropertyValue("transform");
+  }
+  set(next);
+  row.dataset.tabLine = "";
+  return next;
+}
+
+/**
+ * The open tab's line (S-152, Mert 2026-10-17, D; every page's tab row since S-253, 2026-10-23): the tab row
+ * learns where the open tab is, and phone-page-tabs.css draws the line there and slides it when the tab
+ * changes. A page that draws a new tab row for the new tab (Schedule → Lineup) starts its line where the last
+ * row's was, so it slides across too. A row that comes once the page has loaded gets its line then.
+ * Returns the tab row's ref.
+ */
+export function useTabLine(active: string): RefCallback<HTMLElement> {
+  const phone = useListPhoneWidth();
+  const line = useRef<Line | null>(null);
   const [row, setRow] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
     if (!phone || !row) return;
-    const place = () => {
-      const open = row.querySelector<HTMLElement>(':scope > [aria-current="page"], :scope > [aria-selected="true"]');
-      if (!open) return void delete row.dataset.tabLine;
-      const box = row.getBoundingClientRect();
-      const tab = open.getBoundingClientRect();
-      const next = { x: Math.round(tab.left - box.left + row.scrollLeft - row.clientLeft), w: Math.round(tab.width) };
-      const set = ({ x, w }: { x: number; w: number }) => {
-        row.style.setProperty("--tab-line-x", `${x}px`);
-        row.style.setProperty("--tab-line-w", `${w}px`);
-      };
-      if (row.dataset.tabLine === undefined && line.current) {
-        set(line.current);
-        row.dataset.tabLine = "";
-        getComputedStyle(row, "::after").getPropertyValue("transform");
-      }
-      set(next);
-      row.dataset.tabLine = "";
-      line.current = next;
-    };
+    const place = () => void (line.current = placeTabLine(row, line.current) ?? line.current);
     place();
     if (typeof ResizeObserver !== "function") return;
     const resized = new ResizeObserver(place);
     resized.observe(row);
     return () => resized.disconnect();
   }, [active, phone, row]);
+  return setRow;
+}
 
-  const setTabs = useCallback<RefCallback<HTMLElement>>((element) => {
-    tabRow.current = element;
-    setRow(element);
-  }, []);
-  return { root: setRoot, tabs: setTabs };
+/**
+ * A list page's status tabs (S-253): the tab row's ref, no hook. The line follows the open tab as the tabs'
+ * class or aria state changes, and the row's size. phone-page-tabs.css draws it on a phone only.
+ */
+export function tabLineRef(row: HTMLElement | null): (() => void) | undefined {
+  if (!row) return undefined;
+  const place = () => void placeTabLine(row, null);
+  place();
+  const changed = new MutationObserver(place);
+  changed.observe(row, { subtree: true, attributes: true, attributeFilter: ["class", "aria-pressed", "aria-selected", "aria-current"] });
+  const resized = typeof ResizeObserver === "function" ? new ResizeObserver(place) : null;
+  resized?.observe(row);
+  return () => {
+    changed.disconnect();
+    resized?.disconnect();
+  };
 }
