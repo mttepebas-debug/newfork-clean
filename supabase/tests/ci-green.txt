@@ -220,6 +220,7 @@ supabase/tests/draft_list_counts_shifts_and_hours.test.sql
 supabase/tests/domain_work_outlives_notifications.test.sql
 supabase/tests/domain_work_stops_calling_notifications.test.sql
 supabase/tests/old_notifications_are_dropped.test.sql
+supabase/tests/notice_timeoff.test.sql
 supabase/tests/notification_core.test.sql
 supabase/tests/notify_account.test.sql
 supabase/tests/notify_time_off.test.sql

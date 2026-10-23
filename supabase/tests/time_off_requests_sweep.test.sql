@@ -177,9 +177,16 @@ select is(
   2, 'the next pass reminds nobody again');
 select is((pg_temp.req('ali')).reminded_at, now() - interval '1 hour', 'and the first reminder''s time stays');
 
--- An answer closes the reminder's card with the request's.
+-- An answer closes the reminder's card. The request's card closed when the reminder came (S-247: one open card per
+-- decider per request) and keeps saying so.
 select pg_temp.approve('mk', 'ali');
-select is(pg_temp.closed('ali'), array['approved'], 'the answer closes the request''s and the reminder''s cards');
+select is(
+  (select array_agg(replace(n.type_key, 'time_off.', '') || ' ' || coalesce(n.resolution, 'open') order by n.type_key)
+   from public.person_notifications n
+   where n.subject_type = 'time_off' and n.subject_id = (select value from fixture where key = 'ali')
+     and n.type_key in ('time_off.requested', 'time_off.decision_reminder')),
+  array['decision_reminder approved', 'requested superseded'],
+  'the answer closes the reminder''s card; the request''s card, superseded by the reminder, stays superseded');
 
 -- 3. Expired: a request still waiting when it starts.
 select is(
