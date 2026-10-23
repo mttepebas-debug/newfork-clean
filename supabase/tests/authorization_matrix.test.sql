@@ -80,16 +80,33 @@ select public.save_employee_onboarding_profile_service(
     'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'),
   (select c.revision from public.employee_onboarding_cases c where c.employee_id = tests.id('m:aydan')),
   tests.id('m'));
--- Time off waiting for a decision (Wednesday of week 0), and approved time off
--- in week 3 that a manager, an admin or the owner might revoke (FB-6.3).
-select tests.remember('m:' || h || ':leave', tests.leave('m', h))
-from unnest(array['emre', 'veli', 'ali', 'ayse', 'zeynep']) h;
--- Olcay, the owner, only manages: no time off of her own (ROL-CIFT, design §4.10).
-select tests.remember('m:lv:' || h, tests.leave('m', h, 3))
-from unnest(array['emre', 'ali', 'ayse', 'zeynep']) h;
-select public.decide_time_off_service(tests.user('m:owner'), tests.id('m'), tests.id('m:lv:' || h), 'approve', '',
-  app_private.time_off_impact(tests.id('m'), tests.id('m:lv:' || h)) ->> 'fingerprint')
-from unnest(array['emre', 'ali', 'ayse', 'zeynep']) h;
+-- Time off (KARARLAR S-239, public.time_off_requests), each asked by its person on Employee hub: a
+-- request waiting for an answer (Wednesday of week 0, label m:to:<holder>); approved time off in week 3
+-- that whoever may answer might take back (m:lv:<holder>); and approved time off in week 4 whose person
+-- asks to cancel it (the cancellation waiting: m:cn:<holder>). Ersin works at Besiktas and manages
+-- Kadikoy: Besiktas's managers answer his. Olcay, the owner, only manages: no time off of her own
+-- (ROL-CIFT, design §4.10).
+create function pg_temp.ask_time_off(holder text, day date) returns uuid language sql as $$
+  select (public.ask_time_off_service(tests.user('m:' || holder), tests.id('m'), 'vacation', day, day, true, null, null,
+    'matrix', app_private.time_off_timezone(tests.id('m'), tests.id('m:' || holder)), gen_random_uuid()) ->> 'id')::uuid
+$$;
+create function pg_temp.approve_time_off(request uuid) returns uuid language sql as $$
+  select (public.answer_time_off_service(tests.user('m:owner'), tests.id('m'), r.id, 'approve', null, r.revision,
+    app_private.time_off_shifts_print(app_private.time_off_shifts_at_stake(r))) ->> 'id')::uuid
+  from public.time_off_requests r where r.id = request
+$$;
+select tests.remember('m:to:' || h, pg_temp.ask_time_off(h, tests.week(0) + 2))
+from unnest(array['emre', 'veli', 'ali', 'ayse', 'zeynep', 'ersin']) h;
+select tests.remember('m:lv:' || h, pg_temp.approve_time_off(pg_temp.ask_time_off(h, tests.week(3) + 2)))
+from unnest(array['emre', 'ali', 'ayse', 'zeynep', 'ersin']) h;
+select tests.remember('m:cn-of:' || h, pg_temp.approve_time_off(pg_temp.ask_time_off(h, tests.week(4) + 2)))
+from unnest(array['emre', 'zeynep']) h;
+select public.ask_time_off_cancellation_service(tests.user('m:' || h), tests.id('m'), r.id, 'matrix', r.revision, gen_random_uuid())
+from unnest(array['emre', 'zeynep']) h
+join public.time_off_requests r on r.id = tests.id('m:cn-of:' || h);
+select tests.remember('m:cn:' || h, (select c.id from public.time_off_requests c
+    where c.kind = 'cancel' and c.status = 'pending' and c.cancels_id = tests.id('m:cn-of:' || h)))
+from unnest(array['emre', 'zeynep']) h;
 select tests.settle();
 -- A published week (no shift on Wednesday, the day of the time-off requests)
 -- and two cover requests Ali has applied to.
@@ -241,13 +258,13 @@ from persona p;
 
 create temporary table target (
   label text primary key,
-  kind text not null,          -- person | location | workspace | time_off | leave
+  kind text not null,          -- person | location | workspace | time_off | leave | cancellation | entry | ...
   tenant text not null,
   locs text[],                 -- person: where they work; location: itself (null: none);
-                               -- time_off, leave: where the person it belongs to works
-  class text,                  -- person, time_off, leave: the rank of the person it belongs to
-  holder text,                 -- person, time_off, leave: whose it is
-  employee boolean             -- person: they hold the employee slot (ROL-CIFT)
+                               -- time_off, leave, cancellation, entry: where the person it belongs to works
+  class text,                  -- person and time off: the rank of the person it belongs to
+  holder text,                 -- person and time off: whose it is
+  employee boolean             -- person and time off: they hold the employee slot (ROL-CIFT)
 );
 insert into target values
   ('emre',       'person',    'm', '{K}',   'employee', 'emre'),
@@ -285,18 +302,31 @@ insert into target values
   ('x:K',        'location',  'x', '{K}',   null,       null),
   ('none',       'location',  'm', null,    null,       null),
   ('workspace',  'workspace', 'm', null,    null,       null),
-  -- A request waiting for a decision: the managers of every location the
-  -- person works at vote (FB-6.3).
+  -- A time off request waiting for an answer (KARARLAR S-239): one answer from whoever may answer.
   ('to:emre',    'time_off',  'm', '{K}',   'employee', 'emre'),
   ('to:veli',    'time_off',  'm', '{B}',   'employee', 'veli'),
   ('to:ali',     'time_off',  'm', '{K,B}', 'employee', 'ali'),
   ('to:ayse',    'time_off',  'm', '{K}',   'manager',  'ayse'),
   ('to:zeynep',  'time_off',  'm', '{K}',   'admin',    'zeynep'),
-  -- Approved time off, which can be revoked.
+  ('to:ersin',   'time_off',  'm', '{B}',   'manager',  'ersin'),
+  -- Approved time off, which can be taken back, or its person asks to cancel.
   ('lv:emre',    'leave',     'm', '{K}',   'employee', 'emre'),
   ('lv:ali',     'leave',     'm', '{K,B}', 'employee', 'ali'),
   ('lv:ayse',    'leave',     'm', '{K}',   'manager',  'ayse'),
   ('lv:zeynep',  'leave',     'm', '{K}',   'admin',    'zeynep'),
+  ('lv:ersin',   'leave',     'm', '{B}',   'manager',  'ersin'),
+  -- A cancellation of approved time off, waiting for an answer.
+  ('cn:emre',    'cancellation', 'm', '{K}', 'employee', 'emre'),
+  ('cn:zeynep',  'cancellation', 'm', '{K}', 'admin',    'zeynep'),
+  -- Somebody for whom approved time off is entered (time off rebuild D5); locs: where they work.
+  ('en:emre',    'entry',     'm', '{K}',   'employee', 'emre'),
+  ('en:ali',     'entry',     'm', '{K,B}', 'employee', 'ali'),
+  ('en:ayse',    'entry',     'm', '{K}',   'manager',  'ayse'),
+  ('en:zeynep',  'entry',     'm', '{K}',   'admin',    'zeynep'),
+  ('en:ersin',   'entry',     'm', '{B}',   'manager',  'ersin'),
+  -- a manager who only manages, and the owner, who only manages: neither has time off
+  ('en:mona',    'entry',     'm', '{K}',   'manager',  'mona'),
+  ('en:olcay',   'entry',     'm', '{K,B}', 'owner',    'olcay'),
   ('site:K',     'site',      'm', '{K}',   null,       null),
   ('site:B',     'site',      'm', '{B}',   null,       null),
   ('sh:ali-k',   'shift',     'm', '{K}',   'employee', 'ali'),
@@ -313,7 +343,9 @@ insert into target values
   -- shifts at K and a deleted location, which counts nowhere (Q-C, BL-188)
   ('tpl:KD',     'template',  'm', '{K}',   null,       null);
 -- Who holds the employee slot among the people targets (ROL-CIFT): everybody but the owner and Mona.
-update target set employee = (holder not in ('olcay', 'mona')) where kind = 'person';
+-- Time off is the employee side's: whoever asked for theirs holds it.
+update target set employee = (holder not in ('olcay', 'mona'))
+where kind in ('person', 'time_off', 'leave', 'cancellation', 'entry');
 
 create temporary table target_id as
 select t.label,
@@ -324,8 +356,8 @@ select t.label,
     when t.label in ('K', 'B') then tests.id('m:' || t.label)
     when t.label = 'x:K' then tests.id('x:K')
     when t.label = 'workspace' then tests.id('m')
-    when t.kind = 'time_off' then tests.id('m:' || t.holder || ':leave')
-    when t.kind = 'leave' then tests.id('m:' || t.label)
+    when t.kind in ('time_off', 'leave', 'cancellation') then tests.id('m:' || t.label)
+    when t.kind = 'entry' then tests.id(case t.holder when 'olcay' then 'm:owner' else 'm:' || t.holder end)
     when t.kind = 'site' then tests.id('m:' || substr(t.label, 6))
     when t.kind = 'shift' then tests.id('m:shift:' || substr(t.label, 4))
     when t.kind = 'case' then tests.id('m:case:' || substr(t.label, 6))
@@ -359,6 +391,28 @@ exception when sqlstate '22023' then
 end;
 $$;
 grant execute on function pg_temp.create_probe(uuid, uuid, uuid) to public;
+-- Entering approved time off for somebody (time off rebuild D5), on the Tuesday of week 6, where nobody has
+-- any: what it would open, then, when write, the entry on that picture. Somebody without the employee slot
+-- has no time off: once the actor is let through, the record says so (22023 time_off.no_employee_access),
+-- which is this cell's no.
+create function pg_temp.enter_probe(actor_id uuid, workspace_id uuid, person uuid, write boolean) returns boolean
+language plpgsql as $$
+declare
+  day date := tests.week(6) + 1;
+  impact jsonb;
+  key text;
+begin
+  impact := public.enter_time_off_impact_service(actor_id, workspace_id, person, day, day);
+  if not write then return impact is not null; end if;
+  return public.enter_time_off_service(actor_id, workspace_id, person, 'vacation', day, day, true, null, null, 'matrix probe',
+    impact ->> 'time_zone', impact ->> 'fingerprint', gen_random_uuid()) is not null;
+exception when sqlstate '22023' then
+  get stacked diagnostics key = pg_exception_hint;
+  if key = 'time_off.no_employee_access' then return false; end if;
+  raise;
+end;
+$$;
+grant execute on function pg_temp.enter_probe(uuid, uuid, uuid, boolean) to public;
 -- The template runs with $1 = actor user id, $2 = workspace m, $3 = target id.
 -- empty_is_no: a false/0/NULL answer means the actor was not let through (a
 -- read that hides the row, or a browser write RLS filtered out).
@@ -483,20 +537,36 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.request_workspace_closure_service($1, $2, 'immediate', (select w.name from public.workspaces w where w.id = $2), true, null) is not null$$),
   ('workspace.transfer_ownership', 'workspace', null, true, false,
    $$select public.initiate_workspace_ownership_transfer_service($1, $2, tests.user('m:zeynep')) is not null$$),
+  -- Time off (KARARLAR S-239): answering a request, approving it on the shifts it opens.
   ('time_off.decide', 'time_off', 'schedule.time_off_requests.manage', false, false,
-   $$select public.decide_time_off_service($1, $2, $3, 'approve', '',
-       app_private.time_off_impact($2, $3) ->> 'fingerprint') is not null$$),
-  -- deciding alone, at once: an admin or the owner; a manager's answer is a vote
-  ('time_off.decide_alone', 'time_off', 'schedule.time_off_requests.manage', false, true,
-   $$select (public.decide_time_off_service($1, $2, $3, 'approve', '',
-       app_private.time_off_impact($2, $3) ->> 'fingerprint') ->> 'alone')::boolean$$),
+   $$select public.answer_time_off_service($1, $2, $3, 'approve', null, r.revision,
+       app_private.time_off_shifts_print(app_private.time_off_shifts_at_stake(r))) is not null
+     from public.time_off_requests r where r.id = $3$$),
+  -- answering a cancellation of approved time off
+  ('time_off.decide_cancellation', 'cancellation', 'schedule.time_off_requests.manage', false, false,
+   $$select public.answer_time_off_service($1, $2, $3, 'approve', null, r.revision, null) is not null
+     from public.time_off_requests r where r.id = $3$$),
+  -- the shifts approving would open
+  ('time_off.impact', 'time_off', 'schedule.time_off_requests.manage', false, false,
+   $$select public.time_off_impact_service($1, $2, $3) is not null$$),
+  -- taking approved time off back
   ('time_off.revoke', 'leave', 'schedule.time_off_requests.manage', false, false,
-   $$select public.revoke_time_off_service($1, $2, $3,
-       (select r.revision from public.schedule_time_off_requests r where r.id = $3), 'matrix probe') is not null$$),
-  -- seeing time off comes with deciding it: no "View" level of its own (EKRAN-02 K-S3)
+   $$select public.take_back_time_off_service($1, $2, $3, 'matrix probe',
+       (select r.revision from public.time_off_requests r where r.id = $3)) is not null$$),
+  -- seeing time off comes with deciding it: no "View" level of its own (EKRAN-02 K-S3). Requests → Time off
+  -- lists only what its reader may answer.
   ('requests.read', 'time_off', 'schedule.time_off_requests.manage', false, true,
-   $$select exists (select 1 from jsonb_array_elements(public.get_schedule_requests_service($1, $2, 'needs_review')
-       -> 'time_off_requests') r where (r ->> 'id')::uuid = $3)$$),
+   $$select exists (select 1 from jsonb_array_elements(public.time_off_requests_service($1, $2, target_request_id => $3)
+       -> 'requests') r where (r ->> 'id')::uuid = $3)$$),
+  -- Entering approved time off for somebody (time off rebuild D5): the people it may be entered for, what
+  -- it would open, and the entry, on a day nobody has time off.
+  ('time_off.entry_people', 'entry', 'schedule.time_off_requests.manage', false, true,
+   $$select exists (select 1 from jsonb_array_elements(public.time_off_entry_people_service($1, $2) -> 'people') p
+     where (p ->> 'employee_id')::uuid = $3)$$),
+  ('time_off.enter_impact', 'entry', 'schedule.time_off_requests.manage', false, true,
+   $$select pg_temp.enter_probe($1, $2, $3, false)$$),
+  ('time_off.enter', 'entry', 'schedule.time_off_requests.manage', false, true,
+   $$select pg_temp.enter_probe($1, $2, $3, true)$$),
   -- One location (FB-6.7 K1); a blank location, or another workspace's, is
   -- the same no as one out of reach. A post on Important Dates asks the
   -- important date rule too (EKRAN-08).
@@ -619,9 +689,22 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('exchange.offer_own', 'shift', null, false, false,
    $$select public.shift_exchanges_command_service($1, $2,
        jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', $3), gen_random_uuid()) is not null$$, true, false),
+  -- One's own time off on Employee hub (KARARLAR S-239): asking, the shifts the form shows, the list,
+  -- withdrawing a request that waits, asking to cancel approved time off.
   ('time_off.request_own', 'workspace', null, false, false,
-   $$select public.submit_time_off_service($1, $2, jsonb_build_array(jsonb_build_object('segment_date', tests.week(1) + 3)),
-       'probe', 'Europe/Istanbul', gen_random_uuid()) is not null$$, true, false),
+   $$select public.ask_time_off_service($1, $2, 'vacation', tests.week(1) + 3, tests.week(1) + 3, true, null, null, 'probe',
+       (select app_private.time_off_timezone($2, e.id) from public.employee_profiles e where e.workspace_id = $2 and e.user_id = $1),
+       gen_random_uuid()) is not null$$, true, false),
+  ('time_off.shifts_own', 'workspace', null, false, false,
+   $$select public.my_time_off_shifts_service($1, $2, tests.week(0) + 1, tests.week(0) + 4) is not null$$, true, false),
+  ('time_off.read_own', 'workspace', null, false, false,
+   $$select public.my_time_off_service($1, $2) is not null$$, true, false),
+  ('time_off.withdraw_own', 'time_off', null, false, false,
+   $$select public.withdraw_time_off_service($1, $2, $3,
+       (select r.revision from public.time_off_requests r where r.id = $3)) is not null$$, true, false),
+  ('time_off.cancel_own', 'leave', null, false, false,
+   $$select public.ask_time_off_cancellation_service($1, $2, $3, 'probe',
+       (select r.revision from public.time_off_requests r where r.id = $3), gen_random_uuid()) is not null$$, true, false),
   -- one's own week of availability: an employee's only (M13), also while
   -- finishing onboarding, whose step writes the same week (M2, AVAIL-002)
   ('availability.own', 'person', null, false, true,
@@ -704,10 +787,20 @@ insert into core_action (key, core_key, blank) values
   ('employee.pending_names', 'employee.decide_preferred_name', 'null'),
   ('workspace.close', 'workspace.close', 'null'),
   ('workspace.transfer_ownership', 'workspace.transfer_ownership', 'null'),
+  -- Every answer, take back and entry asks who may answer (app_private.time_off_decider_why): the core's
+  -- time_off.decide at one of the person's locations. The Requests page opens on requests.read.
   ('time_off.decide', 'time_off.decide', 'null'),
-  ('time_off.decide_alone', 'time_off.decide_alone', 'null'),
-  ('time_off.revoke', 'time_off.revoke', 'null'),
+  ('time_off.decide_cancellation', 'time_off.decide', 'null'),
+  ('time_off.impact', 'time_off.decide', 'null'),
+  ('time_off.revoke', 'time_off.decide', 'null'),
   ('requests.read', 'requests.read', 'null'),
+  ('time_off.entry_people', 'time_off.decide', 'null'),
+  ('time_off.enter_impact', 'time_off.decide', 'null'),
+  ('time_off.enter', 'time_off.decide', 'null'),
+  ('time_off.shifts_own', 'time_off.request_own', 'null'),
+  ('time_off.read_own', 'employee_hub.read', 'null'),
+  ('time_off.withdraw_own', 'time_off.request_own', 'null'),
+  ('time_off.cancel_own', 'time_off.request_own', 'null'),
   ('announcement.write', 'announcement.write', 'null'),
   ('important_date.write', 'important_date.write', 'null'),
   ('announcement.write_wide', 'announcement.write_wide', 'null'),
@@ -785,7 +878,9 @@ begin
   if a.member and t.holder is not null and not is_self then return 'deny'; end if;
   -- Availability, offering a shift and asking time off are the employee side's: they need the employee
   -- slot, whatever the management slot (KARARLAR M13; ROL-CIFT, design §4.4, §4.10, §4.11).
-  if action_key in ('availability.own', 'exchange.offer_own', 'time_off.request_own') and not p.employee then
+  -- One's own time off, all of it (KARARLAR S-239).
+  if action_key in ('availability.own', 'exchange.offer_own', 'time_off.request_own', 'time_off.shifts_own',
+                    'time_off.read_own', 'time_off.withdraw_own', 'time_off.cancel_own') and not p.employee then
     return 'deny';
   end if;
   if p.status = 'restricted' and a.restricted_ok then return 'allow'; end if;
@@ -970,29 +1065,19 @@ begin
     -- Its layout is one's own and goes with opening it (KK-36).
     return 'allow';
 
-  when 'time_off.decide', 'requests.read' then
-    -- One decision chain (KARARLAR S-164, S-169; ROL-CIFT design §4.5): the managers of every location
-    -- the person works at vote, the person aside; rank is not counted on the employee side, so a peer
-    -- manager votes on a manager's and an admin's request too. An admin and the owner decide at every
-    -- step (FB-6.3). The Requests queue reads only what its reader decides (FB-6.3.8c); one's own
-    -- waits on Employee hub (the owner whom nobody else answers is world o's, not this one's).
+  when 'time_off.decide', 'time_off.decide_cancellation', 'time_off.impact', 'requests.read', 'time_off.revoke',
+       'time_off.entry_people', 'time_off.enter_impact', 'time_off.enter' then
+    -- Who may answer (KARARLAR S-239, time off rebuild D3): one answer is enough, from any manager of one
+    -- of the person's locations whose role decides time off, an admin, or the owner, whatever the
+    -- person's rank; nobody their own, the owner neither (nobody decides alone any more). The same people
+    -- read the shifts it would open, list it on Requests → Time off, take approved time off back and
+    -- answer a cancellation (D4), and enter approved time off for somebody (D5). Time off is the employee
+    -- side's: nobody has any for somebody without the employee slot (ROL-CIFT design §4.10). A manager
+    -- past a required document's deadline answers nothing; nobody in this world is.
+    if not coalesce(t.employee, false) then return 'deny'; end if;
     if is_self then return 'deny'; end if;
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when shares then 'allow' else 'deny' end;
-
-  when 'time_off.revoke' then
-    -- Taking approved time off back is management's, by rank: any manager of a location the person
-    -- works at, or an admin or the owner, one rank up; nobody their own.
-    if is_self then return 'deny'; end if;
-    if p.class = 'owner' then return 'allow'; end if;
-    if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
-    return case when t.class = 'employee' and shares then 'allow' else 'deny' end;
-
-  when 'time_off.decide_alone' then
-    -- At once and final: an admin or the owner, whatever the person's rank (S-169), never their own.
-    if is_self then return 'deny'; end if;
-    if p.class in ('owner', 'admin') then return 'allow'; end if;
-    return 'deny';
 
   -- A lineup is published by whoever publishes the Schedule there (LINEUP-PUBLISH).
   when 'schedule.publish', 'lineup.share' then
@@ -1135,12 +1220,19 @@ begin
       else
         places := array[target_uuid];
       end if;
-    when 'time_off', 'leave', 'shift', 'case', 'placement' then
+    when 'time_off', 'leave', 'cancellation', 'entry', 'shift', 'case', 'placement' then
       person := case t.holder when 'olcay' then tests.id('m:owner') else tests.id('m:' || t.holder) end;
       places := array(select tests.id('m:' || l) from unnest(t.locs) l);
-      -- A vote on time off is cast for one location at a time: any location
-      -- of the person where the actor may decide lets them vote (FB-6.3).
-      if t.kind = 'time_off' and (select a.scope_class from app_private.authz_actions a where a.key = m.core_key) = 'place' then
+      -- Time off is only for whoever holds the employee slot: a rule of the record, which the entry
+      -- checks after the core (22023 time_off.no_employee_access), so the core is not asked about it.
+      if t.kind = 'entry' and not app_private.has_employee_access(tests.id('m'),
+           (select e.user_id from public.employee_profiles e where e.id = person)) then
+        return 'deny:no_employee_access';
+      end if;
+      -- Time off is answered at one location at a time: any location of the person where the actor may
+      -- decide lets them answer (KARARLAR S-239, app_private.time_off_decider_why).
+      if t.kind in ('time_off', 'leave', 'cancellation', 'entry')
+         and (select a.scope_class from app_private.authz_actions a where a.key = m.core_key) = 'place' then
         if exists (select 1 from unnest(places) place
                    where app_private.authz_reason(user_id, tests.id('m'), m.core_key, array[place], person) is null) then
           return 'allow';
