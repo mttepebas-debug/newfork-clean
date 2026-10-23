@@ -154,6 +154,10 @@ const posts = () =>
   api.apiRequest.mock.calls.filter(([, path, init]) => String(path).endsWith("/answer") && (init as RequestInit | undefined)?.method === "POST");
 const bodyOf = (call: unknown[]) => JSON.parse(String((call[2] as RequestInit).body));
 
+/** The Details tab's rows, label and value, top level (Mert 2026-10-23: Name, Type, When, Length, Asked). */
+const facts = (dialog: HTMLElement) =>
+  Array.from(dialog.querySelectorAll(".toa-facts > div")).map((row) => [row.querySelector("dt")!.textContent, row.querySelector("dd")!.textContent]);
+
 const cancelPosts = (suffix: string) =>
   api.apiRequest.mock.calls.filter(([, path, init]) => String(path).endsWith(suffix) && (init as RequestInit | undefined)?.method === "POST");
 
@@ -182,8 +186,19 @@ describe("Requests → Time off (new)", () => {
     renderIt();
     fireEvent.click(await screen.findByRole("row", { name: /Alex Kim/ }));
     const dialog = screen.getByRole("dialog", { name: "Review time off" });
-    expect(within(dialog).getByRole("heading", { level: 2 }).textContent).toBe("Alex Kim Vacation Needs decision");
-    expect(within(dialog).getByText("Fri, Nov 13 to Mon, Nov 16")).toBeTruthy();
+    // Mert 2026-10-23: the head says whose request it is and what it is, and until when it waits; the
+    // type moves to Details and the locations leave the drawer.
+    expect(within(dialog).getByRole("heading", { level: 2 }).textContent).toBe("Alex Kim Needs decision");
+    expect(within(dialog).getByText("Time off request")).toBeTruthy();
+    expect(within(dialog).getByText("Answer by: Nov 13, 12:00 AM Pacific Time")).toBeTruthy();
+    expect(within(dialog).queryByText(/Midtown/)).toBeNull();
+    expect(facts(dialog)).toEqual([
+      ["Name", "Alex Kim"],
+      ["Type", "Vacation"],
+      ["When", "StartFri, Nov 13, all dayEndMon, Nov 16, all day"],
+      ["Length", "4 days"],
+      ["Asked", "Oct 20"],
+    ]);
     expect(within(dialog).getByText("My sister's wedding in Portland.")).toBeTruthy();
     fireEvent.click(await within(dialog).findByRole("tab", { name: "Shifts 3" }));
     expect(within(dialog).getByText("Downtown")).toBeTruthy();
@@ -205,7 +220,8 @@ describe("Requests → Time off (new)", () => {
     fireEvent.click(within(confirm).getByRole("button", { name: "Approve" }));
     expect(await within(dialog).findByText("Approved. 3 shifts went to open shifts.")).toBeTruthy();
     expect(bodyOf(posts()[0]!)).toEqual({ verdict: "approve", note: "Have fun", expected_revision: 1, expected_impact: impact.fingerprint });
-    expect(within(dialog).getByRole("heading", { level: 2 }).textContent).toBe("Alex Kim Vacation Approved");
+    expect(within(dialog).getByRole("heading", { level: 2 }).textContent).toBe("Alex Kim Approved");
+    expect(within(dialog).queryByText(/Answer by/)).toBeNull();
     expect(within(dialog).queryByRole("button", { name: "Approve" })).toBeNull();
   });
 
@@ -285,6 +301,15 @@ describe("Requests → Time off (new)", () => {
     const dialog = screen.getByRole("dialog", { name: "Review time off" });
     expect(within(dialog).getByText("Approved by Rachel Adams, Oct 21")).toBeTruthy();
     expect(within(dialog).getByText("Covered by Jo.")).toBeTruthy();
+    expect(within(dialog).getByText("Time off request")).toBeTruthy();
+    expect(within(dialog).queryByText(/Answer by/)).toBeNull();
+    expect(facts(dialog)).toEqual([
+      ["Name", "Sam Lee"],
+      ["Type", "Personal"],
+      ["When", "StartTue, Oct 27, 1:00 PMEndTue, Oct 27, 6:00 PM"],
+      ["Length", "5 hours"],
+      ["Asked", "Oct 20"],
+    ]);
     expect(within(dialog).getByText("1 shift went to open shifts.")).toBeTruthy();
     expect(within(dialog).queryByRole("button", { name: "Approve" })).toBeNull();
   });
@@ -333,7 +358,8 @@ describe("Requests → Time off (new)", () => {
     expect(within(first).getByText("Needs decision")).toBeTruthy();
     fireEvent.click(first);
     const drawer = await screen.findByRole("dialog", { name: "Review time off" });
-    expect(within(drawer).getByText("Cancel time off")).toBeTruthy();
+    expect(within(drawer).getByText("Time off cancellation")).toBeTruthy();
+    expect(within(drawer).queryByText("Time off request")).toBeNull();
     expect(within(drawer).getByText("My appointment moved.")).toBeTruthy();
     expect(within(drawer).getByText("Approving removes the rest of this time off.")).toBeTruthy();
     expect(api.apiRequest.mock.calls.some(([, path]) => String(path).endsWith("/impact"))).toBe(false);

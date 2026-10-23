@@ -713,6 +713,33 @@ describe("Time off tab", () => {
     expect(screen.getByRole("button", { name: "Add time off" })).toBeTruthy();
   });
 
+  // Mert 2026-10-23: on a phone Add sits beside the location list at the right edge, the search under
+  // them (the Employees row); on a computer it stays at the row's end.
+  it("puts Add beside the location list on a phone", async () => {
+    const before = window.matchMedia;
+    window.matchMedia = ((media: string) => ({
+      matches: media === "(max-width: 720px)",
+      media,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      renderPage("/app/schedule/requests?type=time_off");
+      await screen.findByRole("row", { name: /Alex Kim asks for/ });
+      const locations = screen.getByRole("combobox", { name: "Filter by location" });
+      expect(locations.nextElementSibling).toBe(screen.getByRole("button", { name: "Add time off" }));
+    } finally {
+      window.matchMedia = before;
+    }
+  });
+
+  it("keeps Add at the filter row's end on a computer", async () => {
+    renderPage("/app/schedule/requests?type=time_off");
+    await screen.findByRole("row", { name: /Alex Kim asks for/ });
+    const locations = screen.getByRole("combobox", { name: "Filter by location" });
+    expect(locations.parentElement!.lastElementChild).toBe(screen.getByRole("button", { name: "Add time off" }));
+  });
+
   it("offers no Add time off on the All tab", async () => {
     renderPage();
     expect(await screen.findByRole("row", { name: /Alex Kim/ })).toBeTruthy();
