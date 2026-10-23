@@ -42,7 +42,8 @@ test("a release, its request and the decision each reach the people they change"
     {"label": "${label}", "person": "emre", "loc": "K", "job": "cook", "day": 3, "start": "10:00", "end": "14:00"}
   ]');`);
   const mate = `notice${Math.random().toString(36).slice(2, 7).replace(/[0-9]/g, "x")}`;
-  const mateName = `${mate[0]!.toUpperCase()}${mate.slice(1)} Person`;
+  // A notice names a person short and the shift by its day only (S-248).
+  const mateShort = `${mate[0]!.toUpperCase()}${mate.slice(1)} P.`;
   const mateEmail = personWithPassword(mate, "employee", ["K"], "cook");
 
   // Emre releases it (Shift Hub's Release shift, tested in shift-hub-release.spec.ts).
@@ -53,9 +54,9 @@ test("a release, its request and the decision each reach the people they change"
   const teammate = await open(browser, { email: mateEmail });
   const panel = await openPanel(teammate);
   await panel.getByRole("tab", { name: /^Needs action/ }).click();
-  const offer = panel.getByRole("listitem").filter({ hasText: "Extra shift available" }).filter({ hasText: "Emre Person can't make" });
+  const offer = panel.getByRole("listitem").filter({ hasText: "Extra shift on" }).filter({ hasText: "Emre P. can't make it" });
   await expect(offer).toHaveCount(1);
-  await offer.getByRole("button", { name: /Extra shift available/ }).first().click();
+  await offer.getByRole("button", { name: /Extra shift on/ }).first().click();
   await expect(teammate).toHaveURL(new RegExp(`/app/employee-hub/shift-hub\\?case=${caseId}`));
   await teammate.getByRole("button", { name: "I’ll take it" }).click();
   await expect
@@ -67,8 +68,8 @@ test("a release, its request and the decision each reach the people they change"
   const ayse = await open(browser, "ayse");
   const asks = await openPanel(ayse);
   await asks.getByRole("tab", { name: /^Needs action/ }).click();
-  await expect(asks.getByRole("listitem").filter({ hasText: "Shift change needs your approval" })
-    .filter({ hasText: `${mateName} wants Emre Person's` })).toHaveCount(1);
+  await expect(asks.getByRole("listitem").filter({ hasText: `${mateShort} wants Emre P.'s shift` })
+    .filter({ hasText: "Decide by" })).toHaveCount(1);
 
   // She approves (Requests' review, tested in requests-swap-review.spec.ts); her card closes.
   sql(`select public.shift_exchanges_command_service(tests.user('${run}:ayse'), tests.id('${run}'), jsonb_build_object(
@@ -78,7 +79,7 @@ test("a release, its request and the decision each reach the people they change"
     'fingerprint', public.shift_exchange_preview(tests.user('${run}:ayse'), tests.id('${run}'), '${caseId}'::uuid,
       (select id from public.shift_exchange_applications where case_id = '${caseId}' and status = 'pending_manager')) ->> 'fingerprint'),
     gen_random_uuid());`);
-  await expect(asks.getByRole("listitem").filter({ hasText: `${mateName} wants Emre Person's` })).toHaveCount(0, { timeout: 30_000 });
+  await expect(asks.getByRole("listitem").filter({ hasText: `${mateShort} wants Emre P.'s shift` })).toHaveCount(0, { timeout: 30_000 });
 
   // The teammate and Emre read the decision, live.
   await teammate.keyboard.press("Escape");
@@ -86,5 +87,5 @@ test("a release, its request and the decision each reach the people they change"
   await expect(mine.getByRole("button", { name: /^(Unread: )?Your pickup is approved$/ })).toBeVisible({ timeout: 30_000 });
   const emre = await open(browser, "emre");
   const his = await openPanel(emre);
-  await expect(his.getByRole("button", { name: /^(Unread: )?You are no longer responsible for this shift$/ }).first()).toBeVisible();
+  await expect(his.getByRole("button", { name: /^(Unread: )?Your .+ shift is covered$/ }).first()).toBeVisible();
 });

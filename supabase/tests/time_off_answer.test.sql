@@ -135,7 +135,7 @@ select is(
    where n.type_key = 'time_off.requested' and n.subject_id = (select value from fixture where key = 'ali')
      and n.user_id = tests.user('tq:mk')),
   row('/app/schedule/requests?type=time_off&request=' || (select value from fixture where key = 'ali'),
-    'Time off request from Ali Person', 'vacation')::text,
+    'Ali P. asks for time off', 'vacation')::text,
   'the card opens the request in Requests → Time off'
 );
 

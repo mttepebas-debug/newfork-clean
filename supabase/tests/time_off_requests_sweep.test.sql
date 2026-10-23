@@ -151,8 +151,8 @@ select is(
   (select row(n.title, n.body, n.url, (n.data ->> 'request_id')::uuid, n.actor_user_id is null)::text from public.person_notifications n
    where n.type_key = 'time_off.decision_reminder' and n.subject_type = 'time_off'
      and n.subject_id = (select value from fixture where key = 'ali')),
-  row('Time off request from Ali Person still waits',
-    app_private.time_off_days_label(pg_temp.req('ali')) || ' · It starts in less than a day. Answer it before it starts.',
+  row('Ali P.''s time off still waits',
+    app_private.time_off_days_label(pg_temp.req('ali')) || ' · Decide before it starts',
     '/app/schedule/requests?type=time_off&request=' || (select value from fixture where key = 'ali'),
     (select value from fixture where key = 'ali'), true)::text,
   'the reminder names the request and opens it in Requests → Time off');

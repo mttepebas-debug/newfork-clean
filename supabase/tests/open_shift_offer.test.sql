@@ -111,7 +111,7 @@ select throws_ok(format($$ insert into public.shift_exchange_cases(workspace_id,
 select lives_ok($$ select pg_temp.command('jake', jsonb_build_object('action', 'apply', 'shift_id', (pg_temp.shift(1, 3) ->> 'id')::uuid,
   'case_id', (pg_temp.open_case(1, 3)).id)) $$, 'Jake asks for the open Thursday');
 select tests.settle();
-select ok((select n.body like '% wants the open shift %' from public.person_notifications n where n.workspace_id = tests.id('os')
+select ok((select n.title like '% wants the open shift' from public.person_notifications n where n.workspace_id = tests.id('os')
   and n.type_key = 'shift_changes.approval_needed' and n.user_id = tests.user('os:rachel')),
   'Rachel is asked to approve: Jake wants the open shift');
 insert into os select 'case:1', to_jsonb(c) from pg_temp.open_case(1, 3) c;

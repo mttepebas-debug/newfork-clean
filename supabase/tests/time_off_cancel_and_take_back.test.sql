@@ -152,7 +152,7 @@ select is(pg_temp.told('time_off.requested', (pg_temp.cancel_of('ali')).id), arr
 select is(
   (select row(n.title, n.body, n.url, n.data ->> 'kind')::text from public.person_notifications n
    where n.type_key = 'time_off.requested' and n.subject_id = (pg_temp.cancel_of('ali')).id and n.user_id = tests.user('tc:mk')),
-  row('Ali Person asks to cancel time off', app_private.time_off_days_label(pg_temp.req('ali')) || ' · Plans changed',
+  row('Ali P. asks to cancel time off', app_private.time_off_days_label(pg_temp.req('ali')),
     '/app/schedule/requests?type=time_off&request=' || (pg_temp.cancel_of('ali')).id, 'cancel')::text,
   'the card opens the cancellation in Requests → Time off');
 select is(

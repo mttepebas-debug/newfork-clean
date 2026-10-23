@@ -9,8 +9,8 @@
 --     notification_resolve, which closes every open card the requirement has;
 --   * access back: "Your access is back" (documents.access_changed) is written by document_access_told in
 --     the transaction that lifts the block, before the event's document_tell. Its closing of the person's
---     "documents to complete" no longer takes that card along at birth (created_at = now(), the
---     transaction's start): it is news, not a request;
+--     "documents to complete" closes that card at birth (created_at = now(), the transaction's start) as
+--     restored, by nobody: it is news, not a request, so it leaves Needs action and stays unread;
 --   * due again sooner: due cards come at 7, 1 and 0 days; a newer one for a document closes the person's
 --     earlier open ones for that document as superseded (by nobody: the daily check), read as they were.
 -- Only app_private.document_tell and app_private.document_check_case change; their signatures, language,
@@ -132,17 +132,21 @@ begin
       and app_private.document_obligation_state(x, now()) in ('grace', 'missing', 'rejected', 'expired')
   ) then
     -- S-247: "Your access is back", written in this transaction by document_access_told on the row's change
-    -- before this event, is news, not a request: it is not closed at birth. Who did it has their own read.
+    -- before this event, is news, not a request: it closes as restored, by nobody, so it leaves Needs action
+    -- and stays unread for the person to see. Everything else closes as completed; who did it has their own read.
     with closed as (
       update public.person_notifications n
-      set resolved_at = now(), resolution = 'completed', resolved_by = actor,
-        read_at = case when n.user_id = actor then coalesce(n.read_at, now()) else n.read_at end,
-        seen_at = case when n.user_id = actor then coalesce(n.seen_at, now()) else n.seen_at end
+      set resolved_at = now(),
+        resolution = case when n.type_key = 'documents.access_changed' and n.created_at >= now() then 'restored' else 'completed' end,
+        resolved_by = case when n.type_key = 'documents.access_changed' and n.created_at >= now() then null else actor end,
+        read_at = case when n.user_id = actor and not (n.type_key = 'documents.access_changed' and n.created_at >= now())
+          then coalesce(n.read_at, now()) else n.read_at end,
+        seen_at = case when n.user_id = actor and not (n.type_key = 'documents.access_changed' and n.created_at >= now())
+          then coalesce(n.seen_at, now()) else n.seen_at end
       from public.notification_types t
       where t.key = n.type_key and t.needs_action
         and n.workspace_id = r.workspace_id and n.subject_type = 'employee_documents' and n.subject_id = r.employee_id
         and n.resolved_at is null
-        and not (n.type_key = 'documents.access_changed' and n.created_at >= now())
       returning n.user_id
     )
     select coalesce(array_agg(distinct c.user_id), '{}'::uuid[]) into closed_for from closed c;

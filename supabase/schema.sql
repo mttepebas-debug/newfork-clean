@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 583, last: 20261023104307_time_off_switch_over.sql
--- fingerprint: sha256:c16276eb2ac338a17d07f044315a0df33f36e303f062ca1f77a1d4c085e5d716
+-- migrations: 589, last: 20261023125000_notice_schedule.sql
+-- fingerprint: sha256:f79f918ac19940a3e17e88f9610c019eb3955419b28c4fdf5d1d1f11ee64bd5d
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4361,6 +4361,8 @@ declare
   expiry date;
   approved_on date;
   sent integer := 0;
+  due_key text;
+  fresh integer;
 begin
   select * into c from public.employee_onboarding_cases oc where oc.id = target_case;
   select * into person from public.employee_profiles e where e.id = c.employee_id and e.workspace_id = c.workspace_id;
@@ -4391,12 +4393,23 @@ begin
       days_left := (q.deadline_at at time zone tz)::date - local_now::date;
       milestone := case when days_left between 2 and 7 then 7 when days_left = 1 then 1 when days_left = 0 then 0 end;
       if milestone is not null then
-        sent := sent + app_private.notify('documents.due_soon', w, array[u],
-          'doc_due:' || q.id::text || ':' || q.lifecycle_revision::text || ':' || milestone::text,
+        due_key := 'doc_due:' || q.id::text || ':' || q.lifecycle_revision::text || ':' || milestone::text;
+        fresh := app_private.notify('documents.due_soon', w, array[u],
+          due_key,
           'Due ' || case milestone when 0 then 'today' when 1 then 'tomorrow'
                      else to_char((q.deadline_at at time zone tz)::date, 'FMDy, FMMon FMDD') end || ': ' || q.title,
           null, '/account/documents?workspace=' || w::text || '&requirement=' || q.id::text, null, 'document_requirement', q.id,
           jsonb_build_object('requirement_id', q.id, 'days_left', days_left));
+        sent := sent + fresh;
+        -- S-247: the newer card takes over; the person's earlier open ones for this document close as superseded,
+        -- read as they were. No signal of its own: notify has just signalled this person in this transaction.
+        if fresh > 0 then
+          update public.person_notifications n
+          set resolved_at = now(), resolution = 'superseded', resolved_by = null
+          where n.workspace_id = w and n.user_id = u and n.type_key = 'documents.due_soon'
+            and n.subject_type = 'document_requirement' and n.subject_id = q.id
+            and n.resolved_at is null and n.event_key <> due_key;
+        end if;
       end if;
     end if;
     -- Expiring: an approved document at 30, 7 and 1 days, not one approved inside the window.
@@ -4841,6 +4854,10 @@ declare
   decided text;
   now_row public.employee_onboarding_requirements%rowtype;
   sent integer := 0;
+  closing_type text;
+  closing_as text;
+  closed_for uuid[];
+  listener uuid;
 begin
   select * into person from public.employee_profiles e where e.id = r.employee_id and e.workspace_id = r.workspace_id;
   -- The row as it is now: an event may be handed the row from before its own change (an owner no longer
@@ -4899,7 +4916,38 @@ begin
       case when decided = 'declined' then 'Open your documents to see what to change.' end,
       '/account/documents?workspace=' || r.workspace_id::text, actor, 'document_requirement', r.id,
       jsonb_build_object('requirement_id', r.id, 'outcome', decided));
-    perform app_private.notification_resolve(r.workspace_id, 'document_requirement', r.id, decided, actor);
+    -- A decline is closed below, the reviewers' cards only (S-247).
+    if decided = 'approved' then
+      perform app_private.notification_resolve(r.workspace_id, 'document_requirement', r.id, decided, actor);
+    end if;
+  end if;
+
+  -- S-247: handed in, the person's due card closes saying how; declined, only the reviewers' cards close (the
+  -- person uploads again). One type each, never notification_resolve, which closes every card of the
+  -- requirement. Who did it has their own card read.
+  closing_type := case
+    when (event_action = 'document.submitted' and event_metadata ->> 'state' in ('accepted', 'pending_review'))
+         or event_action = 'document.policy_acknowledged' then 'documents.due_soon'
+    when event_action = 'document.reject' then 'documents.review_needed' end;
+  if closing_type is not null then
+    closing_as := case
+      when event_action = 'document.reject' then 'declined'
+      when event_action = 'document.policy_acknowledged' then 'acknowledged'
+      when event_metadata ->> 'state' = 'accepted' then 'completed'
+      else 'submitted' end;
+    with closed as (
+      update public.person_notifications n
+      set resolved_at = now(), resolution = closing_as, resolved_by = actor,
+        read_at = case when n.user_id = actor then coalesce(n.read_at, now()) else n.read_at end,
+        seen_at = case when n.user_id = actor then coalesce(n.seen_at, now()) else n.seen_at end
+      where n.workspace_id = r.workspace_id and n.subject_type = 'document_requirement' and n.subject_id = r.id
+        and n.type_key = closing_type and n.resolved_at is null
+      returning n.user_id
+    )
+    select coalesce(array_agg(distinct c.user_id), '{}'::uuid[]) into closed_for from closed c;
+    foreach listener in array closed_for loop
+      perform realtime.send(jsonb_build_object('workspace_id', r.workspace_id), 'changed', 'notifications:' || listener::text, true);
+    end loop;
   end if;
 
   -- Nothing asked of the person any more: their "documents to complete" closes.
@@ -4909,7 +4957,28 @@ begin
       and x.lifecycle_retired_at is null and not x.owner_excused
       and app_private.document_obligation_state(x, now()) in ('grace', 'missing', 'rejected', 'expired')
   ) then
-    perform app_private.notification_resolve(r.workspace_id, 'employee_documents', r.employee_id, 'completed', actor);
+    -- S-247: "Your access is back", written in this transaction by document_access_told on the row's change
+    -- before this event, is news, not a request: it closes as restored, by nobody, so it leaves Needs action
+    -- and stays unread for the person to see. Everything else closes as completed; who did it has their own read.
+    with closed as (
+      update public.person_notifications n
+      set resolved_at = now(),
+        resolution = case when n.type_key = 'documents.access_changed' and n.created_at >= now() then 'restored' else 'completed' end,
+        resolved_by = case when n.type_key = 'documents.access_changed' and n.created_at >= now() then null else actor end,
+        read_at = case when n.user_id = actor and not (n.type_key = 'documents.access_changed' and n.created_at >= now())
+          then coalesce(n.read_at, now()) else n.read_at end,
+        seen_at = case when n.user_id = actor and not (n.type_key = 'documents.access_changed' and n.created_at >= now())
+          then coalesce(n.seen_at, now()) else n.seen_at end
+      from public.notification_types t
+      where t.key = n.type_key and t.needs_action
+        and n.workspace_id = r.workspace_id and n.subject_type = 'employee_documents' and n.subject_id = r.employee_id
+        and n.resolved_at is null
+      returning n.user_id
+    )
+    select coalesce(array_agg(distinct c.user_id), '{}'::uuid[]) into closed_for from closed c;
+    foreach listener in array closed_for loop
+      perform realtime.send(jsonb_build_object('workspace_id', r.workspace_id), 'changed', 'notifications:' || listener::text, true);
+    end loop;
   end if;
   return sent;
 end;
@@ -6944,7 +7013,10 @@ declare
 begin
   with closed as (
     update public.person_notifications n
-    set resolved_at = now(), resolution = target_resolution, resolved_by = target_resolved_by
+    set resolved_at = now(), resolution = target_resolution, resolved_by = target_resolved_by,
+      -- S-247: the one who did it has read their own card; everybody else's stays as it was.
+      read_at = case when n.user_id = target_resolved_by then coalesce(n.read_at, now()) else n.read_at end,
+      seen_at = case when n.user_id = target_resolved_by then coalesce(n.seen_at, now()) else n.seen_at end
     from public.notification_types t
     where t.key = n.type_key and t.needs_action
       and n.workspace_id = target_workspace and n.subject_type = target_subject_type and n.subject_id = target_subject_id
@@ -9101,7 +9173,8 @@ CREATE OR REPLACE FUNCTION "app_private"."shift_exchange_name"("w" "uuid", "emp"
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
     AS $$
-  select btrim(coalesce(nullif(e.preferred_name, ''), e.first_name) || ' ' || e.last_name)
+  select btrim(coalesce(nullif(btrim(e.preferred_name), ''), e.first_name)
+    || coalesce(' ' || nullif(left(btrim(e.last_name), 1), '') || '.', ''))
   from public.employee_profiles e where e.workspace_id = shift_exchange_name.w and e.id = shift_exchange_name.emp
 $$;
 
@@ -9177,7 +9250,11 @@ declare
   waiting uuid[];
   owner_name text;
   who_name text;
-  said text;
+  heading text;
+  deadline text;
+  reminder_key text;
+  superseded uuid[];
+  decider uuid;
   zone text;
   fmt text;
   turn integer;
@@ -9188,6 +9265,7 @@ begin
       and exists (select 1 from public.shift_exchange_applications p where p.case_id = x.id and p.status = 'pending_manager')
     order by x.expires_at, x.id limit pass_limit loop
     begin
+    reminder_key := null;
     -- The lock a decision holds (shift_exchanges_command_service): a case being decided waits for the next pass.
     if not pg_try_advisory_xact_lock(hashtextextended(c.workspace_id::text, 921)) then
       continue;
@@ -9206,38 +9284,58 @@ begin
     waiting := app_private.shift_exchange_deciders(c.workspace_id, c.id, a.employee_id, true);
     owner_name := app_private.shift_exchange_name(c.workspace_id, c.owner_id);
     who_name := app_private.shift_exchange_name(c.workspace_id, a.employee_id);
-    said := case when c.kind = 'swap'
-      then owner_name || ' and ' || who_name || ' want to swap ' || app_private.shift_exchange_shift_text(c.workspace_id, c.offered_snapshot)
-        || ' for ' || app_private.shift_exchange_shift_text(c.workspace_id, c.requested_snapshot)
+    -- Who wants what (S-248); the request it opens shows the shifts.
+    heading := case when c.kind = 'swap' then owner_name || ' wants to swap with ' || who_name
       -- An open shift a publish offered has nobody's name on it (Mert, 2026-10-20).
-      when c.owner_id is null then who_name || ' wants the open shift ' || app_private.shift_exchange_shift_text(c.workspace_id, c.offered_snapshot)
-      else who_name || ' wants ' || owner_name || '''s ' || app_private.shift_exchange_shift_text(c.workspace_id, c.offered_snapshot) end;
+      when c.owner_id is null then who_name || ' wants the open shift'
+      else who_name || ' wants ' || owner_name || '''s shift' end;
+    zone := coalesce(c.offered_snapshot ->> 'timezone', 'UTC');
+    fmt := (select x.time_format from public.workspace_scheduling_settings x where x.workspace_id = c.workspace_id);
+    deadline := to_char(c.expires_at at time zone zone, case when fmt = '24h' then 'FMDy HH24:MI' else 'FMDy FMHH12:MI AM' end);
     if now() >= c.expires_at - interval '4 hours' then
       if first_ask >= c.expires_at - interval '4 hours'
         or exists (select 1 from public.person_notifications n where n.workspace_id = c.workspace_id
                    and n.subject_id = c.id and n.event_key = 'case:' || c.id::text || ':last_call') then
         continue;
       end if;
-      -- A new reminder replaces the one before it.
-      perform app_private.shift_exchange_resolve(c.workspace_id, c.id, array['shift_changes.approval_reminder'], 'reminded_again', null, waiting);
-      zone := coalesce(c.offered_snapshot ->> 'timezone', 'UTC');
-      fmt := (select x.time_format from public.workspace_scheduling_settings x where x.workspace_id = c.workspace_id);
-      done := done + app_private.notify('shift_changes.approval_reminder', c.workspace_id, waiting, 'case:' || c.id::text || ':last_call',
-        'Decide by ' || to_char(c.expires_at at time zone zone, case when fmt = '24h' then 'FMDy HH24:MI' else 'FMDy FMHH12:MI AM' end)
-          || ' or it closes',
-        said, '/app/schedule/requests?type=shift_changes', null, 'shift_exchange_case', c.id,
+      reminder_key := 'case:' || c.id::text || ':last_call';
+      done := done + app_private.notify('shift_changes.approval_reminder', c.workspace_id, waiting, reminder_key,
+        heading, 'Decide by ' || deadline || ' or it closes',
+        '/app/schedule/requests?type=shift_changes', null, 'shift_exchange_case', c.id,
         jsonb_build_object('case_id', c.id, 'kind', c.kind, 'audience', c.audience, 'last_call', true));
     elsif not exists (select 1 from public.person_notifications n where n.workspace_id = c.workspace_id
                       and n.subject_id = c.id and n.event_key = 'case:' || c.id::text || ':last_call') then
       turn := floor(extract(epoch from now() - first_ask) / 43200)::integer;
       if turn >= 1 and not exists (select 1 from public.person_notifications n where n.workspace_id = c.workspace_id
                                    and n.subject_id = c.id and n.event_key = 'case:' || c.id::text || ':reminder:' || turn::text) then
-        perform app_private.shift_exchange_resolve(c.workspace_id, c.id, array['shift_changes.approval_reminder'], 'reminded_again', null, waiting);
-        done := done + app_private.notify('shift_changes.approval_reminder', c.workspace_id, waiting,
-          'case:' || c.id::text || ':reminder:' || turn::text, 'Shift change still waits for your approval',
-          said, '/app/schedule/requests?type=shift_changes', null, 'shift_exchange_case', c.id,
+        reminder_key := 'case:' || c.id::text || ':reminder:' || turn::text;
+        done := done + app_private.notify('shift_changes.approval_reminder', c.workspace_id, waiting, reminder_key,
+          heading, 'Still waiting. Decide by ' || deadline,
+          '/app/schedule/requests?type=shift_changes', null, 'shift_exchange_case', c.id,
           jsonb_build_object('case_id', c.id, 'kind', c.kind, 'audience', c.audience));
       end if;
+    end if;
+    if reminder_key is not null then
+      -- The reminder replaces the decider's open card, first ask or reminder: one open card each (S-247). Only who
+      -- holds the new reminder: nobody is left without a card waiting. Closed by nobody, so nobody's card is read.
+      with closed as (
+        update public.person_notifications n
+        set resolved_at = now(), resolution = 'superseded', resolved_by = null
+        where n.workspace_id = c.workspace_id and n.subject_type = 'shift_exchange_case' and n.subject_id = c.id
+          and n.resolved_at is null
+          and n.type_key in ('shift_changes.approval_needed', 'shift_changes.approval_reminder')
+          and not (n.type_key = 'shift_changes.approval_reminder' and n.event_key = reminder_key)
+          and n.user_id = any (waiting)
+          and exists (select 1 from public.person_notifications k
+                      where k.workspace_id = c.workspace_id and k.user_id = n.user_id
+                        and k.type_key = 'shift_changes.approval_reminder' and k.event_key = reminder_key
+                        and k.resolved_at is null)
+        returning n.user_id
+      )
+      select coalesce(array_agg(distinct x.user_id), '{}'::uuid[]) into superseded from closed x;
+      foreach decider in array superseded loop
+        perform realtime.send(jsonb_build_object('workspace_id', c.workspace_id), 'changed', 'notifications:' || decider::text, true);
+      end loop;
     end if;
     exception when others then
       -- One broken case does not stop the others' reminders (as time_off_sweep).
@@ -9262,7 +9360,10 @@ declare
 begin
   with closed as (
     update public.person_notifications n
-    set resolved_at = now(), resolution = how, resolved_by = by_user
+    set resolved_at = now(), resolution = how, resolved_by = by_user,
+      -- S-247: the one who did it has read their own card; everybody else's stays as it was.
+      read_at = case when n.user_id = by_user then coalesce(n.read_at, now()) else n.read_at end,
+      seen_at = case when n.user_id = by_user then coalesce(n.seen_at, now()) else n.seen_at end
     from public.notification_types t
     where t.key = n.type_key and t.needs_action
       and n.workspace_id = w and n.subject_type = 'shift_exchange_case' and n.subject_id = cid
@@ -9312,12 +9413,11 @@ declare
   owner_user uuid;
   owner_name text;
   whose text;
-  whose_day text;
   who_user uuid;
   who_name text;
-  day text;
   day_only text;
-  theirs text;
+  theirs_day text;
+  deadline text;
   pool boolean;
   what text;
   askers uuid[];
@@ -9336,12 +9436,15 @@ begin
   end if;
   owner_user := app_private.shift_exchange_user(w, c.owner_id);
   owner_name := app_private.shift_exchange_name(w, c.owner_id);
-  day := app_private.shift_exchange_shift_text(w, c.offered_snapshot);
   -- An open shift a publish offered has nobody's name on it (Mert, 2026-10-20).
   whose := case when c.owner_id is null then 'the open shift' else owner_name || '''s shift' end;
-  whose_day := case when c.owner_id is null then 'the open shift ' || day else owner_name || '''s ' || day end;
+  -- A notice names the shift by its day only (S-248): its hours, job and place are on the request it opens.
   day_only := to_char((c.offered_snapshot ->> 'date')::date, 'FMDy, FMMon FMDD');
-  theirs := case when c.kind = 'swap' then app_private.shift_exchange_shift_text(w, c.requested_snapshot) end;
+  theirs_day := case when c.kind = 'swap' then to_char((c.requested_snapshot ->> 'date')::date, 'FMDy, FMMon FMDD') end;
+  -- When the request closes, on the shift's clock and the workspace's 12/24 h.
+  deadline := to_char(c.expires_at at time zone coalesce(c.offered_snapshot ->> 'timezone', 'UTC'),
+    case when (select x.time_format from public.workspace_scheduling_settings x where x.workspace_id = w) = '24h'
+      then 'FMDy HH24:MI' else 'FMDy FMHH12:MI AM' end);
   pool := c.audience = 'eligible_pool';
   -- Shift Hub opens on the case and its days (it reads 42 days from today otherwise).
   hub := '/app/employee-hub/shift-hub?case=' || cid::text
@@ -9358,22 +9461,26 @@ begin
     end if;
     -- A release, to everyone it reaches (plan 04:51).
     return app_private.notify('shift_changes.open_shift_available', w, app_private.shift_exchange_pool(w, cid), key || ':open',
-      'Extra shift available', owner_name || ' can''t make ' || day || '. Want it?', hub || '&hub_view=available', actor, 'shift_exchange_case', cid, facts);
+      'Extra shift on ' || day_only, owner_name || ' can''t make it. Want it?', hub || '&hub_view=available', actor, 'shift_exchange_case', cid, facts);
 
   elsif act = 'peer_invited' then
     if c.kind = 'swap' then
       return app_private.notify('shift_changes.swap_offered', w, array[who_user], key || ':invite:' || aid::text,
-        'Confirm your swap with ' || owner_name, 'You give ' || theirs || ' · You get ' || day, hub, actor, 'shift_exchange_case', cid, facts);
+        owner_name || ' wants to swap with you', 'Your ' || theirs_day || ' for ' || day_only, hub, actor, 'shift_exchange_case', cid, facts);
     end if;
     return app_private.notify('shift_changes.cover_asked', w, array[who_user], key || ':invite:' || aid::text,
-      owner_name || ' asked you to cover', day, hub, actor, 'shift_exchange_case', cid, facts);
+      owner_name || ' asked you to cover', day_only, hub, actor, 'shift_exchange_case', cid, facts);
 
   elsif act in ('application_submitted', 'peer_accepted') then
+    if act = 'application_submitted' then
+      -- Who asks for an extra shift has their own card closed: they applied (S-247).
+      perform app_private.shift_exchange_resolve(w, cid, array['shift_changes.open_shift_available'], 'applied', who_user, array[who_user]);
+    end if;
     if act = 'peer_accepted' then
       perform app_private.shift_exchange_resolve(w, cid, invitations, 'accepted', actor, array[who_user]);
       if c.kind = 'swap' then
         sent := sent + app_private.notify('shift_changes.swap_answered', w, array[owner_user], key || ':answer:' || aid::text,
-          who_name || ' confirmed your swap', 'You give ' || day || ' · You get ' || theirs || '. Your manager decides.',
+          who_name || ' confirmed your swap', 'Your manager decides next.',
           hub, actor, 'shift_exchange_case', cid, facts);
       end if;
     end if;
@@ -9383,9 +9490,9 @@ begin
         and n.subject_type = 'shift_exchange_case' and n.subject_id = cid and n.user_id = u
         and n.type_key = any (approvals) and n.resolved_at is null));
     return sent + app_private.notify('shift_changes.approval_needed', w, deciders, key || ':approval:' || aid::text,
-      'Shift change needs your approval',
-      case when c.kind = 'swap' then owner_name || ' and ' || who_name || ' want to swap ' || day || ' for ' || theirs
-        else who_name || ' wants ' || whose_day end,
+      case when c.kind = 'swap' then owner_name || ' wants to swap with ' || who_name
+        else who_name || ' wants ' || whose end,
+      'Decide by ' || deadline,
       desk, actor, 'shift_exchange_case', cid, facts);
 
   elsif act in ('peer_declined', 'application_withdrawn', 'application_closed') then
@@ -9393,18 +9500,19 @@ begin
     perform app_private.shift_exchange_resolve(w, cid, invitations,
       case act when 'peer_declined' then 'declined' when 'application_withdrawn' then 'withdrawn' else 'closed' end, actor, array[who_user]);
     if not pool then
+      -- The other open cards close first; the owner's notice below tells, it asks nothing (S-247).
+      perform app_private.shift_exchange_resolve(w, cid, null, 'withdrawn', actor);
       if c.kind = 'swap' then
         sent := app_private.notify('shift_changes.swap_answered', w, array[owner_user], key || ':answer:' || aid::text,
           who_name || case act when 'peer_declined' then ' declined your swap' when 'application_withdrawn' then ' withdrew from your swap'
             else ' can no longer swap with you' end,
-          'Nothing changed. You still work ' || day || '.', hub, actor, 'shift_exchange_case', cid, facts);
+          'Nothing changed.', hub, actor, 'shift_exchange_case', cid, facts);
       else
         sent := app_private.notify('shift_changes.cover_unfilled', w, array[owner_user], key || ':unfilled:' || aid::text,
           'No one could cover your ' || day_only || ' shift',
           who_name || case when act = 'peer_declined' then ' can''t cover it.' else ' can no longer cover it.' end
-            || ' You are still responsible for this shift.', hub, actor, 'shift_exchange_case', cid, facts);
+            || ' You still work it.', hub, actor, 'shift_exchange_case', cid, facts);
       end if;
-      perform app_private.shift_exchange_resolve(w, cid, null, 'withdrawn', actor);
     elsif not exists (select 1 from public.shift_exchange_applications x where x.case_id = cid and x.status = 'pending_manager') then
       perform app_private.shift_exchange_resolve(w, cid, approvals, 'withdrawn', actor);
     end if;
@@ -9423,13 +9531,13 @@ begin
       case when pool then 'Your pickup request was declined'
         when c.kind = 'swap' then 'Your swap with ' || owner_name || ' was declined'
         else 'Your cover for ' || owner_name || ' was declined' end,
-      coalesce(nullif(btrim(coalesce(a.reason, '')), ''), day || '. Your schedule has not changed.'),
+      coalesce(nullif(btrim(coalesce(a.reason, '')), ''), 'Your schedule has not changed.'),
       hub, actor, 'shift_exchange_case', cid, facts || jsonb_build_object('outcome', 'declined'));
     if not pool then
       sent := sent + app_private.notify('shift_changes.decided', w, array[owner_user], key || ':decided:' || aid::text,
         'Your manager declined the ' || what,
-        case when c.kind = 'swap' then 'Nothing changed. You still work ' || day || '.'
-          else who_name || ' won''t cover ' || day || '. You are still responsible for this shift.' end,
+        case when c.kind = 'swap' then 'Nothing changed.'
+          else who_name || ' won''t cover it. You still work it.' end,
         hub, actor, 'shift_exchange_case', cid, facts || jsonb_build_object('outcome', 'declined'));
       perform app_private.shift_exchange_resolve(w, cid, null, 'declined', actor);
     elsif not exists (select 1 from public.shift_exchange_applications x where x.case_id = cid and x.status = 'pending_manager') then
@@ -9440,27 +9548,30 @@ begin
   elsif act = 'other_selected' then
     if pool then
       return app_private.notify('shift_changes.open_shift_taken', w, array[who_user], key || ':taken:' || aid::text,
-        'Another teammate got it', day || '. Your schedule has not changed.', hub, actor, 'shift_exchange_case', cid, facts);
+        'Another teammate got it', 'Your schedule has not changed.', hub, actor, 'shift_exchange_case', cid, facts);
     end if;
     return app_private.notify('shift_changes.cover_taken', w, array[who_user], key || ':taken:' || aid::text,
-      'Someone else is covering', day || '. Your schedule has not changed.', hub, actor, 'shift_exchange_case', cid, facts);
+      'Someone else is covering', 'Your schedule has not changed.', hub, actor, 'shift_exchange_case', cid, facts);
 
   elsif act = 'transfer_completed' then
     if c.kind = 'swap' then
       sent := app_private.notify('shift_changes.decided', w, array[who_user], key || ':decided:' || aid::text,
-        'Your swap is approved', 'You now work ' || day || '.', hub, actor, 'shift_exchange_case', cid,
+        'Your swap is approved', 'You now work ' || day_only || '.', hub, actor, 'shift_exchange_case', cid,
         facts || jsonb_build_object('outcome', 'approved'))
         + app_private.notify('shift_changes.decided', w, array[owner_user], key || ':decided:' || aid::text,
-        'Your swap is approved', 'You now work ' || theirs || '.', hub, actor, 'shift_exchange_case', cid,
+        'Your swap is approved', 'You now work ' || theirs_day || '.', hub, actor, 'shift_exchange_case', cid,
         facts || jsonb_build_object('outcome', 'approved'));
     else
       sent := app_private.notify('shift_changes.decided', w, array[who_user], key || ':decided:' || aid::text,
-        case when pool then 'Your pickup is approved' else 'Your cover is approved' end, day || '. It''s yours now.',
+        case when pool then 'Your pickup is approved' else 'Your cover is approved' end, day_only || ' is yours now.',
         hub, actor, 'shift_exchange_case', cid, facts || jsonb_build_object('outcome', 'approved'))
         + app_private.notify('shift_changes.decided', w, array[owner_user], key || ':decided:' || aid::text,
-        'You are no longer responsible for this shift', who_name || ' works ' || day || ' now.',
+        'Your ' || day_only || ' shift is covered', who_name || ' works it now.',
         hub, actor, 'shift_exchange_case', cid, facts || jsonb_build_object('outcome', 'approved'));
     end if;
+    -- The shift went to someone: an extra shift card still open says it was taken, by who got it, never
+    -- approved (S-247).
+    perform app_private.shift_exchange_resolve(w, cid, array['shift_changes.open_shift_available'], 'taken', who_user);
     perform app_private.shift_exchange_resolve(w, cid, null, 'approved', actor);
     return sent;
 
@@ -9471,17 +9582,17 @@ begin
       -- Taken back (plan §3 Release: "Maria kept this shift").
       sent := app_private.notify(case when pool then 'shift_changes.open_shift_kept' else 'shift_changes.closed' end, w, askers,
         key || ':closed', case when pool then owner_name || ' kept this shift' else owner_name || ' cancelled the request' end,
-        day || '. Your schedule has not changed.', hub, actor, 'shift_exchange_case', cid, facts);
+        'Your schedule has not changed.', hub, actor, 'shift_exchange_case', cid, facts);
     else
       -- A manager's reason is for who asked, as a decline's is.
       sent := app_private.notify_rows(w, actor, (
         select coalesce(jsonb_agg(jsonb_build_object('type', 'shift_changes.closed', 'user_id', app_private.shift_exchange_user(w, x.employee_id),
           'event_key', key || ':closed', 'title', 'A manager closed the request for ' || whose,
-          'body', coalesce(nullif(btrim(coalesce(x.reason, '')), ''), day || '. Your schedule has not changed.'),
+          'body', coalesce(nullif(btrim(coalesce(x.reason, '')), ''), 'Your schedule has not changed.'),
           'url', hub, 'subject_type', 'shift_exchange_case', 'subject_id', cid, 'data', facts)), '[]'::jsonb)
         from public.shift_exchange_applications x where x.case_id = cid and x.status = 'closed_case_cancelled'))
         + app_private.notify('shift_changes.closed', w, array[owner_user], key || ':closed', 'A manager closed your request',
-        day || '. You are still responsible for this shift.', hub, actor, 'shift_exchange_case', cid, facts);
+        'You still work your ' || day_only || ' shift.', hub, actor, 'shift_exchange_case', cid, facts);
     end if;
     perform app_private.shift_exchange_resolve(w, cid, null, 'cancelled', actor);
     return sent;
@@ -10702,9 +10813,13 @@ declare
   asked uuid[];
   opened integer;
   sent integer := 0;
+  reminder_key text := 'time_off:' || r.id::text || ':reminder';
+  superseded uuid[];
+  decider uuid;
 begin
   select * into person from public.employee_profiles e where e.id = r.employee_id and e.workspace_id = r.workspace_id;
-  name := btrim(coalesce(nullif(btrim(person.preferred_name), ''), person.first_name) || ' ' || person.last_name);
+  name := btrim(coalesce(nullif(btrim(person.preferred_name), ''), person.first_name)
+    || coalesce(' ' || nullif(left(btrim(person.last_name), 1), '') || '.', ''));
   if what = 'requested' or (r.kind = 'leave' and what in ('approved', 'revoked', 'entered', 'reminder')) then
     asked := app_private.notify_deciders(r.workspace_id, 'time_off.decide', array(
       select a.location_id
@@ -10719,7 +10834,7 @@ begin
     if what = 'requested' then
       sent := app_private.notify('time_off.requested', r.workspace_id, asked,
         'time_off:' || r.id::text || ':requested', name || ' asks to cancel time off',
-        days || coalesce(' · ' || left(r.note, 900), ''), card_url, actor, 'time_off', r.id,
+        days, card_url, actor, 'time_off', r.id,
         jsonb_build_object('request_id', r.id, 'kind', 'cancel', 'cancels_id', r.cancels_id, 'kind_of_leave', r.kind_of_leave));
       return sent;
     end if;
@@ -10737,17 +10852,39 @@ begin
 
   if what = 'requested' then
     return app_private.notify('time_off.requested', r.workspace_id, asked,
-      'time_off:' || r.id::text || ':requested', 'Time off request from ' || name,
-      days || coalesce(' · ' || left(r.note, 900), ''), card_url, actor, 'time_off', r.id,
+      'time_off:' || r.id::text || ':requested', name || ' asks for time off',
+      days || ' · Decide before it starts', card_url, actor, 'time_off', r.id,
       jsonb_build_object('request_id', r.id, 'kind_of_leave', r.kind_of_leave));
   end if;
 
-  -- A day before it starts, still waiting (D6): whoever would be asked now; nothing closes.
+  -- A day before it starts, still waiting (D6): whoever would be asked now. Each of them keeps one open card for
+  -- the request (S-247): the reminder; their earlier open ones close as superseded, by nobody. A decider not
+  -- reminded keeps theirs open until the request closes.
   if what = 'reminder' then
-    return app_private.notify('time_off.decision_reminder', r.workspace_id, asked,
-      'time_off:' || r.id::text || ':reminder', 'Time off request from ' || name || ' still waits',
-      days || ' · It starts in less than a day. Answer it before it starts.', card_url, null, 'time_off', r.id,
+    sent := app_private.notify('time_off.decision_reminder', r.workspace_id, asked,
+      reminder_key, name || '''s time off still waits',
+      days || ' · Decide before it starts', card_url, null, 'time_off', r.id,
       jsonb_build_object('request_id', r.id, 'kind_of_leave', r.kind_of_leave));
+    with closed as (
+      update public.person_notifications n
+      set resolved_at = now(), resolution = 'superseded', resolved_by = null
+      where n.workspace_id = r.workspace_id and n.subject_type = 'time_off' and n.subject_id = r.id
+        and n.resolved_at is null
+        and n.type_key in ('time_off.requested', 'time_off.decision_reminder')
+        and not (n.type_key = 'time_off.decision_reminder' and n.event_key = reminder_key)
+        and n.user_id = any (asked)
+        -- Only who holds the reminder now: nobody is left without a card waiting.
+        and exists (select 1 from public.person_notifications k
+                    where k.workspace_id = r.workspace_id and k.user_id = n.user_id
+                      and k.type_key = 'time_off.decision_reminder' and k.event_key = reminder_key
+                      and k.resolved_at is null)
+      returning n.user_id
+    )
+    select coalesce(array_agg(distinct c.user_id), '{}'::uuid[]) into superseded from closed c;
+    foreach decider in array superseded loop
+      perform realtime.send(jsonb_build_object('workspace_id', r.workspace_id), 'changed', 'notifications:' || decider::text, true);
+    end loop;
+    return sent;
   end if;
 
   -- Entered for the person (D5): approved at once; nobody was asked, so no card closes.
@@ -11295,6 +11432,14 @@ begin
       join public.schedule_location_publications p on p.id = s.publication_id and p.status = 'current'
       where s.employee_id is null) then
       closed := closed + app_private.notification_resolve(target_workspace, 'unassigned_shifts', card.subject_id, 'closed', null);
+    -- S-247: every shift still without anyone is on a day that has passed at its location: nobody can fill it now.
+    elsif not exists (
+      select 1 from jsonb_array_elements_text(card.shift_ids) x
+      join public.schedule_published_shifts s on s.id = x::uuid
+      join public.schedule_location_publications p on p.id = s.publication_id and p.status = 'current'
+      join public.locations l on l.id = s.location_id and l.workspace_id = s.workspace_id
+      where s.employee_id is null and s.scheduled_date >= (now() at time zone l.timezone)::date) then
+      closed := closed + app_private.notification_resolve(target_workspace, 'unassigned_shifts', card.subject_id, 'expired', null);
     end if;
   end loop;
   return closed;
@@ -15211,6 +15356,16 @@ begin
    where id = target_schedule_id
      and workspace_id = target_workspace_id;
 
+  -- S-247: gone, so its "email stopped" card is done for everyone who got it; whoever deleted it has read their own.
+  -- (person_notifications has an actor_user_id column: the argument is named.)
+  if app_private.notification_resolve(target_workspace_id, 'scheduled_schedule_export', target_schedule_id, 'removed',
+       delete_schedule_export_schedule_service.actor_user_id) > 0 then
+    update public.person_notifications n set read_at = coalesce(n.read_at, now()), seen_at = coalesce(n.seen_at, now())
+    where n.workspace_id = target_workspace_id and n.subject_type = 'scheduled_schedule_export'
+      and n.subject_id = target_schedule_id and n.user_id = delete_schedule_export_schedule_service.actor_user_id
+      and n.resolved_by = delete_schedule_export_schedule_service.actor_user_id and n.resolved_at = now();
+  end if;
+
   return jsonb_build_object('status', 'deleted', 'schedule_id', target_schedule_id);
 end;
 $$;
@@ -17922,6 +18077,8 @@ begin
     from public.person_notifications n
     join public.notification_types t on t.key = n.type_key
     where n.user_id = viewer and (n.workspace_id = target_workspace_id or n.workspace_id is null)
+      -- S-247: a card a newer reminder replaced is in no list and no count.
+      and (n.resolution is null or n.resolution not in ('superseded', 'reminded_again'))
   ),
   page as (
     select m.* from mine m
@@ -17939,7 +18096,11 @@ begin
         'level', p.level, 'needs_action', p.needs_action, 'title', p.title, 'body', p.body, 'url', p.url,
         'data', p.data, 'actor_user_id', p.actor_user_id, 'subject_type', p.subject_type, 'subject_id', p.subject_id,
         'created_at', p.created_at, 'seen_at', p.seen_at, 'read_at', p.read_at,
-        'resolved_at', p.resolved_at, 'resolution', p.resolution, 'resolved_by', p.resolved_by
+        'resolved_at', p.resolved_at, 'resolution', p.resolution, 'resolved_by', p.resolved_by,
+        -- S-247: who closed it, as this workspace names its people; null without a profile here.
+        'resolved_by_name', (select app_private.shift_exchange_name(target_workspace_id, e.id)
+                             from public.employee_profiles e
+                             where e.workspace_id = target_workspace_id and e.user_id = p.resolved_by)
       ) order by p.created_at desc, p.id desc)
       from (select * from page order by page.created_at desc, page.id desc limit target_limit) p
     ), '[]'::jsonb),
@@ -19657,6 +19818,16 @@ begin
     jsonb_build_object('employee_id', target_case.employee_id, 'case_id', target_case.id)
   );
 
+  -- S-247: the cards this onboarding opened close as Withdrawn for everyone who got one (the reviewers'
+  -- "ready for review", the person's own "needs a change"), the person who left as who closed them. Guarded
+  -- like every people notice: a failure is logged and the leaving stands.
+  begin
+    perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'withdrawn', target_user_id);
+    perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_changes', target_case.id, 'withdrawn', target_user_id);
+  exception when others then
+    raise warning 'leave_employee_onboarding: cards for % not closed: % (%)', target_case.id, sqlerrm, sqlstate;
+  end;
+
   return jsonb_build_object(
     'status', 'left',
     'workspace_id', target_case.workspace_id,
@@ -20572,6 +20743,25 @@ begin
   if actor_user_id is null then
     raise exception 'valid actor required' using errcode = '42501';
   end if;
+
+  -- S-247: an ownership transfer nobody answered in time closes its "asked" card as Expired the next time
+  -- either side lists their workspaces (the card links here; answering it late rolls back, and the transfer
+  -- itself stays pending so its sender can cancel it). Nobody closed it: no resolved_by, nobody's read state
+  -- moves. Guarded: a failure is logged and the list still comes back.
+  begin
+    perform app_private.notification_resolve(transfer.workspace_id, 'ownership_transfer', transfer.id, 'expired', null)
+    from public.workspace_ownership_transfers transfer
+    where transfer.status = 'pending'
+      and transfer.expires_at <= now()
+      and (transfer.initiated_by = actor_user_id or transfer.target_user_id = actor_user_id)
+      and exists (
+        select 1 from public.person_notifications card
+        where card.workspace_id = transfer.workspace_id and card.subject_type = 'ownership_transfer'
+          and card.subject_id = transfer.id and card.resolved_at is null
+      );
+  exception when others then
+    raise warning 'list_my_workspaces: expired transfer cards not closed: % (%)', sqlerrm, sqlstate;
+  end;
 
   perform set_config('request.jwt.claim.sub', actor_user_id::text, true);
   return query select * from public.list_my_workspaces();
@@ -21809,9 +21999,15 @@ begin
   where n.user_id = viewer and (n.workspace_id = target_workspace_id or n.workspace_id is null)
     and n.read_at is null and (target_ids is null or n.id = any(target_ids));
   get diagnostics updated = row_count;
+  -- S-247: the person's other tabs and phones refresh; the signal says nothing about the notices.
+  if updated > 0 then
+    perform realtime.send(jsonb_build_object('workspace_id', target_workspace_id), 'changed', 'notifications:' || viewer::text, true);
+  end if;
   return jsonb_build_object('updated', updated, 'unread_count', (
     select count(*) from public.person_notifications n
-    where n.user_id = viewer and (n.workspace_id = target_workspace_id or n.workspace_id is null) and n.read_at is null));
+    where n.user_id = viewer and (n.workspace_id = target_workspace_id or n.workspace_id is null) and n.read_at is null
+      -- As the list counts: a card a newer reminder replaced is not counted.
+      and (n.resolution is null or n.resolution not in ('superseded', 'reminded_again'))));
 end;
 $$;
 
@@ -21826,11 +22022,17 @@ CREATE OR REPLACE FUNCTION "public"."mark_notifications_seen_service"("actor_use
 declare
   -- person_notifications has an actor_user_id column of its own.
   viewer uuid := actor_user_id;
+  updated integer;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
   update public.person_notifications n set seen_at = now()
   where n.user_id = viewer and (n.workspace_id = target_workspace_id or n.workspace_id is null)
     and n.seen_at is null;
+  get diagnostics updated = row_count;
+  -- S-247: the person's other tabs and phones refresh; the signal says nothing about the notices.
+  if updated > 0 then
+    perform realtime.send(jsonb_build_object('workspace_id', target_workspace_id), 'changed', 'notifications:' || viewer::text, true);
+  end if;
   return jsonb_build_object('unseen_count', 0);
 end;
 $$;
@@ -32448,6 +32650,18 @@ begin
    where id = target_schedule_id
      and workspace_id = target_workspace_id
    returning * into updated;
+
+  -- S-247: on again: the "email stopped" card is done for everyone who got it; whoever fixed it has read their
+  -- own. New addresses alone leave it open: the card asks to check them and turn the email back on, and it is
+  -- still off. (person_notifications has an actor_user_id column: the argument is named.)
+  if updated.enabled
+     and app_private.notification_resolve(target_workspace_id, 'scheduled_schedule_export', updated.id, 'fixed',
+       update_schedule_export_schedule_service.actor_user_id) > 0 then
+    update public.person_notifications n set read_at = coalesce(n.read_at, now()), seen_at = coalesce(n.seen_at, now())
+    where n.workspace_id = target_workspace_id and n.subject_type = 'scheduled_schedule_export'
+      and n.subject_id = updated.id and n.user_id = update_schedule_export_schedule_service.actor_user_id
+      and n.resolved_by = update_schedule_export_schedule_service.actor_user_id and n.resolved_at = now();
+  end if;
 
   select p.name into preset_name
     from public.schedule_export_presets p

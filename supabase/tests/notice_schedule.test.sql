@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(16);
 
 -- Notification panel, slice 2 (KARARLAR S-247 (3)): a Schedule card closes for every person who got it when its
 -- work is over; the row stays, it says how it ended and who ended it; each person's read state is their own,
@@ -162,11 +162,17 @@ select public.update_schedule_export_schedule_service(tests.user('ns:owner'), te
   '{"recipients": ["chef@example.test"]}'::jsonb);
 select tests.settle();
 select is(pg_temp.card_rows('schedule.export_email_stopped', pg_temp.rule_id('to')),
-  array['ns:ali fixed by ns:owner now · unread · unseen', 'ns:ayse fixed by ns:owner now · read before · seen before',
-        'ns:owner fixed by ns:owner now · read now · seen now'],
-  '(b) the owner sends Deniz''s to another address: fixed for all three, by the owner; only the owner''s own is read now');
+  array['ns:ali open · unread · unseen', 'ns:ayse open · read before · seen before', 'ns:owner open · unread · unseen'],
+  '(b) the owner sends Deniz''s to another address while it is still off: still open for all three');
 select is((select s.enabled from public.scheduled_schedule_exports s where s.id = pg_temp.rule_id('to')), false,
   '(b) and the email itself stays off until somebody turns it on');
+select public.update_schedule_export_schedule_service(tests.user('ns:owner'), tests.id('ns'), pg_temp.rule_id('to'),
+  '{"enabled": true}'::jsonb);
+select tests.settle();
+select is(pg_temp.card_rows('schedule.export_email_stopped', pg_temp.rule_id('to')),
+  array['ns:ali fixed by ns:owner now · unread · unseen', 'ns:ayse fixed by ns:owner now · read before · seen before',
+        'ns:owner fixed by ns:owner now · read now · seen now'],
+  '(b) the owner turns it back on: fixed for all three, by the owner; only the owner''s own is read now');
 
 select public.delete_schedule_export_schedule_service(tests.user('ns:ali'), tests.id('ns'), pg_temp.rule_id('del'));
 select tests.settle();

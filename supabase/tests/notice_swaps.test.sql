@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(37);
+select plan(40);
 
 -- Every person's shift change card is their own (KARARLAR S-247 (3), Mert 2026-10-23; notification panel
 -- slice 2). A card that asks for something stays in the list when the request moves on: it stops waiting
@@ -10,7 +10,9 @@ select plan(37);
 --   (b) "Extra shift available": a teammate who asks for the shift has their own card closed as 'applied'
 --       by them; when the shift goes to someone, the cards of teammates who never asked close as 'taken',
 --       never 'approved'. The decider's card closes as 'approved'.
---   (c) "No one could cover your shift" stays open for the owner: it is the owner's next step.
+--   (c) "No one could cover your shift" tells the owner and asks nothing in the app: it is not a needs-action
+--       type, so nothing closes it at birth and it waits unread.
+--   (d) Short texts (S-248): who wants what, and by when; names are short ("Ali P.").
 
 select tests.world('sw');
 select tests.person('sw', 'ayse', 'manager', array['K'], array['cook']);
@@ -120,6 +122,19 @@ select is(pg_temp.marked(tests.id('sw:case:maria-mon')), array['sw:emre open_shi
 select pg_temp.apply('sw:ali', tests.id('sw:case:maria-mon'));
 select is(pg_temp.card('open_shift_available', tests.id('sw:case:maria-mon'), 'sw:ali'), 'applied by sw:ali',
   '(b) Ali asks for it: his own card stops waiting and says he applied');
+select is((select n.title || ' | ' || n.body from public.person_notifications n
+  where n.subject_id = tests.id('sw:case:maria-mon') and n.user_id = tests.user('sw:ayse')
+    and n.type_key = 'shift_changes.approval_needed'),
+  'Ali P. wants Maria P.''s shift | Decide by ' || to_char((select c.expires_at from public.shift_exchange_cases c
+    where c.id = tests.id('sw:case:maria-mon')) at time zone coalesce((select c.offered_snapshot ->> 'timezone'
+    from public.shift_exchange_cases c where c.id = tests.id('sw:case:maria-mon')), 'UTC'), 'FMDy FMHH12:MI AM'),
+  '(d) Ayse''s card says who wants what and by when, nothing more');
+select is((select n.title || ' | ' || n.body from public.person_notifications n
+  where n.subject_id = tests.id('sw:case:maria-mon') and n.user_id = tests.user('sw:can')
+    and n.type_key = 'shift_changes.open_shift_available'),
+  'Extra shift on ' || to_char((select (c.offered_snapshot ->> 'date')::date from public.shift_exchange_cases c
+    where c.id = tests.id('sw:case:maria-mon')), 'FMDy, FMMon FMDD') || ' | Maria P. can''t make it. Want it?',
+  '(d) Can''s card names the day only');
 select is(pg_temp.card('open_shift_available', tests.id('sw:case:maria-mon'), 'sw:emre'), 'open',
   '(b) Emre''s card still waits');
 select is(pg_temp.card('open_shift_available', tests.id('sw:case:maria-mon'), 'sw:can'), 'open',
@@ -137,8 +152,8 @@ select is(pg_temp.open_cards(tests.id('sw:case:maria-mon'), 'sw:ayse'),
   '(b) Ayse still has one open card for the request');
 
 select pg_temp.approve(tests.id('sw:case:maria-mon'), 'sw:ali');
-select is(pg_temp.card('open_shift_available', tests.id('sw:case:maria-mon'), 'sw:can'), 'taken by sw:ayse',
-  '(b) Ali gets the shift: Can''s card says it was taken');
+select is(pg_temp.card('open_shift_available', tests.id('sw:case:maria-mon'), 'sw:can'), 'taken by sw:ali',
+  '(b) Ali gets the shift: Can''s card says it was taken, by Ali');
 select is(pg_temp.card('open_shift_available', tests.id('sw:case:maria-mon'), 'sw:ali'), 'applied by sw:ali',
   '(b) Ali''s own card keeps what he did');
 select is(pg_temp.card('open_shift_available', tests.id('sw:case:maria-mon'), 'sw:emre'), 'applied by sw:emre',
@@ -211,7 +226,9 @@ select is(pg_temp.marked(tests.id('sw:case:maria-tue')), '{}'::text[],
 select pg_temp.ask('maria-wed', 'sw:ali');
 select pg_temp.answer('sw:ali', tests.id('sw:case:maria-wed'), 'decline');
 select is(pg_temp.card('cover_unfilled', tests.id('sw:case:maria-wed'), 'sw:maria'), 'open',
-  '(c) Ali can''t cover Wednesday: Maria''s "No one could cover your shift" card stays open');
+  '(c) Ali can''t cover Wednesday: Maria''s "No one could cover your shift" card is not closed at birth');
+select is((select t.needs_action from public.notification_types t where t.key = 'shift_changes.cover_unfilled'), false,
+  '(c) it asks nothing in the app: it is not in Needs action, so nothing has to close it');
 select is(pg_temp.card('cover_asked', tests.id('sw:case:maria-wed'), 'sw:ali'), 'declined by sw:ali',
   '(c) Ali''s own card says he declined');
 select is(pg_temp.marked(tests.id('sw:case:maria-wed')), '{}'::text[], '(c) Maria''s card is unread');

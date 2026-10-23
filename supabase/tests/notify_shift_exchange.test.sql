@@ -142,7 +142,7 @@ select is(pg_temp.told('open_shift_available', tests.id('sx:case:maria-mon')),
 select ok(not 'sx:maria' = any (pg_temp.told('open_shift_available', tests.id('sx:case:maria-mon'))),
   '(a) Maria, who released it, hears nothing');
 select matches(pg_temp.said('open_shift_available', tests.id('sx:case:maria-mon'), 'sx:jake'),
-  '^Extra shift available \| Maria Person can''t make Mon, .* · 4:00 PM–10:00 PM · Cook, Kadikoy\. Want it\?$',
+  '^Extra shift on Mon, [A-Z][a-z]{2} [0-9]+ \| Maria P\. can''t make it\. Want it\?$',
   '(a) it says whose shift it is, when and where');
 select is(pg_temp.told('approval_needed', tests.id('sx:case:maria-mon')), '{}'::text[],
   '(a) nobody asked yet: no manager is asked');
@@ -156,7 +156,7 @@ select tests.settle();
 select is(pg_temp.told('approval_needed', tests.id('sx:case:maria-mon')), array['sx:ayse'],
   '(b) Kadikoy''s manager is asked to decide, once for three teammates; the admin is not');
 select matches(pg_temp.said('approval_needed', tests.id('sx:case:maria-mon'), 'sx:ayse'),
-  '^Shift change needs your approval \| Jake Person wants Maria Person''s Mon, ',
+  '^Jake P\. wants Maria P\.''s shift \| Decide by [A-Z][a-z]{2} [0-9:]+ [AP]M$',
   '(b) the card names who asks for whose shift');
 select is(pg_temp.all_listed('(a, b)'), '(a, b): all listed', '(a, b) every notice is in its recipient''s choices');
 
@@ -176,7 +176,7 @@ select is(pg_temp.told('decided', tests.id('sx:case:maria-mon')), array['sx:jake
 select matches(pg_temp.said('decided', tests.id('sx:case:maria-mon'), 'sx:leo'), '^Your pickup is approved \| Mon, ',
   '(c) Leo''s pickup is approved');
 select matches(pg_temp.said('decided', tests.id('sx:case:maria-mon'), 'sx:maria'),
-  '^You are no longer responsible for this shift \| Leo Person works Mon, ', '(c) Maria is let go of it');
+  '^Your Mon, [A-Z][a-z]{2} [0-9]+ shift is covered \| Leo P\. works it now\.$', '(c) Maria is let go of it');
 select is(pg_temp.told('open_shift_taken', tests.id('sx:case:maria-mon')), array['sx:emre'],
   '(d) Emre, still waiting, hears another teammate got it');
 select is(pg_temp.card('approval_needed', tests.id('sx:case:maria-mon'), 'sx:ayse'), 'approved',
@@ -191,7 +191,7 @@ select pg_temp.apply('sx:jake', tests.id('sx:case:maria-tue'));
 select pg_temp.close('sx:maria', tests.id('sx:case:maria-tue'));
 select is(pg_temp.told('open_shift_kept', tests.id('sx:case:maria-tue')), array['sx:jake'],
   '(d) Maria takes it back: Jake, who asked, hears she kept it');
-select matches(pg_temp.said('open_shift_kept', tests.id('sx:case:maria-tue'), 'sx:jake'), '^Maria Person kept this shift \| Tue, ',
+select matches(pg_temp.said('open_shift_kept', tests.id('sx:case:maria-tue'), 'sx:jake'), '^Maria P\. kept this shift \| Your schedule has not changed\.$',
   '(d) in those words');
 select is(pg_temp.card('approval_needed', tests.id('sx:case:maria-tue'), 'sx:ayse'), 'cancelled',
   '(d) Ayse''s card closes as cancelled');
@@ -200,12 +200,12 @@ select is(pg_temp.card('approval_needed', tests.id('sx:case:maria-tue'), 'sx:ays
 
 select pg_temp.ask('sx:maria', 'maria-wed', 'sx:jake');
 select is(pg_temp.told('cover_asked', tests.id('sx:case:maria-wed')), array['sx:jake'], '(d) Jake is asked by name');
-select matches(pg_temp.said('cover_asked', tests.id('sx:case:maria-wed'), 'sx:jake'), '^Maria Person asked you to cover \| Wed, ',
+select matches(pg_temp.said('cover_asked', tests.id('sx:case:maria-wed'), 'sx:jake'), '^Maria P\. asked you to cover \| Wed, [A-Z][a-z]{2} [0-9]+$',
   '(d) in those words');
 select pg_temp.answer('sx:jake', tests.id('sx:case:maria-wed'), 'decline');
 select is(pg_temp.told('cover_unfilled', tests.id('sx:case:maria-wed')), array['sx:maria'], '(d) Jake declines: Maria hears it');
 select matches(pg_temp.said('cover_unfilled', tests.id('sx:case:maria-wed'), 'sx:maria'),
-  '^No one could cover your Wed, .* shift \| Jake Person can''t cover it\. You are still responsible for this shift\.$',
+  '^No one could cover your Wed, .* shift \| Jake P\. can''t cover it\. You still work it\.$',
   '(d) and that she still works it');
 select is(pg_temp.card('cover_asked', tests.id('sx:case:maria-wed'), 'sx:jake'), 'declined', '(d) Jake''s card closes');
 select is(pg_temp.told('approval_needed', tests.id('sx:case:maria-wed')), '{}'::text[], '(d) no manager was asked');
@@ -222,7 +222,7 @@ select matches(pg_temp.said('decided', tests.id('sx:case:emre-thu'), 'sx:ali'), 
 select doesnt_match(pg_temp.said('decided', tests.id('sx:case:emre-thu'), 'sx:emre'), 'overtime',
   '(c) Emre''s notice does not carry the reason');
 select matches(pg_temp.said('decided', tests.id('sx:case:emre-thu'), 'sx:emre'),
-  '^Your manager declined the cover \| Ali Person won''t cover Thu, .*\. You are still responsible for this shift\.$',
+  '^Your manager declined the cover \| Ali P\. won''t cover it\. You still work it\.$',
   '(c) Emre reads that it was declined and that he still works it');
 select is(pg_temp.card('approval_needed', tests.id('sx:case:emre-thu'), 'sx:ayse'), 'declined', '(c) Ayse''s card closes');
 
@@ -232,10 +232,10 @@ select tests.remember('sx:case:swap', (pg_temp.command('sx:maria', jsonb_build_o
   'shift_id', tests.id('sx:shift:maria-sun'), 'requested_shift_id', tests.id('sx:shift:jake-fri'))) ->> 'case_id')::uuid);
 select is(pg_temp.told('swap_offered', tests.id('sx:case:swap')), array['sx:jake'], '(d) Jake is offered a swap');
 select matches(pg_temp.said('swap_offered', tests.id('sx:case:swap'), 'sx:jake'),
-  '^Confirm your swap with Maria Person \| You give Fri, .* · You get Sun, ', '(d) what he gives and gets');
+  '^Maria P\. wants to swap with you \| Your Fri, [A-Z][a-z]{2} [0-9]+ for Sun, [A-Z][a-z]{2} [0-9]+$', '(d) what he gives and gets');
 select pg_temp.answer('sx:jake', tests.id('sx:case:swap'), 'accept');
 select is(pg_temp.told('swap_answered', tests.id('sx:case:swap')), array['sx:maria'], '(d) Jake confirms: Maria hears it');
-select matches(pg_temp.said('swap_answered', tests.id('sx:case:swap'), 'sx:maria'), '^Jake Person confirmed your swap \| ',
+select matches(pg_temp.said('swap_answered', tests.id('sx:case:swap'), 'sx:maria'), '^Jake P\. confirmed your swap \| Your manager decides next\.$',
   '(d) in those words');
 select is(pg_temp.card('swap_offered', tests.id('sx:case:swap'), 'sx:jake'), 'accepted', '(d) Jake''s card closes as accepted');
 select is(pg_temp.told('approval_needed', tests.id('sx:case:swap')), array['sx:ayse'], '(b) Ayse is asked to decide the swap');
@@ -280,7 +280,7 @@ select app_private.shift_exchange_remind();
 select is(pg_temp.reminders(), 1, '(e) after 12 hours one reminder');
 select is(pg_temp.told('approval_reminder', tests.id('sx:case:deniz-mon')), array['sx:zeynep'], '(e) to the admin who has not decided');
 select matches(pg_temp.said('approval_reminder', tests.id('sx:case:deniz-mon'), 'sx:zeynep'),
-  '^Shift change still waits for your approval \| Berk Person wants Deniz Person''s Mon, ', '(e) in those words');
+  '^Berk P\. wants Deniz P\.''s shift \| Still waiting\. Decide by [A-Z][a-z]{2} [0-9:]+ [AP]M$', '(e) in those words');
 select app_private.shift_exchange_remind();
 select is(pg_temp.reminders(), 1, '(e) and not twice');
 update public.shift_exchange_events set created_at = now() - interval '25 hours' where case_id = tests.id('sx:case:deniz-mon');
@@ -291,7 +291,7 @@ update public.shift_exchange_cases set expires_at = now() + interval '3 hours' w
 select app_private.shift_exchange_remind();
 select is(pg_temp.reminders(), 3, '(e) 4 hours before it closes, a last one');
 select is((select count(*)::integer from public.person_notifications n where n.subject_id = tests.id('sx:case:deniz-mon')
-  and n.type_key = 'shift_changes.approval_reminder' and n.title ~ '^Decide by [A-Z][a-z]{2} [0-9:]+ [AP]M or it closes$'), 1,
+  and n.type_key = 'shift_changes.approval_reminder' and n.body ~ '^Decide by [A-Z][a-z]{2} [0-9:]+ [AP]M or it closes$'), 1,
   '(e) the last call names the deadline');
 select app_private.shift_exchange_remind();
 select is(pg_temp.reminders(), 3, '(e) once');
@@ -313,7 +313,7 @@ select public.shift_exchange_emit(null, tests.id('sx'), tests.id('sx:case:maria-
 select is((select status from public.shift_exchange_cases where id = tests.id('sx:case:maria-thu')), 'open', '(g) the request stays open');
 select is(pg_temp.told('closed', tests.id('sx:case:maria-thu')), array['sx:jake'], '(g) only Jake hears his acceptance ended');
 select matches(pg_temp.said('closed', tests.id('sx:case:maria-thu'), 'sx:jake'),
-  '^Your request for Maria Person''s shift ended \| The shift changed and now overlaps another of your shifts\. Your schedule has not changed\.$',
+  '^Your request for Maria P\.''s shift ended \| The shift changed and now overlaps another of your shifts\. Your schedule has not changed\.$',
   '(g) and why');
 select is(pg_temp.card('approval_needed', tests.id('sx:case:maria-thu'), 'sx:ayse'), 'open', '(g) Ayse''s card stays open for Leo');
 
@@ -339,7 +339,7 @@ select public.shift_exchange_emit(tests.user('sx:owner'), tests.id('sx'), tests.
   pg_temp.app(tests.id('sx:case:maria-sat'), 'sx:emre'), 'application_closed', 'Their answer was closed. No assignment changed.');
 select is(pg_temp.told('cover_unfilled', tests.id('sx:case:maria-sat')), array['sx:maria'], '(g) Maria hears Emre can no longer cover');
 select matches(pg_temp.said('cover_unfilled', tests.id('sx:case:maria-sat'), 'sx:maria'),
-  '^No one could cover your Sat, .* shift \| Emre Person can no longer cover it\. You are still responsible for this shift\.$', '(g) in those words');
+  '^No one could cover your Sat, .* shift \| Emre P\. can no longer cover it\. You still work it\.$', '(g) in those words');
 select isnt(pg_temp.card('approval_needed', tests.id('sx:case:maria-sat'), 'sx:ayse'), 'open', '(g) Ayse''s card closes');
 
 -- An approval with a note for managers.

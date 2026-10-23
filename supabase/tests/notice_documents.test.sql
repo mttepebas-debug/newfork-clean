@@ -205,7 +205,7 @@ select is(pg_temp.cards('documents.due_soon', (select deniz_card from subject)),
         'deniz due in 0 open unread unseen'],
   '(d) due today: one open card, the earlier ones superseded and kept');
 
--- (c) Access back is news, not closed at birth ----------------------------------------------------------------
+-- (c) Access back is news: closed at birth by nobody, left unread ----------------------------------------------------------------
 
 -- Can has signed the hygiene policy and sent the allergen sheet; only his food handler card is left.
 select pg_temp.sign('can', (select hygiene from docs));
@@ -222,8 +222,8 @@ select public.set_employee_document_exemption_service(tests.user('nd:owner'), te
   (select r.lifecycle_revision from public.employee_onboarding_requirements r where r.id = (select can_card from subject)),
   true, 'Brought it in person');
 select is(pg_temp.cards('documents.access_changed', tests.id('nd:can')),
-  array['can restored open unread unseen', 'can restricted completed by owner unread unseen'],
-  '(c) the owner excuses the card: "restricted" closes, completed by the owner; "your access is back" stays to be read');
+  array['can restored restored by nobody unread unseen', 'can restricted completed by owner unread unseen'],
+  '(c) the owner excuses the card: "restricted" closes, completed by the owner; "your access is back" asks nothing (restored, by nobody) and stays to be read');
 select is(pg_temp.cards('documents.requested', tests.id('nd:can')), array['can completed by owner unread unseen'],
   '(c) nothing is asked of Can now: his "documents to complete" closes, by the owner');
 

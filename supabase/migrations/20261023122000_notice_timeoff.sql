@@ -11,7 +11,11 @@
 -- the request closes. A closed card is never deleted and closing it marks nothing seen or read. Each person whose
 -- card closed hears the same contentless signal notification_resolve sends.
 --
--- Only app_private.time_off_request_tell changes, in its reminder branch.
+-- And a notice is short (S-248, Mert 2026-10-23): who and what, then the days; the note, the hours and the
+-- shifts are on the request it opens. A person is named short, "Ali P." (preferred or first name and the last
+-- name's initial), as the shift change notices name people.
+--
+-- Only app_private.time_off_request_tell changes.
 
 create or replace function app_private.time_off_request_tell(r public.time_off_requests, what text, actor uuid)
 returns integer
@@ -32,7 +36,8 @@ declare
   decider uuid;
 begin
   select * into person from public.employee_profiles e where e.id = r.employee_id and e.workspace_id = r.workspace_id;
-  name := btrim(coalesce(nullif(btrim(person.preferred_name), ''), person.first_name) || ' ' || person.last_name);
+  name := btrim(coalesce(nullif(btrim(person.preferred_name), ''), person.first_name)
+    || coalesce(' ' || nullif(left(btrim(person.last_name), 1), '') || '.', ''));
   if what = 'requested' or (r.kind = 'leave' and what in ('approved', 'revoked', 'entered', 'reminder')) then
     asked := app_private.notify_deciders(r.workspace_id, 'time_off.decide', array(
       select a.location_id
@@ -47,7 +52,7 @@ begin
     if what = 'requested' then
       sent := app_private.notify('time_off.requested', r.workspace_id, asked,
         'time_off:' || r.id::text || ':requested', name || ' asks to cancel time off',
-        days || coalesce(' · ' || left(r.note, 900), ''), card_url, actor, 'time_off', r.id,
+        days, card_url, actor, 'time_off', r.id,
         jsonb_build_object('request_id', r.id, 'kind', 'cancel', 'cancels_id', r.cancels_id, 'kind_of_leave', r.kind_of_leave));
       return sent;
     end if;
@@ -65,8 +70,8 @@ begin
 
   if what = 'requested' then
     return app_private.notify('time_off.requested', r.workspace_id, asked,
-      'time_off:' || r.id::text || ':requested', 'Time off request from ' || name,
-      days || coalesce(' · ' || left(r.note, 900), ''), card_url, actor, 'time_off', r.id,
+      'time_off:' || r.id::text || ':requested', name || ' asks for time off',
+      days || ' · Decide before it starts', card_url, actor, 'time_off', r.id,
       jsonb_build_object('request_id', r.id, 'kind_of_leave', r.kind_of_leave));
   end if;
 
@@ -75,8 +80,8 @@ begin
   -- reminded keeps theirs open until the request closes.
   if what = 'reminder' then
     sent := app_private.notify('time_off.decision_reminder', r.workspace_id, asked,
-      reminder_key, 'Time off request from ' || name || ' still waits',
-      days || ' · It starts in less than a day. Answer it before it starts.', card_url, null, 'time_off', r.id,
+      reminder_key, name || '''s time off still waits',
+      days || ' · Decide before it starts', card_url, null, 'time_off', r.id,
       jsonb_build_object('request_id', r.id, 'kind_of_leave', r.kind_of_leave));
     with closed as (
       update public.person_notifications n

@@ -14,7 +14,22 @@
 --     they send the same contentless signal the notices send, so the person's other tabs and phones refresh.
 --     The unread count mark-read answers with leaves the replaced cards out, as the list does.
 --
+--   * app_private.shift_exchange_name: a notice names a person short (KARARLAR S-248, Mert 2026-10-23): the
+--     preferred or first name and the last name's initial, "Ali P.". The shift change notices and the closer's
+--     name in the list use it; nothing else does.
+--
 -- Signatures, security, volatility and grants are unchanged (create or replace keeps them).
+
+create or replace function app_private.shift_exchange_name(w uuid, emp uuid)
+returns text
+language sql
+stable
+set search_path = ''
+as $$
+  select btrim(coalesce(nullif(btrim(e.preferred_name), ''), e.first_name)
+    || coalesce(' ' || nullif(left(btrim(e.last_name), 1), '') || '.', ''))
+  from public.employee_profiles e where e.workspace_id = shift_exchange_name.w and e.id = shift_exchange_name.emp
+$$;
 
 create or replace function app_private.notification_resolve(target_workspace uuid, target_subject_type text,
   target_subject_id uuid, target_resolution text, target_resolved_by uuid)

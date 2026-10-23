@@ -7,7 +7,7 @@
 --     work can no longer be done. It runs where it ran before (a shift given or removed, a publication
 --     replaced); nothing runs it on a clock yet.
 --   * "Scheduled email stopped" (schedule.export_email_stopped, subject scheduled_schedule_export): it closes
---     'fixed' when the email is turned back on or its recipients change (update_schedule_export_schedule_service),
+--     'fixed' when the email is turned back on (update_schedule_export_schedule_service; new addresses alone leave it open),
 --     and 'removed' when it is deleted (delete_schedule_export_schedule_service), by whoever did it. Their own
 --     card is marked read (and seen); everybody else's read state is left as it was.
 --
@@ -152,9 +152,10 @@ begin
      and workspace_id = target_workspace_id
    returning * into updated;
 
-  -- S-247: on again, or sent to other addresses: the "email stopped" card is done for everyone who got it;
-  -- whoever fixed it has read their own. (person_notifications has an actor_user_id column: the argument is named.)
-  if (updated.enabled or updated.recipients is distinct from existing.recipients)
+  -- S-247: on again: the "email stopped" card is done for everyone who got it; whoever fixed it has read their
+  -- own. New addresses alone leave it open: the card asks to check them and turn the email back on, and it is
+  -- still off. (person_notifications has an actor_user_id column: the argument is named.)
+  if updated.enabled
      and app_private.notification_resolve(target_workspace_id, 'scheduled_schedule_export', updated.id, 'fixed',
        update_schedule_export_schedule_service.actor_user_id) > 0 then
     update public.person_notifications n set read_at = coalesce(n.read_at, now()), seen_at = coalesce(n.seen_at, now())

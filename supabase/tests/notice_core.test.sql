@@ -6,7 +6,7 @@ select plan(26);
 -- own. A request that closes updates every card it put in a list: the card stops waiting, says what happened and
 -- who did it, and stays. Read state is per person.
 --   1. a time off request (notification_resolve): Ayse answers it; her own card is read, Emre's is closed but
---      unread, and his list says Ayse Person closed it;
+--      unread, and his list says Ayse P. closed it;
 --   2. a shift change (shift_exchange_resolve): Emre approves; his card is read, Ayse's closed but unread, and
 --      no other card the approval closed is read;
 --   3. a card read before it closed keeps its time; closed by nobody, nobody's card is read and no name is
@@ -96,10 +96,10 @@ select is(pg_temp.card('time_off.requested', pg_temp.f('time off'), 'nk:ayse'), 
 select is(pg_temp.card('time_off.requested', pg_temp.f('time off'), 'nk:emre'), 'approved by nk:ayse:user unread seen before',
   '1. Emre''s card is closed as approved by Ayse, still unread, seen when he saw it');
 select is(pg_temp.item('nk:emre', 'time_off.requested', pg_temp.f('time off')),
-  '{"resolution": "approved", "resolved_by": "nk:ayse:user", "resolved_by_name": "Ayse Person", "read": false}'::jsonb,
-  '1. Emre''s list shows it approved by Ayse Person, unread');
+  '{"resolution": "approved", "resolved_by": "nk:ayse:user", "resolved_by_name": "Ayse P.", "read": false}'::jsonb,
+  '1. Emre''s list shows it approved by Ayse P., unread');
 select is(pg_temp.item('nk:ayse', 'time_off.requested', pg_temp.f('time off')),
-  '{"resolution": "approved", "resolved_by": "nk:ayse:user", "resolved_by_name": "Ayse Person", "read": true}'::jsonb,
+  '{"resolution": "approved", "resolved_by": "nk:ayse:user", "resolved_by_name": "Ayse P.", "read": true}'::jsonb,
   '1. Ayse''s list shows her own, read');
 
 -- 2. A shift change: Emre approves it -----------------------------------------------------------------------
@@ -128,12 +128,14 @@ select is(
   (select jsonb_build_object('closed', count(*) > 0, 'read_or_seen', count(*) filter (where n.read_at is not null or n.seen_at is not null))
    from public.person_notifications n
    where n.subject_type = 'shift_exchange_case' and n.subject_id = pg_temp.f('cover') and n.resolved_at is not null
-     and n.user_id <> tests.user('nk:emre')),
+     and n.user_id <> tests.user('nk:emre')
+     -- A card its own owner closed (Can's 'applied' pool card) is theirs to read; S-247 guards everyone else's.
+     and n.resolved_by is distinct from n.user_id),
   '{"closed": true, "read_or_seen": 0}'::jsonb,
   '2. no other card the approval closed is read or seen for its owner');
 select is(pg_temp.item('nk:ayse', 'shift_changes.approval_needed', pg_temp.f('cover')),
-  '{"resolution": "approved", "resolved_by": "nk:emre:user", "resolved_by_name": "Emre Person", "read": false}'::jsonb,
-  '2. Ayse''s list shows it approved by Emre Person, unread');
+  '{"resolution": "approved", "resolved_by": "nk:emre:user", "resolved_by_name": "Emre P.", "read": false}'::jsonb,
+  '2. Ayse''s list shows it approved by Emre P., unread');
 
 -- 3. Read before, closed by nobody, closed by an outsider --------------------------------------------------
 

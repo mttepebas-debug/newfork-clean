@@ -36,6 +36,8 @@ async function signedIn(browser: Browser, who: Person | { readonly email: string
 function personAtKadikoy() {
   const label = `inbox${Math.random().toString(36).slice(2, 7)}`;
   const name = `${label[0]!.toUpperCase()}${label.slice(1)} Person`;
+  // A notice names a person short (S-248): "Inboxab1cd P.".
+  const short = `${label[0]!.toUpperCase()}${label.slice(1)} P.`;
   const week = roundWeek(10);
   const email = sql(`
     select tests.person('${run}', '${label}', 'employee', array['K'], array['cook']);
@@ -43,7 +45,7 @@ function personAtKadikoy() {
     .split(/\r?\n/)
     .at(-1)!;
   const day = sql(`select tests.week(${week}) + 3;`);
-  return { label, name, email, day };
+  return { label, name, short, email, day };
 }
 
 /** The left menu's Notifications opens the panel beside it. */
@@ -80,7 +82,7 @@ test("a manager opens time off from the notification panel, approves it, and the
   await expect(menuItem).toBeVisible();
   const panel = await openPanel(ayse);
   await panel.getByRole("tab", { name: /^Needs action/ }).click();
-  const row = panel.getByRole("listitem").filter({ hasText: `Time off request from ${asker.name}` });
+  const row = panel.getByRole("listitem").filter({ hasText: `${asker.short} asks for time off` });
   await expect(row).toContainText(note);
   await row.getByRole("button", { name: "Review", exact: true }).click();
   await expect(ayse).toHaveURL(`/app/schedule/requests?type=time_off&request=${request}`);
@@ -92,7 +94,7 @@ test("a manager opens time off from the notification panel, approves it, and the
   // The card closes for every decider; Needs action no longer lists it.
   const again = await openPanel(ayse);
   await again.getByRole("tab", { name: /^Needs action/ }).click();
-  await expect(again.getByRole("listitem").filter({ hasText: `Time off request from ${asker.name}` })).toHaveCount(0);
+  await expect(again.getByRole("listitem").filter({ hasText: `${asker.short} asks for time off` })).toHaveCount(0);
 
   // The employee's own list has the decision, live.
   const mine = await openPanel(employee);

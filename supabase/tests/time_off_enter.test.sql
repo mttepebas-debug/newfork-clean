@@ -249,7 +249,7 @@ select is(
   (select row(n.title, n.body, n.url)::text from public.person_notifications n
    where n.type_key = 'time_off.decided' and n.user_id = tests.user('te:mk')
      and n.subject_id = (select value from fixture where key = 'ali')),
-  row('Ali Person''s time off ' || app_private.time_off_days_label(pg_temp.req('ali')) || ' was added',
+  row('Ali P.''s time off ' || app_private.time_off_days_label(pg_temp.req('ali')) || ' was added',
     '2 shifts went to open shifts.', '/app/schedule/requests?type=time_off&request=' || (select value from fixture where key = 'ali'))::text,
   'Mk''s notice says it was added and how many shifts opened');
 select is(
