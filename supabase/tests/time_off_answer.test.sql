@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(70);
+select plan(72);
 
 -- Time off rebuild D3 (KARARLAR S-239): a manager, an admin or the owner answers a time off request in the
 -- new table. One answer is enough: any manager of one of the person's live locations who may decide there,
@@ -339,6 +339,18 @@ select is(pg_temp.resolved('eve'), array['withdrawn'], 'withdrawing closes the c
 
 -- 11. The answerers' list (Requests → Time off).
 insert into fixture values ('eve2', pg_temp.ask('eve', tests.week(1) + 3, tests.week(1) + 3));
+-- D7: the page's own time format and location filter come with the list (the old read is gone): the workspace's
+-- clock, and the locations whose requests this person answers.
+select is(
+  (select row(x ->> 'time_format', (select array_agg(l ->> 'name' order by l ->> 'name') from jsonb_array_elements(x -> 'locations') l))::text
+   from public.time_off_requests_service(tests.user('tq:mk'), tests.id('tq')) x),
+  row((select s.time_format from public.workspace_scheduling_settings s where s.workspace_id = tests.id('tq')),
+    array['Kadikoy'])::text,
+  'the list says the workspace''s time format and the manager''s locations');
+select is(
+  (select array_agg(l ->> 'name' order by l ->> 'name') from jsonb_array_elements(
+     public.time_off_requests_service(tests.user('tq:ad'), tests.id('tq')) -> 'locations') l),
+  array['Besiktas', 'Kadikoy'], 'an admin''s: every location');
 -- The owner works at both locations: any of their managers may answer the owner's request too.
 select is(
   (select row(x -> 'requests' -> 0 ->> 'employee_name', x -> 'requests' -> 0 ->> 'status',

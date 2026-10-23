@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(67);
+select plan(68);
 
 -- Time off rebuild D4 (KARARLAR S-239 (4), (6), (1)): approved time off is cancelled by a request the
 -- employee sends and one manager answers, or taken back (revoked) by whoever may answer it, with a note.
@@ -164,6 +164,13 @@ select is(
   row('cancel', 'pending', (select value from fixture where key = 'ali')::text, 'Ali Person')::text,
   'a manager''s list shows the cancellation waiting');
 select is((public.time_off_requests_service(tests.user('tc:mk'), tests.id('tc')) ->> 'waiting'), '1', 'and counts it as waiting');
+-- D7 (yolda bulunanlar 8): Home's waiting list carries it too, said as a cancellation; the time off itself is not
+-- waiting any more.
+select is(
+  (select jsonb_agg(jsonb_build_object('id', t ->> 'id', 'kind', t ->> 'kind'))
+   from jsonb_array_elements(public.get_manager_home_service(tests.user('tc:mk'), tests.id('tc')) -> 'time_off') t),
+  jsonb_build_array(jsonb_build_object('id', (pg_temp.cancel_of('ali')).id::text, 'kind', 'cancel')),
+  'a manager''s Home lists the cancellation waiting, as a cancellation');
 
 -- 3. Who answers a cancellation: as for the time off itself.
 select is(pg_temp.refusal($$select pg_temp.answer_cancel('bea', 'ali', 'approve')$$), '42501 authz.missing_permission',
