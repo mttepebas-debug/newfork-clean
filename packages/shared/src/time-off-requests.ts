@@ -252,7 +252,7 @@ export const timeOffAnswerInputSchema = z
 export type TimeOffAnswerInput = z.infer<typeof timeOffAnswerInputSchema>;
 
 /** Every reason an answer is refused besides the authorization core's. */
-export const timeOffAnswerReasons = ["time_off.invalid", "time_off.changed", "time_off.not_pending", "time_off.not_found"] as const;
+export const timeOffAnswerReasons = ["time_off.invalid", "time_off.changed", "time_off.not_pending"] as const;
 export type TimeOffAnswerReason = (typeof timeOffAnswerReasons)[number];
 
 /** The employee form's question: the days, and the hours unless it is all day. */
@@ -327,7 +327,6 @@ export const timeOffCancelReasons = [
   "time_off.ended",
   "time_off.cancel_pending",
   "time_off.key_reused",
-  "time_off.not_found",
   "time_off.note_required",
 ] as const;
 export type TimeOffCancelReason = (typeof timeOffCancelReasons)[number];
@@ -411,7 +410,6 @@ export const timeOffEntryReasons = [
   "time_off.timezone_changed",
   "time_off.changed",
   "time_off.key_reused",
-  "time_off.not_found",
 ] as const;
 export type TimeOffEntryReason = (typeof timeOffEntryReasons)[number];
 
