@@ -1,5 +1,5 @@
 {
- "sourceSha256": "0daf1b76e9fc603fb3292f3c20449880e679179fe2c1cb59a216061acc3ebd48",
+ "sourceSha256": "2d06ac6d6e5ea882aca1fb1c8b91eb73dc820db64dc97bdd7eebdae252558791",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -478,6 +478,28 @@
    "employee": null
   },
   {
+   "label": "cn:emre",
+   "kind": "cancellation",
+   "tenant": "m",
+   "locs": [
+    "K"
+   ],
+   "class": "employee",
+   "holder": "emre",
+   "employee": true
+  },
+  {
+   "label": "cn:zeynep",
+   "kind": "cancellation",
+   "tenant": "m",
+   "locs": [
+    "K"
+   ],
+   "class": "admin",
+   "holder": "zeynep",
+   "employee": true
+  },
+  {
    "label": "derya",
    "kind": "person",
    "tenant": "m",
@@ -534,6 +556,85 @@
    "employee": true
   },
   {
+   "label": "en:ali",
+   "kind": "entry",
+   "tenant": "m",
+   "locs": [
+    "K",
+    "B"
+   ],
+   "class": "employee",
+   "holder": "ali",
+   "employee": true
+  },
+  {
+   "label": "en:ayse",
+   "kind": "entry",
+   "tenant": "m",
+   "locs": [
+    "K"
+   ],
+   "class": "manager",
+   "holder": "ayse",
+   "employee": true
+  },
+  {
+   "label": "en:emre",
+   "kind": "entry",
+   "tenant": "m",
+   "locs": [
+    "K"
+   ],
+   "class": "employee",
+   "holder": "emre",
+   "employee": true
+  },
+  {
+   "label": "en:ersin",
+   "kind": "entry",
+   "tenant": "m",
+   "locs": [
+    "B"
+   ],
+   "class": "manager",
+   "holder": "ersin",
+   "employee": true
+  },
+  {
+   "label": "en:mona",
+   "kind": "entry",
+   "tenant": "m",
+   "locs": [
+    "K"
+   ],
+   "class": "manager",
+   "holder": "mona",
+   "employee": false
+  },
+  {
+   "label": "en:olcay",
+   "kind": "entry",
+   "tenant": "m",
+   "locs": [
+    "K",
+    "B"
+   ],
+   "class": "owner",
+   "holder": "olcay",
+   "employee": false
+  },
+  {
+   "label": "en:zeynep",
+   "kind": "entry",
+   "tenant": "m",
+   "locs": [
+    "K"
+   ],
+   "class": "admin",
+   "holder": "zeynep",
+   "employee": true
+  },
+  {
    "label": "ersin",
    "kind": "person",
    "tenant": "m",
@@ -576,7 +677,7 @@
    ],
    "class": "employee",
    "holder": "ali",
-   "employee": null
+   "employee": true
   },
   {
    "label": "lv:ayse",
@@ -587,7 +688,7 @@
    ],
    "class": "manager",
    "holder": "ayse",
-   "employee": null
+   "employee": true
   },
   {
    "label": "lv:emre",
@@ -598,7 +699,18 @@
    ],
    "class": "employee",
    "holder": "emre",
-   "employee": null
+   "employee": true
+  },
+  {
+   "label": "lv:ersin",
+   "kind": "leave",
+   "tenant": "m",
+   "locs": [
+    "B"
+   ],
+   "class": "manager",
+   "holder": "ersin",
+   "employee": true
   },
   {
    "label": "lv:zeynep",
@@ -609,7 +721,7 @@
    ],
    "class": "admin",
    "holder": "zeynep",
-   "employee": null
+   "employee": true
   },
   {
    "label": "mona",
@@ -841,7 +953,7 @@
    ],
    "class": "employee",
    "holder": "ali",
-   "employee": null
+   "employee": true
   },
   {
    "label": "to:ayse",
@@ -852,7 +964,7 @@
    ],
    "class": "manager",
    "holder": "ayse",
-   "employee": null
+   "employee": true
   },
   {
    "label": "to:emre",
@@ -863,7 +975,18 @@
    ],
    "class": "employee",
    "holder": "emre",
-   "employee": null
+   "employee": true
+  },
+  {
+   "label": "to:ersin",
+   "kind": "time_off",
+   "tenant": "m",
+   "locs": [
+    "B"
+   ],
+   "class": "manager",
+   "holder": "ersin",
+   "employee": true
   },
   {
    "label": "to:veli",
@@ -874,7 +997,7 @@
    ],
    "class": "employee",
    "holder": "veli",
-   "employee": null
+   "employee": true
   },
   {
    "label": "to:zeynep",
@@ -885,7 +1008,7 @@
    ],
    "class": "admin",
    "holder": "zeynep",
-   "employee": null
+   "employee": true
   },
   {
    "label": "tpl:K",
@@ -1453,6 +1576,13 @@
    "blank": "null"
   },
   {
+   "key": "time_off.cancel_own",
+   "targetKind": "leave",
+   "permission": null,
+   "coreKey": "time_off.request_own",
+   "blank": "null"
+  },
+  {
    "key": "time_off.decide",
    "targetKind": "time_off",
    "permission": "schedule.time_off_requests.manage",
@@ -1460,10 +1590,45 @@
    "blank": "null"
   },
   {
-   "key": "time_off.decide_alone",
+   "key": "time_off.decide_cancellation",
+   "targetKind": "cancellation",
+   "permission": "schedule.time_off_requests.manage",
+   "coreKey": "time_off.decide",
+   "blank": "null"
+  },
+  {
+   "key": "time_off.enter",
+   "targetKind": "entry",
+   "permission": "schedule.time_off_requests.manage",
+   "coreKey": "time_off.decide",
+   "blank": "null"
+  },
+  {
+   "key": "time_off.enter_impact",
+   "targetKind": "entry",
+   "permission": "schedule.time_off_requests.manage",
+   "coreKey": "time_off.decide",
+   "blank": "null"
+  },
+  {
+   "key": "time_off.entry_people",
+   "targetKind": "entry",
+   "permission": "schedule.time_off_requests.manage",
+   "coreKey": "time_off.decide",
+   "blank": "null"
+  },
+  {
+   "key": "time_off.impact",
    "targetKind": "time_off",
    "permission": "schedule.time_off_requests.manage",
-   "coreKey": "time_off.decide_alone",
+   "coreKey": "time_off.decide",
+   "blank": "null"
+  },
+  {
+   "key": "time_off.read_own",
+   "targetKind": "workspace",
+   "permission": null,
+   "coreKey": "employee_hub.read",
    "blank": "null"
   },
   {
@@ -1477,7 +1642,21 @@
    "key": "time_off.revoke",
    "targetKind": "leave",
    "permission": "schedule.time_off_requests.manage",
-   "coreKey": "time_off.revoke",
+   "coreKey": "time_off.decide",
+   "blank": "null"
+  },
+  {
+   "key": "time_off.shifts_own",
+   "targetKind": "workspace",
+   "permission": null,
+   "coreKey": "time_off.request_own",
+   "blank": "null"
+  },
+  {
+   "key": "time_off.withdraw_own",
+   "targetKind": "time_off",
+   "permission": null,
+   "coreKey": "time_off.request_own",
    "blank": "null"
   },
   {
@@ -45473,6 +45652,12 @@
   [
    "requests.read",
    "ada",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "requests.read",
+   "ada",
    "to:veli",
    "allow"
   ],
@@ -45503,6 +45688,12 @@
   [
    "requests.read",
    "ali",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "ali",
    "to:veli",
    "deny"
   ],
@@ -45533,6 +45724,12 @@
   [
    "requests.read",
    "aydan",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "aydan",
    "to:veli",
    "deny"
   ],
@@ -45563,6 +45760,12 @@
   [
    "requests.read",
    "ayse",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "ayse",
    "to:veli",
    "deny"
   ],
@@ -45593,6 +45796,12 @@
   [
    "requests.read",
    "can",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "requests.read",
+   "can",
    "to:veli",
    "allow"
   ],
@@ -45623,6 +45832,12 @@
   [
    "requests.read",
    "derya",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "requests.read",
+   "derya",
    "to:veli",
    "allow"
   ],
@@ -45653,6 +45868,12 @@
   [
    "requests.read",
    "dora",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "dora",
    "to:veli",
    "deny"
   ],
@@ -45683,6 +45904,12 @@
   [
    "requests.read",
    "emre",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "emre",
    "to:veli",
    "deny"
   ],
@@ -45713,6 +45940,12 @@
   [
    "requests.read",
    "ersin",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "ersin",
    "to:veli",
    "deny"
   ],
@@ -45743,6 +45976,12 @@
   [
    "requests.read",
    "kaan",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "requests.read",
+   "kaan",
    "to:veli",
    "allow"
   ],
@@ -45773,6 +46012,12 @@
   [
    "requests.read",
    "mehmet",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "requests.read",
+   "mehmet",
    "to:veli",
    "allow"
   ],
@@ -45803,6 +46048,12 @@
   [
    "requests.read",
    "mona",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "mona",
    "to:veli",
    "deny"
   ],
@@ -45833,6 +46084,12 @@
   [
    "requests.read",
    "nil",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "nil",
    "to:veli",
    "deny"
   ],
@@ -45863,6 +46120,12 @@
   [
    "requests.read",
    "nur",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "nur",
    "to:veli",
    "deny"
   ],
@@ -45893,6 +46156,12 @@
   [
    "requests.read",
    "olcay",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "requests.read",
+   "olcay",
    "to:veli",
    "allow"
   ],
@@ -45923,6 +46192,12 @@
   [
    "requests.read",
    "oya",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "oya",
    "to:veli",
    "deny"
   ],
@@ -45953,6 +46228,12 @@
   [
    "requests.read",
    "pelin",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "pelin",
    "to:veli",
    "deny"
   ],
@@ -45983,6 +46264,12 @@
   [
    "requests.read",
    "remzi",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "remzi",
    "to:veli",
    "deny"
   ],
@@ -46013,6 +46300,12 @@
   [
    "requests.read",
    "sami",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "sami",
    "to:veli",
    "deny"
   ],
@@ -46043,6 +46336,12 @@
   [
    "requests.read",
    "veli",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "veli",
    "to:veli",
    "deny"
   ],
@@ -46073,6 +46372,12 @@
   [
    "requests.read",
    "xavier",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "xavier",
    "to:veli",
    "deny"
   ],
@@ -46098,6 +46403,12 @@
    "requests.read",
    "zeynep",
    "to:emre",
+   "allow"
+  ],
+  [
+   "requests.read",
+   "zeynep",
+   "to:ersin",
    "allow"
   ],
   [
@@ -51261,6 +51572,666 @@
    "allow"
   ],
   [
+   "time_off.cancel_own",
+   "ada",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ada",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ada",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ada",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ada",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ali",
+   "lv:ali",
+   "allow"
+  ],
+  [
+   "time_off.cancel_own",
+   "ali",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ali",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ali",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ali",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "aydan",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "aydan",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "aydan",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "aydan",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "aydan",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ayse",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ayse",
+   "lv:ayse",
+   "allow"
+  ],
+  [
+   "time_off.cancel_own",
+   "ayse",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ayse",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ayse",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "can",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "can",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "can",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "can",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "can",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "derya",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "derya",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "derya",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "derya",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "derya",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "dora",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "dora",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "dora",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "dora",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "dora",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "emre",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "emre",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "emre",
+   "lv:emre",
+   "allow"
+  ],
+  [
+   "time_off.cancel_own",
+   "emre",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "emre",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ersin",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ersin",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ersin",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "ersin",
+   "lv:ersin",
+   "allow"
+  ],
+  [
+   "time_off.cancel_own",
+   "ersin",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "kaan",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "kaan",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "kaan",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "kaan",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "kaan",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "mehmet",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "mehmet",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "mehmet",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "mehmet",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "mehmet",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "mona",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "mona",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "mona",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "mona",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "mona",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "nil",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "nil",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "nil",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "nil",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "nil",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "nur",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "nur",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "nur",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "nur",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "nur",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "olcay",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "olcay",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "olcay",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "olcay",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "olcay",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "oya",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "oya",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "oya",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "oya",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "oya",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "pelin",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "pelin",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "pelin",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "pelin",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "pelin",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "remzi",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "remzi",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "remzi",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "remzi",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "remzi",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "sami",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "sami",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "sami",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "sami",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "sami",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "veli",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "veli",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "veli",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "veli",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "veli",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "xavier",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "xavier",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "xavier",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "xavier",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "xavier",
+   "lv:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "zeynep",
+   "lv:ali",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "zeynep",
+   "lv:ayse",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "zeynep",
+   "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "zeynep",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.cancel_own",
+   "zeynep",
+   "lv:zeynep",
+   "allow"
+  ],
+  [
    "time_off.decide",
    "ada",
    "to:ali",
@@ -51276,6 +52247,12 @@
    "time_off.decide",
    "ada",
    "to:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide",
+   "ada",
+   "to:ersin",
    "allow"
   ],
   [
@@ -51311,6 +52288,12 @@
   [
    "time_off.decide",
    "ali",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "ali",
    "to:veli",
    "deny"
   ],
@@ -51341,6 +52324,12 @@
   [
    "time_off.decide",
    "aydan",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "aydan",
    "to:veli",
    "deny"
   ],
@@ -51371,6 +52360,12 @@
   [
    "time_off.decide",
    "ayse",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "ayse",
    "to:veli",
    "deny"
   ],
@@ -51401,6 +52396,12 @@
   [
    "time_off.decide",
    "can",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.decide",
+   "can",
    "to:veli",
    "allow"
   ],
@@ -51431,6 +52432,12 @@
   [
    "time_off.decide",
    "derya",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.decide",
+   "derya",
    "to:veli",
    "allow"
   ],
@@ -51461,6 +52468,12 @@
   [
    "time_off.decide",
    "dora",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "dora",
    "to:veli",
    "deny"
   ],
@@ -51491,6 +52504,12 @@
   [
    "time_off.decide",
    "emre",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "emre",
    "to:veli",
    "deny"
   ],
@@ -51521,6 +52540,12 @@
   [
    "time_off.decide",
    "ersin",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "ersin",
    "to:veli",
    "deny"
   ],
@@ -51551,6 +52576,12 @@
   [
    "time_off.decide",
    "kaan",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.decide",
+   "kaan",
    "to:veli",
    "allow"
   ],
@@ -51581,6 +52612,12 @@
   [
    "time_off.decide",
    "mehmet",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.decide",
+   "mehmet",
    "to:veli",
    "allow"
   ],
@@ -51611,6 +52648,12 @@
   [
    "time_off.decide",
    "mona",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "mona",
    "to:veli",
    "deny"
   ],
@@ -51641,6 +52684,12 @@
   [
    "time_off.decide",
    "nil",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "nil",
    "to:veli",
    "deny"
   ],
@@ -51671,6 +52720,12 @@
   [
    "time_off.decide",
    "nur",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "nur",
    "to:veli",
    "deny"
   ],
@@ -51701,6 +52756,12 @@
   [
    "time_off.decide",
    "olcay",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.decide",
+   "olcay",
    "to:veli",
    "allow"
   ],
@@ -51731,6 +52792,12 @@
   [
    "time_off.decide",
    "oya",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "oya",
    "to:veli",
    "deny"
   ],
@@ -51761,6 +52828,12 @@
   [
    "time_off.decide",
    "pelin",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "pelin",
    "to:veli",
    "deny"
   ],
@@ -51791,6 +52864,12 @@
   [
    "time_off.decide",
    "remzi",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "remzi",
    "to:veli",
    "deny"
   ],
@@ -51821,6 +52900,12 @@
   [
    "time_off.decide",
    "sami",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "sami",
    "to:veli",
    "deny"
   ],
@@ -51851,6 +52936,12 @@
   [
    "time_off.decide",
    "veli",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "veli",
    "to:veli",
    "deny"
   ],
@@ -51881,6 +52972,12 @@
   [
    "time_off.decide",
    "xavier",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.decide",
+   "xavier",
    "to:veli",
    "deny"
   ],
@@ -51911,6 +53008,12 @@
   [
    "time_off.decide",
    "zeynep",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.decide",
+   "zeynep",
    "to:veli",
    "allow"
   ],
@@ -51921,664 +53024,3964 @@
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.decide_cancellation",
+   "ada",
+   "cn:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "ada",
+   "cn:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "ali",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "ali",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "aydan",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "aydan",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "ayse",
+   "cn:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "ayse",
+   "cn:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "can",
+   "cn:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "can",
+   "cn:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "derya",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "derya",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "dora",
+   "cn:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "dora",
+   "cn:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "emre",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "emre",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "ersin",
+   "cn:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "ersin",
+   "cn:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "kaan",
+   "cn:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "kaan",
+   "cn:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "mehmet",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "mehmet",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "mona",
+   "cn:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "mona",
+   "cn:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "nil",
+   "cn:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "nil",
+   "cn:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "nur",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "nur",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "olcay",
+   "cn:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "olcay",
+   "cn:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "oya",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "oya",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "pelin",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "pelin",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "remzi",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "remzi",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "sami",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "sami",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "veli",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "veli",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "xavier",
+   "cn:emre",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "xavier",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "zeynep",
+   "cn:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide_cancellation",
+   "zeynep",
+   "cn:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ada",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "ada",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "ada",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "ada",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "ada",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ada",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ada",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "ali",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ali",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ali",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ali",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ali",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ali",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ali",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "aydan",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "aydan",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "aydan",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "aydan",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "aydan",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "aydan",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "aydan",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ayse",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "ayse",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ayse",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "ayse",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ayse",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ayse",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ayse",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "can",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "can",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "can",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "can",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "can",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "can",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "can",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "derya",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "derya",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "derya",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "derya",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "derya",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "derya",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "derya",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "dora",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "dora",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "dora",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "dora",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "dora",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "dora",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "dora",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "emre",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "emre",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "emre",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "emre",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "emre",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "emre",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "emre",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ersin",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "ersin",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "ersin",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "ersin",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ersin",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ersin",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "ersin",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "kaan",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "kaan",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "kaan",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "kaan",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "kaan",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "kaan",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "kaan",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "mehmet",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "mehmet",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "mehmet",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "mehmet",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "mehmet",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "mehmet",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "mehmet",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "mona",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "mona",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "mona",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "mona",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "mona",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "mona",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "mona",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "nil",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "nil",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "nil",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "nil",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "nil",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "nil",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "nil",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "nur",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "nur",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "nur",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "nur",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "nur",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "nur",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "nur",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "olcay",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "olcay",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "olcay",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "olcay",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "olcay",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "olcay",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "olcay",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "oya",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "oya",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "oya",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "oya",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "oya",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "oya",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "oya",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "pelin",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "pelin",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "pelin",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "pelin",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "pelin",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "pelin",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "pelin",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "remzi",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "remzi",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "remzi",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "remzi",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "remzi",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "remzi",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "remzi",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "sami",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "sami",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "sami",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "sami",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "sami",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "sami",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "sami",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "veli",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "veli",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "veli",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "veli",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "veli",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "veli",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "veli",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "xavier",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "xavier",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "xavier",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "xavier",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "xavier",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "xavier",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "xavier",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "zeynep",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "zeynep",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "zeynep",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "zeynep",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter",
+   "zeynep",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "zeynep",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter",
+   "zeynep",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ada",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "ada",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "ada",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "ada",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "ada",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ada",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ada",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "ali",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ali",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ali",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ali",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ali",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ali",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ali",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "aydan",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "aydan",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "aydan",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "aydan",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "aydan",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "aydan",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "aydan",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ayse",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "ayse",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ayse",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "ayse",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ayse",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ayse",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ayse",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "can",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "can",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "can",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "can",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "can",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "can",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "can",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "derya",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "derya",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "derya",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "derya",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "derya",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "derya",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "derya",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "dora",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "dora",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "dora",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "dora",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "dora",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "dora",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "dora",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "emre",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "emre",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "emre",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "emre",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "emre",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "emre",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "emre",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ersin",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "ersin",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "ersin",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "ersin",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ersin",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ersin",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "ersin",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "kaan",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "kaan",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "kaan",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "kaan",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "kaan",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "kaan",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "kaan",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "mehmet",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "mehmet",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "mehmet",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "mehmet",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "mehmet",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "mehmet",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "mehmet",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "mona",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "mona",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "mona",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "mona",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "mona",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "mona",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "mona",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "nil",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "nil",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "nil",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "nil",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "nil",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "nil",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "nil",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "nur",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "nur",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "nur",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "nur",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "nur",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "nur",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "nur",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "olcay",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "olcay",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "olcay",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "olcay",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "olcay",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "olcay",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "olcay",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "oya",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "oya",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "oya",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "oya",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "oya",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "oya",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "oya",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "pelin",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "pelin",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "pelin",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "pelin",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "pelin",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "pelin",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "pelin",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "remzi",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "remzi",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "remzi",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "remzi",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "remzi",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "remzi",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "remzi",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "sami",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "sami",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "sami",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "sami",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "sami",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "sami",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "sami",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "veli",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "veli",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "veli",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "veli",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "veli",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "veli",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "veli",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "xavier",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "xavier",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "xavier",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "xavier",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "xavier",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "xavier",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "xavier",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "zeynep",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "zeynep",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "zeynep",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "zeynep",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.enter_impact",
+   "zeynep",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "zeynep",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.enter_impact",
+   "zeynep",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ada",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "ada",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "ada",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "ada",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "ada",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ada",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ada",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "ali",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ali",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ali",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ali",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ali",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ali",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ali",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "aydan",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "aydan",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "aydan",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "aydan",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "aydan",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "aydan",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "aydan",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ayse",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "ayse",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ayse",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "ayse",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ayse",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ayse",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ayse",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "can",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "can",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "can",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "can",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "can",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "can",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "can",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "derya",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "derya",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "derya",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "derya",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "derya",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "derya",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "derya",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "dora",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "dora",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "dora",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "dora",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "dora",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "dora",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "dora",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "emre",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "emre",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "emre",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "emre",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "emre",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "emre",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "emre",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ersin",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "ersin",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "ersin",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "ersin",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ersin",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ersin",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "ersin",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "kaan",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "kaan",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "kaan",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "kaan",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "kaan",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "kaan",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "kaan",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "mehmet",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "mehmet",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "mehmet",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "mehmet",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "mehmet",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "mehmet",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "mehmet",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "mona",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "mona",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "mona",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "mona",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "mona",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "mona",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "mona",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "nil",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "nil",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "nil",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "nil",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "nil",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "nil",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "nil",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "nur",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "nur",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "nur",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "nur",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "nur",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "nur",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "nur",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "olcay",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "olcay",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "olcay",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "olcay",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "olcay",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "olcay",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "olcay",
+   "en:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "oya",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "oya",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "oya",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "oya",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "oya",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "oya",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "oya",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "pelin",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "pelin",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "pelin",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "pelin",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "pelin",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "pelin",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "pelin",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "remzi",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "remzi",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "remzi",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "remzi",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "remzi",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "remzi",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "remzi",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "sami",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "sami",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "sami",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "sami",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "sami",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "sami",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "sami",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "veli",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "veli",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "veli",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "veli",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "veli",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "veli",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "veli",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "xavier",
+   "en:ali",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "xavier",
+   "en:ayse",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "xavier",
+   "en:emre",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "xavier",
+   "en:ersin",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "xavier",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "xavier",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "xavier",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "zeynep",
+   "en:ali",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "zeynep",
+   "en:ayse",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "zeynep",
+   "en:emre",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "zeynep",
+   "en:ersin",
+   "allow"
+  ],
+  [
+   "time_off.entry_people",
+   "zeynep",
+   "en:mona",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "zeynep",
+   "en:olcay",
+   "deny"
+  ],
+  [
+   "time_off.entry_people",
+   "zeynep",
+   "en:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "ada",
    "to:ali",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ada",
    "to:ayse",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ada",
    "to:emre",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "ada",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.impact",
    "ada",
    "to:veli",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ada",
    "to:zeynep",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ali",
    "to:ali",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ali",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ali",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "ali",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "ali",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ali",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "aydan",
    "to:ali",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "aydan",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "aydan",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "aydan",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "aydan",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "aydan",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ayse",
    "to:ali",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ayse",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ayse",
    "to:emre",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "ayse",
+   "to:ersin",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ayse",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ayse",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "can",
    "to:ali",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "can",
+   "to:ayse",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "can",
+   "to:emre",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "can",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "can",
+   "to:veli",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "can",
+   "to:zeynep",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "derya",
+   "to:ali",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "derya",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
-   "can",
-   "to:emre",
-   "deny"
-  ],
-  [
-   "time_off.decide_alone",
-   "can",
-   "to:veli",
-   "deny"
-  ],
-  [
-   "time_off.decide_alone",
-   "can",
-   "to:zeynep",
-   "deny"
-  ],
-  [
-   "time_off.decide_alone",
-   "derya",
-   "to:ali",
-   "deny"
-  ],
-  [
-   "time_off.decide_alone",
-   "derya",
-   "to:ayse",
-   "deny"
-  ],
-  [
-   "time_off.decide_alone",
+   "time_off.impact",
    "derya",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "derya",
-   "to:veli",
-   "deny"
+   "to:ersin",
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "derya",
+   "to:veli",
+   "allow"
+  ],
+  [
+   "time_off.impact",
    "derya",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "dora",
    "to:ali",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "dora",
    "to:ayse",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "dora",
    "to:emre",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "dora",
+   "to:ersin",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "dora",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "dora",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "emre",
    "to:ali",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "emre",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "emre",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "emre",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "emre",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "emre",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ersin",
    "to:ali",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ersin",
    "to:ayse",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ersin",
    "to:emre",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "ersin",
+   "to:ersin",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ersin",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "ersin",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "kaan",
    "to:ali",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "kaan",
    "to:ayse",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "kaan",
    "to:emre",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "kaan",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.impact",
    "kaan",
    "to:veli",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "kaan",
    "to:zeynep",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "mehmet",
    "to:ali",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "mehmet",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "mehmet",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "mehmet",
-   "to:veli",
-   "deny"
+   "to:ersin",
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "mehmet",
+   "to:veli",
+   "allow"
+  ],
+  [
+   "time_off.impact",
    "mehmet",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "mona",
    "to:ali",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "mona",
    "to:ayse",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "mona",
    "to:emre",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "mona",
+   "to:ersin",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "mona",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "mona",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "nil",
    "to:ali",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "nil",
    "to:ayse",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "nil",
    "to:emre",
+   "allow"
+  ],
+  [
+   "time_off.impact",
+   "nil",
+   "to:ersin",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "nil",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "nil",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "nur",
    "to:ali",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "nur",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "nur",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "nur",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "nur",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "nur",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "olcay",
    "to:ali",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "olcay",
    "to:ayse",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "olcay",
    "to:emre",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "olcay",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.impact",
    "olcay",
    "to:veli",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "olcay",
    "to:zeynep",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "oya",
    "to:ali",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "oya",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "oya",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "oya",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "oya",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "oya",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "pelin",
    "to:ali",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "pelin",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "pelin",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "pelin",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "pelin",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "pelin",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "remzi",
    "to:ali",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "remzi",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "remzi",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "remzi",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "remzi",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "remzi",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "sami",
    "to:ali",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "sami",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "sami",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "sami",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "sami",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "sami",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "veli",
    "to:ali",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "veli",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "veli",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "veli",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "veli",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "veli",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "xavier",
    "to:ali",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "xavier",
    "to:ayse",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "xavier",
    "to:emre",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "xavier",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.impact",
    "xavier",
    "to:veli",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "xavier",
    "to:zeynep",
    "deny"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "zeynep",
    "to:ali",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "zeynep",
    "to:ayse",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "zeynep",
    "to:emre",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
+   "zeynep",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.impact",
    "zeynep",
    "to:veli",
    "allow"
   ],
   [
-   "time_off.decide_alone",
+   "time_off.impact",
    "zeynep",
    "to:zeynep",
    "deny"
+  ],
+  [
+   "time_off.read_own",
+   "ada",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "ali",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.read_own",
+   "ayse",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "can",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "derya",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "dora",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "emre",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "ersin",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "kaan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "mehmet",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "mona",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.read_own",
+   "nil",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.read_own",
+   "olcay",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.read_own",
+   "oya",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.read_own",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.read_own",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.read_own",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.read_own",
+   "veli",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.read_own",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.read_own",
+   "zeynep",
+   "workspace",
+   "allow"
   ],
   [
    "time_off.request_own",
@@ -52733,8 +57136,14 @@
   [
    "time_off.revoke",
    "ada",
+   "lv:ersin",
+   "allow"
+  ],
+  [
+   "time_off.revoke",
+   "ada",
    "lv:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -52752,6 +57161,12 @@
    "time_off.revoke",
    "ali",
    "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.revoke",
+   "ali",
+   "lv:ersin",
    "deny"
   ],
   [
@@ -52781,6 +57196,12 @@
   [
    "time_off.revoke",
    "aydan",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.revoke",
+   "aydan",
    "lv:zeynep",
    "deny"
   ],
@@ -52805,8 +57226,14 @@
   [
    "time_off.revoke",
    "ayse",
-   "lv:zeynep",
+   "lv:ersin",
    "deny"
+  ],
+  [
+   "time_off.revoke",
+   "ayse",
+   "lv:zeynep",
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -52818,7 +57245,7 @@
    "time_off.revoke",
    "can",
    "lv:ayse",
-   "deny"
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -52829,8 +57256,14 @@
   [
    "time_off.revoke",
    "can",
+   "lv:ersin",
+   "allow"
+  ],
+  [
+   "time_off.revoke",
+   "can",
    "lv:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -52853,6 +57286,12 @@
   [
    "time_off.revoke",
    "derya",
+   "lv:ersin",
+   "allow"
+  ],
+  [
+   "time_off.revoke",
+   "derya",
    "lv:zeynep",
    "deny"
   ],
@@ -52866,7 +57305,7 @@
    "time_off.revoke",
    "dora",
    "lv:ayse",
-   "deny"
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -52877,8 +57316,14 @@
   [
    "time_off.revoke",
    "dora",
-   "lv:zeynep",
+   "lv:ersin",
    "deny"
+  ],
+  [
+   "time_off.revoke",
+   "dora",
+   "lv:zeynep",
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -52901,6 +57346,12 @@
   [
    "time_off.revoke",
    "emre",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.revoke",
+   "emre",
    "lv:zeynep",
    "deny"
   ],
@@ -52914,7 +57365,7 @@
    "time_off.revoke",
    "ersin",
    "lv:ayse",
-   "deny"
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -52925,8 +57376,14 @@
   [
    "time_off.revoke",
    "ersin",
-   "lv:zeynep",
+   "lv:ersin",
    "deny"
+  ],
+  [
+   "time_off.revoke",
+   "ersin",
+   "lv:zeynep",
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -52949,8 +57406,14 @@
   [
    "time_off.revoke",
    "kaan",
+   "lv:ersin",
+   "allow"
+  ],
+  [
+   "time_off.revoke",
+   "kaan",
    "lv:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -52973,6 +57436,12 @@
   [
    "time_off.revoke",
    "mehmet",
+   "lv:ersin",
+   "allow"
+  ],
+  [
+   "time_off.revoke",
+   "mehmet",
    "lv:zeynep",
    "deny"
   ],
@@ -52986,7 +57455,7 @@
    "time_off.revoke",
    "mona",
    "lv:ayse",
-   "deny"
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -52997,8 +57466,14 @@
   [
    "time_off.revoke",
    "mona",
-   "lv:zeynep",
+   "lv:ersin",
    "deny"
+  ],
+  [
+   "time_off.revoke",
+   "mona",
+   "lv:zeynep",
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -53010,7 +57485,7 @@
    "time_off.revoke",
    "nil",
    "lv:ayse",
-   "deny"
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -53021,8 +57496,14 @@
   [
    "time_off.revoke",
    "nil",
-   "lv:zeynep",
+   "lv:ersin",
    "deny"
+  ],
+  [
+   "time_off.revoke",
+   "nil",
+   "lv:zeynep",
+   "allow"
   ],
   [
    "time_off.revoke",
@@ -53040,6 +57521,12 @@
    "time_off.revoke",
    "nur",
    "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.revoke",
+   "nur",
+   "lv:ersin",
    "deny"
   ],
   [
@@ -53069,6 +57556,12 @@
   [
    "time_off.revoke",
    "olcay",
+   "lv:ersin",
+   "allow"
+  ],
+  [
+   "time_off.revoke",
+   "olcay",
    "lv:zeynep",
    "allow"
   ],
@@ -53088,6 +57581,12 @@
    "time_off.revoke",
    "oya",
    "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.revoke",
+   "oya",
+   "lv:ersin",
    "deny"
   ],
   [
@@ -53117,6 +57616,12 @@
   [
    "time_off.revoke",
    "pelin",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.revoke",
+   "pelin",
    "lv:zeynep",
    "deny"
   ],
@@ -53141,6 +57646,12 @@
   [
    "time_off.revoke",
    "remzi",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.revoke",
+   "remzi",
    "lv:zeynep",
    "deny"
   ],
@@ -53165,6 +57676,12 @@
   [
    "time_off.revoke",
    "sami",
+   "lv:ersin",
+   "deny"
+  ],
+  [
+   "time_off.revoke",
+   "sami",
    "lv:zeynep",
    "deny"
   ],
@@ -53184,6 +57701,12 @@
    "time_off.revoke",
    "veli",
    "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.revoke",
+   "veli",
+   "lv:ersin",
    "deny"
   ],
   [
@@ -53208,6 +57731,12 @@
    "time_off.revoke",
    "xavier",
    "lv:emre",
+   "deny"
+  ],
+  [
+   "time_off.revoke",
+   "xavier",
+   "lv:ersin",
    "deny"
   ],
   [
@@ -53237,8 +57766,938 @@
   [
    "time_off.revoke",
    "zeynep",
+   "lv:ersin",
+   "allow"
+  ],
+  [
+   "time_off.revoke",
+   "zeynep",
    "lv:zeynep",
    "deny"
+  ],
+  [
+   "time_off.shifts_own",
+   "ada",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "ali",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.shifts_own",
+   "ayse",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "can",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "derya",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "dora",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "emre",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "ersin",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "kaan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "mehmet",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "mona",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.shifts_own",
+   "nil",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.shifts_own",
+   "olcay",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.shifts_own",
+   "oya",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.shifts_own",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.shifts_own",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.shifts_own",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.shifts_own",
+   "veli",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.shifts_own",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "time_off.shifts_own",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ada",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ada",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ada",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ada",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ada",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ada",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ali",
+   "to:ali",
+   "allow"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ali",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ali",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ali",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ali",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ali",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "aydan",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "aydan",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "aydan",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "aydan",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "aydan",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "aydan",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ayse",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ayse",
+   "to:ayse",
+   "allow"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ayse",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ayse",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ayse",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ayse",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "can",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "can",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "can",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "can",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "can",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "can",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "derya",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "derya",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "derya",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "derya",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "derya",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "derya",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "dora",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "dora",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "dora",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "dora",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "dora",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "dora",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "emre",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "emre",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "emre",
+   "to:emre",
+   "allow"
+  ],
+  [
+   "time_off.withdraw_own",
+   "emre",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "emre",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "emre",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ersin",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ersin",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ersin",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ersin",
+   "to:ersin",
+   "allow"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ersin",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "ersin",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "kaan",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "kaan",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "kaan",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "kaan",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "kaan",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "kaan",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mehmet",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mehmet",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mehmet",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mehmet",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mehmet",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mehmet",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mona",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mona",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mona",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mona",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mona",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "mona",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nil",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nil",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nil",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nil",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nil",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nil",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nur",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nur",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nur",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nur",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nur",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "nur",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "olcay",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "olcay",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "olcay",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "olcay",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "olcay",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "olcay",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "oya",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "oya",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "oya",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "oya",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "oya",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "oya",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "pelin",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "pelin",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "pelin",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "pelin",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "pelin",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "pelin",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "remzi",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "remzi",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "remzi",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "remzi",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "remzi",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "remzi",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "sami",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "sami",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "sami",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "sami",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "sami",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "sami",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "veli",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "veli",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "veli",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "veli",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "veli",
+   "to:veli",
+   "allow"
+  ],
+  [
+   "time_off.withdraw_own",
+   "veli",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "xavier",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "xavier",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "xavier",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "xavier",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "xavier",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "xavier",
+   "to:zeynep",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "zeynep",
+   "to:ali",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "zeynep",
+   "to:ayse",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "zeynep",
+   "to:emre",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "zeynep",
+   "to:ersin",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "zeynep",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "time_off.withdraw_own",
+   "zeynep",
+   "to:zeynep",
+   "allow"
   ],
   [
    "workspace.close",
