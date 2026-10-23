@@ -129,7 +129,7 @@ describe("notification hooks", () => {
     const { Wrapper } = wrapper();
     apiRequest.mockResolvedValueOnce({ unseen_count: 0 });
     const { result } = renderHook(() => useMarkNotificationsSeen(w), { wrapper: Wrapper });
-    act(() => result.current.mutate());
+    act(() => result.current.mutate([notice().id]));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(apiRequest.mock.calls[0]?.slice(1)).toEqual([`${base}/seen`, { method: "POST" }]);
   });

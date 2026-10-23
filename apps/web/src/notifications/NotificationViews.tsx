@@ -131,7 +131,16 @@ export function NotificationsSheet({
       <NotificationTabs workspaceId={workspaceId} filter={filter} onChange={setFilter} panelId={panelId} />
       <div className="ni-sheet-body">
         <NotificationList workspaceId={workspaceId} viewerId={context?.userId} filter={filter} panelId={panelId} onNavigate={onClose} />
-        <button type="button" className="ni-link ni-sheet-readall" disabled={readAll.disabled} onClick={readAll.run}>
+        <button
+          type="button"
+          className="ni-link ni-sheet-readall"
+          disabled={readAll.disabled}
+          onClick={() => {
+            // A new try clears the last line, so the next outcome is read out again.
+            setSaid(null);
+            readAll.run();
+          }}
+        >
           Mark all as read
         </button>
         <p className={said && !said.ok ? "ni-sheet-said is-error" : "ni-sheet-said"} role="status">

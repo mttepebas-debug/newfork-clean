@@ -27,7 +27,7 @@ const UPDATE_TYPES = /^(schedule\.published|time_off\.decided|shift_changes\.dec
 export function updateKind(item: Pick<NotificationItem, "type" | "data" | "title">): HomeUpdate["kind"] {
   if (item.type.startsWith("schedule.")) return "cal";
   const outcome = String(item.data.outcome ?? item.data.decision ?? item.data.status ?? "");
-  return /deni|declin|reject/i.test(outcome) || /declined|denied/i.test(item.title) ? "no" : "ok";
+  return /deni|declin|reject|expire|revok/i.test(outcome) || /declined|denied/i.test(item.title) ? "no" : "ok";
 }
 
 /** How long ago, in the words a phone uses: "2h ago", "Yesterday", "3 days ago". */
@@ -54,7 +54,8 @@ export function documentNeedsYou(item: Pick<DocumentObligation, "kind" | "status
 /** The last three things decided about the person's own week, newest first. */
 export function homeUpdates(items: readonly NotificationItem[]): HomeUpdate[] {
   return items
-    .filter((item) => UPDATE_TYPES.test(item.type))
+    // A decider also gets time_off.decided about someone else; it opens Requests, not the person's own pages.
+    .filter((item) => UPDATE_TYPES.test(item.type) && item.url?.startsWith("/app/employee-hub/") === true)
     .slice(0, 3)
     .map((item) => ({
       id: item.id,

@@ -150,8 +150,9 @@ export function NotificationList({
     .join(",");
   useEffect(() => {
     if (!unseen) return;
-    for (const id of unseen.split(",")) fresh.add(id);
-    markSeen();
+    const ids = unseen.split(",");
+    for (const id of ids) fresh.add(id);
+    markSeen(ids);
   }, [unseen, fresh, markSeen]);
 
   if (feed.isPending)
@@ -207,19 +208,21 @@ export function NotificationList({
 
   const newOnes = items.filter((item) => isNewNotice(item, fresh));
   const earlier = items.filter((item) => !isNewNotice(item, fresh));
+  // Stable keys: a notice arriving while the list is open adds New above Earlier without remounting the rows
+  // (a focused row keeps its focus).
   const sections = newOnes.length
     ? [
-        { heading: "New", rows: newOnes },
-        { heading: "Earlier", rows: earlier },
+        { key: "new", heading: "New", rows: newOnes },
+        { key: "earlier", heading: "Earlier", rows: earlier },
       ]
-    : [{ heading: null, rows: earlier }];
+    : [{ key: "earlier", heading: null, rows: earlier }];
   return (
     <div id={panelId} role="tabpanel" aria-labelledby={labelledBy}>
       {refreshFailed}
       <ul className="ni-list" aria-label="Notifications">
         {sections.map((section) =>
           section.rows.length ? (
-            <Fragment key={section.heading ?? "all"}>
+            <Fragment key={section.key}>
               {section.heading ? (
                 <li className="ni-group" aria-hidden>
                   {section.heading}

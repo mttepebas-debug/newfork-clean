@@ -100,7 +100,23 @@ export function useMarkNotificationsRead(workspaceId: string) {
   });
 }
 
-/** Opening the list marks what it shows as seen (S-247 (2)); the badge is the unread count, so it stays. */
+/**
+ * Opening the list marks what it shows as seen (S-247 (2)); the badge is the unread count, so it stays.
+ * `ids` are the rows this list showed as new: the cache marks them seen, so a list opened again within the
+ * cache's life shows them under Earlier (a notice that came in between keeps its New).
+ */
 export function useMarkNotificationsSeen(workspaceId: string) {
-  return useMutation({ mutationFn: () => markNotificationsSeen(workspaceId) });
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (_ids: readonly string[]) => markNotificationsSeen(workspaceId),
+    onSuccess: (_result, ids) => {
+      const now = new Date().toISOString();
+      const seeItem = (item: NotificationFeed["items"][number]) => (ids.includes(item.id) && !item.seen_at ? { ...item, seen_at: now } : item);
+      client.setQueriesData<CachedFeed>({ queryKey: [...notificationKeys.all(workspaceId), "feed"] }, (data) => {
+        if (!data) return data;
+        if ("pages" in data) return { ...data, pages: data.pages.map((page) => ({ ...page, items: page.items.map(seeItem) })) };
+        return { ...data, items: data.items.map(seeItem) };
+      });
+    },
+  });
 }

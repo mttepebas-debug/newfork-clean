@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { feedPage, notice } from "./notification-fixtures.test-util";
@@ -118,6 +119,38 @@ describe("NotificationsPanel", () => {
     await waitFor(() => expect(calls("/read")).toHaveLength(1));
     await waitFor(() => expect(calls("filter=all").length).toBeGreaterThan(1));
     expect(sections(dialog)).toEqual(["# New", "Time off request from Tom Becker", "# Earlier", "Your schedule for Oct 19–25 is out"]);
+    expect(calls("/seen")).toHaveLength(1);
+  });
+
+  // Within the app's 30 s staleTime a reopened list reads the cache: what the last opening showed is seen now.
+  it("shows nothing as New when the list opens again right after", async () => {
+    answer({ all: feedPage([notice(), published]) });
+    function Toggle() {
+      const [open, setOpen] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen((value) => !value)}>
+            toggle
+          </button>
+          {open ? <NotificationsPanel workspaceId={w} onClose={() => undefined} /> : null}
+        </>
+      );
+    }
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 }, mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/app/workspace"]}>
+          <Toggle />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ });
+    await waitFor(() => expect(calls("/seen")).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    const dialog = await screen.findByRole("dialog", { name: "Notifications" });
+    await within(dialog).findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ });
+    expect(sections(dialog)).toEqual(["Time off request from Tom Becker", "Your schedule for Oct 19–25 is out"]);
     expect(calls("/seen")).toHaveLength(1);
   });
 

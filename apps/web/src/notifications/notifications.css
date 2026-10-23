@@ -253,6 +253,12 @@
 .ni-row-tools {
   position: relative;
   z-index: 1;
+  /* Only their buttons sit above the row: the empty part of these strips still opens the notice. */
+  pointer-events: none;
+}
+.ni-row-actions > *,
+.ni-row-tools > * {
+  pointer-events: auto;
 }
 .ni-row.is-unread .ni-row-title {
   font-weight: 750;

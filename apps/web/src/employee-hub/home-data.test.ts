@@ -8,20 +8,24 @@ describe("home updates", () => {
     expect(updateKind({ type: "time_off.decided", data: { outcome: "approved" }, title: "Time off approved" })).toBe("ok");
     expect(updateKind({ type: "time_off.decided", data: { outcome: "denied" }, title: "Time off" })).toBe("no");
     expect(updateKind({ type: "shift_changes.decided", data: {}, title: "Swap with Priya declined" })).toBe("no");
+    expect(updateKind({ type: "time_off.decided", data: { outcome: "expired" }, title: "Your time off wasn't answered in time" })).toBe("no");
+    expect(updateKind({ type: "time_off.decided", data: { outcome: "revoked" }, title: "Your time off was revoked" })).toBe("no");
   });
 
   // The feed's topic is the group (my_schedule, time_off …), the type the event: Updates picks by type.
   it("keeps a published week and the person's decided requests, at most three", () => {
-    const row = (id: string, type: string, topic: string) => notice({ id, type, topic, needs_action: false });
+    const row = (id: string, type: string, topic: string, url = "/app/employee-hub/schedule") => notice({ id, type, topic, needs_action: false, url });
     const picked = homeUpdates([
       row("1", "schedule.published", "my_schedule"),
+      // A decider's copy of someone else's decision (it opens Requests) is not the person's own update.
+      row("0", "time_off.decided", "time_off", "/app/schedule/requests?type=time_off"),
       row("2", "announcements.published", "announcements"),
       row("3", "time_off.decided", "time_off"),
       row("4", "shift_changes.decided", "shift_changes"),
       row("5", "schedule.published", "my_schedule"),
     ]);
     expect(picked.map((item) => item.id)).toEqual(["1", "3", "4"]);
-    expect(picked[0]).toMatchObject({ kind: "cal", href: notice().url });
+    expect(picked[0]).toMatchObject({ kind: "cal", href: "/app/employee-hub/schedule" });
   });
 
   it("says how long ago the way a phone does", () => {
