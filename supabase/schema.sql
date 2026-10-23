@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 582, last: 20261023034016_time_off_requests_sweep.sql
--- fingerprint: sha256:e4f30052f35bedeb4ef8d2e6a2727a997fe9bdcbc7adbac04a2223b11c1ee4ed
+-- migrations: 583, last: 20261023050000_time_off_switch_over.sql
+-- fingerprint: sha256:9fcb2bebc62d3891d7c2c1335cfd80aca13a7b62eaa1211f8c80ddf141d3c569
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -10889,7 +10889,9 @@ begin
              or (q.reminded_at is null and q.starts_at - interval '1 day' <= now()
                  and q.created_at < q.starts_at - interval '1 day')))
         or (q.kind = 'cancel' and q.ends_at <= now()))
-    order by case when q.kind = 'cancel' then q.ends_at when q.starts_at <= now() then q.starts_at
+    -- One that failed before waits behind the rest, so broken requests never fill a pass (nf-guvenlik, D7).
+    order by exists (select 1 from app_private.time_off_request_sweep_failures f where f.request_id = q.id),
+             case when q.kind = 'cancel' then q.ends_at when q.starts_at <= now() then q.starts_at
                   else q.starts_at - interval '1 day' end, q.id
     limit pass_limit
   loop
@@ -33004,13 +33006,15 @@ declare findings jsonb; signatures jsonb:='[]'; s record; a jsonb; prior jsonb; 
  pending jsonb:='[]'; shift_span tstzrange; asking uuid[];
 begin
  if payload->>'status'='past_week_closed' then return payload; end if;
- -- Who has time off waiting for a decision, read once for the whole draft.
- asking:=array(select distinct away.employee_id from app_private.leave_spans(w,
+ -- Who has time off waiting for a decision, read once for the whole draft; only for who may answer it
+ -- (S-243: as on the grid, a waiting request is read only by who decides it).
+ asking:=array(select asking_one.employee_id from (select distinct away.employee_id from app_private.leave_spans(w,
    array(select distinct d.employee_id from public.schedule_draft_shifts d
     where d.workspace_id=w and d.draft_id=(payload->>'draft_id')::uuid and d.employee_id is not null),
    (select tstzrange((min(d.scheduled_date)-2)::timestamp at time zone 'UTC',(max(d.scheduled_date)+3)::timestamp at time zone 'UTC','[)')
     from public.schedule_draft_shifts d where d.workspace_id=w and d.draft_id=(payload->>'draft_id')::uuid)) away
-  where away.pending);
+  where away.pending) asking_one
+  where app_private.time_off_decider_reason(actor,w,asking_one.employee_id) is null);
  select coalesce(jsonb_agg(f),'[]') into findings from jsonb_array_elements(payload->'findings') f
   where f->>'code' not in ('availability','availability_unknown','availability_review_pending','time_source_unresolved','overlap','double_booking','time_off','closed_location','closed_day');
  -- Publishing is asked at each location the preview is for, once.
