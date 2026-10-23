@@ -18,6 +18,7 @@ const {
   markNotificationsRead,
   notificationKeys,
   useMarkNotificationsRead,
+  useMarkNotificationsSeen,
   useNotificationFeed,
 } = await import("./notifications-data");
 
@@ -91,5 +92,45 @@ describe("notification hooks", () => {
     release({ updated: 1, unread_count: 0 });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(invalidate).toHaveBeenCalledWith({ queryKey: notificationKeys.all(w) });
+  });
+
+  // Employee Home keeps a plain page (no `pages`) under the same prefix; reading a row must still reach the core.
+  it("reads a row while Home's plain page sits in the cache", async () => {
+    const { client, Wrapper } = wrapper();
+    client.setQueryData<NotificationFeed>([...notificationKeys.feed(w, "all"), "home"], feedPage([notice()]));
+    apiRequest.mockResolvedValueOnce({ updated: 1, unread_count: 0 });
+    const { result } = renderHook(() => useMarkNotificationsRead(w), { wrapper: Wrapper });
+    act(() => result.current.mutate({ ids: [notice().id] }));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(apiRequest.mock.calls[0]?.[1]).toBe(`${base}/read`);
+    expect(client.getQueryData<NotificationFeed>([...notificationKeys.feed(w, "all"), "home"])?.items[0]?.read_at).not.toBeNull();
+  });
+
+  // The bell and the tabs drop with the row, not after the refetch, and then take the core's own count.
+  it("lowers the unread count at once and then takes the core's", async () => {
+    const { client, Wrapper } = wrapper();
+    client.setQueryData<InfiniteData<NotificationFeed>>(notificationKeys.feed(w, "all"), {
+      pages: [feedPage([notice(), notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de" })])],
+      pageParams: [undefined],
+    });
+    client.setQueryData(notificationKeys.counts(w), { unseen_count: 2, unread_count: 5, needs_action_count: 2 });
+    let release: (value: unknown) => void = () => undefined;
+    apiRequest.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+    apiRequest.mockResolvedValue({ unseen_count: 0, unread_count: 3, needs_action_count: 2 });
+    const { result } = renderHook(() => useMarkNotificationsRead(w), { wrapper: Wrapper });
+    act(() => result.current.mutate({ ids: [notice().id] }));
+    await waitFor(() => expect(client.getQueryData<{ unread_count: number }>(notificationKeys.counts(w))?.unread_count).toBe(4));
+    release({ updated: 1, unread_count: 3 });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(client.getQueryData<{ unread_count: number }>(notificationKeys.counts(w))?.unread_count).toBe(3);
+  });
+
+  it("marks everything up to now as seen", async () => {
+    const { Wrapper } = wrapper();
+    apiRequest.mockResolvedValueOnce({ unseen_count: 0 });
+    const { result } = renderHook(() => useMarkNotificationsSeen(w), { wrapper: Wrapper });
+    act(() => result.current.mutate());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(apiRequest.mock.calls[0]?.slice(1)).toEqual([`${base}/seen`, { method: "POST" }]);
   });
 });

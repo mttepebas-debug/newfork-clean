@@ -2,6 +2,8 @@ import {
   notificationCountsSchema,
   notificationFeedSchema,
   notificationReadResultSchema,
+  notificationSeenResultSchema,
+  type NotificationCounts,
   type NotificationFeed,
   type NotificationFilter,
   type NotificationReadInput,
@@ -38,6 +40,9 @@ export async function markNotificationsRead(workspaceId: string, read: Notificat
     await notificationsApi(workspaceId, "/read", { method: "POST", body: JSON.stringify(read) }),
   );
 }
+export async function markNotificationsSeen(workspaceId: string) {
+  return notificationSeenResultSchema.parse(await notificationsApi(workspaceId, "/seen", { method: "POST" }));
+}
 
 /** The badge and the tabs' counts; the badge shows unread_count. */
 export function useNotificationCounts(workspaceId: string | undefined) {
@@ -60,28 +65,42 @@ export function useNotificationFeed(workspaceId: string, filter: NotificationFil
   });
 }
 
+type CachedFeed = InfiniteData<NotificationFeed> | NotificationFeed;
+const feedItems = (data: CachedFeed) => ("pages" in data ? data.pages.flatMap((page) => page.items) : data.items);
+
 export function useMarkNotificationsRead(workspaceId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (read: NotificationReadInput) => markNotificationsRead(workspaceId, read),
     onMutate: (read) => {
-      // The row looks read at once; the refetch below brings the core's own answer.
+      // The row looks read at once, and the bell and the tabs drop with it; the refetch below brings the core's own answer.
+      // The list keeps pages; employee Home keeps one plain page under the same key prefix.
       const now = new Date().toISOString();
       const isRead = (id: string) => "all" in read || read.ids.includes(id);
-      client.setQueriesData<InfiniteData<NotificationFeed>>({ queryKey: [...notificationKeys.all(workspaceId), "feed"] }, (data) =>
-        data
-          ? {
-              ...data,
-              pages: data.pages.map((page) => ({
-                ...page,
-                items: page.items.map((item) =>
-                  isRead(item.id) && !item.read_at ? { ...item, read_at: now, seen_at: item.seen_at ?? now } : item,
-                ),
-              })),
-            }
-          : data,
+      const feeds = client.getQueriesData<CachedFeed>({ queryKey: [...notificationKeys.all(workspaceId), "feed"] });
+      const newlyRead = new Set(
+        feeds.flatMap(([, data]) => (data ? feedItems(data) : [])).filter((item) => isRead(item.id) && !item.read_at).map((item) => item.id),
+      );
+      const readItem = (item: NotificationFeed["items"][number]) =>
+        isRead(item.id) && !item.read_at ? { ...item, read_at: now, seen_at: item.seen_at ?? now } : item;
+      client.setQueriesData<CachedFeed>({ queryKey: [...notificationKeys.all(workspaceId), "feed"] }, (data) => {
+        if (!data) return data;
+        if ("pages" in data) return { ...data, pages: data.pages.map((page) => ({ ...page, items: page.items.map(readItem) })) };
+        return { ...data, items: data.items.map(readItem) };
+      });
+      client.setQueryData<NotificationCounts>(notificationKeys.counts(workspaceId), (counts) =>
+        counts ? { ...counts, unread_count: "all" in read ? 0 : Math.max(0, counts.unread_count - newlyRead.size) } : counts,
       );
     },
+    onSuccess: (result) =>
+      client.setQueryData<NotificationCounts>(notificationKeys.counts(workspaceId), (counts) =>
+        counts ? { ...counts, unread_count: result.unread_count } : counts,
+      ),
     onSettled: () => client.invalidateQueries({ queryKey: notificationKeys.all(workspaceId) }),
   });
+}
+
+/** Opening the list marks what it shows as seen (S-247 (2)); the badge is the unread count, so it stays. */
+export function useMarkNotificationsSeen(workspaceId: string) {
+  return useMutation({ mutationFn: () => markNotificationsSeen(workspaceId) });
 }
