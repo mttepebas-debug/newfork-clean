@@ -86,13 +86,15 @@ const sweep = (page: Page) =>
 test.describe("desktop: the heading and tabs stay where they are", () => {
   // The managers' Home is not here: its greeting folds into the bar like the
   // employee's (Daylight, Mert 2026-10-19, KARARLAR S-210); its test is below.
-  for (const [person, path, more] of [
-    ["zeynep", "/app/settings/scheduling", [".settings-rail"]],
-    ["zeynep", "/app/settings/scheduling/conflicts", []],
-    ["zeynep", "/account/security", [".account-sidebar"]],
+  // Schedule rules fits a 900 px window since its time off decision window went (time off rebuild D7): a
+  // shorter one keeps a page to scroll.
+  for (const [person, path, more, size] of [
+    ["zeynep", "/app/settings/scheduling", [".settings-rail"], { ...DESKTOP, height: 640 }],
+    ["zeynep", "/app/settings/scheduling/conflicts", [], DESKTOP],
+    ["zeynep", "/account/security", [".account-sidebar"], DESKTOP],
   ] as const) {
     test(`${path} (${person})`, async ({ browser }) => {
-      const page = await open(browser, person, DESKTOP);
+      const page = await open(browser, person, size);
       await visit(page, path);
       const pinned = ["h1", ...more];
       const before = await Promise.all(pinned.map((selector) => topOf(page, selector)));

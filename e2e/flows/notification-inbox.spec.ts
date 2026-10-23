@@ -87,6 +87,8 @@ test("a manager opens time off from the notification panel, approves it, and the
   const drawer = ayse.getByRole("dialog", { name: "Review time off" });
   await drawer.getByRole("button", { name: "Approve", exact: true }).click();
   await expect.poll(() => sql(`select status from public.time_off_requests where id = '${request}';`)).toBe("approved");
+  await drawer.getByRole("button", { name: "Close details" }).click();
+  await expect(drawer).toBeHidden();
   // The card closes for every decider; Needs action no longer lists it.
   const again = await openPanel(ayse);
   await again.getByRole("tab", { name: /^Needs action/ }).click();

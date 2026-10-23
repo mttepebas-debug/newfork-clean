@@ -47,12 +47,19 @@ test("My Availability: a swipe moves between Availability and Time off, and stop
   // The end: no going round to the first.
   await swipe(emre, emre.getByRole("tabpanel"), -160);
   await expect(tabs).toHaveText("Time off");
-  // A scroll down is a scroll, not a tab change; nor is a swipe in a text box (its caret and selection).
+  // A scroll down is a scroll, not a tab change; nor is a swipe in a text box (its caret and selection), here
+  // the note of the Request time off sheet (time off rebuild D7: the form is a sheet over the list).
   await swipe(emre, emre.getByRole("tabpanel"), -30, -200);
-  await swipe(emre, emre.getByRole("textbox", { name: "Note" }), 160);
+  await emre.getByRole("button", { name: "Request time off" }).click();
+  const sheet = emre.getByRole("dialog", { name: "Request time off" });
+  const note = sheet.getByRole("textbox", { name: /Note/ });
+  await note.scrollIntoViewIfNeeded();
+  await swipe(emre, note, 160);
   await expect(tabs).toHaveText("Time off");
-  // Across the Start date (no caret there) it goes back.
-  await swipe(emre, emre.getByLabel("Start"), 160);
+  await sheet.getByRole("button", { name: "Close" }).click();
+  await expect(sheet).toBeHidden();
+  // Across the list it goes back.
+  await swipe(emre, emre.getByRole("tabpanel"), 160);
   await expect(tabs).toHaveText("Availability");
 });
 
