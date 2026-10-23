@@ -216,17 +216,32 @@ export function useTabLine(active: string): RefCallback<HTMLElement> {
     if (!phone || !row) return;
     const place = () => void (line.current = placeTabLine(row, line.current) ?? line.current);
     place();
-    if (typeof ResizeObserver !== "function") return;
-    const resized = new ResizeObserver(place);
-    resized.observe(row);
-    return () => resized.disconnect();
+    return watchTabSizes(row, place);
   }, [active, phone, row]);
   return setRow;
 }
 
+/** Places the line again when the row or one of its tabs changes size: a tab's count comes in, or the font
+    loads, while the row keeps its size. A tab added later is watched too. Returns the stop. */
+function watchTabSizes(row: HTMLElement, place: () => void): () => void {
+  if (typeof ResizeObserver !== "function") return () => undefined;
+  const resized = new ResizeObserver(place);
+  const watch = () => {
+    resized.observe(row);
+    for (const tab of Array.from(row.children)) resized.observe(tab);
+  };
+  watch();
+  const added = new MutationObserver(watch);
+  added.observe(row, { childList: true });
+  return () => {
+    resized.disconnect();
+    added.disconnect();
+  };
+}
+
 /**
  * A list page's status tabs (S-253): the tab row's ref, no hook. The line follows the open tab as the tabs'
- * class or aria state changes, and the row's size. phone-page-tabs.css draws it on a phone only.
+ * class or aria state changes, and the row's and the tabs' sizes. phone-page-tabs.css draws it on a phone only.
  */
 export function tabLineRef(row: HTMLElement | null): (() => void) | undefined {
   if (!row) return undefined;
@@ -234,10 +249,9 @@ export function tabLineRef(row: HTMLElement | null): (() => void) | undefined {
   place();
   const changed = new MutationObserver(place);
   changed.observe(row, { subtree: true, attributes: true, attributeFilter: ["class", "aria-pressed", "aria-selected", "aria-current"] });
-  const resized = typeof ResizeObserver === "function" ? new ResizeObserver(place) : null;
-  resized?.observe(row);
+  const stop = watchTabSizes(row, place);
   return () => {
     changed.disconnect();
-    resized?.disconnect();
+    stop();
   };
 }

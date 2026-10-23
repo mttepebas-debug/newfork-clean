@@ -3,7 +3,9 @@
    My Availability, Shift Hub and My documents, the manager's person Availability page, and every list page's
    status tabs (Requests, Employees, Documents, Important Dates, Locations, Jobs, Shift catalog,
    Settings → Documents). Tabs inside a page's content (the shift card's Team · Notes, the manager's Lineup,
-   Notifications' filters, a second row of filters under the tabs) keep their own look.
+   Notifications' filters, a second row of filters under the tabs) keep their own look; the manager's phone
+   Lineup is a list page whose shift tabs sit in a status row, so `.list-page:not(.lineup-page)` keeps them
+   out, with the weight `.list-page.list-page` had.
    The strip stays inside the page's 16 px sides; its labels start on the title's edge, as wide as their
    words and 24 px apart, 14 px, 44 high; the open one dark at 600, the others muted at 500. One 2 px green
    line under the open label sits on a 1 px line in the title line's colour; more tabs than fit scroll
@@ -13,7 +15,7 @@
    each page's own sheet, whichever loads later. */
 
 @media (max-width: 720px) {
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs) {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs) {
     display: flex;
     flex-wrap: nowrap;
     gap: 24px;
@@ -30,23 +32,23 @@
   }
   /* A list page's status row lends its line to the strip, which fills it (the add button no longer sits in
      it), and scrolls it when the tabs are wider than the screen. */
-  :root:root:root:root .list-page.list-page .catalog-toolbar-status-row {
+  :root:root:root:root .list-page:not(.lineup-page) .catalog-toolbar-status-row {
     height: 44px;
     min-height: 44px;
     border-bottom: 0;
   }
-  :root:root:root:root .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs {
+  :root:root:root:root .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs {
     flex: 1 0 auto;
     overflow: visible;
   }
   /* The sliding line is placed in the strip (a frozen strip is already sticky). */
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs):not([data-frozen-piece]) {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs):not([data-frozen-piece]) {
     position: relative;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs)::-webkit-scrollbar {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs)::-webkit-scrollbar {
     display: none;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs) > :is(a, button) {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs) > :is(a, button) {
     position: relative;
     display: inline-flex;
     flex: none;
@@ -68,19 +70,19 @@
     white-space: nowrap;
     text-decoration: none;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs) > :is(a, button):hover {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs) > :is(a, button):hover {
     background: none;
     color: var(--theme-text);
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs) > :is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .active) {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs) > :is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .active) {
     border-bottom-color: var(--theme-accent);
     color: var(--theme-text);
     font-weight: 600;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs)[data-tab-line] > :is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .active) {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs)[data-tab-line] > :is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .active) {
     border-bottom-color: transparent;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs)[data-tab-line]::after {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs)[data-tab-line]::after {
     content: "";
     position: absolute;
     left: 0;
@@ -92,7 +94,7 @@
     transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1), width 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
     pointer-events: none;
   }
-  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs) > :is(a, button):focus-visible {
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs) > :is(a, button):focus-visible {
     outline: 2px solid var(--theme-focus);
     outline-offset: -2px;
     border-radius: 2px;
@@ -116,7 +118,7 @@
     position: static;
   }
   @media (prefers-reduced-motion: reduce) {
-    :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs)[data-tab-line]::after {
+    :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs)[data-tab-line]::after {
       transition: none;
     }
   }
