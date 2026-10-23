@@ -243,14 +243,15 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     fireEvent.click(open);
     expect(await screen.findByRole("dialog", { name: "Review time off" })).toBeTruthy();
   });
-  // A tab row wider than a phone scrolls, and a faded edge says so.
-  it("fades the tab row's edge where more tabs wait, and brings the chosen tab into view", async () => {
+  // Tabs wider than a phone scroll, and a faded edge says so. The tabs scroll and fade in their own strip, so
+  // the phone's Add beside them in the row never does (KARARLAR S-254).
+  it("fades the tab strip's edge where more tabs wait, and brings the chosen tab into view", async () => {
     const shown: string[] = [];
     HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.textContent ?? ""); };
     renderPage("/app/schedule/requests?type=cover");
     const tabs = await screen.findByRole("group", { name: "Request type" });
     await waitFor(() => expect(shown).toContain("Shift changes"));
-    const row = tabs.parentElement!;
+    const row = tabs;
     Object.defineProperty(row, "scrollWidth", { configurable: true, value: 380 });
     Object.defineProperty(row, "clientWidth", { configurable: true, value: 298 });
     row.scrollLeft = 0;
@@ -713,9 +714,11 @@ describe("Time off tab", () => {
     expect(screen.getByRole("button", { name: "Add time off" })).toBeTruthy();
   });
 
-  // KARARLAR S-253 (Mert 2026-10-23, after requests-add-top): on a phone Add is never in the tab row; it ends
-  // the first box row, beside the location list, the search under them. On a computer it stays at the row's end.
-  it("puts Add beside the location list on a phone, short label Add", async () => {
+  // KARARLAR S-254 (Mert 2026-10-23), Requests' one exception to S-253: on a phone Add stands at the right end
+  // of the tab row (All · Time off · Shift changes), beside the tab strip and outside it, so it never scrolls
+  // or fades with the tabs; the location list is the first box, the search under it. On a computer it stays at
+  // the filter row's end.
+  it("puts Add at the tab row's right end on a phone, outside the tab strip, short label Add", async () => {
     const before = window.matchMedia;
     window.matchMedia = ((media: string) => ({
       matches: media === "(max-width: 720px)",
@@ -727,9 +730,36 @@ describe("Time off tab", () => {
       renderPage("/app/schedule/requests?type=time_off");
       await screen.findByRole("row", { name: /Alex Kim asks for/ });
       const add = screen.getByRole("button", { name: "Add time off" });
-      expect(add.closest(".catalog-toolbar-status-row")).toBeNull();
-      expect(screen.getByRole("combobox", { name: "Filter by location" }).nextElementSibling).toBe(add);
+      const row = add.closest(".catalog-toolbar-status-row");
+      expect(row).not.toBeNull();
+      expect(row!.lastElementChild).toBe(add);
+      const strip = screen.getByRole("group", { name: "Request type" });
+      expect(strip.parentElement).toBe(row);
+      expect(strip.contains(add)).toBe(false);
+      expect(screen.getAllByRole("button", { name: "Add time off" })).toHaveLength(1);
+      expect(screen.getByRole("combobox", { name: "Filter by location" }).nextElementSibling).toBe(
+        screen.getByRole("searchbox", { name: "Search requests" }).closest("label"),
+      );
       expect(add.querySelector(".list-add-short")?.textContent).toBe("Add");
+    } finally {
+      window.matchMedia = before;
+    }
+  });
+
+  it("keeps the tab row without Add on a phone where Add is not offered (All)", async () => {
+    const before = window.matchMedia;
+    window.matchMedia = ((media: string) => ({
+      matches: media === "(max-width: 720px)",
+      media,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      renderPage();
+      await screen.findByRole("list", { name: "Requests" });
+      expect(screen.queryByRole("button", { name: "Add time off" })).toBeNull();
+      const strip = screen.getByRole("group", { name: "Request type" });
+      expect(strip.parentElement!.lastElementChild).toBe(strip);
     } finally {
       window.matchMedia = before;
     }

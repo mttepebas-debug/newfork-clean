@@ -42,6 +42,20 @@ describe("the sky stays whole on a phone", () => {
     expect(readFileSync("src/views/list-page.css", "utf8")).not.toMatch(/catalog-tab-add/);
   });
 
+  // KARARLAR S-254: Requests is the one page whose Add stands in the tab row on a phone - with no backing of
+  // its own, 32 high and 8 px above the row's bottom, in the list pages' shape (below), the row's line under it.
+  it("stands Requests' Add in its tab row with no backing, 32 high, 8 px above the line", () => {
+    const add = body("src/views/requests-catalog.css", ".requests-page.list-page.list-page .catalog-toolbar-status-row > .list-add-button.list-add-button", phone);
+    expect(add).toMatch(/height\s*:\s*32px/);
+    expect(add).toMatch(/min-height\s*:\s*32px/);
+    expect(add).toMatch(/margin-top\s*:\s*4px/);
+    expect(add).toMatch(/flex\s*:\s*0 0 auto/);
+    expect(add).not.toMatch(/background/);
+    const row = body("src/views/requests-catalog.css", ".requests-page.list-page.list-page .catalog-toolbar-status-row", phone);
+    expect(row).toMatch(/box-shadow\s*:\s*inset 0 -1px 0 var\(--theme-border\)/);
+    expect(row).not.toMatch(/background/);
+  });
+
   it("gives Requests' add button the list pages' shape, as on Employees", () => {
     const add = body("src/views/requests-catalog.css", ".requests-catalog-page .list-add-button.list-add-button");
     expect(add).toMatch(/border-radius\s*:\s*7px/);
