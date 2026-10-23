@@ -59,22 +59,6 @@ export function dayGroup(createdAt: string, now: Date): DayGroup {
   return days <= 0 ? "Today" : days === 1 ? "Yesterday" : "Earlier";
 }
 
-/**
- * The inline decision a row offers. Only time off has one today: its card
- * names the request (subject), and the verdict goes through the endpoint
- * Requests uses. Every other open request is opened with Review, the new
- * time off's too (subject "time_off", time off rebuild D3): its card links to
- * Requests → Time off for whoever answers and to My Availability → Time off for
- * the employee.
- */
-export type Decision = { readonly kind: "time_off"; readonly requestId: string };
-export function decisionFor(item: NotificationItem): Decision | null {
-  if (!item.needs_action || item.resolved_at || !item.subject_id) return null;
-  if ((item.type === "time_off.requested" || item.type === "time_off.decision_reminder") && item.subject_type === "time_off_request")
-    return { kind: "time_off", requestId: item.subject_id };
-  return null;
-}
-
 /** "Approved", "Declined"; "You approved" when the reader decided it. */
 export function resolutionLabel(item: Pick<NotificationItem, "resolution" | "resolved_by">, viewerId: string | undefined): string | null {
   if (!item.resolution) return null;

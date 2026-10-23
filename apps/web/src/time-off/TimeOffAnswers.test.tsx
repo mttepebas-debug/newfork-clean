@@ -84,7 +84,7 @@ const cancelAsk = view({
   employee_name: "Sam Lee",
   created_at: "2026-10-22T15:00:00+00:00",
 });
-const page: TimeOffRequestsPage = { total: 2, waiting: 1, page: 1, page_size: 50, requests: [wedding, dentist] };
+const page: TimeOffRequestsPage = { total: 2, waiting: 1, page: 1, page_size: 50, time_format: "12h", locations: [], requests: [wedding, dentist] };
 const shift = {
   id: "22000000-0000-4000-8000-000000000004",
   scheduled_date: "2026-11-13",

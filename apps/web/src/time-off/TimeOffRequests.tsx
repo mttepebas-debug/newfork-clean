@@ -32,7 +32,7 @@ type Sheet = { kind: "new" } | { kind: "detail"; id: string; cancelOpen: boolean
 /**
  * The employee's Time off (Employee Hub → My Availability → Time off), rebuilt from scratch: Karma,
  * KARARLAR S-242. On a computer a table with a row menu and drawers from the right; on a phone rows and
- * sheets from the bottom. Behind the time-off-v2 flag until D7.
+ * sheets from the bottom.
  */
 export function TimeOffRequests({ workspaceId, timeFormat }: { workspaceId: string; timeFormat: TimeFormat }) {
   const phone = usePhoneWidth();

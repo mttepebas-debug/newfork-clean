@@ -25,7 +25,6 @@ const defaults: SchedulingSettingsInput = {
   week_start_day: "monday",
   schedule_deadline_day: "sunday",
   time_format: "12h",
-  time_off_lead_hours: 24,
 };
 
 const weekdays = [
@@ -84,11 +83,6 @@ export default function SchedulingSettingsPage() {
     if (!canEdit) return;
     setSaved(false);
     setValidationError(null);
-    const hours = draft.time_off_lead_hours;
-    if (hours !== undefined && !(Number.isInteger(hours) && hours >= 0 && hours <= 720)) {
-      setValidationError("Enter a time off decision window from 0 to 720 hours.");
-      return;
-    }
     const parsed = schedulingSettingsInputSchema.safeParse(draft);
     if (!parsed.success) {
       setValidationError("Choose valid scheduling settings before saving.");
@@ -209,26 +203,6 @@ export default function SchedulingSettingsPage() {
                     })
                   }
                 />
-              </SettingsChoiceRow>
-              <SettingsChoiceRow
-                label="Time off decision window"
-                description="Managers decide this many hours before time off starts. Undecided requests are declined."
-              >
-                <input
-                  type="number"
-                  min={0}
-                  max={720}
-                  step={1}
-                  required
-                  aria-label="Time off decision window (hours)"
-                  value={Number.isFinite(draft.time_off_lead_hours) ? draft.time_off_lead_hours : ""}
-                  onChange={(event) =>
-                    updateDraft({
-                      time_off_lead_hours: event.target.value === "" ? Number.NaN : Number(event.target.value),
-                    })
-                  }
-                />
-                <span className="setting-unit">hours</span>
               </SettingsChoiceRow>
               {/* Both when both hold: the form's own check and the server's (UI-FIELDMSG-2). */}
               <FieldNote id="scheduling-settings-check" error={validationError} />

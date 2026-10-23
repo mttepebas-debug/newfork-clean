@@ -1,6 +1,6 @@
 import type { EmployeeHubReadModel } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
-import { switchWeeks, weekDays, weekRange } from "./EmployeeMyShifts";
+import { mergedWeeks, switchWeeks, weekDays, weekRange } from "./EmployeeMyShifts";
 
 const me = "15000000-0000-4000-8000-000000000001";
 const shift = {
@@ -14,20 +14,7 @@ const shift = {
   note: "",
   employee_id: me,
 };
-type Request = EmployeeHubReadModel["requests"][number];
-const timeOff = (id: number, date: string, extra: Partial<Request> = {}, period: Partial<NonNullable<Request["periods"]>[number]> = {}): Request => ({
-  id: `98200000-0000-4000-8000-00000000000${id}`,
-  kind: "time_off",
-  status: "approved",
-  title: "Time off",
-  detail: "",
-  revision: 1,
-  created_at: "2026-08-18T12:00:00Z",
-  can_cancel: false,
-  periods: [{ id: `98210000-0000-4000-8000-00000000000${id}`, segment_date: date, start_time: null, end_time: null, status: "approved", ...period }],
-  ...extra,
-});
-const model = (requests: Request[]): EmployeeHubReadModel => ({
+const model = (leave_days: string[] = []): EmployeeHubReadModel => ({
   workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
   settings: { time_format: "12h" },
   employee: { id: me, display_name: "Alex Kim" },
@@ -35,51 +22,32 @@ const model = (requests: Request[]): EmployeeHubReadModel => ({
   shifts: [shift],
   open_shifts: [{ ...shift, id: "22000000-0000-4000-8000-000000000005", scheduled_date: "2026-08-28", employee_id: null }],
   team_shifts: [],
-  requests,
   team: [],
+  leave_days,
 });
 
 describe("My shifts: what each day says", () => {
-  it("marks approved time off, and not leave that was taken back, a cancellation's own request, or a day cancelled whole", () => {
+  // The read's days off, old and new time off alike (time off rebuild D3, D7).
+  it("marks the days the read says are off, the person's shifts and the pool's released shifts", () => {
     const days = weekDays(
-      model([
-        timeOff(1, "2026-08-26"),
-        timeOff(2, "2026-08-27", { status: "revoked" }),
-        timeOff(3, "2026-08-29", { request_type: "time_off_cancellation" }),
-        timeOff(4, "2026-08-30", {}, { cancelled_intervals: [{ start_at: "2026-08-30T07:00:00Z", end_at: "2026-08-31T07:00:00Z" }], effective_intervals: [] }),
-        timeOff(5, "2026-08-24", { status: "pending" }, { status: "pending" }),
-      ]),
+      model(["2026-08-26"]),
       "2026-08-24",
       // A released shift in the pool on Aug 28 (QA 38).
       ["2026-08-28"],
     );
-    const off = Object.fromEntries(days.map((day) => [day.date, day.timeOff]));
-    expect(off).toEqual({
-      "2026-08-24": false,
-      "2026-08-25": false,
-      "2026-08-26": true,
-      "2026-08-27": false,
-      "2026-08-28": false,
-      "2026-08-29": false,
-      "2026-08-30": false,
-    });
+    expect(days.filter((day) => day.timeOff).map((day) => day.date)).toEqual(["2026-08-26"]);
     expect(days[1]!.shifts.map((item) => item.id)).toEqual([shift.id]);
     expect(days[4]!.open).toBe(1);
   });
-
-  it("keeps a day partly left after a cancellation as time off", () => {
-    const [day] = weekDays(
-      model([timeOff(6, "2026-08-24", {}, { cancelled_intervals: [{ start_at: "2026-08-24T16:00:00Z", end_at: "2026-08-24T20:00:00Z" }], effective_intervals: [{ start_at: "2026-08-24T20:00:00Z", end_at: "2026-08-25T07:00:00Z" }] })]),
-      "2026-08-24",
-    );
-    expect(day!.timeOff).toBe(true);
-  });
 });
 
-describe("My shifts: the server's leave days (time off rebuild D3)", () => {
-  it("marks the days the read says are off, and nothing from the requests once it says so", () => {
-    const days = weekDays({ ...model([timeOff(1, "2026-08-26")]), leave_days: ["2026-08-27", "2026-08-28"] }, "2026-08-24");
-    expect(days.filter((day) => day.timeOff).map((day) => day.date)).toEqual(["2026-08-27", "2026-08-28"]);
+describe("My shifts: the two weeks asked one by one", () => {
+  // Each week is its own read; the days off of the second one are kept too.
+  it("keeps both weeks' shifts and days off", () => {
+    const week = mergedWeeks([model(["2026-08-26"]), { ...model(["2026-09-02"]), shifts: [{ ...shift, id: "22000000-0000-4000-8000-000000000009", scheduled_date: "2026-09-01" }] }]);
+    expect(week?.leave_days).toEqual(["2026-08-26", "2026-09-02"]);
+    expect(week?.shifts.map((item) => item.scheduled_date)).toEqual(["2026-08-25", "2026-09-01"]);
+    expect(mergedWeeks([model(), undefined])).toBeUndefined();
   });
 });
 

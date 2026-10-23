@@ -70,30 +70,22 @@ describe("PublishPreflightPanel", () => {
     expect(screen.getByText("Notes and already-live issues")).toBeTruthy();
     expect(screen.getByText("Ali Kaya has time off waiting for a decision on Aug 17")).toBeTruthy();
   });
-  // Time off rebuild D3b: the note opens its request where it lives. Behind the time-off-v2 flag a request
-  // in the new table opens the new answer drawer; one in the old table, or any request with the flag off,
-  // keeps today's note with no link, so a new id never reaches the old drawer.
+  // Time off rebuild D3b, D7: the note opens its request where it lives. A request in the new table opens its
+  // answer drawer; one in the old table keeps the note with no link, so an old id never reaches the new drawer.
   it.each([
-    [true, "current", "/app/schedule/requests?type=time_off&request=55555555-5555-4555-8555-555555555555"],
-    [true, "legacy", null],
-    [true, undefined, null],
-    [false, "current", null],
-    [false, "legacy", null],
-  ] as const)("with the flag %s, a %s request links to %s", (flagOn, source, href) => {
+    ["current", "/app/schedule/requests?type=time_off&request=55555555-5555-4555-8555-555555555555"],
+    ["legacy", null],
+    [undefined, null],
+  ] as const)("a %s request links to %s", (source, href) => {
     const note = {
       ...preview.findings[0]!, id: "time_off_pending:0002", code: "time_off_pending" as const, overrideable: false, tier: "note" as const,
       employee_name: "Ali Kaya", message: "Ali Kaya has time off waiting for a decision on Aug 17",
       time_off_request_id: "55555555-5555-4555-8555-555555555555", time_off_source: source,
     };
-    expect(pendingTimeOffHref(note, flagOn)).toBe(href);
-    if (flagOn) window.localStorage.setItem("newfork:time-off-v2", "1");
-    try {
-      render(<PublishPreflightPanel preview={{ ...preview, status: "publish_ready" as const, findings: [note] }} locations={[mainDining]} />);
-      const link = screen.queryByRole("link", { name: "Review Ali Kaya's time off request" });
-      expect(link?.getAttribute("href") ?? null).toBe(href);
-    } finally {
-      window.localStorage.removeItem("newfork:time-off-v2");
-    }
+    expect(pendingTimeOffHref(note)).toBe(href);
+    render(<PublishPreflightPanel preview={{ ...preview, status: "publish_ready" as const, findings: [note] }} locations={[mainDining]} />);
+    const link = screen.queryByRole("link", { name: "Review Ali Kaya's time off request" });
+    expect(link?.getAttribute("href") ?? null).toBe(href);
   });
   it("separates new weekly conflicts from collapsed accepted conflicts without reason inputs", () => {
     const fresh = { ...preview.findings[0]!, code: "schedule_conflict" as const, availability_state: "new" as const, warning_policy: "confirm" as const, tier: "risk" as const, employee_name: "Alex" };

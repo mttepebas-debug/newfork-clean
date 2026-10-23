@@ -11,7 +11,6 @@ import {
   formatAvailabilityRange,
   scheduleAvailabilityMarks,
 } from "../lib/scheduleAvailabilityMark";
-import { timeOffV2Enabled } from "../../time-off/time-off-flag";
 
 type PublishPreflightTier = "blocker" | "risk" | "note";
 export type PublishPreflightBlockReason =
@@ -30,16 +29,13 @@ const blockReasonText: Readonly<Record<PublishPreflightBlockReason, string>> = {
 type SchedulePublishFinding = SchedulePublicationPreview["findings"][number];
 
 /**
- * Where a time off note opens its request (time off rebuild D3b): behind the time-off-v2 flag, a request in
- * the new table opens the new answer drawer. Anything else keeps today's note with no link, so a new id
- * never reaches the old drawer (or an old id the new one).
+ * Where a time off note opens its request (time off rebuild D3b, D7): a request in the new table opens its answer
+ * drawer in Requests → Time off. One in the old table (until the old tables go) keeps the note with no link.
  */
 export function pendingTimeOffHref(
   finding: Pick<SchedulePublishFinding, "code" | "time_off_request_id" | "time_off_source">,
-  timeOffV2: boolean,
 ): string | null {
-  if (!timeOffV2 || finding.code !== "time_off_pending" || finding.time_off_source !== "current" || !finding.time_off_request_id)
-    return null;
+  if (finding.code !== "time_off_pending" || finding.time_off_source !== "current" || !finding.time_off_request_id) return null;
   return `/app/schedule/requests?type=time_off&request=${encodeURIComponent(finding.time_off_request_id)}`;
 }
 
@@ -172,7 +168,6 @@ export function PublishPreflightPanel({
   const overrideable = publishOverrideableBlockers(preview);
   const risks = publishGatingRisks(preview);
   const informational = publishInformationalFindings(preview);
-  const timeOffV2 = timeOffV2Enabled();
   const newConflicts = publishNewAvailabilityFindings(preview);
   const availabilityLook = publishAvailabilityLook(preview);
   // Another rule's conflict accepted at the last publish stays listed (KK-132);
@@ -282,7 +277,7 @@ export function PublishPreflightPanel({
           findings={informational}
           locations={locations}
           linkFor={(finding) => {
-            const href = pendingTimeOffHref(finding, timeOffV2);
+            const href = pendingTimeOffHref(finding);
             return href ? { href, label: `Review ${finding.employee_name ?? "this person"}'s time off request` } : null;
           }}
         >

@@ -268,6 +268,29 @@ export function answerSentence(request: TimeOffDeciderView, format: TimeFormat =
   return { name: request.employee_name, middle, when, text: `${request.employee_name}${middle}${when}` };
 }
 
+/** When a request waiting stops waiting: time off at its start, a cancellation at the time off's end. */
+export const waitsUntil = (request: Pick<TimeOffDeciderView, "kind" | "starts_at" | "ends_at">) =>
+  request.kind === "cancel" ? request.ends_at : request.starts_at;
+
+export type AnswerStatus = {
+  readonly label: string;
+  readonly tone: "amber" | "green" | "red" | "gray";
+  readonly drawer: "warn" | "ok" | "red" | "grey";
+};
+
+/**
+ * Waiting (and not past waitsUntil): Needs decision. Waiting past it: Expired. Time off cancelled or revoked
+ * says so (D4).
+ */
+export function answerStatus(request: TimeOffDeciderView, now: Date = new Date()): AnswerStatus {
+  if (request.status === "pending" && new Date(waitsUntil(request)) > now) return { label: "Needs decision", tone: "amber", drawer: "warn" };
+  if (request.status === "approved") return { label: "Approved", tone: "green", drawer: "ok" };
+  if (request.status === "declined") return { label: "Declined", tone: "red", drawer: "red" };
+  if (request.status === "cancelled") return { label: "Cancelled", tone: "gray", drawer: "grey" };
+  if (request.status === "revoked") return { label: "Revoked", tone: "red", drawer: "red" };
+  return { label: "Expired", tone: "gray", drawer: "grey" };
+}
+
 /** "3 shifts"; "3 shifts go"; "3 shifts went to open shifts." */
 export function shiftsText(count: number, form: "count" | "go" | "went"): string {
   const noun = count === 1 ? "1 shift" : `${count} shifts`;

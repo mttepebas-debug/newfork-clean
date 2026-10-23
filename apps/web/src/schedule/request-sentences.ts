@@ -1,4 +1,5 @@
-import type { ExchangeCase, TimeOffRequest } from "@newfork/shared";
+import type { ExchangeCase, TimeOffDeciderView } from "@newfork/shared";
+import { answerSentence, answerStatus } from "../time-off/time-off-text";
 import type { RequestRow } from "./requests-list";
 
 // Schedule → Requests rows as one sentence each (TAKAS-RELEASE; shift changes:
@@ -37,8 +38,6 @@ const day = (date: string) =>
   new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(
     new Date(`${date}T12:00:00Z`),
   );
-const range = (start: string, end: string) =>
-  start === end ? day(start) : `${day(start)} – ${day(end)}`;
 
 /** Who comes on: the approved taker, else the people waiting for a decision. */
 function takers(item: ExchangeCase) {
@@ -91,13 +90,10 @@ export function exchangeSentence(item: ExchangeCase, timeFormat: "12h" | "24h"):
   return [...people(names), ` ${verb} `, { strong: possessive(owner) }, ` ${start}${shift.job_name} shift${where}`];
 }
 
-export function timeOffSentence(request: TimeOffRequest, opens: number): Part[] {
-  const when = range(request.start_date, request.end_date);
-  const lead: Part[] =
-    request.request_type === "time_off_cancellation"
-      ? [{ strong: request.employee_name }, ` asked to cancel approved time off ${when}.`]
-      : [{ strong: request.employee_name }, ` asked for time off ${when}.`];
-  return opens ? [...lead, ` ${opens} ${opens === 1 ? "shift becomes" : "shifts become"} open.`] : lead;
+/** The Time off tab's own sentence (S-151): "Maria Lopez asks for vacation, Nov 13–16". */
+export function timeOffSentence(request: TimeOffDeciderView, timeFormat: "12h" | "24h"): Part[] {
+  const parts = answerSentence(request, timeFormat);
+  return [{ strong: parts.name }, parts.middle, { strong: parts.when }];
 }
 
 export const sentenceText = (parts: readonly Part[]) =>
@@ -129,14 +125,11 @@ export function exchangeStatus(item: ExchangeCase): { label: string; tone: Tone 
   return awaitsDecision(item) ? { label: "Needs decision", tone: "amber" } : { label: "Open", tone: "gray" };
 }
 
-/** A row's word. Another approver voting first is still Needs decision; revoked leave ends Declined (Mert, 2026-10-18). */
+/** A row's word; time off says the Time off tab's word (D7). */
 export function rowStatus(row: RequestRow): { label: string; tone: Tone } {
   if (row.source === "exchange") return exchangeStatus(row.request) ?? { label: "Open", tone: "gray" };
-  const request = row.request;
-  if (row.state !== "closed") return { label: "Needs decision", tone: "amber" };
-  if (request.status === "approved") return { label: "Approved", tone: "green" };
-  if (request.status === "denied" && request.events.some((event) => event.action === "expired")) return { label: "Expired", tone: "gray" };
-  return { label: "Declined", tone: "red" };
+  const status = answerStatus(row.request);
+  return { label: status.label, tone: status.tone };
 }
 
 /** Expires: an open request's last moment; red in its last 12 hours. A decided one has none. */

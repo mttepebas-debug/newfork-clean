@@ -497,7 +497,7 @@ describe("orderScheduleCellShifts", () => {
 });
 
 // Time off rebuild D3b (KARARLAR S-239 (9)): time off waiting for an answer marks its days, apart from
-// approved time off and only behind the time-off-v2 flag.
+// approved time off.
 describe("time off waiting for an answer", () => {
   const week = (pending: { start_at: string; end_at: string }[], leave: { start_at: string; end_at: string }[] = []) => {
     const base = model([]);
@@ -512,7 +512,7 @@ describe("time off waiting for an answer", () => {
   const tuesdayMorning = { start_at: "2026-08-18T16:00:00Z", end_at: "2026-08-18T20:00:00Z" };
 
   it("marks the days asked, at the person's own location only", () => {
-    const cells = buildScheduleCellState(week([friday, tuesdayMorning]), false, { pendingTimeOff: true });
+    const cells = buildScheduleCellState(week([friday, tuesdayMorning]), false);
     expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-21", employeeId))?.pendingTimeOff).toEqual([{ from: 0, to: 1440 }]);
     expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-18", employeeId))?.pendingTimeOff).toEqual([{ from: 540, to: 780 }]);
     expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-21", employeeId))?.pendingTimeOff ?? null).toBeNull();
@@ -521,12 +521,7 @@ describe("time off waiting for an answer", () => {
   });
 
   it("gives way to approved time off the same day", () => {
-    const cells = buildScheduleCellState(week([friday], [friday]), false, { pendingTimeOff: true });
+    const cells = buildScheduleCellState(week([friday], [friday]), false);
     expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-21", employeeId))?.pendingTimeOff ?? null).toBeNull();
-  });
-
-  it("marks nothing with the flag off, as today", () => {
-    expect(buildScheduleCellState(week([friday]))).toEqual(buildScheduleCellState(week([])));
-    expect(buildScheduleCellState(week([friday]), false, { pendingTimeOff: false })).toEqual(buildScheduleCellState(week([])));
   });
 });

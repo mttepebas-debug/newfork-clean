@@ -21,7 +21,7 @@ export function OwnAvailabilityFlag({ when, shiftId }: { readonly when: string; 
           <Link to={`${base}/shift-hub?offer=${shiftId}`}>
             <ArrowLeftRight size={13} aria-hidden /> Swap or give up
           </Link>
-          <Link to={`${base}/my-availability?section=time-off#time-off`}>
+          <Link to={`${base}/my-availability?section=time-off`}>
             <CalendarOff size={13} aria-hidden /> Request time off
           </Link>
         </div>

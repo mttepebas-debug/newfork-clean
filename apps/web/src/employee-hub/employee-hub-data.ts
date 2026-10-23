@@ -2,10 +2,8 @@ import { requestFailure } from "../lib/request-error";
 import {
   employeePersonalTasksSchema,
   type EmployeePersonalTaskInput,
-  employeeHubMutationResultSchema,
   employeeHubReadModelSchema,
   scheduleReadModelSchema,
-  type EmployeeRequestActionInput,
 } from "@newfork/shared";
 import {
   getApiAccessToken,
@@ -72,17 +70,6 @@ export async function changeEmployeePersonalTask(
     await request(workspaceId, "/personal-tasks", {
       method: "POST",
       body: JSON.stringify(task),
-    }),
-  );
-}
-export async function actOnEmployeeRequest(
-  workspaceId: string,
-  input: EmployeeRequestActionInput,
-) {
-  return employeeHubMutationResultSchema.parse(
-    await request(workspaceId, "/request-action", {
-      method: "POST",
-      body: JSON.stringify(input),
     }),
   );
 }

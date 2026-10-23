@@ -4,29 +4,18 @@ import { ListPagination } from "./ListPagination";
 import { RequestCards, RequestsTable } from "./RequestsTable";
 import { SwapReview } from "./SwapReview";
 import "./requests-catalog.css";
-import { timeOffApprovalAsksFirst, timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from "@newfork/shared";
+import type { ExchangeCase } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftRight, Check, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
-import { TimeOffShorten } from "./TimeOffShorten";
-import { TimeOffReview } from "./TimeOffReview";
-import type { DrawerNotice } from "./RequestDrawer";
-import { alsoOffThese } from "../schedule/time-off-overlap";
 import { ExchangeReview } from "./ExchangeReview";
-import { getExchanges, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
+import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { RequestError } from "../lib/request-error";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
-import { AvailabilityDraftScope } from "../availability/availability-navigation";
 import { requestAppNavigation } from "../shell/leave-guard";
-import {
-  isStaleTimeOff,
-  useRevokeTimeOff,
-  useVoteOnTimeOff,
-} from "../schedule/requests-data";
-import { ConfirmDialog } from "../shell/ConfirmDialog";
 import {
   openCounts,
   pageOf,
@@ -43,10 +32,8 @@ import {
 import { ListOutline, LoadError } from "../shell/LoadState";
 import { NoAccessRoute, NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
-import { timeOffV2Enabled } from "../time-off/time-off-flag";
-import { TimeOffAnswers } from "../time-off/TimeOffAnswers";
+import { AnswerDrawerFrame, TimeOffAnswers } from "../time-off/TimeOffAnswers";
 import { TimeOffEntry } from "../time-off/TimeOffEntry";
-type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
 
 export function ScheduleRequestsPage() {
   const [params] = useSearchParams();
@@ -58,23 +45,10 @@ export function ScheduleRequestsPage() {
   // Neither type opens: the no-access card in place (Mert 2026-10-14).
   if (!can(context, "requests.read") && !can(context, "exchange.read"))
     return <NoAccessRoute />;
-  return (
-      <AvailabilityDraftScope
-        labels={{
-          saving: "Saving request decision",
-          discard: "Discard request decision?",
-          saved: "Decision saved",
-          unsaved:
-            "Your unsaved decision and note will be lost. Saved decisions and published assignments stay in place.",
-        }}
-      >
-        <ScheduleRequestsPageContent />
-      </AvailabilityDraftScope>
-  );
+  return <ScheduleRequestsPageContent />;
 }
 function ScheduleRequestsPageContent() {
   const { context } = useAuth();
-  const client = useQueryClient();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const workspaceId = context?.workspace.id ?? "";
@@ -90,21 +64,8 @@ function ScheduleRequestsPageContent() {
   // window reads the list's latest copy and keeps the last one it saw, so a
   // refresh that no longer lists the swap does not pull it away (P26).
   const [openSwap, setOpenSwap] = useState<ExchangeCase | null>(null);
-  const [act, setAct] = useState<Act | null>(null);
-  const [actText, setActText] = useState("");
-  const [actError, setActError] = useState("");
-  // The reason a Deny written in the drawer could not send (Mert, 2026-10-11).
-  const [denyError, setDenyError] = useState("");
-  const [shortenError, setShortenError] = useState<string | null>(null);
   const toast = useToast();
-  // Said inside the drawer while it stays open (CatalogDrawer).
-  const [drawerNotice, setDrawerNotice] = useState<DrawerNotice | null>(null);
-  const vote = useVoteOnTimeOff(workspaceId);
-  const revoke = useRevokeTimeOff(workspaceId);
   const data = useRequests(workspaceId, { timeOff: canReadTimeOff, shiftChanges: canReadShift }, { locationId, search });
-  // "Also off these days" asks every request the reader reads, not the filtered list;
-  // without a filter this is the same cached read.
-  const everyone = useRequests(workspaceId, { timeOff: canReadTimeOff, shiftChanges: canReadShift }, { locationId: "", search: "" });
   // A reason being written keeps a drawer open on Escape and the backdrop (P26).
   const [held, setHeld] = useState(false);
   // A drawer opened from the list is a history step: closing it steps back, so Back is never a no-op.
@@ -181,9 +142,9 @@ function ScheduleRequestsPageContent() {
     listWrap.current?.focus({ preventScroll: true });
     setFocusList(false);
   }, [focusList, caseUnread]);
-  const timeOffById = new Map<string, TimeOffRequest>();
-  for (const row of allRows) if (row.source === "time_off") timeOffById.set(row.id, row.request);
-  const selected = timeOffById.get(selectedId) ?? null;
+  // The All tab opens a time off row in the answer drawer; the Time off tab draws its own (TimeOffAnswers).
+  const selectedRow = view.type === "time_off" ? undefined : allRows.find((row) => row.source === "time_off" && row.id === selectedId);
+  const selected = selectedRow?.source === "time_off" ? selectedRow.request : null;
 
   function setView(values: Record<string, string | null>) {
     requestAppNavigation(() => {
@@ -206,8 +167,6 @@ function ScheduleRequestsPageContent() {
   function selectRequest(id: string) {
     setHeld(false);
     setSelectedId(id);
-    setDrawerNotice(null);
-    setDenyError("");
     setParams(
       (previous) => {
         const next = new URLSearchParams(previous);
@@ -257,61 +216,6 @@ function ScheduleRequestsPageContent() {
       });
     else selectRequest(row.id);
   }
-  function startAct(request: TimeOffRequest, kind: Act["kind"]) {
-    setActText("");
-    setActError("");
-    const progress = request.progress;
-    // A manager's plain vote needs no box; one that opens shifts, a revoke
-    // (its reason) and an admin's or owner's decision do (rules 6, 7, 14). A
-    // deny asks its reason in the drawer itself.
-    const ask = kind === "revoke" || Boolean(progress && timeOffApprovalAsksFirst(progress));
-    if (ask) setAct({ request, kind });
-    else void runAct({ request, kind }, "");
-  }
-  async function runAct(current: Act, text: string, inline = false) {
-    const { request, kind } = current;
-    setDrawerNotice(null);
-    setDenyError("");
-    try {
-      let message: string;
-      let closedNow = true;
-      if (kind === "revoke") {
-        await revoke.mutateAsync({
-          requestId: request.id,
-          revoke: { expected_revision: request.revision, reason: text },
-        });
-        message = "Time off revoked.";
-      } else {
-        const result = await vote.mutateAsync({
-          requestId: request.id,
-          verdict: {
-            verdict: kind,
-            note: text,
-            expected_impact: request.progress!.impact!.fingerprint,
-          },
-        });
-        closedNow = result.final;
-        message = verdictMessage(request, kind, result.final, result.remaining);
-      }
-      setAct(null);
-      if (closedNow) {
-        selectRequest("");
-        toast.success(message);
-      } else setDrawerNotice({ text: message });
-      // A decision can open shifts: every surface that shows them refreshes.
-      await refreshExchangeSurfaces(client, workspaceId);
-    } catch (error) {
-      if (isStaleTimeOff(error)) {
-        setAct(null);
-        setDrawerNotice({ text: "This request changed. Review it again.", tone: "warning" });
-        return;
-      }
-      const message = error instanceof Error ? error.message : "Decision failed";
-      if (inline) setDenyError(message);
-      else if (kind === "approve" && !act) setDrawerNotice({ text: message, tone: "error" });
-      else setActError(message);
-    }
-  }
   const header = (
     <CatalogPageHeader
       eyebrow="TEAM CHANGES. REVIEWED WITH CONTROL."
@@ -332,10 +236,12 @@ function ScheduleRequestsPageContent() {
   const failed = Boolean(data.failure);
   // One group to read needs no tabs: All would say the same thing.
   const tabs = requestTabsFor(allowedTypes);
-  // Time off rebuild D3: behind the time-off-v2 flag the Time off tab is the new time off's (its own list,
-  // paged by the server, and its answer drawer). The All tab and the old drawer stay until D7.
-  const newTimeOff = view.type === "time_off" && timeOffV2Enabled() && can(context, "time_off.decide");
-  // D5: whoever may answer adds approved time off for somebody from the Time off tab's filter row.
+  // Time off rebuild (D3, D7): the Time off tab is the new time off's own list, paged by the server, with its
+  // answer drawer.
+  const timeOffTab = view.type === "time_off";
+  // D5: whoever may answer adds approved time off for somebody from the Time off tab's filter row (or from the one
+  // list of a reader who reads only time off).
+  const canAdd = can(context, "time_off.decide") && (timeOffTab || (canReadTimeOff && !tabs.length));
 
   return (
     <section
@@ -409,7 +315,7 @@ function ScheduleRequestsPageContent() {
               }}
             />
           </label>
-          {newTimeOff ? <ListAddButton label="Add time off" shortLabel="Add" onClick={() => setAddingTimeOff(true)} /> : null}
+          {canAdd ? <ListAddButton label="Add time off" shortLabel="Add" onClick={() => setAddingTimeOff(true)} /> : null}
         </div>
       </div>
 
@@ -447,9 +353,8 @@ function ScheduleRequestsPageContent() {
             <ListOutline label="Loading request" rows={1} columns={5} inset />
           )}
         </div>
-      ) : newTimeOff ? (
-        <>
-          <TimeOffAnswers
+      ) : timeOffTab ? (
+        <TimeOffAnswers
             workspaceId={workspaceId}
             timeFormat={timeFormat}
             locationId={locationId}
@@ -461,19 +366,6 @@ function ScheduleRequestsPageContent() {
             selectedId={selectedId}
             onSelect={selectRequest}
           />
-          {addingTimeOff ? (
-            <TimeOffEntry
-              workspaceId={workspaceId}
-              timeFormat={timeFormat}
-              onClose={() => setAddingTimeOff(false)}
-              onAdded={(entered) => {
-                setAddingTimeOff(false);
-                selectRequest(entered.id);
-                toast.success(`Time off added for ${entered.employee_name}`);
-              }}
-            />
-          ) : null}
-        </>
       ) : (
         <>
           <div className="employee-table-wrap requests-table-wrap" ref={listWrap} tabIndex={-1}>
@@ -508,46 +400,23 @@ function ScheduleRequestsPageContent() {
         </>
       )}
 
-      {selected && (
-        <CatalogDrawer
-          label="Review request"
-          className="requests-catalog-page requests-review-drawer"
-          busy={held || vote.isPending || revoke.isPending}
-          onClose={() => selectRequest("")}
-        >
-          <TimeOffReview
-            key={selected.id}
-            request={selected}
-            alsoOff={alsoOffThese(selected, everyone.timeOff)}
-            timeFormat={timeFormat}
-            notice={drawerNotice}
-            busy={vote.isPending || revoke.isPending}
-            // ponytail: "may they revoke somewhere"; the API asks per person.
-            canRevoke={can(context, "time_off.revoke")}
-            denyError={denyError}
-            onClose={() => selectRequest("")}
-            onApprove={() => startAct(selected, "approve")}
-            onDeny={(reason) => void runAct({ request: selected, kind: "deny" }, reason, true)}
-            onRevoke={() => startAct(selected, "revoke")}
-            onHold={setHeld}
-            shortenError={shortenError}
-            shorten={
-              <TimeOffShorten
-                key={`${selected.id}:${selected.revision}`}
-                request={selected}
-                workspaceId={workspaceId}
-                timeFormat={timeFormat}
-                onError={setShortenError}
-                onDone={(message) => {
-                  selectRequest("");
-                  toast.success(message);
-                  void refreshExchangeSurfaces(client, workspaceId);
-                }}
-              />
-            }
-          />
-        </CatalogDrawer>
-      )}
+      {selected ? (
+        <AnswerDrawerFrame key={selected.id} workspaceId={workspaceId} request={selected} timeFormat={timeFormat} onClose={() => selectRequest("")} />
+      ) : null}
+      {addingTimeOff ? (
+        <TimeOffEntry
+          workspaceId={workspaceId}
+          timeFormat={timeFormat}
+          onClose={() => setAddingTimeOff(false)}
+          onAdded={(entered) => {
+            setAddingTimeOff(false);
+            // The added time off opens in the Time off tab's drawer.
+            setView({ type: "time_off", page: null });
+            selectRequest(entered.id);
+            toast.success(`Time off added for ${entered.employee_name}`);
+          }}
+        />
+      ) : null}
       {openCase ? (
         <CatalogDrawer label="Review shift change" className="requests-catalog-page requests-review-drawer" busy={held} onClose={closeCase}>
           <ExchangeReview
@@ -576,17 +445,6 @@ function ScheduleRequestsPageContent() {
             setOpenSwap(null);
             toast.success(message);
           }}
-        />
-      ) : null}
-      {act ? (
-        <ActDialog
-          act={act}
-          text={actText}
-          error={actError}
-          busy={vote.isPending || revoke.isPending}
-          onText={setActText}
-          onCancel={() => setAct(null)}
-          onConfirm={() => void runAct(act, actText.trim())}
         />
       ) : null}
     </section>
@@ -643,90 +501,4 @@ function TabRow({ chosen, children }: { chosen: string; children: ReactNode }) {
   );
 }
 
-function verdictMessage(
-  request: TimeOffRequest,
-  kind: "approve" | "deny",
-  final: boolean,
-  remaining: number,
-) {
-  const cancellation = request.request_type === "time_off_cancellation";
-  if (kind === "deny") return cancellation ? "Cancellation declined." : "Time off denied.";
-  if (final) return cancellation ? "Cancellation approved." : "Time off approved.";
-  return `Your approval is saved. ${plural(remaining, "location")} still to approve.`;
-}
-
-function ActDialog({
-  act,
-  text,
-  error,
-  busy,
-  onText,
-  onCancel,
-  onConfirm,
-}: {
-  act: Act;
-  text: string;
-  error: string;
-  busy: boolean;
-  onText: (value: string) => void;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const { request, kind } = act;
-  const cancellation = request.request_type === "time_off_cancellation";
-  const opens = request.progress ? timeOffOpenedShiftCount(request.progress) : 0;
-  const opensLine = opens
-    ? `${plural(opens, "published shift")} become${opens === 1 ? "s an open shift" : " open shifts"}.`
-    : "";
-  const alone = Boolean(request.progress?.can_decide_alone);
-  const copy =
-    kind === "revoke"
-      ? {
-          title: "Revoke time off?",
-          description: "Hours not yet taken stop being time off.",
-          confirm: "Revoke",
-          field: "Reason",
-        }
-      : {
-          title: cancellation ? "Approve cancellation?" : "Approve time off?",
-          description: alone
-            ? `Takes effect now.${opensLine ? ` ${opensLine}` : ""}`
-            : opensLine,
-          confirm: "Approve",
-          field: null,
-        };
-  return (
-    <ConfirmDialog
-      open
-      title={copy.title}
-      description={copy.description}
-      confirmLabel={busy ? "Saving..." : copy.confirm}
-      destructive={kind !== "approve"}
-      busy={busy}
-      confirmDisabled={kind === "revoke" && !text.trim()}
-      onCancel={onCancel}
-      onConfirm={onConfirm}
-      // The server's answer in the box's band, above the buttons (UI-FIELDMSG-2).
-      error={error}
-    >
-      {copy.field ? (
-        <label className="app-confirm-field">
-          <span>{copy.field}</span>
-          <textarea
-            rows={3}
-            autoFocus
-            maxLength={1000}
-            required={kind === "revoke"}
-            value={text}
-            onChange={(event) => onText(event.target.value)}
-          />
-        </label>
-      ) : null}
-    </ConfirmDialog>
-  );
-}
-
-function plural(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
-}
 export default ScheduleRequestsPage;

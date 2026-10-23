@@ -83,13 +83,8 @@ const shiftHours = (shift: EmployeeHubShift) => {
 };
 /** Seven days from today: the person's own shifts, approved time off and open shifts. */
 export function homeWeek(model: EmployeeHubReadModel, today: string, openDates: readonly string[] = []): HomeDay[] {
-  // The read's leave_days when it has them (old and new time off alike, time off rebuild D3).
-  const offDays = new Set(
-    model.leave_days ??
-      model.requests.flatMap((request) =>
-        (request.periods ?? []).filter((period) => period.status === "approved").map((period) => period.segment_date),
-      ),
-  );
+  // The read's days with time off, old and new alike (time off rebuild D3, D7).
+  const offDays = new Set(model.leave_days);
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDays(today, i);
     const shifts = model.shifts

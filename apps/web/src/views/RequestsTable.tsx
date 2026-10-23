@@ -1,4 +1,3 @@
-import { timeOffOpenedShiftCount } from "@newfork/shared";
 import { ArrowLeftRight, CalendarOff, Hand } from "lucide-react";
 import type { ReactNode } from "react";
 import { timeOffDeadlineAt, timeOffZoneName } from "../employee-hub/time-off-split";
@@ -56,15 +55,11 @@ function Sentence({ parts }: { parts: readonly Part[] }): ReactNode {
 }
 
 function sentenceOf(row: RequestRow, timeFormat: "12h" | "24h") {
-  if (row.source === "time_off") {
-    const opens = row.request.progress ? timeOffOpenedShiftCount(row.request.progress) : 0;
-    return timeOffSentence(row.request, opens);
-  }
-  return exchangeSentence(row.request, timeFormat);
+  return row.source === "time_off" ? timeOffSentence(row.request, timeFormat) : exchangeSentence(row.request, timeFormat);
 }
 
 function rowZone(row: RequestRow) {
-  return row.source === "time_off" ? row.request.segments[0]?.time_timezone : row.request.shift.timezone;
+  return row.source === "time_off" ? row.request.time_timezone : row.request.shift.timezone;
 }
 
 function Expires({ row, timeFormat, phone = false }: { row: RequestRow; timeFormat: "12h" | "24h"; phone?: boolean }) {

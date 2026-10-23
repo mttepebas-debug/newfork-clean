@@ -3,8 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { isTenantScopedQueryKey } from "../auth/tenant-query-cache";
-import { myTimeOffKey, useAskTimeOff, useMyTimeOff, useWithdrawTimeOff } from "./time-off-data";
-import { TIME_OFF_V2_KEY, timeOffV2Enabled } from "./time-off-flag";
+import { loadAllTimeOffToAnswer, myTimeOffKey, useAskTimeOff, useMyTimeOff, useWithdrawTimeOff } from "./time-off-data";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const requestId = "98020000-0000-4000-8000-000000000001";
@@ -65,22 +64,29 @@ describe("time off data", () => {
   });
 });
 
-describe("time off v2 flag", () => {
-  it("is on only where this browser asked for it", () => {
-    window.localStorage.removeItem(TIME_OFF_V2_KEY);
-    expect(timeOffV2Enabled()).toBe(false);
-    window.localStorage.setItem(TIME_OFF_V2_KEY, "1");
-    expect(timeOffV2Enabled()).toBe(true);
-    window.localStorage.setItem(TIME_OFF_V2_KEY, "true");
-    expect(timeOffV2Enabled()).toBe(false);
-    window.localStorage.removeItem(TIME_OFF_V2_KEY);
+// D7: Requests' All tab reads every request one answers, page after page.
+describe("loadAllTimeOffToAnswer", () => {
+  beforeEach(() => api.apiRequest.mockReset());
+  const row = (n: number) => ({ ...view, id: `98020000-0000-4000-8000-0000000001${String(n).padStart(2, "0")}`, employee_id: requestId,
+    employee_name: "Ali Person", location_names: ["Downtown"], shifts_opened: 0 });
+  it("reads the pages until it has them all, with the first page's time format and locations", async () => {
+    api.apiRequest
+      .mockResolvedValueOnce({ total: 3, waiting: 1, page: 1, page_size: 100, time_format: "24h", locations: [{ id: requestId, name: "Downtown" }], requests: [row(1), row(2)] })
+      .mockResolvedValueOnce({ total: 3, waiting: 1, page: 2, page_size: 100, time_format: "24h", locations: [{ id: requestId, name: "Downtown" }], requests: [row(3)] });
+    const all = await loadAllTimeOffToAnswer(workspaceId, { location_id: requestId, search: "ali" });
+    expect(all.requests.map((request) => request.id)).toEqual([row(1).id, row(2).id, row(3).id]);
+    expect(all.time_format).toBe("24h");
+    expect(all.locations).toEqual([{ id: requestId, name: "Downtown" }]);
+    expect(api.apiRequest.mock.calls.map((call) => call[1])).toEqual([
+      `/v1/workspaces/${workspaceId}/time-off-requests?view=all&sort=needs_decision&page_size=100&location_id=${requestId}&search=ali&page=1`,
+      `/v1/workspaces/${workspaceId}/time-off-requests?view=all&sort=needs_decision&page_size=100&location_id=${requestId}&search=ali&page=2`,
+    ]);
   });
-
-  it("is off when the storage cannot be read", () => {
-    const read = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-      throw new Error("blocked");
-    });
-    expect(timeOffV2Enabled()).toBe(false);
-    read.mockRestore();
+  it("stops when a page comes back empty", async () => {
+    api.apiRequest
+      .mockResolvedValueOnce({ total: 5, waiting: 0, page: 1, page_size: 100, requests: [row(1)] })
+      .mockResolvedValueOnce({ total: 5, waiting: 0, page: 2, page_size: 100, requests: [] });
+    expect((await loadAllTimeOffToAnswer(workspaceId, { search: "" })).requests).toHaveLength(1);
+    expect(api.apiRequest).toHaveBeenCalledTimes(2);
   });
 });

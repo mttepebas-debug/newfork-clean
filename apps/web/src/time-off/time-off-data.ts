@@ -101,10 +101,33 @@ function search(values: Record<string, unknown>): string {
   return text ? `?${text}` : "";
 }
 
+// The API takes a search of 200 characters; a longer one is cut, not refused (D7).
+const searchLimit = 200;
+
 export async function loadTimeOffToAnswer(workspaceId: string, query: TimeOffRequestsQuery): Promise<TimeOffRequestsPage> {
   return timeOffRequestsPageSchema.parse(
-    await apiRequest(client(), `${base(workspaceId)}${search({ ...query })}`),
+    await apiRequest(client(), `${base(workspaceId)}${search({ ...query, search: query.search?.slice(0, searchLimit) })}`),
   );
+}
+
+/**
+ * Every request this person answers, waiting first, read page after page: Requests' All tab puts them in one list
+ * with the shift changes. With it come the page's time format and location filter.
+ * Read whole, like the old All tab; page on the server if one workspace keeps thousands of answers.
+ */
+export async function loadAllTimeOffToAnswer(
+  workspaceId: string,
+  filters: { readonly location_id?: string; readonly search: string },
+): Promise<TimeOffRequestsPage> {
+  const query = { view: "all", sort: "needs_decision", page_size: 100, ...filters } as const;
+  const first = await loadTimeOffToAnswer(workspaceId, { ...query, page: 1 });
+  const requests = [...first.requests];
+  for (let page = 2; requests.length < first.total; page += 1) {
+    const next = await loadTimeOffToAnswer(workspaceId, { ...query, page });
+    if (!next.requests.length) break;
+    requests.push(...next.requests);
+  }
+  return { ...first, requests };
 }
 
 export async function loadTimeOffImpact(workspaceId: string, requestId: string): Promise<TimeOffImpact> {

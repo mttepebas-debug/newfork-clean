@@ -12573,29 +12573,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: var(--theme-success);
   font-weight: 750;
 }
-.time-off-form {
-  display: grid;
-  gap: 14px;
-}
-.time-off-form label {
-  display: grid;
-  gap: 6px;
-  color: #4d5a55;
-  font-size: 13px;
-  font-weight: 650;
-}
-.time-off-form textarea {
-  min-height: 86px;
-  resize: vertical;
-}
-.date-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.empty-inline {
-  margin: 16px 0 4px;
-}
 
 @media (max-width: 900px) {
   .hub-two-column {

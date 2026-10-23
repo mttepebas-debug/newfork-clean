@@ -30,13 +30,6 @@ const context: {
 const managerOnly = structuredClone(context);
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context, account: { userId: me } }) }));
 
-const getTimeOffQueue = vi.fn();
-const vote = vi.fn();
-vi.mock("../schedule/requests-data", () => ({
-  getTimeOffQueue: (...args: unknown[]) => getTimeOffQueue(...args),
-  useVoteOnTimeOff: () => ({ mutateAsync: vote }),
-  isStaleTimeOff: (error: unknown) => (error as { reason?: string })?.reason === "time_off.changed",
-}));
 vi.mock("../employee-hub/shift-exchanges/exchange-data", () => ({ refreshExchangeSurfaces: vi.fn(async () => undefined) }));
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("@newfork/ui", async (original) => ({ ...(await original<typeof import("@newfork/ui")>()), toast }));
@@ -84,8 +77,6 @@ const calls = (suffix: string) => apiRequest.mock.calls.filter(([, path]) => Str
 
 beforeEach(() => {
   apiRequest.mockReset();
-  getTimeOffQueue.mockReset();
-  vote.mockReset();
   toast.success.mockReset();
   toast.error.mockReset();
 });
@@ -121,7 +112,7 @@ describe("NotificationsPanel", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ }));
     await waitFor(() => expect(calls("/read")).toHaveLength(1));
     expect(JSON.parse(String((calls("/read")[0]![2] as RequestInit).body))).toEqual({ ids: [notice().id] });
-    expect(screen.getByTestId("where").textContent).toBe(`/app/schedule/requests?tab=time-off&request=${requestId}`);
+    expect(screen.getByTestId("where").textContent).toBe(`/app/schedule/requests?type=time_off&request=${requestId}`);
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -239,92 +230,23 @@ describe("a notice opens in the person's view", () => {
   });
 });
 
-describe("inline time off decision", () => {
-  const pending = (progress: Record<string, unknown>) => ({
-    requests: [{ id: requestId, status: "pending", request_type: "time_off", progress: {
-      can_vote: true, can_decide_alone: false, my_approval_finalizes: false,
-      impact: { fingerprint: "0123456789abcdef0123456789abcdef", locations: {}, hidden_shift_count: 0 }, ...progress } }],
-    locations: [], timeFormat: "12h",
-  });
-
-  it("approves with the impact the request shows now", async () => {
+// D7: the old inline verdict went with the old time off; an open time off card is opened with Review, in
+// Requests → Time off's answer drawer, like every other open request.
+describe("an open time off card", () => {
+  it("offers Review, which opens the request where it is answered", async () => {
     answer({ all: feedPage([notice()]) });
-    getTimeOffQueue.mockResolvedValue(pending({ my_approval_finalizes: true }));
-    vote.mockResolvedValue({ status: "approved", final: true, alone: false, remaining: 0, revision: 2, request_id: requestId });
     mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off approved."));
-    expect(getTimeOffQueue).toHaveBeenCalledWith(w, "needs_review", { locationId: "", search: "" });
-    expect(vote).toHaveBeenCalledWith({ requestId, verdict: { verdict: "approve", note: "", expected_impact: "0123456789abcdef0123456789abcdef" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Review" }));
+    expect(screen.getByTestId("where").textContent).toBe(`/app/schedule/requests?type=time_off&request=${requestId}`);
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Decline" })).toBeNull();
   });
 
-  it("declines on the second click", async () => {
-    answer({ all: feedPage([notice()]) });
-    getTimeOffQueue.mockResolvedValue(pending({}));
-    vote.mockResolvedValue({ status: "denied", final: true, alone: false, remaining: 0, revision: 2, request_id: requestId });
-    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Decline" }));
-    expect(vote).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm decline" }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off declined."));
-    expect(vote.mock.calls[0]?.[0]).toMatchObject({ verdict: { verdict: "deny" } });
-  });
-
-  it("opens Requests where Requests would ask first: an approval that opens shifts", async () => {
-    answer({ all: feedPage([notice()]) });
-    getTimeOffQueue.mockResolvedValue(pending({
-      my_approval_finalizes: true,
-      impact: { fingerprint: "0123456789abcdef0123456789abcdef", locations: {}, hidden_shift_count: 2 },
-    }));
-    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(screen.getByTestId("where").textContent).toContain("/app/schedule/requests"));
-    expect(vote).not.toHaveBeenCalled();
-  });
-
-  it("opens Requests for a decision alone", async () => {
-    answer({ all: feedPage([notice()]) });
-    getTimeOffQueue.mockResolvedValue(pending({ can_vote: false, can_decide_alone: true }));
-    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(screen.getByTestId("where").textContent).toContain("/app/schedule/requests"));
-    expect(vote).not.toHaveBeenCalled();
-  });
-
-  it("declines here for a decision alone, as Requests does (the reason is optional)", async () => {
-    answer({ all: feedPage([notice()]) });
-    getTimeOffQueue.mockResolvedValue(pending({ can_vote: false, can_decide_alone: true }));
-    vote.mockResolvedValue({ status: "denied", final: true, alone: true, remaining: 0, revision: 2, request_id: requestId });
-    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Decline" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm decline" }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off declined."));
-    expect(screen.getByTestId("where").textContent).toBe("/app/workspace");
-  });
-
-  it("says when the request was decided meanwhile", async () => {
-    answer({ all: feedPage([notice()]) });
-    getTimeOffQueue.mockResolvedValue({ requests: [], locations: [], timeFormat: "12h" });
-    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("This request was already decided."));
-    expect(vote).not.toHaveBeenCalled();
-  });
-
-  it("says a stale request changed", async () => {
-    answer({ all: feedPage([notice()]) });
-    getTimeOffQueue.mockResolvedValue(pending({}));
-    vote.mockRejectedValue({ reason: "time_off.changed" });
-    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("This request changed. Review it again."));
-  });
-
-  it("shows how a decided request closed instead of the buttons", async () => {
+  it("shows how a decided request closed instead of Review", async () => {
     answer({ all: feedPage([notice({ resolved_at: "2026-10-16T17:00:00Z", resolution: "approved", resolved_by: me })]) });
     mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
     expect(await screen.findByText("You approved")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Review" })).toBeNull();
   });
 });
 

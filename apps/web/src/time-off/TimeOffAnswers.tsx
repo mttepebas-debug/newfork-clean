@@ -8,7 +8,7 @@ import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { ListOutline, LoadError } from "../shell/LoadState";
 import { ListPagination, type ListPageSize } from "../views/ListPagination";
 import { ListCards } from "../views/ListCards";
-import { DrawerField, DrawerSection, RequestDrawer, type DrawerNotice, type DrawerTone } from "../views/RequestDrawer";
+import { DrawerField, DrawerSection, RequestDrawer, type DrawerNotice } from "../views/RequestDrawer";
 import { clockRange, KindIcon } from "../views/RequestsTable";
 import { LeaveIcon } from "./leave-icon";
 import {
@@ -21,6 +21,8 @@ import {
 import {
   answerRefusalText,
   answerSentence,
+  answerStatus,
+  waitsUntil,
   dayText,
   instantDay,
   leaveLabel,
@@ -33,30 +35,12 @@ import {
 } from "./time-off-text";
 import "./time-off-answers.css";
 
-// Requests → Time off with the new time off (time off rebuild D3, behind the time-off-v2 flag): the requests
+// Requests → Time off with the new time off (time off rebuild D3, D7): the requests
 // this person may answer, one sentence each (S-151), with the four words of S-161, paged by the server; and
 // the answer drawer in the Requests drawers' language (Details · Shifts). Approving asks first when it opens
 // shifts; declining takes two clicks; the answer is said in the drawer.
 // D4: a cancellation is a request of its own ("… asks to cancel time off, …"), answered the same way without
 // shifts; approved time off that is not over is revoked from its drawer with a note (two clicks).
-
-type Status = { readonly label: string; readonly tone: "amber" | "green" | "red" | "gray"; readonly drawer: DrawerTone };
-
-/** When a request waiting stops waiting: time off at its start, a cancellation at the time off's end. */
-const waitsUntil = (request: TimeOffDeciderView) => (request.kind === "cancel" ? request.ends_at : request.starts_at);
-
-/**
- * Waiting (and not past waitsUntil): Needs decision. Waiting past it: Expired. Time off cancelled or revoked
- * says so (D4).
- */
-export function answerStatus(request: TimeOffDeciderView, now: Date = new Date()): Status {
-  if (request.status === "pending" && new Date(waitsUntil(request)) > now) return { label: "Needs decision", tone: "amber", drawer: "warn" };
-  if (request.status === "approved") return { label: "Approved", tone: "green", drawer: "ok" };
-  if (request.status === "declined") return { label: "Declined", tone: "red", drawer: "red" };
-  if (request.status === "cancelled") return { label: "Cancelled", tone: "gray", drawer: "grey" };
-  if (request.status === "revoked") return { label: "Revoked", tone: "red", drawer: "red" };
-  return { label: "Expired", tone: "gray", drawer: "grey" };
-}
 
 const waiting = (request: TimeOffDeciderView) => answerStatus(request).label === "Needs decision";
 
@@ -257,7 +241,8 @@ export function TimeOffAnswers({
   );
 }
 
-function AnswerDrawerFrame(props: { workspaceId: string; request: TimeOffDeciderView; timeFormat: TimeFormat; onClose: () => void }) {
+/** The answer drawer over a list: the Time off tab's, and the All tab's for a time off row (D7). */
+export function AnswerDrawerFrame(props: { workspaceId: string; request: TimeOffDeciderView; timeFormat: TimeFormat; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   return (
     <CatalogDrawer label="Review time off" className="requests-catalog-page requests-review-drawer" busy={busy} onClose={props.onClose}>

@@ -19,10 +19,6 @@ const availabilityLabels: GuardLabels = {
   saving: "Saving availability", discard: "Discard availability changes?", saved: "Availability saved",
   unsaved: "Your unsaved hours will be lost. Your saved availability stays in place.",
 };
-export const timeOffNavigationLabels: GuardLabels = {
-  saving: "Saving time off", discard: "Discard time off changes?", saved: "Time off saved",
-  unsaved: "Your unsent request and review details will be lost. Approved leave and published assignments stay in place.",
-};
 const DraftScope = createContext<{
   register: (id: string, state: DraftState) => () => void;
   requestLeave: Leave;

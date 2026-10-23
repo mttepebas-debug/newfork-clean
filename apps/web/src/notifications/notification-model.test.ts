@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { notice } from "./notification-fixtures.test-util";
-import { dayGroup, decisionFor, relativeTime, resolutionLabel, rowLook } from "./notification-model";
+import { dayGroup, relativeTime, resolutionLabel, rowLook } from "./notification-model";
 
 const now = new Date(2026, 9, 16, 12, 0, 0);
 const at = (days: number, hours = 0, minutes = 0) =>
@@ -31,24 +30,6 @@ describe("rowLook", () => {
     expect(rowLook({ area: "time_off", topic: "approvals" })).toEqual({ label: "Approvals", icon: "clipboard", tone: "amber" });
     expect(rowLook({ area: "time_off", topic: "time_off" })).toEqual({ label: "Time off", icon: "time-off", tone: "red" });
     expect(rowLook({ area: "announcements", topic: "announcements" }).label).toBe("Announcements");
-  });
-});
-
-describe("decisionFor", () => {
-  it("offers an inline decision on an open time off request", () => {
-    expect(decisionFor(notice())).toEqual({ kind: "time_off", requestId: "98020000-0000-4000-8000-000000000001" });
-    expect(decisionFor(notice({ type: "time_off.decision_reminder" }))?.kind).toBe("time_off");
-  });
-
-  it("offers none once it is decided, or for another request", () => {
-    expect(decisionFor(notice({ resolved_at: "2026-10-16T17:00:00Z", resolution: "approved" }))).toBeNull();
-    expect(decisionFor(notice({ needs_action: false }))).toBeNull();
-    expect(decisionFor(notice({ subject_id: null }))).toBeNull();
-    expect(decisionFor(notice({ type: "shift_changes.approval_needed", subject_type: "shift_exchange" }))).toBeNull();
-  });
-
-  it("offers none on the new time off's card: Review opens it in Requests → Time off (time off rebuild D3)", () => {
-    expect(decisionFor(notice({ subject_type: "time_off", url: "/app/schedule/requests?type=time_off&request=98020000-0000-4000-8000-000000000001" }))).toBeNull();
   });
 });
 

@@ -8,7 +8,6 @@ import {
   type AvailabilityRange,
   type ScheduleAvailabilityMark,
 } from "../lib/scheduleAvailabilityMark";
-import { timeOffV2Enabled } from "../../time-off/time-off-flag";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
 import { shiftsOverlap, timeMinutes } from "../lib/scheduleShiftInterval";
 import { isPendingRemovalShift } from "../lib/scheduleShiftMetadata";
@@ -60,7 +59,6 @@ export function orderScheduleCellShifts(
 export function buildScheduleCellState(
   model: ScheduleReadModel,
   hideAvailability = false,
-  options: { readonly pendingTimeOff?: boolean } = {},
 ): ScheduleCellStateMap {
   const cells = new Map<string, MutableScheduleCellState>();
   for (const employee of model.employees) {
@@ -69,9 +67,8 @@ export function buildScheduleCellState(
         if (hideAvailability && mark.kind === "unavailable") continue;
         ensureCell(cells, scheduleCellStateKey(location.location_id, date, employee.id)).availabilityMark = mark;
       }
-      // Time off rebuild D3b (behind the time-off-v2 flag): time off waiting for an answer marks its days at
+      // Time off rebuild D3b: time off waiting for an answer marks its days at
       // the locations the person works at (the ones the read model projects); approved time off says more.
-      if (!options.pendingTimeOff) continue;
       for (const [date, ranges] of schedulePendingTimeOff(location)) {
         const cell = ensureCell(cells, scheduleCellStateKey(location.location_id, date, employee.id));
         if (cell.availabilityMark?.kind !== "time_off") cell.pendingTimeOff = ranges;
@@ -201,11 +198,9 @@ export function useScheduleCellState(model: ScheduleReadModel, hideAvailability 
     .join("|")}|${model.employees
     .map((employee) => `${employee.id}:${employee.location_ids.join(",")}`)
     .join("|")}`;
-  // Time off rebuild D3b: a development switch, read on render.
-  const pendingTimeOff = timeOffV2Enabled();
   return useMemo(
-    () => buildScheduleCellState(model, hideAvailability, { pendingTimeOff }),
-    [model, version, hideAvailability, pendingTimeOff],
+    () => buildScheduleCellState(model, hideAvailability),
+    [model, version, hideAvailability],
   );
 }
 

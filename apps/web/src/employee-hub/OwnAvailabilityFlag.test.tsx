@@ -15,6 +15,6 @@ describe("the employee's own flag on a shift they marked unavailable", () => {
     expect(screen.getByRole("link", { name: "Swap or give up" }).getAttribute("href"))
       .toBe("/app/employee-hub/shift-hub?offer=shift-1");
     expect(screen.getByRole("link", { name: "Request time off" }).getAttribute("href"))
-      .toBe("/app/employee-hub/my-availability?section=time-off#time-off");
+      .toBe("/app/employee-hub/my-availability?section=time-off");
   });
 });

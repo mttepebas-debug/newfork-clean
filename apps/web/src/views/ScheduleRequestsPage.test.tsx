@@ -1,18 +1,13 @@
 import { configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type {
-  ActiveWorkspaceContext,
-  ScheduleRequestsReadModel,
-  TimeOffProgress,
-  TimeOffRequest,
-} from "@newfork/shared";
+import type { ActiveWorkspaceContext, TimeOffDeciderView, TimeOffRequestsPage } from "@newfork/shared";
 import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ScheduleRequestsPage } from "./ScheduleRequestsPage";
 import { PermissionRoute } from "../auth/PermissionRoute";
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { RequestError, requestFailure } from "../lib/request-error";
-import { inDeviceZone, plain } from "../employee-hub/device-zone.testing";
+import { plain } from "../employee-hub/device-zone.testing";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 // A request the core no longer hands back (BL-1024).
@@ -20,7 +15,6 @@ const missingCaseId = "97500000-0000-4000-8000-0000000000ff";
 const requestId = "97200000-0000-4000-8000-000000000001";
 const kadikoy = "11000000-0000-4000-8000-000000000001";
 const besiktas = "11000000-0000-4000-8000-000000000002";
-const fingerprint = "0123456789abcdef0123456789abcdef";
 const context = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
   workspace: {
@@ -66,68 +60,47 @@ const shift = {
   scheduled_date: "2035-01-15", start_time: "15:00", end_time: "23:00", timezone: "UTC", job_name: "Server",
   time_unknown: false, starts_at: "2035-01-15T15:00:00Z", ends_at: "2035-01-15T23:00:00Z",
 };
-// Ali works at Kadıköy and Beşiktaş; Ayşe approved Kadıköy, Beşiktaş waits.
-const progress: TimeOffProgress = {
-  remaining: 1, fallback: false, decide_by: "2035-01-14T09:00:00Z",
-  can_vote: true, can_decide_alone: false, my_vote: null, my_approval_finalizes: true,
-  locations: [
-    { id: kadikoy, name: "Kadıköy", approved_by: "15000000-0000-4000-8000-000000000009", approved_by_name: "Ayşe Yılmaz", approved_at: "2035-01-10T14:15:00Z" },
-    { id: besiktas, name: "Beşiktaş", approved_by: null, approved_by_name: null, approved_at: null },
-  ],
-  impact: { fingerprint, hidden_shift_count: 0, locations: {
-    [kadikoy]: { fingerprint, shifts: [] },
-    [besiktas]: { fingerprint, shifts: [shift] },
-  } },
+// Alex asks for two days off; the request waits until it starts (time off rebuild D6, D7).
+const pending: TimeOffDeciderView = {
+  id: requestId, kind: "leave", kind_of_leave: "personal", status: "pending",
+  starts_at: "2035-01-15T00:00:00+00:00", ends_at: "2035-01-17T00:00:00+00:00", all_day: true, time_timezone: "UTC",
+  start_date: "2035-01-15", end_date: "2035-01-16", start_time: null, end_time: null, note: "Family appointment", revision: 1,
+  created_at: "2035-01-09T11:00:00+00:00", decided_at: null, decided_by_name: null, decision_note: null,
+  ended_at: null, ended_note: null, cancels_id: null, ended_by_name: null, used_until: null, cancellation: null, added_by_name: null,
+  employee_id: "15000000-0000-4000-8000-000000000001", employee_name: "Alex Kim", location_names: ["Kadıköy", "Beşiktaş"], shifts_opened: 0,
 };
-const pending: TimeOffRequest = {
-  id: requestId,
-  employee_id: "15000000-0000-4000-8000-000000000001",
-  employee_name: "Alex Kim",
-  request_type: "time_off",
-  reason: "Family appointment",
-  status: "pending",
-  start_date: "2035-01-15",
-  end_date: "2035-01-16",
-  revision: 1,
-  created_at: "2035-01-09T11:00:00.000Z",
-  decide_by: "2035-01-14T09:00:00Z",
-  conflict_count: 0,
-  segments: [
-    { id: "97300000-0000-4000-8000-000000000001", segment_date: "2035-01-15", start_time: null, end_time: null, status: "pending", time_timezone: "UTC" },
-  ],
-  events: [],
-  progress,
-};
-const fixture = {
-  workspace_id: workspaceId,
+const fixture: TimeOffRequestsPage = {
+  total: 1, waiting: 1, page: 1, page_size: 100, time_format: "12h",
   locations: [{ id: kadikoy, name: "Kadıköy" }, { id: besiktas, name: "Beşiktaş" }],
-  time_off_pending_count: 1,
-  time_off_next_cursor: null,
-  time_off_requests: [pending],
-} satisfies ScheduleRequestsReadModel;
-let read: ScheduleRequestsReadModel = fixture;
+  requests: [pending],
+};
+let read: TimeOffRequestsPage = fixture;
 let readFailure: { status: number; body: unknown } | null = null;
 
 // Whole-repo runs share the cores with three other packages; Testing
 // Library's 1 s default for findBy/waitFor is what ran out there (U19).
 configure({ asyncUtilTimeout: 5000 });
 
-// The Requests read (GET .../schedule/requests); decisions go to apiRequest.
-// Each queue answers with its own requests: pending ones for needs_review,
-// the rest for closed. A search narrows them by name, as the server does.
+// The time off reads (GET .../time-off-requests); answers go to apiRequest. The list answers with the
+// requests the search names, as the server does; a request's impact with its shifts.
 const fetchRequests = vi.fn(async (path: string) => {
   if (readFailure) throw requestFailure(readFailure.body, readFailure.status, "Workspace operation failed");
-  const query = new URL(path, "http://x").searchParams;
-  const closed = query.get("time_off_queue") === "closed";
-  const search = (query.get("search") ?? "").toLowerCase();
-  return { ...read, time_off_requests: read.time_off_requests.filter((request) =>
-    (request.status === "pending") !== closed && request.employee_name.toLowerCase().includes(search)) };
+  const url = new URL(path, "http://x");
+  const impact = url.pathname.match(/time-off-requests\/([^/]+)\/impact$/);
+  if (impact) {
+    const request = read.requests.find((item) => item.id === impact[1]) ?? pending;
+    return { request, fingerprint: "0123456789abcdef0123456789abcdef", shift_count: 1, hidden_shift_count: 0,
+      locations: [{ id: besiktas, name: "Beşiktaş", shifts: [shift] }] };
+  }
+  const search = (url.searchParams.get("search") ?? "").toLowerCase();
+  const requests = read.requests.filter((request) => request.employee_name.toLowerCase().includes(search));
+  return { ...read, total: requests.length, requests };
 });
 const apiRequest = vi.fn();
 vi.mock("../lib/supabase", () => ({
   supabaseClient: { auth: { getSession: async () => ({ data: { session: { access_token: "token" } } }) } },
   apiRequest: (client: unknown, path: string, init?: RequestInit) =>
-    path.includes("/schedule/requests?") ? fetchRequests(path) : apiRequest(client, path, init),
+    path.includes("/time-off-requests") && !init?.method ? fetchRequests(path) : apiRequest(client, path, init),
   getTabWorkspaceId: () => null,
 }));
 vi.mock("../auth/AuthContext", () => ({
@@ -178,15 +151,10 @@ function renderPage(
     </QueryClientProvider>,
   );
 }
-function withRequest(change: Partial<TimeOffRequest>) {
-  read = { ...fixture, time_off_requests: [{ ...pending, ...change }] };
-}
 async function openTimeOffRequest() {
   fireEvent.click(await screen.findByRole("row", { name: /Alex Kim/ }));
-  return screen.findByRole("dialog", { name: "Review request" });
+  return screen.findByRole("dialog", { name: "Review time off" });
 }
-const calls = () => apiRequest.mock.calls.map(([, path, init]) => [path, JSON.parse((init as RequestInit).body as string)]);
-const verdict = (body: object) => ({ status: "pending", final: false, alone: false, remaining: 1, revision: 2, request_id: requestId, ...body });
 
 beforeEach(() => {
   HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.setAttribute("open", ""); };
@@ -241,38 +209,39 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   });
   // P09: a closed request stays in the one list, under the open ones.
   it("lists a closed request under the open ones in the same table", async () => {
-    const approved: TimeOffRequest = {
-      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_name: "Deniz Acar", status: "approved", progress: null,
-      events: [{ id: "97400000-0000-4000-8000-000000000001", action: "approved", actor_name: "Ayşe Yılmaz", note: "", created_at: "2035-01-10T09:00:00Z" }],
+    const approved: TimeOffDeciderView = {
+      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_name: "Deniz Acar", status: "approved",
+      decided_at: "2035-01-10T09:00:00Z", decided_by_name: "Ayşe Yılmaz",
     };
-    read = { ...fixture, time_off_requests: [pending, approved] };
+    read = { ...fixture, total: 2, requests: [pending, approved] };
     renderPage();
     const closed = await screen.findByRole("row", { name: /Deniz Acar/ });
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows.map((row) => row.getAttribute("aria-label")?.match(/^Time off: (\S+ \S+)/)?.[1])).toEqual(["Alex Kim", "Deniz Acar"]);
     expect(within(closed).getByText("Approved")).toBeTruthy();
     expect(within(rows[0]!).getByText("Needs decision")).toBeTruthy();
-    expect(fetchRequests.mock.calls.some(([path]) => path.includes("time_off_queue=closed"))).toBe(true);
+    // One read of every request one answers, open and closed (D7).
+    expect(fetchRequests.mock.calls.every(([path]) => path.includes("view=all"))).toBe(true);
   });
   // EKRAN-02 #67 (KARARLAR Genel, telefonda kart satırı); TAKAS-RELEASE (Mert,
   // 2026-10-17): the phone shows a card per request: the kind's icon, the
   // sentence, then Status and Expires, Expires only while the request is open.
   it("gives each request a phone card: the sentence, Status, Expires only while open", async () => {
-    const approved: TimeOffRequest = {
-      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_name: "Deniz Acar", status: "approved", progress: null,
-      events: [{ id: "97400000-0000-4000-8000-000000000001", action: "approved", actor_name: "Ayşe Yılmaz", note: "", created_at: "2035-01-10T09:00:00Z" }],
+    const approved: TimeOffDeciderView = {
+      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_name: "Deniz Acar", status: "approved",
+      decided_at: "2035-01-10T09:00:00Z", decided_by_name: "Ayşe Yılmaz",
     };
-    read = { ...fixture, time_off_requests: [pending, approved] };
+    read = { ...fixture, total: 2, requests: [pending, approved] };
     renderPage();
     const cards = await screen.findByRole("list", { name: "Requests" });
     const open = await within(cards).findByRole("button", { name: /^Time off: Alex Kim/ });
     expect(open.getAttribute("aria-label")).toContain("Needs decision");
-    expect(plain(open.querySelector(".request-sentence")!.textContent)).toBe("Alex Kim asked for time off Mon, Jan 15 – Tue, Jan 16. 1 shift becomes open.");
-    expect(plain(open.querySelector(".request-card-foot")!.textContent)).toBe("Needs decisionExpires Jan 14, 9:00 AM UTC");
+    expect(plain(open.querySelector(".request-sentence")!.textContent)).toMatch(/^Alex Kim asks for .*Jan 15/);
+    expect(plain(open.querySelector(".request-card-foot")!.textContent)).toBe("Needs decisionExpires Jan 15, 12:00 AM UTC");
     const closed = within(cards).getByRole("button", { name: /^Time off: Deniz Acar/ });
     expect(closed.querySelector(".request-card-foot")!.textContent).toBe("Approved");
     fireEvent.click(open);
-    expect(await screen.findByRole("dialog", { name: "Review request" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Review time off" })).toBeTruthy();
   });
   // A tab row wider than a phone scrolls, and a faded edge says so.
   it("fades the tab row's edge where more tabs wait, and brings the chosen tab into view", async () => {
@@ -300,7 +269,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     let answer: (value: Awaited<ReturnType<typeof getExchanges>>) => void = () => undefined;
     vi.mocked(getExchanges).mockReturnValue(new Promise((resolve) => { answer = resolve; }));
     renderPage();
-    await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThanOrEqual(2));
+    await waitFor(() => expect(fetchRequests).toHaveBeenCalled());
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
     expect(screen.getByText("Loading requests")).toBeTruthy();
@@ -656,366 +625,30 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(fetchRequests).not.toHaveBeenCalled();
   });
 
-  it("lists a request with no location by when it expires and the shifts it would open", async () => {
+  it("lists a request by when it expires, with no Location column", async () => {
     renderPage();
     const row = await screen.findByRole("row", { name: /Alex Kim/ });
     expect(screen.getByRole("columnheader", { name: /Expires/ })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: /Location/ })).toBeNull();
-    expect(row.textContent).toContain("Jan 14");
-    expect(row.textContent).toContain("1 shift becomes open.");
+    expect(row.textContent).toContain("Jan 15");
   });
 
-  // Mert, 2026-10-11: the drawer speaks the Important Dates drawer's language:
-  // a header with type and status, Details · Shifts · Activity tabs.
-  it("heads the drawer with the person, the type, the status and the deadline", async () => {
+  // D7: a time off row of the All tab opens the Time off tab's answer drawer, with the shifts an approval opens.
+  it("opens a time off row of the All tab in the answer drawer, and closes it", async () => {
     renderPage();
     const drawer = await openTimeOffRequest();
-    const head = within(drawer).getByRole("heading", { level: 2 });
-    expect(head.textContent).toBe("Alex Kim Time off Needs review");
-    expect(drawer.textContent).toContain("Decide by Jan 14");
-    expect(within(drawer).getByRole("link", { name: /Open in Schedule/ }).getAttribute("href")).toBe("/app/schedule?date=2035-01-15&view=week");
-    expect(within(drawer).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Shifts1", "Activity"]);
-    expect(within(drawer).getByRole("tab", { name: "Details" }).getAttribute("aria-selected")).toBe("true");
-  });
-  it("shows the dates, the note, who approved which location and what is left", async () => {
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(within(drawer).getByText("Starts").parentElement!.textContent).toBe("StartsMon, Jan 15Full day");
-    expect(within(drawer).getByText("Ends").parentElement!.textContent).toBe("EndsTue, Jan 16Full day · 2 days");
-    expect(within(drawer).getByText("Note from Alex").parentElement!.textContent).toContain("Family appointment");
-    const approvals = within(drawer).getByRole("region", { name: "Approvals" });
-    expect(approvals.textContent).toContain("1 of 2 locations");
-    const rows = within(approvals).getAllByRole("row").slice(1).map((row) => row.textContent);
-    expect(rows[0]).toMatch(/^Kadıköy.*Approved.*Ayşe Yılmaz/);
-    expect(rows[1]).toMatch(/^Beşiktaş.*Waiting/);
-    expect(within(drawer).getByRole("region", { name: "On the Schedule" }).textContent).toContain("1 shift becomes open if you approve.");
-  });
-  it("lists the shifts that open on their own tab, by location", async () => {
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "See 1 shift" }));
-    expect(within(drawer).getByRole("tab", { name: /^Shifts/ }).getAttribute("aria-selected")).toBe("true");
-    const shifts = within(drawer).getByRole("region", { name: "Shifts that become open" });
-    expect(shifts.textContent).toContain("Beşiktaş");
-    expect(shifts.textContent).toContain("Mon, Jan 15 · 3:00 PM – 11:00 PM");
-    expect(shifts.textContent).toContain("Server");
-    expect(shifts.textContent).toContain("Becomes open");
-  });
-  it("says who else already has approved time off on those days", async () => {
-    read = { ...fixture, time_off_requests: [pending, {
-      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_id: "15000000-0000-4000-8000-000000000002",
-      employee_name: "Maria Lopez", status: "approved", start_date: "2035-01-16", end_date: "2035-01-20", progress: null,
-    }] };
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(within(drawer).getByText("Also off these days").parentElement!.textContent).toContain("Maria Lopez (Jan 16)");
-  });
-  it("still says who else is off while the list is searched for one person", async () => {
-    read = { ...fixture, time_off_requests: [pending, {
-      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_id: "15000000-0000-4000-8000-000000000002",
-      employee_name: "Maria Lopez", status: "approved", start_date: "2035-01-16", end_date: "2035-01-20", progress: null,
-    }] };
-    renderPage();
-    await screen.findByRole("row", { name: /Alex Kim/ });
-    fireEvent.change(screen.getByLabelText("Search requests"), { target: { value: "Alex" } });
-    await waitFor(() => expect(fetchRequests.mock.calls.some(([path]) => path.includes("search=Alex"))).toBe(true));
-    const drawer = await openTimeOffRequest();
-    await waitFor(() =>
-      expect(within(drawer).getByText("Also off these days").parentElement!.textContent).toContain("Maria Lopez (Jan 16)"));
-  });
-  it("shows the request's history on the Activity tab", async () => {
-    withRequest({ events: [{ id: "98000000-0000-4000-8000-000000000001", action: "submitted", actor_name: "Alex Kim", note: "", created_at: "2035-01-09T11:00:00Z" }] });
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("tab", { name: "Activity" }));
-    expect(within(drawer).getByRole("tabpanel").textContent).toContain("Submitted");
-    expect(within(drawer).getByRole("tabpanel").textContent).toContain("Alex Kim");
-  });
-  it("writes the decide-by time in the request's zone and names it, on any device (FB-6.3.8d)", async () => {
-    // Ali asked from Istanbul; a manager in Los Angeles or Tokyo reads the same deadline.
-    withRequest({ segments: [{ ...pending.segments[0]!, time_timezone: "Europe/Istanbul" }] });
-    for (const device of ["America/Los_Angeles", "Asia/Tokyo"]) {
-      await inDeviceZone(device, async () => {
-        const view = renderPage();
-        const row = await screen.findByRole("row", { name: /Alex Kim/ });
-        expect(plain(within(row).getByText(/^Jan 14, 12:00 PM$/).textContent)).toBe("Jan 14, 12:00 PM");
-        expect(within(row).getByText(/^(Türkiye|Turkey)( Standard)? Time$/)).toBeTruthy();
-        const drawer = await openTimeOffRequest();
-        expect(plain(drawer.textContent)).toMatch(/Decide by Jan 14, 12:00 PM (Türkiye|Turkey)( Standard)? Time/);
-        view.unmount();
-      });
-    }
-  });
-  it("draws one progress layout whatever the address asks for (P04: checklist)", async () => {
-    renderPage("/app/schedule/requests?progressVariant=c");
-    const drawer = await openTimeOffRequest();
-    const panel = within(drawer).getByRole("region", { name: "Approvals" });
-    expect(panel.className).toBe("rd-sec");
-    expect(panel.querySelector("[title]")).toBeNull();
-  });
-  it("titles the shifts that open like the drawer's other sections", async () => {
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(within(drawer).getByRole("heading", { name: "Approvals" }).tagName).toBe("H3");
-    fireEvent.click(within(drawer).getByRole("tab", { name: /Shifts/ }));
-    expect(within(drawer).getByRole("heading", { name: "Shifts that become open" }).tagName).toBe("H3");
-  });
-  it("does not repeat the request's pending state under every period", async () => {
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(within(drawer).queryByText(/Awaiting decision/)).toBeNull();
-  });
-  it("says an admin or owner decides when no location manager can", async () => {
-    withRequest({ progress: { ...progress, fallback: true, locations: [] } });
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(drawer.textContent).toContain("No location manager can decide. An admin or owner decides.");
+    expect(within(drawer).getAllByText(/Alex Kim/).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Current URL").textContent).toContain(`request=${requestId}`);
+    await waitFor(() => expect(fetchRequests.mock.calls.some(([path]) => path.endsWith(`/${requestId}/impact`))).toBe(true));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close details" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Review time off" })).toBeNull());
+    expect(screen.getByLabelText("Current URL").textContent).not.toContain("request=");
   });
 
-  it("shows no vote buttons when the core says this reader cannot vote", async () => {
-    withRequest({ progress: { ...progress, can_vote: false, can_decide_alone: false } });
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(within(drawer).queryByRole("button", { name: /Approve/ })).toBeNull();
-    expect(within(drawer).queryByRole("button", { name: /Deny/ })).toBeNull();
-    expect(drawer.textContent).toContain("View-only access");
-  });
-  it("records a manager's approval that does not finish the request without a confirm box", async () => {
-    withRequest({ progress: { ...progress, my_approval_finalizes: false, remaining: 2 } });
-    apiRequest.mockResolvedValueOnce(verdict({ remaining: 1 }));
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
-    // QA D1: the drawer stays open, so the word is said inside it, where the
-    // reader is; the page behind the drawer is inert, and so is the toast there.
-    expect((await within(drawer).findByRole("status")).textContent).toBe("Your approval is saved. 1 location still to approve.");
-    expect(screen.getByRole("dialog", { name: "Review request" })).toBe(drawer);
-    expect(toast.success).not.toHaveBeenCalled();
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(calls()).toEqual([[`/v1/workspaces/${workspaceId}/time-off/${requestId}/verdict`, { verdict: "approve", note: "", expected_impact: fingerprint }]]);
-  });
-  it("asks before the approval that opens published shifts", async () => {
-    apiRequest.mockResolvedValueOnce(verdict({ status: "approved", final: true, remaining: 0 }));
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
-    const box = await screen.findByRole("alertdialog", { name: "Approve time off?" });
-    expect(box.textContent).toContain("1 published shift becomes an open shift.");
-    expect(apiRequest).not.toHaveBeenCalled();
-    fireEvent.click(within(box).getByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off approved."));
-    expect(calls()[0]![1]).toEqual({ verdict: "approve", note: "", expected_impact: fingerprint });
-  });
-  it("tells an admin or owner their approval takes effect now", async () => {
-    withRequest({ progress: { ...progress, can_vote: false, can_decide_alone: true, my_approval_finalizes: true } });
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
-    const box = await screen.findByRole("alertdialog", { name: "Approve time off?" });
-    // BILDIRIM-02: no notification is promised while there is none (KARARLAR S-96).
-    expect(box.textContent).toContain("Takes effect now. 1 published shift becomes an open shift.");
-    expect(box.textContent).not.toContain("notified");
-  });
-  it("names no managers when the request has no location (P21)", async () => {
-    withRequest({ progress: { ...progress, fallback: true, locations: [], can_vote: false, can_decide_alone: true,
-      impact: { fingerprint, hidden_shift_count: 0, locations: {} } } });
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
-    const box = await screen.findByRole("alertdialog", { name: "Approve time off?" });
-    expect(box.textContent).toContain("Takes effect now.");
-    expect(box.textContent).not.toContain("Managers at");
-  });
-  // Mert, 2026-10-11: Deny asks its reason in the drawer's footer; only the employee reads it.
-  it("denies with a reason written in the drawer", async () => {
-    apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
-    const reason = within(drawer).getByLabelText("Reason for Alex");
-    expect(reason.getAttribute("placeholder")).toBe("Optional. Only Alex reads this.");
-    fireEvent.change(reason, { target: { value: " I can approve Jan 15 only " } });
-    // Red, two clicks (CLAUDE.md §3.A.7).
-    fireEvent.click(within(drawer).getByRole("button", { name: "Deny request" }));
-    expect(apiRequest).not.toHaveBeenCalled();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm deny" }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off denied."));
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(calls()[0]![1]).toEqual({ verdict: "deny", note: "I can approve Jan 15 only", expected_impact: fingerprint });
-  });
-  it("denies without a reason, as the core allows", async () => {
-    apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
-    fireEvent.click(within(drawer).getByRole("button", { name: "Deny request" }));
-    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm deny" }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off denied."));
-    expect(calls()[0]![1]).toEqual({ verdict: "deny", note: "", expected_impact: fingerprint });
-  });
-  it("goes back from a reason on Escape, keeps it, and keeps the drawer open", async () => {
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
-    const reason = within(drawer).getByLabelText("Reason for Alex");
-    fireEvent.change(reason, { target: { value: "Short staffed" } });
-    fireEvent.keyDown(reason, { key: "Escape" });
-    expect(screen.getByRole("dialog", { name: "Review request" })).toBe(drawer);
-    expect(within(drawer).queryByLabelText("Reason for Alex")).toBeNull();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
-    expect((within(drawer).getByLabelText("Reason for Alex") as HTMLTextAreaElement).value).toBe("Short staffed");
-  });
-  it("goes back from the reason to the decision without sending anything", async () => {
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
-    fireEvent.click(within(drawer).getByRole("button", { name: "Back" }));
-    expect(within(drawer).getByRole("button", { name: "Approve" })).toBeTruthy();
-    expect(apiRequest).not.toHaveBeenCalled();
-  });
-  it("closes the box and asks for a second look when the request changed meanwhile", async () => {
-    apiRequest.mockRejectedValueOnce(new RequestError("The shifts this time off affects changed.", "time_off.changed", undefined, 409));
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
-    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Approve" }));
-    // QA D1: the request is still pending, so the drawer stays open and says it,
-    // in the warning tone: nothing was saved.
-    const changed = await within(drawer).findByRole("status");
-    expect(changed.textContent).toBe("This request changed. Review it again.");
-    expect(changed.className).toBe("request-drawer-notice warning");
-    expect(screen.getByRole("dialog", { name: "Review request" })).toBe(drawer);
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));
-  });
-  // BL-1043: a deadline gone by is a 409 too, but no second look answers it.
-  it("says the request was not decided in time instead of asking for a second look", async () => {
-    apiRequest.mockRejectedValueOnce(new RequestError("This request was not decided in time", "time_off.not_decided_in_time", undefined, 409));
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
-    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Approve" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("This request was not decided in time");
-    expect(within(drawer).queryByText("This request changed. Review it again.")).toBeNull();
-  });
-  it("keeps the reason open when the vote fails for another reason", async () => {
-    apiRequest.mockRejectedValueOnce(new Error("Connection lost"));
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
-    fireEvent.change(within(drawer).getByLabelText("Reason for Alex"), { target: { value: "Short staffed" } });
-    fireEvent.click(within(drawer).getByRole("button", { name: "Deny request" }));
-    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm deny" }));
-    const alert = await within(drawer).findByRole("alert");
-    expect(alert.textContent).toBe("Connection lost");
-    // QA D2: red like every other window error, in the shared band (UI-FIELDMSG).
-    expect(alert.className).toBe("window-alert");
-    expect((within(drawer).getByLabelText("Reason for Alex") as HTMLTextAreaElement).value).toBe("Short staffed");
-  });
-  it("offers no Partial or Return to pending any more", async () => {
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(within(drawer).queryByRole("button", { name: "Partial" })).toBeNull();
-    expect(within(drawer).queryByRole("button", { name: /Return to pending/ })).toBeNull();
-  });
-
-  it("revokes approved time off only with a reason", async () => {
-    withRequest({ status: "approved", revision: 3, progress: null });
-    apiRequest.mockResolvedValueOnce({ status: "revoked", request_id: requestId, revision: 4 });
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: /Revoke/ }));
-    const box = await screen.findByRole("alertdialog", { name: "Revoke time off?" });
-    const confirm = within(box).getByRole("button", { name: "Revoke" }) as HTMLButtonElement;
-    expect(confirm.disabled).toBe(true);
-    fireEvent.change(within(box).getByLabelText("Reason"), { target: { value: "Inventory day" } });
-    expect(confirm.disabled).toBe(false);
-    fireEvent.click(confirm);
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off revoked."));
-    expect(calls()).toEqual([[`/v1/workspaces/${workspaceId}/time-off/${requestId}/revoke`, { expected_revision: 3, reason: "Inventory day" }]]);
-  });
-  it("does not offer revoke without the core's revoke action", async () => {
-    withRequest({ status: "approved", progress: null });
-    activeContext = { ...context, actions: context.actions.filter(action => action !== "time_off.revoke") };
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
-  });
-  it("does not offer revoke on an approved cancellation", async () => {
-    withRequest({ status: "approved", request_type: "time_off_cancellation", progress: null });
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
-  });
-  it("votes on a cancellation request with its own words", async () => {
-    withRequest({ request_type: "time_off_cancellation", progress: { ...progress, impact: { fingerprint, hidden_shift_count: 0, locations: {} } } });
-    apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(within(drawer).getByRole("heading", { level: 2 }).textContent).toContain("Cancellation");
-    fireEvent.click(within(drawer).getByRole("button", { name: "Decline" }));
-    expect(drawer.textContent).toContain("The time off stays in place.");
-    fireEvent.change(within(drawer).getByLabelText("Reason for Alex"), { target: { value: "Busy week" } });
-    fireEvent.click(within(drawer).getByRole("button", { name: "Decline cancellation" }));
-    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm decline" }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cancellation declined."));
-  });
-
-  it("lets a manager give back hours of approved time off (BL-127)", async () => {
-    const future = { start_at: "2099-08-17T14:00:00.000Z", end_at: "2099-08-17T18:00:00.000Z" };
-    withRequest({ status: "approved", revision: 2, progress: null,
-      segments: [{ ...pending.segments[0]!, start_time: "10:00:00", end_time: "14:00:00", status: "approved", time_timezone: "UTC", effective_intervals: [future] }] });
-    apiRequest.mockResolvedValueOnce({ status: "approved", request_id: requestId, revision: 3 });
-    renderPage();
-    await openTimeOffRequest();
-    fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
-    // BILDIRIM-05 (KARARLAR S-96): no notification goes out, so none is promised.
-    expect(screen.getByText(/This takes effect now\.$/)).toBeTruthy();
-    expect(screen.queryByText(/told/)).toBeNull();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Give back period 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "Give back these hours" }));
-    await waitFor(() => expect(apiRequest).toHaveBeenCalledOnce());
-    expect(calls()[0]![0]).toBe(`/v1/workspaces/${workspaceId}/time-off/${requestId}/shorten`);
-    expect(calls()[0]![1]).toMatchObject({ expected_revision: 2,
-      periods: [{ segment_id: pending.segments[0]!.id, starts_at: future.start_at, ends_at: future.end_at }] });
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Alex Kim's time off is shorter."));
-  });
-  // BL-1043: the database's key, not the server's "stale approved leave".
-  it("says a shortened leave changed meanwhile in the page's words and reloads it", async () => {
-    const future = { start_at: "2099-08-17T14:00:00.000Z", end_at: "2099-08-17T18:00:00.000Z" };
-    withRequest({ status: "approved", revision: 2, progress: null,
-      segments: [{ ...pending.segments[0]!, start_time: "10:00:00", end_time: "14:00:00", status: "approved", time_timezone: "UTC", effective_intervals: [future] }] });
-    apiRequest.mockRejectedValueOnce(new RequestError("stale approved leave; refresh before shortening it", "time_off.changed", undefined, 409));
-    renderPage();
-    await openTimeOffRequest();
-    const reads = fetchRequests.mock.calls.length;
-    fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Give back period 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "Give back these hours" }));
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toBe("This request changed. Review it again.");
-    // The server's sentence is the drawer's: in its band, not in the form (UI-FIELDMSG-2).
-    expect(alert.classList.contains("window-alert")).toBe(true);
-    expect(alert.closest(".time-off-cancellation")).toBeNull();
-    await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(reads));
-  });
-  it("offers no shortening while time off is still pending", async () => {
-    renderPage();
-    const drawer = await openTimeOffRequest();
-    expect(within(drawer).queryByRole("button", { name: "Shorten time off" })).toBeNull();
-  });
-  // BL-273: an approval can open shifts; Schedule and the dashboard must not stay stale.
-  it("refreshes the Schedule grid and the workspace dashboard after a decision", async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    client.setQueryData(["schedule-read", workspaceId, "2035-01-15"], { shifts: [] });
-    client.setQueryData(["workspace-dashboard", workspaceId], { pending: 1 });
-    apiRequest.mockResolvedValueOnce(verdict({ status: "approved", final: true, remaining: 0 }));
-    renderPage(undefined, client);
-    const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
-    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(client.getQueryState(["schedule-read", workspaceId, "2035-01-15"])?.isInvalidated).toBe(true));
-    expect(client.getQueryState(["workspace-dashboard", workspaceId])?.isInvalidated).toBe(true);
+  // Home's old link (?request=) and its new one (?type=time_off&request=) both land on the request.
+  it("lands Home's links to a time off request on its answer drawer", async () => {
+    renderPage(`/app/schedule/requests?request=${requestId}`);
+    expect(await screen.findByRole("dialog", { name: "Review time off" })).toBeTruthy();
   });
 });
 
@@ -1050,53 +683,33 @@ describe("search", () => {
     renderPage();
     const box = await screen.findByLabelText("Search requests");
     await screen.findByRole("row", { name: /Alex Kim/ });
-    let answer: (model: ScheduleRequestsReadModel) => void = () => undefined;
+    let answer: (model: TimeOffRequestsPage) => void = () => undefined;
     fetchRequests.mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }));
     box.focus();
-    fireEvent.change(box, { target: { value: "a".repeat(200) } });
+    fireEvent.change(box, { target: { value: "a".repeat(250) } });
     await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));
     expect(screen.queryByText("Loading requests")).toBeNull();
     expect(screen.getByRole("row", { name: /Alex Kim/ })).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByLabelText("Search requests"));
     const asked = new URL(fetchRequests.mock.calls.at(-1)![0], "http://x").searchParams.get("search");
-    expect(asked).toHaveLength(120);
+    // The API takes 200 characters; a longer search is cut, not refused (D7).
+    expect(asked).toHaveLength(200);
     answer(read);
   });
 });
 
-// Time off rebuild D3: behind the time-off-v2 flag, the Time off tab lists the new table's requests and
-// opens the new answer drawer; the other tabs and the flag-off page stay as they are.
-describe("Time off tab with the new time off", () => {
-  const newRequest = {
-    id: "98020000-0000-4000-8000-000000000001", kind: "leave", kind_of_leave: "vacation", status: "pending",
-    starts_at: "2035-01-15T00:00:00+00:00", ends_at: "2035-01-17T00:00:00+00:00", all_day: true, time_timezone: "UTC",
-    start_date: "2035-01-15", end_date: "2035-01-16", start_time: null, end_time: null, note: null, revision: 1,
-    created_at: "2035-01-09T11:00:00+00:00", decided_at: null, decided_by_name: null, decision_note: null, ended_at: null,
-    ended_note: null, employee_id: "15000000-0000-4000-8000-000000000002", employee_name: "Jo Park", location_names: ["Kadıköy"],
-    shifts_opened: 0,
-  };
-  beforeEach(() => {
-    window.localStorage.setItem("newfork:time-off-v2", "1");
-    apiRequest.mockImplementation(async (_client: unknown, path: string) => {
-      if (String(path).includes("/time-off-requests/") && String(path).endsWith("/impact"))
-        return { request: newRequest, fingerprint: "x", shift_count: 0, hidden_shift_count: 0, locations: [] };
-      if (String(path).includes("/time-off-requests")) return { total: 1, waiting: 1, page: 1, page_size: 50, requests: [newRequest] };
-      throw new Error(`unexpected ${path}`);
-    });
-  });
-  afterEach(() => window.localStorage.removeItem("newfork:time-off-v2"));
-
-  it("lists the new requests on the Time off tab and opens the answer drawer from a link", async () => {
-    renderPage(`/app/schedule/requests?type=time_off&request=${newRequest.id}`);
+// Time off rebuild D3, D7: the Time off tab lists the new table's requests and opens the answer drawer.
+describe("Time off tab", () => {
+  it("lists the requests on the Time off tab and opens the answer drawer from a link", async () => {
+    renderPage(`/app/schedule/requests?type=time_off&request=${requestId}`);
     expect(await screen.findByRole("dialog", { name: "Review time off" })).toBeTruthy();
-    expect(screen.getByRole("row", { name: /Jo Park asks for vacation/ })).toBeTruthy();
-    expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
-    expect(String(apiRequest.mock.calls[0]![1])).toContain(`/v1/workspaces/${workspaceId}/time-off-requests?`);
+    expect(screen.getByRole("row", { name: /Alex Kim asks for/ })).toBeTruthy();
+    expect(fetchRequests.mock.calls.some(([path]) => path.includes(`/v1/workspaces/${workspaceId}/time-off-requests?`))).toBe(true);
   });
 
   it("adds time off from the filter row on the Time off tab (D5)", async () => {
     renderPage("/app/schedule/requests?type=time_off");
-    await screen.findByRole("row", { name: /Jo Park asks for vacation/ });
+    await screen.findByRole("row", { name: /Alex Kim asks for/ });
     expect(screen.getByRole("button", { name: "Add time off" })).toBeTruthy();
   });
 
@@ -1104,11 +717,5 @@ describe("Time off tab with the new time off", () => {
     renderPage();
     expect(await screen.findByRole("row", { name: /Alex Kim/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add time off" })).toBeNull();
-  });
-
-  it("keeps the All tab as it is", async () => {
-    renderPage();
-    expect(await screen.findByRole("row", { name: /Alex Kim/ })).toBeTruthy();
-    expect(screen.queryByRole("row", { name: /Jo Park/ })).toBeNull();
   });
 });

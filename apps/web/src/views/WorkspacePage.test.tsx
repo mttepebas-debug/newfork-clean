@@ -548,7 +548,7 @@ describe("WorkspacePage", () => {
       ...managerHome,
       locations: [besiktas, kadikoy],
       time_off: [
-        { id: "ab000000-0000-4000-8000-000000000001", employee_id: "aa000000-0000-4000-8000-000000000002", employee_name: "Emre Demir",
+        { id: "ab000000-0000-4000-8000-000000000001", employee_id: "aa000000-0000-4000-8000-000000000002", employee_name: "Emre Demir", kind: "leave",
           first_date: "2026-10-23", last_date: "2026-10-25", location_ids: [kadikoy.id] },
       ],
     } satisfies ManagerHome;
@@ -574,7 +574,7 @@ describe("WorkspacePage", () => {
       // Each opens what it is about: Sam's permit, Emre's request (Mert 2026-10-22).
       expect(within(needs()).getAllByRole("link").map((row) => row.getAttribute("href"))).toEqual([
         `/app/employees/documents?location=${besiktas.id}&status=expired&requirement=ab000000-0000-4000-8000-000000000001`,
-        "/app/schedule/requests?request=ab000000-0000-4000-8000-000000000001",
+        "/app/schedule/requests?type=time_off&request=ab000000-0000-4000-8000-000000000001",
       ]);
       expect(needs().querySelector(".dl-cnt")?.className).toContain("is-warn");
       expect(screen.getByText(/1 person on the floor across 2 locations\. 2 things need you\./)).toBeTruthy();

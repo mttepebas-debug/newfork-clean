@@ -30,7 +30,7 @@ const view = {
   cancels_id: null, ended_by_name: null, used_until: null, cancellation: null, added_by_name: null,
   employee_id: "735032ec-0e98-4fb1-8005-c4ede5b1726b", employee_name: "Ali Person", location_names: ["Downtown"], shifts_opened: 0,
 };
-const page = { total: 1, waiting: 1, page: 1, page_size: 50, requests: [view] };
+const page = { total: 1, waiting: 1, page: 1, page_size: 50, time_format: "12h", locations: [], requests: [view] };
 const impact = { request: view, fingerprint: "abc", shift_count: 0, hidden_shift_count: 0, locations: [] };
 const shifts = { count: 1, shifts: [{ id: requestId, location_name: "Downtown", job_name: "Cook", scheduled_date: "2026-10-23", start_time: "09:00", end_time: "15:00" }] };
 const base = `/v1/workspaces/${workspaceId}/time-off-requests`;

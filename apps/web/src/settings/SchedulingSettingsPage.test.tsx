@@ -54,7 +54,6 @@ const settings = {
   week_start_day: "monday",
   schedule_deadline_day: "sunday",
   time_format: "12h",
-  time_off_lead_hours: 24,
 } satisfies SchedulingSettings;
 
 vi.mock("../auth/AuthContext", () => ({
@@ -130,13 +129,13 @@ describe("SchedulingSettingsPage", () => {
     expect(await screen.findByRole("heading", { name: "We couldn't load schedule rules" })).toBeTruthy();
     expect(screen.queryByText("rules service down")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByLabelText("Time off decision window (hours)")).toBeTruthy();
+    expect(await screen.findByRole("radio", { name: "Monday" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "We couldn't load schedule rules" })).toBeNull();
   });
 
   it("keeps the last rules and says so when a refresh fails", async () => {
     const { client } = renderPage("/app/settings/scheduling");
-    expect(await screen.findByLabelText("Time off decision window (hours)")).toBeTruthy();
+    expect(await screen.findByRole("radio", { name: "Monday" })).toBeTruthy();
     vi.mocked(loadSchedulingSettings).mockRejectedValueOnce(new Error("rules service down"));
     await act(async () => {
       await client.refetchQueries();
@@ -144,7 +143,7 @@ describe("SchedulingSettingsPage", () => {
     expect(
       await screen.findByText("Schedule rules didn't refresh. These are the last rules that loaded."),
     ).toBeTruthy();
-    expect(screen.getByLabelText("Time off decision window (hours)")).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Monday" })).toBeTruthy();
     expect(screen.queryByText("rules service down")).toBeNull();
   });
 
@@ -167,26 +166,14 @@ describe("SchedulingSettingsPage", () => {
     expect(screen.getByRole("radio", { name: "12-hour" })).toHaveProperty("checked", true);
   });
 
-  it("saves the time off decision window with the other rules (FB-6.3.6)", async () => {
+  // Time off rebuild D7: undecided time off expires when it starts; there is no decision window to set.
+  it("has no time off decision window and saves the rules without one", async () => {
     renderPage("/app/settings/scheduling");
-    const hours = (await screen.findByLabelText("Time off decision window (hours)")) as HTMLInputElement;
-    expect(hours.value).toBe("24");
-    fireEvent.change(hours, { target: { value: "48" } });
+    fireEvent.click(await screen.findByRole("radio", { name: "Sunday" }));
+    expect(screen.queryByLabelText("Time off decision window (hours)")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /save rules/i }));
-    await waitFor(() =>
-      expect(saveSchedulingSettings).toHaveBeenCalledWith(workspaceId, expect.objectContaining({ time_off_lead_hours: 48 })),
-    );
-    // Out of range or empty: the page's own red line, not the browser's bubble.
-    for (const value of ["721", ""]) {
-      fireEvent.change(hours, { target: { value } });
-      fireEvent.click(screen.getByRole("button", { name: /save rules/i }));
-      const alert = await screen.findByRole("alert");
-      expect(alert.textContent).toBe("Enter a time off decision window from 0 to 720 hours.");
-      // The form's own note, said whole (UI-FIELDMSG-2).
-      expect(alert.className).toBe("field-note-error");
-    }
-    expect(hours.closest("form")!.noValidate).toBe(true);
-    expect(saveSchedulingSettings).toHaveBeenCalledOnce();
+    await waitFor(() => expect(saveSchedulingSettings).toHaveBeenCalledOnce());
+    expect(vi.mocked(saveSchedulingSettings).mock.calls[0]![1]).not.toHaveProperty("time_off_lead_hours");
   });
 
   it("keeps the normal settings route prefilled", async () => {

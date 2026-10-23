@@ -1,4 +1,4 @@
-import type { ExchangeCase, TimeOffRequest } from "@newfork/shared";
+import type { ExchangeCase, TimeOffDeciderView } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
 import { exchangeSentence, exchangeStatus, rowExpires, rowKind, rowStatus, sentenceText, timeOffSentence } from "./request-sentences";
 import type { RequestRow } from "./requests-list";
@@ -86,13 +86,26 @@ describe("exchangeSentence", () => {
   });
 });
 
+// D7: time off rows say the Time off tab's sentence (S-151) and word.
+const leave = (change: Partial<TimeOffDeciderView> = {}): TimeOffDeciderView => ({
+  id: "t", kind: "leave", kind_of_leave: "vacation", status: "pending", starts_at: "2026-10-19T07:00:00Z", ends_at: "2026-10-22T07:00:00Z",
+  all_day: true, time_timezone: "America/Los_Angeles", start_date: "2026-10-19", end_date: "2026-10-21", start_time: null, end_time: null,
+  note: null, revision: 1, created_at: "2026-10-14T10:00:00Z", decided_at: null, decided_by_name: null, decision_note: null,
+  ended_at: null, ended_note: null, cancels_id: null, ended_by_name: null, used_until: null, cancellation: null, added_by_name: null,
+  employee_id: "e", employee_name: "Maria Lopez", location_names: ["Downtown"], shifts_opened: 0, ...change,
+});
+
 describe("timeOffSentence", () => {
-  const request = { employee_name: "Maria Lopez", request_type: "time_off", start_date: "2026-10-19", end_date: "2026-10-21" } as TimeOffRequest;
-  it("says who asked for which days, and the shifts that become open", () => {
-    expect(sentenceText(timeOffSentence(request, 0))).toBe("Maria Lopez asked for time off Mon, Oct 19 – Wed, Oct 21.");
-    expect(sentenceText(timeOffSentence(request, 2))).toBe("Maria Lopez asked for time off Mon, Oct 19 – Wed, Oct 21. 2 shifts become open.");
-    expect(sentenceText(timeOffSentence({ ...request, request_type: "time_off_cancellation", end_date: "2026-10-19" }, 0))).toBe(
-      "Maria Lopez asked to cancel approved time off Mon, Oct 19.");
+  it("says who asks for what, and when, with the names and dates strong", () => {
+    const parts = timeOffSentence(leave(), "12h");
+    expect(parts[0]).toEqual({ strong: "Maria Lopez" });
+    expect(sentenceText(parts)).toMatch(/^Maria Lopez asks for /);
+    expect(sentenceText(timeOffSentence(leave({ kind: "cancel" }), "12h"))).toMatch(/^Maria Lopez asks to cancel time off, /);
+  });
+  it("writes hours in the page's time format", () => {
+    const hours = leave({ all_day: false, start_date: "2026-10-19", end_date: "2026-10-19", start_time: "16:00", end_time: "22:00" });
+    expect(sentenceText(timeOffSentence(hours, "12h"))).toContain("4");
+    expect(sentenceText(timeOffSentence(hours, "24h"))).toContain("16:00");
   });
 });
 
@@ -142,16 +155,16 @@ describe("rowKind and rowStatus", () => {
 });
 
 describe("time off status", () => {
-  const request = (change: Partial<TimeOffRequest>) =>
-    ({ id: "t", employee_name: "Maria Lopez", request_type: "time_off", status: "pending", start_date: "2026-10-19", end_date: "2026-10-19", events: [], ...change }) as TimeOffRequest;
-  const timeOffRow = (item: TimeOffRequest, state: RequestRow["state"]): RequestRow => ({
+  const timeOffRow = (item: TimeOffDeciderView, state: RequestRow["state"]): RequestRow => ({
     source: "time_off", id: item.id, type: "time_off", state, decideBy: null, closedAt: null, request: item,
   });
 
-  // Mert, 2026-10-18: another approver voting first is still Needs decision; revoked leave ends Declined.
-  it("calls a request another approver votes on first Needs decision, and revoked leave Declined", () => {
-    expect(rowStatus(timeOffRow(request({}), "in_progress"))).toEqual({ label: "Needs decision", tone: "amber" });
-    expect(rowStatus(timeOffRow(request({ status: "revoked" }), "closed"))).toEqual({ label: "Declined", tone: "red" });
+  it("says the Time off tab's word: waiting is Needs decision, then how it ended", () => {
+    expect(rowStatus(timeOffRow(leave({ starts_at: "2099-01-01T00:00:00Z" }), "needs_review"))).toEqual({ label: "Needs decision", tone: "amber" });
+    expect(rowStatus(timeOffRow(leave({ starts_at: "2020-01-01T00:00:00Z" }), "closed"))).toEqual({ label: "Expired", tone: "gray" });
+    expect(rowStatus(timeOffRow(leave({ status: "approved" }), "closed"))).toEqual({ label: "Approved", tone: "green" });
+    expect(rowStatus(timeOffRow(leave({ status: "declined" }), "closed"))).toEqual({ label: "Declined", tone: "red" });
+    expect(rowStatus(timeOffRow(leave({ status: "revoked" }), "closed"))).toEqual({ label: "Revoked", tone: "red" });
   });
 });
 

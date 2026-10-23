@@ -49,9 +49,9 @@ const home: ManagerHome = {
   now: "2026-10-20T21:20:00Z",
   locations: [downtown, harbor],
   time_off: [
-    { id: "7d882f38-2421-4bf0-90b3-fcd0b00913c8", employee_id: "db37ec6e-d3b2-42c4-8045-d8533c17a4d2", employee_name: "Emre Demir",
+    { id: "7d882f38-2421-4bf0-90b3-fcd0b00913c8", employee_id: "db37ec6e-d3b2-42c4-8045-d8533c17a4d2", employee_name: "Emre Demir", kind: "leave",
       first_date: "2026-10-23", last_date: "2026-10-25", location_ids: [K, B] },
-    { id: "8d882f38-2421-4bf0-90b3-fcd0b00913c8", employee_id: "eb37ec6e-d3b2-42c4-8045-d8533c17a4d2", employee_name: "Remy Remote",
+    { id: "8d882f38-2421-4bf0-90b3-fcd0b00913c8", employee_id: "eb37ec6e-d3b2-42c4-8045-d8533c17a4d2", employee_name: "Remy Remote", kind: "cancel",
       first_date: "2026-11-02", last_date: "2026-11-02", location_ids: [] },
   ],
   layout: {
@@ -110,6 +110,8 @@ describe("the managers' Home model", () => {
       locationIds: [K],
     });
     expect(needs[1]).toMatchObject({ title: "Emre Demir asks for time off", detail: "Fri, Oct 23 – Sun, Oct 25" });
+    // D7: a cancellation of approved time off waits here too.
+    expect(needs[2]).toMatchObject({ title: "Remy Remote asks to cancel time off" });
     expect(needs[3]).toMatchObject({ title: "Lina Park wants to swap a shift", locationIds: [B] });
     expect(needs[4]).toMatchObject({ title: "The next 7 days aren’t published", href: "/app/schedule?date=2026-10-20" });
   });
@@ -119,7 +121,7 @@ describe("the managers' Home model", () => {
     expect(needs.find((need) => need.kind === "docs")?.href).toBe(
       `/app/employees/documents?location=${K}&status=missing&requirement=d1000000-0000-4000-8000-000000000001`,
     );
-    expect(needs.find((need) => need.kind === "timeoff")?.href).toBe("/app/schedule/requests?request=7d882f38-2421-4bf0-90b3-fcd0b00913c8");
+    expect(needs.find((need) => need.kind === "timeoff")?.href).toBe("/app/schedule/requests?type=time_off&request=7d882f38-2421-4bf0-90b3-fcd0b00913c8");
     expect(needs.find((need) => need.kind === "swap")?.href).toBe(`/app/schedule/requests?case=${swap.id}`);
   });
 

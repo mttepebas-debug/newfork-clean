@@ -2,7 +2,6 @@ import { useRef } from "react";
 import type { ScheduleEditSession, ScheduleReadModel, ScheduleShiftMutationInput } from "@newfork/shared/schedule";
 import { useToast } from "@newfork/ui";
 import { scheduleAssignNotice, type ScheduleAssignKind } from "../lib/scheduleAssignNotice";
-import { timeOffV2Enabled } from "../../time-off/time-off-flag";
 
 // Five seconds, as the approved mockup (availability-tur2).
 const ASSIGN_NOTICE_MS = 5_000;
@@ -29,7 +28,7 @@ export function useScheduleAssignNotice(
     next: Pick<ScheduleEditSession, "id" | "revision"> | null,
   ): boolean => {
     if (!next || !model) return false;
-    const notice = scheduleAssignNotice(model, inputs, kind, { pendingTimeOff: timeOffV2Enabled() });
+    const notice = scheduleAssignNotice(model, inputs, kind);
     if (!notice) return false;
     toast.action(notice.title, {
       actionLabel: "Undo",

@@ -1,4 +1,4 @@
-import type { ExchangeCase, TimeOffRequest } from "@newfork/shared";
+import type { ExchangeCase, TimeOffDeciderView } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
 
 import { RequestError } from "../lib/request-error";
@@ -18,16 +18,16 @@ import {
 const kadikoy = "22222222-2222-4222-8222-222222222222";
 const besiktas = "33333333-3333-4333-8333-333333333333";
 
-function timeOff(id: string, decideBy: string | null, progress: Partial<NonNullable<TimeOffRequest["progress"]>> | null): TimeOffRequest {
+// D7: a request of the new time off, as the answerers' list sends it.
+function timeOff(id: string, startsAt: string, change: Partial<TimeOffDeciderView> = {}): TimeOffDeciderView {
   return {
-    id, employee_id: "44444444-4444-4444-8444-444444444444", employee_name: "Ali Person",
-    request_type: "time_off", reason: "", status: "pending", start_date: "2026-10-13", end_date: "2026-10-13",
-    revision: 1, created_at: "2026-10-01T09:00:00Z", decide_by: decideBy, conflict_count: 0, segments: [], events: [],
-    progress: progress && {
-      remaining: 1, fallback: false, decide_by: decideBy, can_vote: true, can_decide_alone: false, my_vote: null,
-      my_approval_finalizes: true, locations: [], impact: null, ...progress,
-    },
-  } as TimeOffRequest;
+    id, kind: "leave", kind_of_leave: "vacation", status: "pending", starts_at: startsAt, ends_at: "2026-11-30T12:00:00Z", all_day: true,
+    time_timezone: "America/Los_Angeles", start_date: startsAt.slice(0, 10), end_date: "2026-11-30", start_time: null, end_time: null,
+    note: null, revision: 1, created_at: "2026-10-01T09:00:00Z", decided_at: null, decided_by_name: null, decision_note: null,
+    ended_at: null, ended_note: null, cancels_id: null, ended_by_name: null, used_until: null, cancellation: null, added_by_name: null,
+    employee_id: "44444444-4444-4444-8444-444444444444", employee_name: "Ali Person", location_names: ["Kadikoy"], shifts_opened: 0,
+    ...change,
+  };
 }
 
 function exchange(id: string, kind: ExchangeCase["kind"], stage: ExchangeCase["stage"], expiresAt: string, extra: Partial<ExchangeCase> = {}): ExchangeCase {
@@ -39,58 +39,67 @@ function exchange(id: string, kind: ExchangeCase["kind"], stage: ExchangeCase["s
   } as ExchangeCase;
 }
 
-function closedTimeOff(id: string, status: TimeOffRequest["status"], decidedAt: string): TimeOffRequest {
-  return {
-    ...timeOff(id, null, null),
-    status,
-    events: [{ id: "99999999-9999-4999-8999-999999999999", action: status, actor_name: "Ayse Person", note: "", created_at: decidedAt }],
-  } as TimeOffRequest;
+function closedTimeOff(id: string, status: TimeOffDeciderView["status"], decidedAt: string): TimeOffDeciderView {
+  return timeOff(id, "2026-10-13T07:00:00Z", { status, decided_at: decidedAt, decided_by_name: "Ayse Person" });
 }
 
 const all = { type: "all" as const, locationId: "", search: "" };
+// The list is read at this moment; every time off below starts after it unless it says otherwise.
+const now = new Date("2026-10-01T12:00:00Z");
 
 describe("requestRows", () => {
+  // D7: time off has one answer from whoever may give it, so time off waiting is the reader's to decide.
   it("marks what the reader decides Needs review and what waits on somebody else In progress", () => {
     const rows = requestRows(
-      [
-        timeOff("t-mine", "2026-10-10T12:00:00Z", { can_vote: true, my_vote: null }),
-        timeOff("t-voted", "2026-10-11T12:00:00Z", { can_vote: false, my_vote: "approve" }),
-      ],
+      [timeOff("t-mine", "2026-10-10T12:00:00Z")],
       [
         exchange("x-ready", "swap", "ready_for_manager", "2026-10-09T12:00:00Z"),
         exchange("x-not-mine", "cover", "ready_for_manager", "2026-10-14T12:00:00Z", { can_manage: false }),
       ],
       all,
+      now,
     );
     expect(rows.map((row) => [row.id, row.state])).toEqual([
       ["x-ready", "needs_review"],
       ["t-mine", "needs_review"],
-      ["t-voted", "in_progress"],
       ["x-not-mine", "in_progress"],
     ]);
   });
 
-  // An admin or owner who decides alone has nobody before them: the request is theirs now (EKRAN-02 C1).
-  it("marks a request the reader decides alone Needs review", () => {
-    const rows = requestRows([timeOff("t-alone", "2026-10-10T12:00:00Z", { can_vote: false, can_decide_alone: true, my_vote: null })], [], all);
-    expect(rows.map((row) => [row.id, row.state])).toEqual([["t-alone", "needs_review"]]);
+  // Time off waits until it starts; a cancellation until the time off ends (D6).
+  it("decides time off by its start and a cancellation by the time off's end; one past it is closed", () => {
+    const rows = requestRows(
+      [
+        timeOff("t-cancel", "2026-09-20T07:00:00Z", { kind: "cancel", ends_at: "2026-10-05T07:00:00Z" }),
+        timeOff("t-started", "2026-09-30T07:00:00Z"),
+      ],
+      [],
+      all,
+      now,
+    );
+    expect(rows.map((row) => [row.id, row.state, row.decideBy])).toEqual([
+      ["t-cancel", "needs_review", "2026-10-05T07:00:00Z"],
+      ["t-started", "closed", null],
+    ]);
   });
 
-  it("orders open requests by Decide by, nearest first, with no deadline last", () => {
+  it("orders open requests by Decide by, nearest first", () => {
     const rows = requestRows(
-      [timeOff("t-none", null, { can_vote: true }), timeOff("t-late", "2026-10-20T12:00:00Z", { can_vote: true })],
+      [timeOff("t-late", "2026-10-20T12:00:00Z"), timeOff("t-mid", "2026-10-12T12:00:00Z")],
       [exchange("x-soon", "swap", "ready_for_manager", "2026-10-09T12:00:00Z")],
       all,
+      now,
     );
-    expect(rows.map((row) => row.id)).toEqual(["x-soon", "t-late", "t-none"]);
+    expect(rows.map((row) => row.id)).toEqual(["x-soon", "t-mid", "t-late"]);
   });
 
   // Times are compared as instants, whatever offset the API writes them with.
   it("orders Decide by as instants, not as text", () => {
     const rows = requestRows(
-      [timeOff("t-istanbul", "2026-10-13T12:00:00+03:00", { can_vote: true })],
+      [timeOff("t-istanbul", "2026-10-13T12:00:00+03:00")],
       [exchange("x-utc", "swap", "ready_for_manager", "2026-10-13T10:00:00Z")],
       all,
+      now,
     );
     expect(rows.map((row) => row.id)).toEqual(["t-istanbul", "x-utc"]);
   });
@@ -99,16 +108,17 @@ describe("requestRows", () => {
   it("lists closed requests under the open ones, the newest decision first", () => {
     const rows = requestRows(
       [
-        closedTimeOff("t-old", "approved", "2026-10-02T09:00:00Z"),
-        timeOff("t-open", "2026-10-30T12:00:00Z", { can_vote: true }),
-        closedTimeOff("t-new", "denied", "2026-10-05T09:00:00Z"),
+        closedTimeOff("t-old", "approved", "2026-09-22T09:00:00Z"),
+        timeOff("t-open", "2026-10-30T12:00:00Z"),
+        closedTimeOff("t-new", "declined", "2026-10-01T11:00:00Z"),
       ],
       [
         exchange("x-closed", "cover", "closed", "2026-10-08T12:00:00Z", {
-          history: [{ id: "88888888-8888-4888-8888-888888888888", action: "completed", created_at: "2026-10-04T09:00:00Z", message: "" }],
+          history: [{ id: "88888888-8888-4888-8888-888888888888", action: "completed", created_at: "2026-10-01T10:00:00Z", message: "" }],
         }),
       ],
       all,
+      now,
     );
     expect(rows.map((row) => [row.id, row.state])).toEqual([
       ["t-open", "needs_review"],
@@ -120,13 +130,14 @@ describe("requestRows", () => {
 
   it("keeps only the chosen tab, open and closed; shift changes are every swap, cover and pickup", () => {
     const rows = requestRows(
-      [timeOff("t", "2026-10-10T12:00:00Z", { can_vote: true })],
+      [timeOff("t", "2026-10-10T12:00:00Z")],
       [
         exchange("s", "swap", "ready_for_manager", "2026-10-10T12:00:00Z"),
         exchange("s-done", "swap", "closed", "2026-10-01T12:00:00Z"),
         exchange("o", "cover", "ready_for_manager", "2026-10-10T12:00:00Z"),
       ],
       { ...all, type: "shift_changes" },
+      now,
     );
     expect(rows.map((row) => row.id)).toEqual(["s", "o", "s-done"]);
   });
@@ -178,13 +189,14 @@ describe("openCounts", () => {
   // Mert, 2026-10-11: two tabs, Time off and every shift change together.
   it("counts the open requests of each tab and of All; closed ones are not counted", () => {
     const rows = requestRows(
-      [timeOff("t", "2026-10-10T12:00:00Z", { can_vote: true }), closedTimeOff("t-done", "approved", "2026-10-02T09:00:00Z")],
+      [timeOff("t", "2026-10-10T12:00:00Z"), closedTimeOff("t-done", "approved", "2026-09-22T09:00:00Z")],
       [
         exchange("s", "swap", "ready_for_manager", "2026-10-10T12:00:00Z"),
         exchange("c", "cover", "ready_for_manager", "2026-10-11T12:00:00Z"),
         exchange("c-done", "cover", "closed", "2026-10-01T12:00:00Z"),
       ],
       all,
+      now,
     );
     expect(openCounts(rows)).toEqual({ all: 3, time_off: 1, shift_changes: 2 });
   });

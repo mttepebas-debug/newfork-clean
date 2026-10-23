@@ -39,7 +39,6 @@ vi.mock("../employee-hub/employee-hub-data", () => ({
   changeEmployeePersonalTask: vi.fn().mockResolvedValue([]),
   getEmployeeHub: vi.fn(),
   getEmployeeScheduleBoard: vi.fn(),
-  actOnEmployeeRequest: vi.fn(),
 }));
 vi.mock("../schedule/lineup-data", async (original) => ({
   ...(await original<object>()),
@@ -49,15 +48,15 @@ vi.mock("../schedule/lineup-data", async (original) => ({
 const istanbul = "Europe/Istanbul";
 const hub = {
   workspace_id: workspaceId,
-  settings: { time_format: "12h", time_off_lead_hours: 24 },
+  settings: { time_format: "12h" },
   time_off_timezone: istanbul,
   employee: { id: employeeId, display_name: "Alex Kim" },
   locations: [{ id: locationId, name: "Kadikoy", timezone: istanbul }],
   shifts: [],
   open_shifts: [],
   team_shifts: [],
-  requests: [],
   team: [],
+  leave_days: [],
 } satisfies EmployeeHubReadModel;
 const board = {
   workspace_id: workspaceId,

@@ -35,7 +35,6 @@ export function scheduleAssignNotice(
   model: Pick<ScheduleReadModel, "employees" | "settings">,
   inputs: readonly ScheduleShiftMutationInput[],
   kind: ScheduleAssignKind,
-  options: { readonly pendingTimeOff?: boolean } = {},
 ): ScheduleAssignNotice | null {
   const input = inputs.find((item) => item.employee_id);
   const employee = input && model.employees.find((item) => item.id === input.employee_id);
@@ -50,9 +49,9 @@ export function scheduleAssignNotice(
     const hours = windows.map((window) => hoursWords(window, timeFormat)).join(", ");
     lines.push(`${firstName(employee.display_name)} prefers not to work ${weekday}${hours ? ` ${hours}` : ""}.`);
   }
-  // Time off rebuild D3b (KARARLAR S-239 (9), behind the time-off-v2 flag): time off waiting for an answer
-  // over the shift's hours is said the same way; the shift is written, nothing is asked.
-  if (options.pendingTimeOff) {
+  // Time off rebuild D3b (KARARLAR S-239 (9)): time off waiting for an answer over the shift's hours is said the
+  // same way; the shift is written, nothing is asked.
+  {
     const projection = employee.weekly_availability?.find((item) => item.location_id === input.location_id);
     const ranges = projection ? schedulePendingTimeOff(projection).get(input.scheduled_date) : undefined;
     if (ranges && shiftMeetsRanges(ranges, input.start_time, input.end_time))

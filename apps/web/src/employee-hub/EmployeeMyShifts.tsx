@@ -31,19 +31,8 @@ export function weekDays(model: Model, start: string, openDates: readonly string
     const shifts = model.shifts
       .filter((shift) => shift.scheduled_date === date && (!shift.employee_id || shift.employee_id === model.employee.id))
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
-    // The read's leave_days when it has them (old and new time off alike, time off rebuild D3).
-    const timeOff = model.leave_days ? model.leave_days.includes(date) : model.requests.some(
-      (request) =>
-        request.kind === "time_off" &&
-        request.request_type !== "time_off_cancellation" &&
-        request.status !== "revoked" &&
-        (request.periods ?? []).some(
-          (period) =>
-            period.segment_date === date &&
-            period.status === "approved" &&
-            !(period.cancelled_intervals?.length && !period.effective_intervals?.length),
-        ),
-    );
+    // The read's days with time off, old and new alike (time off rebuild D3, D7).
+    const timeOff = model.leave_days.includes(date);
     // Released shifts in the pool, not unassigned ones (QA 38, S-151 (3)).
     const open = openDates.filter((day) => day === date).length;
     return { date, shifts, timeOff, open };
@@ -67,11 +56,11 @@ export function switchWeeks(thisStart: string, target: string | null, weekStartD
 }
 
 /** Two weeks' answers as one model (each week is asked on its own: the hub takes 62 days at most). */
-function merged(parts: (Model | undefined)[]): Model | undefined {
+export function mergedWeeks(parts: (Model | undefined)[]): Model | undefined {
   const [a, b] = parts;
   if (!a || !b) return undefined;
   const byId = <T extends { id: string }>(items: T[]) => [...new Map(items.map((item) => [item.id, item])).values()];
-  return { ...a, shifts: byId([...a.shifts, ...b.shifts]), requests: byId([...a.requests, ...b.requests]) };
+  return { ...a, shifts: byId([...a.shifts, ...b.shifts]), leave_days: [...new Set([...a.leave_days, ...b.leave_days])].sort() };
 }
 
 export function EmployeeMyShifts({ workspaceId, zone }: { readonly workspaceId: string; readonly zone: string }) {
@@ -98,7 +87,7 @@ export function EmployeeMyShifts({ workspaceId, zone }: { readonly workspaceId: 
       refetchInterval: 60_000,
     })),
   });
-  const model = merged(parts.map((part) => part.data));
+  const model = mergedWeeks(parts.map((part) => part.data));
   const hub = {
     isLoading: parts.some((part) => part.isLoading),
     isError: parts.some((part) => part.isError),

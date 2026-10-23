@@ -1,6 +1,6 @@
 import type { NotificationFeed, NotificationItem } from "@newfork/shared";
 
-/** A row as the core writes it (an open time off request), changed where a test says. */
+/** A row as the core writes it (an open time off request of the new table, D7), changed where a test says. */
 export function notice(overrides: Partial<NotificationItem> = {}): NotificationItem {
   return {
     id: "13253395-6150-43b9-bb13-364014baae15",
@@ -12,10 +12,10 @@ export function notice(overrides: Partial<NotificationItem> = {}): NotificationI
     needs_action: true,
     title: "Time off request from Tom Becker",
     body: "Wed, Oct 21 · Jury duty summons.",
-    url: "/app/schedule/requests?tab=time-off&request=98020000-0000-4000-8000-000000000001",
+    url: "/app/schedule/requests?type=time_off&request=98020000-0000-4000-8000-000000000001",
     data: {},
     actor_user_id: null,
-    subject_type: "time_off_request",
+    subject_type: "time_off",
     subject_id: "98020000-0000-4000-8000-000000000001",
     created_at: "2026-10-16T16:38:10.2327+00:00",
     seen_at: null,

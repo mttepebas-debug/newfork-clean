@@ -19,7 +19,6 @@ import { useNavigate } from "react-router";
 import { LinesOutline, LoadError } from "../shell/LoadState";
 import {
   dayGroup,
-  decisionFor,
   emptyTitle,
   relativeTime,
   resolutionLabel,
@@ -27,7 +26,6 @@ import {
   type TileIcon,
 } from "./notification-model";
 import { useMarkNotificationsRead, useNotificationCounts, useNotificationFeed } from "./notifications-data";
-import { TimeOffDecision } from "./TimeOffDecision";
 import "./notifications.css";
 import { useViewAddress } from "../shell/view-address";
 
@@ -190,7 +188,6 @@ export function NotificationList({
               ) : null}
               <NotificationRow
                 item={item}
-                workspaceId={workspaceId}
                 viewerId={viewerId}
                 wide={wide}
                 now={now}
@@ -219,7 +216,6 @@ export function NotificationList({
 
 function NotificationRow({
   item,
-  workspaceId,
   viewerId,
   wide,
   now,
@@ -227,7 +223,6 @@ function NotificationRow({
   onRead,
 }: {
   readonly item: NotificationItem;
-  readonly workspaceId: string;
   readonly viewerId: string | undefined;
   readonly wide: boolean;
   readonly now: Date;
@@ -238,7 +233,6 @@ function NotificationRow({
   const Icon = icons[look.icon];
   const unread = !item.read_at;
   const open = item.needs_action && !item.resolved_at;
-  const decision = decisionFor(item);
   const resolved = resolutionLabel(item, viewerId);
   const classes = ["ni-row", unread ? "is-unread" : "", item.resolved_at ? "is-resolved" : "", wide ? "is-wide" : ""]
     .filter(Boolean)
@@ -269,9 +263,7 @@ function NotificationRow({
             {resolved}
           </span>
         ) : null}
-        {decision ? (
-          <TimeOffDecision workspaceId={workspaceId} requestId={decision.requestId} onOpen={onOpen} />
-        ) : open && item.url ? (
+        {open && item.url ? (
           <div className="ni-row-actions">
             <button type="button" className="nf-button secondary-button" onClick={onOpen}>
               Review

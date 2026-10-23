@@ -39,7 +39,7 @@ const model = (patch: Partial<EmployeeHubReadModel> = {}): EmployeeHubReadModel 
   open_shifts: [],
   team_shifts: [],
   team: [],
-  requests: [],
+  leave_days: [],
   ...patch,
 });
 
@@ -95,19 +95,7 @@ describe("home model", () => {
     const m = model({
       shifts: [base, { ...base, id: "60000000-0000-4000-8000-000000000001", scheduled_date: "2026-10-17", start_time: "11:00", end_time: "17:00" }],
       open_shifts: [{ ...base, id: "70000000-0000-4000-8000-000000000001", employee_id: null, scheduled_date: "2026-10-18" }],
-      requests: [
-        {
-          id: "80000000-0000-4000-8000-000000000001",
-          kind: "time_off",
-          status: "approved",
-          title: "Time off",
-          detail: "",
-          revision: 1,
-          created_at: "2026-10-10T10:00:00Z",
-          can_cancel: true,
-          periods: [{ id: "90000000-0000-4000-8000-000000000001", segment_date: "2026-10-19", start_time: null, end_time: null, status: "approved" }],
-        },
-      ],
+      leave_days: ["2026-10-19"],
     });
     // QA 38: the unassigned shift on Oct 18 alone is no open shift for an employee.
     expect(homeWeek(m, "2026-10-16")[2]!.open).toBe(0);
@@ -122,7 +110,7 @@ describe("home model", () => {
     expect(week[0]!.weekday).toBe("Fri");
   });
 
-  it("marks time off from the server's leave days when the read has them (time off rebuild D3)", () => {
+  it("marks time off from the server's leave days (time off rebuild D3)", () => {
     const week = homeWeek(model({ leave_days: ["2026-10-17", "2026-10-22"] }), "2026-10-16");
     expect(week.filter((day) => day.timeOff).map((day) => day.date)).toEqual(["2026-10-17", "2026-10-22"]);
   });

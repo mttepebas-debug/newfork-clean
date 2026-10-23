@@ -1,11 +1,12 @@
-import type { ExchangeCase, TimeOffRequest } from "@newfork/shared";
+import type { ExchangeCase, TimeOffDeciderView } from "@newfork/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { awaitsDecision, exchangeStatus } from "./request-sentences";
 import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
-import { getTimeOffQueue, timeOffKeys } from "./requests-data";
+import { loadAllTimeOffToAnswer } from "../time-off/time-off-data";
+import { answerStatus, waitsUntil } from "../time-off/time-off-text";
 
 // EKRAN-02 (K-S8 – K-S10; KARARLAR Schedule → Requests, Ek 2026-10-07): Requests
 // is one list. Open requests (Needs review, In progress) come first, nearest
@@ -38,7 +39,7 @@ export const requestPageSizes = [25, 50, 100] as const;
 export type RequestPageSize = (typeof requestPageSizes)[number];
 
 export type RequestRow =
-  | { source: "time_off"; id: string; type: "time_off"; state: RequestState; decideBy: string | null; closedAt: string | null; request: TimeOffRequest }
+  | { source: "time_off"; id: string; type: "time_off"; state: RequestState; decideBy: string | null; closedAt: string | null; request: TimeOffDeciderView }
   | { source: "exchange"; id: string; type: ExchangeCase["kind"]; state: RequestState; decideBy: string | null; closedAt: string | null; request: ExchangeCase };
 
 export interface RequestFilters {
@@ -63,10 +64,9 @@ function exchangeState(item: ExchangeCase): RequestState {
     : "in_progress";
 }
 
-function timeOffState(item: TimeOffRequest): RequestState {
-  if (item.status !== "pending") return "closed";
-  const progress = item.progress;
-  return progress && (progress.can_vote || progress.can_decide_alone) && !progress.my_vote ? "needs_review" : "in_progress";
+// Time off (D7): one answer from whoever may give it, so a request waiting is this reader's to decide.
+function timeOffState(item: TimeOffDeciderView, now: Date): RequestState {
+  return answerStatus(item, now).label === "Needs decision" ? "needs_review" : "closed";
 }
 
 function exchangeMatches(item: ExchangeCase, filters: RequestFilters): boolean {
@@ -104,21 +104,22 @@ function compareRows(left: RequestRow, right: RequestRow) {
  * server does it); shift changes are filtered here.
  */
 export function requestRows(
-  timeOff: readonly TimeOffRequest[],
+  timeOff: readonly TimeOffDeciderView[],
   exchanges: readonly ExchangeCase[],
   filters: RequestFilters,
+  now: Date = new Date(),
 ): RequestRow[] {
   const rows: RequestRow[] = [];
   if (filters.type === "all" || filters.type === "time_off") {
     for (const request of timeOff) {
-      const state = timeOffState(request);
+      const state = timeOffState(request, now);
       rows.push({
         source: "time_off",
         id: request.id,
         type: "time_off",
         state,
-        decideBy: state === "closed" ? null : (request.decide_by ?? null),
-        closedAt: state === "closed" ? lastAt(request.events, request.created_at) : null,
+        decideBy: state === "closed" ? null : waitsUntil(request),
+        closedAt: state === "closed" ? (request.ended_at ?? request.decided_at ?? request.created_at) : null,
         request,
       });
     }
@@ -181,30 +182,22 @@ export function requestFailureKind(error: unknown): "no_access" | "connection" |
 }
 
 /**
- * Every request the reader may read: open and closed time off, and the shift
- * changes the manager view returns (open ones and the recently closed ones).
- * A list the reader may not read is never asked for. Typing in search keeps
- * the last rows on screen until the new ones arrive (R2-10, R2-20).
- * ponytail: closed time off is read whole, page after page, until the one
- * closed read (B3) pages the list on the server.
+ * Every request the reader may read: the time off they answer (waiting and answered) and the shift changes the
+ * manager view returns (open ones and the recently closed ones). A list the reader may not read is never asked
+ * for. Typing in search keeps the last rows on screen until the new ones arrive (R2-10, R2-20). The time off read
+ * also carries the page's time format and location filter (D7).
  */
 export function useRequests(
   workspaceId: string | undefined,
   can: { timeOff: boolean; shiftChanges: boolean },
   filters: { locationId: string; search: string },
 ) {
-  const read = { locationId: filters.locationId, search: filters.search };
   const enabled = Boolean(workspaceId);
-  const timeOffKey = [...timeOffKeys.requests(workspaceId ?? ""), filters.locationId, filters.search.trim()];
-  const openTimeOff = useQuery({
-    queryKey: [...timeOffKey, "needs_review"],
-    queryFn: () => getTimeOffQueue(workspaceId!, "needs_review", read),
-    enabled: enabled && can.timeOff,
-    placeholderData: keepPreviousData,
-  });
-  const closedTimeOff = useQuery({
-    queryKey: [...timeOffKey, "closed"],
-    queryFn: () => getTimeOffQueue(workspaceId!, "closed", read),
+  const timeOff = useQuery({
+    // "time-off-requests" + workspace: every answer refreshes it.
+    queryKey: ["time-off-requests", workspaceId ?? "", "all-rows", filters.locationId, filters.search.trim()],
+    queryFn: () =>
+      loadAllTimeOffToAnswer(workspaceId!, { location_id: filters.locationId || undefined, search: filters.search.trim() }),
     enabled: enabled && can.timeOff,
     placeholderData: keepPreviousData,
   });
@@ -215,21 +208,18 @@ export function useRequests(
     enabled: enabled && can.shiftChanges,
     placeholderData: keepPreviousData,
   });
-  const error = (can.timeOff ? (openTimeOff.error ?? closedTimeOff.error) : null) ?? (can.shiftChanges ? exchanges.error : null);
+  const error = (can.timeOff ? timeOff.error : null) ?? (can.shiftChanges ? exchanges.error : null);
   return {
-    timeOff: can.timeOff ? [...(openTimeOff.data?.requests ?? []), ...(closedTimeOff.data?.requests ?? [])] : [],
+    timeOff: can.timeOff ? (timeOff.data?.requests ?? []) : [],
     exchanges: can.shiftChanges ? (exchanges.data?.cases ?? []) : [],
-    locations: openTimeOff.data?.locations ?? closedTimeOff.data?.locations ?? [],
-    timeFormat: openTimeOff.data?.timeFormat ?? closedTimeOff.data?.timeFormat ?? "12h",
-    isLoading: (can.timeOff && (openTimeOff.isLoading || closedTimeOff.isLoading)) || (can.shiftChanges && exchanges.isLoading),
-    isFetching: (can.timeOff && (openTimeOff.isFetching || closedTimeOff.isFetching)) || (can.shiftChanges && exchanges.isFetching),
+    locations: timeOff.data?.locations ?? [],
+    timeFormat: timeOff.data?.time_format ?? "12h",
+    isLoading: (can.timeOff && timeOff.isLoading) || (can.shiftChanges && exchanges.isLoading),
+    isFetching: (can.timeOff && timeOff.isFetching) || (can.shiftChanges && exchanges.isFetching),
     error,
     failure: error ? requestFailureKind(error) : null,
     retry: () => {
-      if (can.timeOff) {
-        void openTimeOff.refetch();
-        void closedTimeOff.refetch();
-      }
+      if (can.timeOff) void timeOff.refetch();
       if (can.shiftChanges) void exchanges.refetch();
     },
   };

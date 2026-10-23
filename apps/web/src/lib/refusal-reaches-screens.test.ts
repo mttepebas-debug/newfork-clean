@@ -6,12 +6,12 @@ import {
 } from "../communications/communications-data";
 import { getEmployeeHub } from "../employee-hub/employee-hub-data";
 import { listEmployees } from "../employees/employee-data";
-import { getScheduleRequests } from "../schedule/requests-data";
 import {
   getDocumentTargetOptions,
   previewDocumentPublication,
 } from "../settings/documents-data";
 import { loadSchedulingSettings } from "../settings/organization-data";
+import { loadTimeOffToAnswer } from "../time-off/time-off-data";
 import { isNoAccess } from "./no-access";
 
 vi.mock("./supabase", () => ({
@@ -36,7 +36,7 @@ const workspace = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const reads: Array<[string, () => Promise<unknown>]> = [
   ["Workspace", () => getWorkspaceDashboard(workspace)],
   ["Employees", () => listEmployees(workspace, false, "", "all")],
-  ["Requests", () => getScheduleRequests(workspace, { timeOffQueue: "needs_review", locationId: "", search: "" })],
+  ["Requests", () => loadTimeOffToAnswer(workspace, { view: "open" })],
   ["Availability", () => loadWeeklyTeam(workspace)],
   ["Announcements", () => getAnnouncements(workspace)],
   ["Employee Hub", () => getEmployeeHub(workspace, "2026-09-21", "2026-09-27")],

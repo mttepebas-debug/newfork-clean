@@ -169,10 +169,11 @@ export function homeNeeds(home: ManagerHome, cases: readonly ExchangeCase[], pho
       id: `timeoff:${request.id}`,
       kind: "timeoff",
       urgent: false,
-      title: `${request.employee_name} asks for time off`,
+      title: request.kind === "cancel" ? `${request.employee_name} asks to cancel time off` : `${request.employee_name} asks for time off`,
       detail: dateRange(request.first_date, request.last_date),
       cta: "Review request",
-      href: `/app/schedule/requests?request=${request.id}`,
+      // The Time off tab opens the request in its answer drawer (D7).
+      href: `/app/schedule/requests?type=time_off&request=${request.id}`,
       locationIds: request.location_ids,
     }),
   );
