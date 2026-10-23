@@ -76,7 +76,8 @@ select is(
 
 -- 3. An unknown time-off request answers as one out of reach (BL-354) ----------------------
 -- Time off rebuild D8: deciding and shortening went with the old time off (the decision preview before it); the new
--- request's doors are answering, what answering would open, and taking approved time off back.
+-- request's doors are answering, what answering would open, taking approved time off back, and the employee's
+-- asking to cancel it (withdrawing: time_off_ask).
 
 select is(
   pg_temp.answer(format($$select public.answer_time_off_service(%L, %L, %L, 'decline', '', 1, null)$$,
@@ -107,6 +108,18 @@ select is(
 select is(
   pg_temp.refusal(format($$select public.take_back_time_off_service(%L, %L, %L, 'Short staffed', 1)$$,
     tests.user('m:ayse'), tests.id('m'), gen_random_uuid())),
+  '42501 authz.out_of_scope', 'and that answer is out of scope'
+);
+select is(
+  pg_temp.answer(format($$select public.ask_time_off_cancellation_service(%L, %L, %L, null, 1, gen_random_uuid())$$,
+    tests.user('m:emre'), tests.id('m'), gen_random_uuid())),
+  pg_temp.answer(format($$select public.ask_time_off_cancellation_service(%L, %L, %L, null, 1, gen_random_uuid())$$,
+    tests.user('m:emre'), tests.id('m'), tests.id('m:veli:time_off'))),
+  'asking to cancel: an unknown request gets the answer somebody else''s gets'
+);
+select is(
+  pg_temp.refusal(format($$select public.ask_time_off_cancellation_service(%L, %L, %L, null, 1, gen_random_uuid())$$,
+    tests.user('m:emre'), tests.id('m'), gen_random_uuid())),
   '42501 authz.out_of_scope', 'and that answer is out of scope'
 );
 
