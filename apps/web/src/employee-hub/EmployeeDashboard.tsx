@@ -35,6 +35,7 @@ import {
   minutesOf,
 } from "./home-model";
 import { ago, useHomeData, type HomeNeed, type HomeUpdate } from "./home-data";
+import { useMarkNotificationsRead } from "../notifications/notifications-data";
 import { useHomeScroll } from "./home-motion";
 import { HomeWeekStrip } from "./HomeWeekStrip";
 import { HomeNoticeDeck } from "./HomeNoticeDeck";
@@ -51,7 +52,6 @@ import "./employee-dashboard.css";
 import "./home-daylight.css";
 import { useHubOnline } from "./useHubClock";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
-import { NotificationBell } from "../notifications/NotificationViews";
 import { employeeAnnouncementsPath } from "../shell/view-address";
 
 const base = "/app/employee-hub";
@@ -163,12 +163,12 @@ export function EmployeeDashboard({
       <div className="dl-sky" aria-hidden />
       {phoneSlot && pill ? createPortal(pill, phoneSlot) : null}
       {/* The desktop bar runs from the menu to the screen's edge: the next shift's
-          pill in the middle, the bell and the profile at the right; the workspace's
-          name is at the top of the menu (Mert 2026-10-19, CALISAN-HOME-HIZA). */}
+          pill in the middle, the profile at the right; the workspace's name is at
+          the top of the menu (Mert 2026-10-19, CALISAN-HOME-HIZA). Its bell went
+          with S-247 (2026-10-23): the menu's Notifications is the one way in. */}
       <div className="eh-context-bar">
         <div className="dl-desk-pill">{pill}</div>
         <div className="eh-context-actions">
-          {can(context, "notifications.read_own") ? <NotificationBell workspaceId={model.workspace_id} className="eh-icon-button" /> : null}
           <Link className="eh-icon-button" to="/account/profile" aria-label="Your profile">
             <span className="eh-avatar">{firstName.slice(0, 1)}</span>
           </Link>
@@ -246,7 +246,7 @@ export function EmployeeDashboard({
           {/* Updates, Your week and Pick up a shift stay with nothing in them, each with
               one quiet line (Mert 2026-10-19, CALISAN-HOME-HIZA). */}
           <HomeSection name="updates" title="Updates">
-            <UpdatesList updates={data.updates} now={now} />
+            <UpdatesList workspaceId={model.workspace_id} updates={data.updates} now={now} />
           </HomeSection>
           {/* Phone alerts' block after the first Home: one entry per opening (TELEFON-TUR2, K26). */}
           <HomeSection name="alerts" bare>
@@ -496,7 +496,8 @@ function NeedsList({ needs, unknown }: { needs: HomeNeed[]; unknown: boolean }) 
   );
 }
 
-function UpdatesList({ updates, now }: { updates: HomeUpdate[]; now: Date }) {
+function UpdatesList({ workspaceId, updates, now }: { workspaceId: string; updates: HomeUpdate[]; now: Date }) {
+  const read = useMarkNotificationsRead(workspaceId);
   if (!updates.length) return <p className="dl-empty">Nothing new yet.</p>;
   return (
     <ul className="dl-rows">
@@ -515,7 +516,8 @@ function UpdatesList({ updates, now }: { updates: HomeUpdate[]; now: Date }) {
         return (
           <li key={update.id}>
             {update.href ? (
-              <Link className="dl-row" to={update.href}>
+              // Opening an update reads its notice, as the list does.
+              <Link className="dl-row" to={update.href} onClick={() => (update.unread ? read.mutate({ ids: [update.id] }) : undefined)}>
                 {body}
               </Link>
             ) : (

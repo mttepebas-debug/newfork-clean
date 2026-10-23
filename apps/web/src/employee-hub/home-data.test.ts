@@ -1,12 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { ago, documentNeedsYou, updateKind } from "./home-data";
+import { ago, documentNeedsYou, homeUpdates, updateKind } from "./home-data";
+import { notice } from "../notifications/notification-fixtures.test-util";
 
 describe("home updates", () => {
   it("draws a published week as a calendar, a decision as a tick or a cross", () => {
-    expect(updateKind({ topic: "schedule.published", data: {}, title: "Next week is published" })).toBe("cal");
-    expect(updateKind({ topic: "time_off.decided", data: { outcome: "approved" }, title: "Time off approved" })).toBe("ok");
-    expect(updateKind({ topic: "time_off.decided", data: { outcome: "denied" }, title: "Time off" })).toBe("no");
-    expect(updateKind({ topic: "shift_changes.decided", data: {}, title: "Swap with Priya declined" })).toBe("no");
+    expect(updateKind({ type: "schedule.published", data: {}, title: "Next week is published" })).toBe("cal");
+    expect(updateKind({ type: "time_off.decided", data: { outcome: "approved" }, title: "Time off approved" })).toBe("ok");
+    expect(updateKind({ type: "time_off.decided", data: { outcome: "denied" }, title: "Time off" })).toBe("no");
+    expect(updateKind({ type: "shift_changes.decided", data: {}, title: "Swap with Priya declined" })).toBe("no");
+  });
+
+  // The feed's topic is the group (my_schedule, time_off …), the type the event: Updates picks by type.
+  it("keeps a published week and the person's decided requests, at most three", () => {
+    const row = (id: string, type: string, topic: string) => notice({ id, type, topic, needs_action: false });
+    const picked = homeUpdates([
+      row("1", "schedule.published", "my_schedule"),
+      row("2", "announcements.published", "announcements"),
+      row("3", "time_off.decided", "time_off"),
+      row("4", "shift_changes.decided", "shift_changes"),
+      row("5", "schedule.published", "my_schedule"),
+    ]);
+    expect(picked.map((item) => item.id)).toEqual(["1", "3", "4"]);
+    expect(picked[0]).toMatchObject({ kind: "cal", href: notice().url });
   });
 
   it("says how long ago the way a phone does", () => {

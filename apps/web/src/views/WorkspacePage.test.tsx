@@ -276,6 +276,14 @@ describe("WorkspacePage", () => {
 
   // BL-813 (E5-13): a hidden card in Customize is a preview, not a form; six
   // hidden cards leave a line saying so; the eye icons are decoration.
+  // S-247 (Mert 2026-10-23): one way in per screen; on a computer it is the left menu's Notifications.
+  it("has the profile and no second bell in Home's bar", async () => {
+    currentContext = { ...context, actions: [...context.actions, "notifications.read_own"] };
+    renderPage();
+    expect(await screen.findByRole("link", { name: "Your profile" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Notifications/ })).toBeNull();
+  });
+
   it("keeps a hidden card's content out of reach and its eye icons decorative", async () => {
     vi.mocked(getManagerHome).mockResolvedValue({ ...managerHome, layout: { ...homeLayout, hidden_widget_ids: ["todos"] } });
     renderPage();

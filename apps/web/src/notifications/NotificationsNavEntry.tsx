@@ -6,18 +6,17 @@ import { can } from "../auth/can";
 import { useNotificationCounts } from "./notifications-data";
 import { employeeNotificationsPath, managementNotificationsPath } from "../shell/view-address";
 import { NotificationsPanel } from "./NotificationViews";
-import { useNotificationsRealtime } from "./useNotificationsRealtime";
 
 /**
  * The left menu's Notifications (variant A): it opens the panel beside the
  * menu instead of a page; the count is the Unread tab's, so the person sees one
- * number. It also keeps the person's live channel open for the badge.
+ * number. On a computer it is the one way in (S-247); the live channel that
+ * keeps the count fresh is the shell's (AppShell).
  */
 export function NotificationsNavEntry({ collapsed }: { readonly collapsed: boolean }) {
   const { context } = useAuth();
   const workspaceId = context?.workspace.id;
   const allowed = can(context, "notifications.read_own");
-  useNotificationsRealtime(allowed ? context?.userId : undefined, workspaceId);
   const unread = useNotificationCounts(allowed ? workspaceId : undefined).data?.unread_count ?? 0;
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);

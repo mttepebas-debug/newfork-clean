@@ -16,13 +16,16 @@ import { employeeDocumentsPath } from "../documents/own-documents";
 const base = "/app/employee-hub";
 
 export type HomeNeed = { id: string; kind: "swap" | "doc"; title: string; detail: string; cta: string; href: string };
-export type HomeUpdate = { id: string; kind: "ok" | "no" | "cal" | "swap"; title: string; detail: string; at: string; href: string | null };
+export type HomeUpdate = { id: string; kind: "ok" | "no" | "cal" | "swap"; title: string; detail: string; at: string; href: string | null; unread: boolean };
 
-/** Notification topics that say something was decided about the person's own week. */
-const UPDATE_TOPICS = /^(schedule\.published|time_off\.decided|shift_changes\.decided)$/;
+/**
+ * Notification types that say something was decided about the person's own week. The feed's `topic` is the
+ * group (my_schedule, time_off …), so Updates picks by `type` (S-247: it matched topics and stayed empty).
+ */
+const UPDATE_TYPES = /^(schedule\.published|time_off\.decided|shift_changes\.decided)$/;
 
-export function updateKind(item: Pick<NotificationItem, "topic" | "data" | "title">): HomeUpdate["kind"] {
-  if (item.topic.startsWith("schedule.")) return "cal";
+export function updateKind(item: Pick<NotificationItem, "type" | "data" | "title">): HomeUpdate["kind"] {
+  if (item.type.startsWith("schedule.")) return "cal";
   const outcome = String(item.data.outcome ?? item.data.decision ?? item.data.status ?? "");
   return /deni|declin|reject/i.test(outcome) || /declined|denied/i.test(item.title) ? "no" : "ok";
 }
@@ -46,6 +49,22 @@ const shortDate = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateSt
 export function documentNeedsYou(item: Pick<DocumentObligation, "kind" | "status" | "expiring_soon">): boolean {
   if (item.kind !== "document" || item.status === "pending_review" || isObligationClosed(item.status)) return false;
   return item.status !== "completed" || item.expiring_soon === true;
+}
+
+/** The last three things decided about the person's own week, newest first. */
+export function homeUpdates(items: readonly NotificationItem[]): HomeUpdate[] {
+  return items
+    .filter((item) => UPDATE_TYPES.test(item.type))
+    .slice(0, 3)
+    .map((item) => ({
+      id: item.id,
+      kind: updateKind(item),
+      title: item.title,
+      detail: item.body ?? "",
+      at: item.created_at,
+      href: item.url,
+      unread: !item.read_at,
+    }));
 }
 
 export function useHomeData(model: EmployeeHubReadModel, today: string) {
@@ -109,17 +128,7 @@ export function useHomeData(model: EmployeeHubReadModel, today: string) {
       href: `${employeeDocumentsPath}?workspace=${workspaceId}&kind=document&requirement=${item.id}`,
     })),
   ];
-  const updates: HomeUpdate[] = (feed.data?.items ?? [])
-    .filter((item) => UPDATE_TOPICS.test(item.topic))
-    .slice(0, 3)
-    .map((item) => ({
-      id: item.id,
-      kind: updateKind(item),
-      title: item.title,
-      detail: item.body ?? "",
-      at: item.created_at,
-      href: item.url,
-    }));
+  const updates = homeUpdates(feed.data?.items ?? []);
   // The shift card's area: today's lineup section (Patio), else the lineup's or the shift's type (Dinner).
   const todayLineup = lineups.data?.lineups ?? [];
   const areaFor = (shift: EmployeeHubShift) => {

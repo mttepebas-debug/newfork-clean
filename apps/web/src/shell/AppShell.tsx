@@ -41,6 +41,8 @@ import { employeeAnnouncementsPath, employeeViewAt, managementAnnouncementsPath,
 
 import { requestAppNavigation } from "./leave-guard";
 import { NotificationsNavEntry } from "../notifications/NotificationsNavEntry";
+import { useNotificationsRealtime } from "../notifications/useNotificationsRealtime";
+import { can } from "../auth/can";
 import { ManagerPhoneBar } from "./ManagerPhoneBar";
 import { rememberAppPage } from "./last-app-page";
 import { membershipClass } from "../auth/access";
@@ -228,6 +230,8 @@ const settingsNavItem: NavItem = {
 export function AppShell() {
   const { context, account, signOut } = useAuth();
   useExchangeRealtime(context);
+  // The person's live notification signal keeps the bell's count fresh, whichever way in a screen has (S-247).
+  useNotificationsRealtime(can(context, "notifications.read_own") ? context?.userId : undefined, context?.workspace.id);
   const [collapsed, setCollapsed] = useState(false);
   const [main, setMain] = useState<HTMLElement | null>(null);
   useFrozenTop(main);

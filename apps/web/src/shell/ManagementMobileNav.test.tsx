@@ -30,6 +30,8 @@ vi.mock("../account/AccountAvatar", () => ({ CurrentUserAvatar: () => null }));
 vi.mock("../employee-hub/shift-exchanges/useExchangeRealtime", () => ({
   useExchangeRealtime: vi.fn(),
 }));
+const notificationsRealtime = vi.hoisted(() => vi.fn());
+vi.mock("../notifications/useNotificationsRealtime", () => ({ useNotificationsRealtime: notificationsRealtime }));
 
 const owner = {
   workspace: { id: "w", name: "Meyhouse" },
@@ -312,6 +314,21 @@ describe("the management phone's top bar", () => {
     context = owner;
     mount();
     expect(within(topBar()!).queryByRole("button", { name: /^Notifications/ })).toBeNull();
+  });
+
+  // S-247: the live signal belongs to the shell, so it stays whichever way in to the list a screen has.
+  it("keeps the person's live notification signal at every width", () => {
+    notificationsRealtime.mockReset();
+    phoneWidth(true);
+    context = { ...owner, actions: ["notifications.read_own"] };
+    mount();
+    expect(notificationsRealtime).toHaveBeenCalledWith("u", "w");
+    cleanup();
+    notificationsRealtime.mockReset();
+    phoneWidth(false);
+    context = owner;
+    mount();
+    expect(notificationsRealtime).toHaveBeenCalledWith(undefined, "w");
   });
 
   it("is not drawn on a computer", () => {

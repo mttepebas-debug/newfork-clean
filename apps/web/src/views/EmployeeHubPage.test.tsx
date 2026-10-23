@@ -823,11 +823,14 @@ describe("EmployeeHubPage", () => {
     }
   });
 
-  // CALISAN-HOME-HIZA (Mert 2026-10-19): the desktop bar holds only the bell and the profile;
-  // the workspace's name lives at the top of the menu.
-  it("keeps the workspace name and the private-space note out of Home's bar", async () => {
+  // CALISAN-HOME-HIZA (Mert 2026-10-19): the desktop bar holds the profile; the workspace's
+  // name lives at the top of the menu. S-247 (Mert 2026-10-23): its bell went, the left
+  // menu's Notifications is the one way in on a computer (the phone's top bar has its own).
+  it("keeps the workspace name, the private-space note and a second bell out of Home's bar", async () => {
+    context.actions = ["notifications.read_own"];
     renderPage();
     expect(await screen.findByRole("link", { name: "Your profile" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Notifications/ })).toBeNull();
     expect(screen.queryByText("Your personal space")).toBeNull();
     expect(document.querySelector(".eh-workspace-link")).toBeNull();
   });

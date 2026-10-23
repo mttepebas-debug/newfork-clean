@@ -51,7 +51,6 @@ import { useHomeScroll } from "../employee-hub/home-motion";
 import { useHomeFilterSky } from "./useHomeFilterSky";
 import { daySlot } from "../employee-hub/home-model";
 import { ago } from "../employee-hub/home-data";
-import { NotificationBell } from "../notifications/NotificationViews";
 
 import { isNoAccess } from "../lib/no-access";
 import { requestErrorText } from "../lib/request-error";
@@ -400,7 +399,6 @@ export function WorkspacePage() {
         <div className="eh-context-bar">
           <div className="dl-desk-pill">{pill}</div>
           <div className="eh-context-actions">
-            {can(context, "notifications.read_own") ? <NotificationBell workspaceId={workspaceId} className="eh-icon-button" /> : null}
             <Link className="eh-icon-button" to="/account/profile" aria-label="Your profile">
               <span className="eh-avatar">{firstName.slice(0, 1)}</span>
             </Link>
