@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(44);
 
 -- Time off rebuild D6 (KARARLAR S-239 (2)): no setting, no automatic decline. app_private.time_off_requests_sweep()
 -- runs every five minutes (pg_cron job time-off-requests):
@@ -31,6 +31,7 @@ select tests.person('tw', 'hal', 'employee', array['K'], array['cook']);
 select tests.person('tw', 'ivy', 'employee', array['K'], array['cook']);
 select tests.person('tw', 'jon', 'employee', array['K'], array['cook']);
 select tests.person('tw', 'kim', 'employee', array['K'], array['cook']);
+select tests.person('tw', 'lia', 'employee', array['K'], array['cook']);
 select tests.settle();
 create temporary table checked_notices as select n.id from public.person_notifications n where n.workspace_id = tests.id('tw');
 
@@ -233,6 +234,13 @@ select is(pg_temp.closed('jon'), array['open'], 'nothing of it was written: its 
 select app_private.time_off_requests_sweep();
 select is((select f.attempts from app_private.time_off_request_sweep_failures f where f.request_id = (select value from fixture where key = 'jon')),
   2, 'the next pass tries again and counts it');
+-- A request that keeps failing goes to the back of the line (nf-guvenlik, D7): due earlier than Lia's, Jon's would
+-- otherwise come first in every pass, and enough broken ones would fill every pass.
+insert into fixture values ('lia', pg_temp.ask('lia', tests.week(0) + 3, tests.week(0) + 3));
+select pg_temp.place('lia', interval '-30 minutes', interval '3 days');
+select is(app_private.time_off_requests_sweep(1), 1, 'a pass of one handles the next request, not the broken one again');
+select is(array[(pg_temp.req('jon')).status, (pg_temp.req('lia')).status], array['pending', 'expired'],
+  'Lia''s request expires though Jon''s, broken, was due first');
 update public.time_off_requests set time_timezone = 'Europe/Istanbul' where id = (select value from fixture where key = 'jon');
 select app_private.time_off_requests_sweep();
 select is((pg_temp.req('jon')).status, 'expired', 'mended, it expires');

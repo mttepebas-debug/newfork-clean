@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(25);
 
 -- Time off rebuild D3b (KARARLAR S-239 (9)): time off waiting for an answer is only a warning on the
 -- Schedule. The week's availability carries its hours apart, as pending_leave_intervals, beside the
@@ -124,6 +124,17 @@ select is(pg_temp.note('ali') ->> 'time_off_request_id', (select value::text fro
 select is(pg_temp.note('ali') ->> 'time_off_source', 'current', 'and says it is in the new table');
 select is(pg_temp.note('bea') ->> 'time_off_source', 'legacy', 'Bea''s says the old one');
 select is(pg_temp.note('cem'), null, 'Cem''s afternoon shift misses his morning: no note');
+
+-- S-243: the note is read only by who may answer the request, as on the grid. Fl publishes K but does not
+-- decide time off: the same week, no note, and nothing held.
+create temporary table fl_preview as
+select public.preview_schedule_publication_service(tests.user('tw:fl'), tests.id('tw'), tests.id('tw:draft'),
+  array[tests.id('tw:K')], null, true) p;
+select is((select count(*)::integer from fl_preview, jsonb_array_elements(p -> 'findings') f where f ->> 'code' = 'time_off_pending'),
+  0, 'a publisher who does not decide time off reads no waiting-time-off note (S-243)');
+select is((select p ->> 'status' from fl_preview), 'publish_ready', 'and the week is ready to publish for them too');
+select ok((select count(*) from owner_preview, jsonb_array_elements(p -> 'findings') f where f ->> 'code' = 'time_off_pending') = 2,
+  'who decides reads both notes (Ali''s and Bea''s)');
 
 -- 4. Answered ------------------------------------------------------------------
 
