@@ -7,8 +7,9 @@ import { psql } from "../global-setup";
 
 // Time off rebuild D3b (KARARLAR S-239 (9)): time off waiting for an answer is only a warning on the
 // Schedule. While Ayse edits the week, the day a fresh Kadikoy employee asked
-// off has a dashed red edge and a small ring whose window says when; a shift written there is written at
-// once, with one short notice; Pre-flight lists a note that opens the request in Requests → Time off and
+// off is the approved "Time off" block outlined (Mert, 2026-10-23, D): a solid amber edge and "Requested" in
+// the middle, whose window says who asked and when; the rest of the cell still adds a shift, written at once,
+// with one short notice, and the cell keeps its edge; Pre-flight lists a note that opens the request in Requests → Time off and
 // publishing goes ahead. The request is made in the new table
 // (ask_time_off_service), on a week about two years out (tests.week) that no other spec uses.
 
@@ -71,22 +72,27 @@ test("time off waiting for an answer: a mark while editing, a short notice on th
   const fridayCell = cell(page, person.id, friday);
   await expect(fridayCell).toHaveAttribute("data-pending-time-off", "true");
   await expect(page.locator(`[data-pending-time-off='true'][data-employee-id="${person.id}"]`)).toHaveCount(1);
-  // Not approved time off: no red cell, and Add shift is there.
+  // Not approved time off: no red cell, and Add shift is there. The edge is drawn (CSS only, so pinned here).
   await expect(fridayCell).not.toHaveAttribute("data-availability-kind", "time_off");
+  await expect(fridayCell).toHaveCSS("outline-style", "solid");
+  await expect(fridayCell).toHaveCSS("outline-width", "1px");
 
-  const ring = page.getByRole("button", { name: `${person.name}: time off waiting for an answer on ${weekdayDate(friday)}`, exact: true });
+  const requested = page.getByRole("button", { name: `Requested: ${person.name}, time off waiting for an answer on ${weekdayDate(friday)}`, exact: true });
+  await expect(requested).toHaveText("Requested");
   // Its window closes on any scroll (Mert, 2026-10-09): a row below the fold is brought into view first,
   // or the scroll of the click itself closes the window it opened.
-  await ring.scrollIntoViewIfNeeded();
-  await ring.click();
-  await expect(page.getByRole("dialog", { name: `${person.name}: time off waiting for an answer on ${weekdayDate(friday)}` }))
-    .toContainText(`Time off waiting for an answer: ${weekdayDate(friday)}, all day`);
+  await requested.scrollIntoViewIfNeeded();
+  await requested.click();
+  const asked = page.getByRole("dialog", { name: `Requested: ${person.name}, time off waiting for an answer on ${weekdayDate(friday)}` });
+  await expect(asked).toContainText(`${person.name} asked for time off`);
+  await expect(asked).toContainText(`${weekdayDate(friday)}, all day`);
   await page.keyboard.press("Escape");
 
-  // Writing a shift there asks nothing; the short notice says why to look.
+  // Writing a shift there asks nothing; the short notice says why to look. "Requested" holds the middle of
+  // the cell, so Add shift is pressed near its corner.
   const add = page.getByRole("button", { name: `Add shift for ${person.name} at Kadikoy on ${friday}`, exact: true });
-  await add.hover({ force: true });
-  await add.click();
+  await add.hover({ force: true, position: { x: 12, y: 12 } });
+  await add.click({ position: { x: 12, y: 12 } });
   const editor = page.getByRole("dialog", { name: "Add shift", exact: true });
   await editor.getByLabel("Start time").fill("9:00 AM");
   await editor.getByLabel("End time").fill("3:00 PM");
@@ -96,6 +102,10 @@ test("time off waiting for an answer: a mark while editing, a short notice on th
   await expect(page.locator("[data-sonner-toast]").filter({ hasText: `Shift added to ${person.name}.` }))
     .toContainText(`${person.first} has time off waiting for an answer on ${weekdayDate(friday)}.`);
   await expect(fridayCell.locator("[data-shift-badge]")).toBeVisible();
+  // With a card in it the cell keeps the edge only.
+  await expect(fridayCell).toHaveAttribute("data-pending-time-off", "true");
+  await expect(fridayCell).toHaveCSS("outline-style", "solid");
+  await expect(requested).toHaveCount(0);
 
   // Pre-flight: a note with a way to the request; publishing is not held.
   await page.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).first().click();

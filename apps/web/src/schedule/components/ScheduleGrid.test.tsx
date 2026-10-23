@@ -335,30 +335,48 @@ describe("ScheduleGrid", () => {
     ]);
   });
 
-  // Time off rebuild D3b (KARARLAR S-239 (9)): while editing, a day of time off waiting for an answer
-  // shows a dashed red edge and a small ring that says when; never on the published week. Add shift stays.
+  // Time off rebuild D3b (KARARLAR S-239 (9)): while editing, a day of time off waiting for an answer is
+  // marked; never on the published week. Add shift stays. Mert, 2026-10-23 (Schedule Kararları tab 5, D):
+  // the mark is the approved "Time off" block outlined: an amber edge and, in an empty cell, "Requested" in
+  // the middle, whose window says who asked and when. A card keeps the edge only.
   describe("time off waiting for an answer", () => {
-    const pendingModel = () => {
+    const pendingModel = (withShift = false) => {
       const base = scheduleModel();
       return scheduleModel({
         employees: [{ ...base.employees[0]!, weekly_availability: [{ location_id: locationId, location_name: "Main Dining", timezone: "America/Los_Angeles",
           week_start: base.week_start, status: "ready", unavailable_intervals: [], employee_intervals: [], leave_intervals: [],
-          pending_leave_intervals: [{ start_at: "2026-08-21T07:00:00Z", end_at: "2026-08-22T07:00:00Z" }],
+          pending_leave_intervals: [{ start_at: withShift ? "2026-08-17T07:00:00Z" : "2026-08-21T07:00:00Z", end_at: withShift ? "2026-08-18T07:00:00Z" : "2026-08-22T07:00:00Z" }],
           clock_segments: [{ start_at: "2026-08-10T07:00:00Z", end_at: "2026-08-31T07:00:00Z", offset_seconds: -7 * 3600 }],
           days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-08-${17 + index}`, has_unavailable: false, all_day: false })) }] }],
-        shifts: [],
+        shifts: withShift ? base.shifts : [],
       });
     };
-    it("marks the day while editing and says when", () => {
+    it("marks the day while editing: \"Requested\", whose window says who asked and when", () => {
       const model = pendingModel();
       const { container } = renderGrid({ model, session: editSession(model) });
       const cells = [...container.querySelectorAll<HTMLElement>(".schedule-cell[data-pending-time-off='true']")];
       expect(cells.map((cell) => cell.dataset.date)).toEqual(["2026-08-21"]);
       expect(cells[0]!.querySelector(".schedule-cell-add-action")).not.toBeNull();
-      fireEvent.click(screen.getByRole("button", { name: "Alex Rivera: time off waiting for an answer on Fri, Aug 21" }));
-      expect([...screen.getByRole("dialog").querySelectorAll("p")].map((line) => line.textContent)).toEqual([
-        "Time off waiting for an answer: Fri, Aug 21, all day",
+      // The name starts with the word it shows (WCAG 2.5.3).
+      const mark = screen.getByRole("button", { name: "Requested: Alex Rivera, time off waiting for an answer on Fri, Aug 21" });
+      expect(mark.textContent).toBe("Requested");
+      fireEvent.click(mark);
+      const window = screen.getByRole("dialog", { name: "Requested: Alex Rivera, time off waiting for an answer on Fri, Aug 21" });
+      expect([...window.querySelectorAll("p")].map((line) => line.textContent)).toEqual([
+        "Alex Rivera asked for time off",
+        "Fri, Aug 21, all day",
+        "Waiting for an answer. A shift written here stays until it is approved.",
       ]);
+      expect(window.querySelector("a, button")).toBeNull();
+    });
+
+    it("keeps only the edge on a day with a shift", () => {
+      const model = pendingModel(true);
+      const { container } = renderGrid({ model, session: editSession(model) });
+      const cell = container.querySelector<HTMLElement>(".schedule-cell[data-pending-time-off='true']")!;
+      expect(cell.dataset.date).toBe("2026-08-17");
+      expect(cell.querySelector(".schedule-shift-badge")).not.toBeNull();
+      expect(screen.queryByRole("button", { name: /time off waiting for an answer/ })).toBeNull();
     });
 
     it("draws nothing on the published week", () => {

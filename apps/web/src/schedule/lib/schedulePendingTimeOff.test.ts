@@ -32,12 +32,10 @@ describe("time off waiting for an answer on the Schedule week", () => {
     expect(schedulePendingTimeOff(projection({ status: "unknown", pending_leave_intervals: [allFriday] })).size).toBe(0);
   });
 
+  // Mert, 2026-10-23 (D): the window's second line, under "<name> asked for time off".
   it("says when, in the cell's window", () => {
-    expect(formatPendingTimeOffLine("2035-01-19", [{ from: 0, to: 1440 }], "12h"))
-      .toBe("Time off waiting for an answer: Fri, Jan 19, all day");
-    expect(formatPendingTimeOffLine("2035-01-16", [{ from: 540, to: 780 }], "12h"))
-      .toBe("Time off waiting for an answer: Tue, Jan 16, 9:00 AM – 1:00 PM");
-    expect(formatPendingTimeOffLine("2035-01-16", [{ from: 540, to: 780 }], "24h"))
-      .toBe("Time off waiting for an answer: Tue, Jan 16, 09:00 – 13:00");
+    expect(formatPendingTimeOffLine("2035-01-19", [{ from: 0, to: 1440 }], "12h")).toBe("Fri, Jan 19, all day");
+    expect(formatPendingTimeOffLine("2035-01-16", [{ from: 540, to: 780 }], "12h")).toBe("Tue, Jan 16, 9:00 AM – 1:00 PM");
+    expect(formatPendingTimeOffLine("2035-01-16", [{ from: 540, to: 780 }], "24h")).toBe("Tue, Jan 16, 09:00 – 13:00");
   });
 });
