@@ -140,6 +140,15 @@ describe("ManagementMobileNav in the app shell", () => {
     expect(names(morePages())).toEqual(["Availability", "Employee view", "Account", "Sign out"]);
   });
 
+  // Mert 2026-10-23: the view switch sits right above Account, below My documents.
+  it("puts Employee view right above Account, after My documents", async () => {
+    ownList = [{ kind: "document", status: "missing" }];
+    context = { ...manager, membership: { access: { employee: true, management: "manager" } }, actions: ["employee_hub.read"] };
+    mount();
+    await within(morePages()).findByRole("link", { name: "My documents, 1 waiting on you", hidden: true });
+    expect(names(morePages())).toEqual(["Availability", "My documents1", "Employee view", "Account", "Sign out"]);
+  });
+
   it("employee: no management bar (the Employee Hub bar serves them)", () => {
     context = { ...owner, membership: { access: { employee: true, management: null } }, permissions: ["workspace.read"] };
     mount("/app/employee-hub");
@@ -255,7 +264,15 @@ describe("the employee view's phone bar", () => {
   it("offers the way back to management in a manager's employee view (FB-6.2.8)", () => {
     context = { ...manager, membership: { access: { employee: true, management: "manager" } }, actions: ["employee_hub.read"] };
     mount("/app/employee-hub");
-    expect(names(morePages())[0]).toBe("Management view");
+    // Right above My account (Mert 2026-10-23).
+    expect(names(morePages())).toEqual([
+      "My availability",
+      "Documents",
+      "Management view",
+      "My account",
+      "Switch workspace",
+      "Sign out",
+    ]);
     expect(within(morePages()).getByRole("link", { name: "Management view", hidden: true }).getAttribute("href")).toBe(
       "/app/workspace",
     );
