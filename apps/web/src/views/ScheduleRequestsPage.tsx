@@ -1,5 +1,5 @@
 import { CatalogDrawer } from "../settings/CatalogDrawer";
-import { CatalogPageHeader, ListAddButton } from "./CatalogPageHeader";
+import { CatalogPageHeader, ListAddButton, TabRowAdd } from "./CatalogPageHeader";
 import { ListPagination } from "./ListPagination";
 import { RequestCards, RequestsTable } from "./RequestsTable";
 import { SwapReview } from "./SwapReview";
@@ -244,9 +244,10 @@ function ScheduleRequestsPageContent() {
   // D5: whoever may answer adds approved time off for somebody from the Time off tab's filter row (or from the one
   // list of a reader who reads only time off).
   const canAdd = can(context, "time_off.decide") && (timeOffTab || (canReadTimeOff && !tabs.length));
-  // On a phone Add sits beside the location list at the right edge, the search under them, as on
-  // Employees (Mert 2026-10-23).
+  // On a phone Add sits at the right end of the tab row, as on Important Dates (Mert 2026-10-23,
+  // requests-add-top); with no tabs, beside the location list. On a computer, at the filter row's end.
   const addButton = canAdd ? <ListAddButton label="Add time off" shortLabel="Add" onClick={() => setAddingTimeOff(true)} /> : null;
+  const tabRowAdd = phone && tabs.length > 0;
 
   return (
     <section
@@ -257,7 +258,7 @@ function ScheduleRequestsPageContent() {
 
       <div className="requests-toolbar catalog-toolbar">
         {tabs.length ? (
-        <TabRow chosen={view.type}>
+        <TabRow chosen={view.type} end={tabRowAdd && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}>
           <div
             className="catalog-status-tabs"
             role="group"
@@ -307,7 +308,7 @@ function ScheduleRequestsPageContent() {
               </option>
             ))}
           </select>
-          {phone ? addButton : null}
+          {phone && !tabRowAdd ? addButton : null}
           <label className="requests-search toolbar-search">
             <Search size={16} aria-hidden />
             <input
@@ -457,10 +458,6 @@ function ScheduleRequestsPageContent() {
   );
 }
 
-/**
- * The type tabs' row. When it is wider than a phone the row scrolls, its edge
- * fades where more tabs wait (`data-more`), and the chosen tab is scrolled into view.
- */
 /** What stands where the table was: an icon, a heading, a sentence, maybe one button. */
 function TableEmpty({ icon, title, text, action, headingRef }: {
   readonly icon: ReactNode;
@@ -484,7 +481,12 @@ function TableEmpty({ icon, title, text, action, headingRef }: {
   );
 }
 
-function TabRow({ chosen, children }: { chosen: string; children: ReactNode }) {
+/**
+ * The type tabs' row. When the tabs are wider than a phone they scroll, their edge
+ * fades where more tabs wait (`data-more`), and the chosen tab is scrolled into view.
+ * `end` (the phone's Add) stands at the row's right end and never scrolls or fades.
+ */
+function TabRow({ chosen, end, children }: { chosen: string; end?: ReactNode; children: ReactNode }) {
   const row = useRef<HTMLDivElement>(null);
   const [more, setMore] = useState<"left" | "right" | "both" | null>(null);
   const measure = useCallback(() => {
@@ -501,8 +503,11 @@ function TabRow({ chosen, children }: { chosen: string; children: ReactNode }) {
     return () => window.removeEventListener("resize", measure);
   }, [chosen, measure]);
   return (
-    <div ref={row} className="catalog-toolbar-status-row" data-more={more ?? undefined} onScroll={measure}>
-      {children}
+    <div className="catalog-toolbar-status-row">
+      <div ref={row} className="requests-tab-scroll" data-more={more ?? undefined} onScroll={measure}>
+        {children}
+      </div>
+      {end}
     </div>
   );
 }

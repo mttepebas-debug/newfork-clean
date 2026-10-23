@@ -89,34 +89,24 @@
   font-size: 13px;
   box-sizing: border-box;
 }
-.requests-catalog-page .requests-search input {
-  border: 0;
-  box-shadow: none;
-  outline: 0;
-  padding-left: 0;
-}
-/* One frame: the S7 edge sits on the search box, its input has none. */
-.requests-catalog-page .catalog-toolbar .requests-search.toolbar-search {
-  min-height: 36px;
-  height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--theme-border-control);
-  border-radius: 6px;
-  color: var(--job-muted);
-}
-.requests-catalog-page
-  .catalog-toolbar
-  .requests-search.toolbar-search:focus-within {
-  border-color: var(--job-accent);
-  box-shadow: 0 0 0 2px rgb(23 122 100 / 12%);
-}
-.requests-catalog-page .catalog-toolbar .requests-search.toolbar-search input {
+/* One frame: the search box is the list pages' own (list-page.css: 36 high, 44 on a phone, 13 px),
+   as on Important Dates (Mert 2026-10-23); its input drops the page's field frame above. */
+.requests-catalog-page .catalog-toolbar .toolbar-search input {
+  height: 100%;
   min-height: 0;
-  height: 34px;
   padding: 0;
   border: 0;
-  color: var(--job-text);
-  font-size: 12px;
+  border-radius: 0;
+  outline: 0;
+  box-shadow: none;
+  background: transparent;
+}
+/* The tabs scroll inside the row; the row keeps its line and the phone's Add (TabRow). */
+.requests-page .requests-tab-scroll {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: stretch;
 }
 .requests-catalog-page textarea {
   width: 100%;
@@ -166,9 +156,6 @@
     grid-template-columns: 1fr;
   }
   .requests-catalog-page .requests-toolbar > select {
-    max-width: none;
-  }
-  .requests-catalog-page .requests-toolbar > .requests-search {
     max-width: none;
   }
 }
@@ -287,26 +274,35 @@
   .requests-page.list-page.list-page .catalog-toolbar-status-row {
     height: 44px;
     min-height: 44px;
+    overflow: visible;
+  }
+  .requests-page .requests-tab-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
     scrollbar-width: none;
+  }
+  /* "+ Add" as on Important Dates: 32 high, 8 px above the line (the row here is 44 high). */
+  .requests-page.list-page.list-page .catalog-toolbar-status-row .catalog-tab-add {
+    margin-top: 4px;
   }
   .requests-page.list-page.list-page .catalog-toolbar .catalog-status-tabs button {
     height: 44px;
     min-height: 44px;
   }
-  .requests-page .catalog-toolbar-status-row[data-more="right"] {
+  .requests-page .requests-tab-scroll[data-more="right"] {
     mask-image: linear-gradient(to right, var(--theme-text) calc(100% - 32px), transparent);
   }
-  .requests-page .catalog-toolbar-status-row[data-more="left"] {
+  .requests-page .requests-tab-scroll[data-more="left"] {
     mask-image: linear-gradient(to left, var(--theme-text) calc(100% - 32px), transparent);
   }
-  .requests-page .catalog-toolbar-status-row[data-more="both"] {
+  .requests-page .requests-tab-scroll[data-more="both"] {
     mask-image: linear-gradient(to right, transparent, var(--theme-text) 32px, var(--theme-text) calc(100% - 32px), transparent);
   }
   .requests-page .catalog-table-empty .nf-button {
     min-height: 44px;
   }
-  /* The location list and "+ Add" share one row, Add at the right edge, the search under them, as on
-     Employees (Mert 2026-10-23). */
+  /* With no tabs to stand in, the location list and "+ Add" share one row, Add at the right edge, the
+     search under them, as on Employees (Mert 2026-10-23). */
   .requests-page.list-page.list-page .catalog-toolbar-filter-row:has(> .list-add-button) .toolbar-filter-select {
     width: auto;
     min-width: 0;

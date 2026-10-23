@@ -79,7 +79,7 @@ describe("Employees location cell", () => {
 // Mert 2026-10-23 (requests-add-top): every list page's search box and location list wear one frame.
 describe("one filter frame on every list page", () => {
   const rules = (path: string) =>
-    [...readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^}]*)\}/g)].map(
+    [...readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(
       ([, head, body]) => [head!.trim().replace(/\s+/g, " "), body!] as const,
     );
 

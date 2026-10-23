@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Clock3,
   RefreshCw,
+  Search,
   ShieldCheck,
   Users,
   X,
@@ -592,7 +593,7 @@ export function ShiftExchangeHub({ workspaceId, zone }: { workspaceId: string; z
             value={locationFilter}
             onChange={(e) => navigate({ location: e.target.value })}
           >
-            <option value="">All my locations</option>
+            <option value="">All locations</option>
             {locations.map(([id, name]) => (
               <option key={id} value={id}>
                 {name}
@@ -601,6 +602,7 @@ export function ShiftExchangeHub({ workspaceId, zone }: { workspaceId: string; z
           </select>
         </label>
         <label className="sx-filter-search">
+          <Search size={16} aria-hidden />
           <span className="sx-sr">Search shifts</span>
           <input
             type="search"
