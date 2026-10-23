@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 583, last: 20261023050000_time_off_switch_over.sql
--- fingerprint: sha256:9fcb2bebc62d3891d7c2c1335cfd80aca13a7b62eaa1211f8c80ddf141d3c569
+-- fingerprint: sha256:a204a8516803604d1b75cfb3faad6838abf51b2aa1c7113524fcdd2a0ff59be1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -17742,6 +17742,8 @@ begin
         'id', request.id,
         'employee_id', request.employee_id,
         'employee_name', person.name,
+        -- leave: time off asked for; cancel: approved time off its person asks to cancel (D7).
+        'kind', request.kind,
         'first_date', request.first_date,
         'last_date', request.last_date,
         'location_ids', coalesce((
@@ -17753,7 +17755,7 @@ begin
       ) order by request.created_at, request.id)
       from (
         select waiting.* from (
-          select r.id, r.employee_id, r.created_at,
+          select r.id, r.employee_id, r.created_at, 'leave'::text as kind,
             (select min(segment.segment_date) from public.schedule_time_off_segments segment where segment.request_id = r.id) as first_date,
             (select max(segment.segment_date) from public.schedule_time_off_segments segment where segment.request_id = r.id) as last_date
           from public.schedule_time_off_requests r
@@ -17762,15 +17764,15 @@ begin
             and r.request_type = 'time_off'
             and app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', r.employee_id) is null
           union all
-          -- The new time off's (time off rebuild D3): waiting, not started, and this person may answer it.
-          select r.id, r.employee_id, r.created_at,
+          -- The new time off's (time off rebuild D3): waiting, and this person may answer it. Time off waits
+          -- until it starts; a cancellation until the time off ends (D7: cancellations are listed too).
+          select r.id, r.employee_id, r.created_at, r.kind,
             (r.starts_at at time zone r.time_timezone)::date,
             ((r.ends_at - interval '1 microsecond') at time zone r.time_timezone)::date
           from public.time_off_requests r
           where r.workspace_id = target_workspace_id
-            and r.kind = 'leave'
             and r.status = 'pending'
-            and r.starts_at > now()
+            and case when r.kind = 'cancel' then r.ends_at else r.starts_at end > now()
             and app_private.time_off_decider_why(me, r.employee_id) is null
         ) waiting
         order by waiting.created_at, waiting.id
@@ -31652,6 +31654,14 @@ begin
     'waiting', (select count(*)::integer from listed l where l.waiting),
     'page', target_page,
     'page_size', target_page_size,
+    -- The page's own clock and location filter (D7: the old Requests read that carried them is gone): the
+    -- workspace's time format, and the live locations whose time off this person answers.
+    'time_format', (select st.time_format from public.workspace_scheduling_settings st where st.workspace_id = target_workspace_id),
+    'locations', coalesce((
+      select jsonb_agg(jsonb_build_object('id', l.id, 'name', l.name) order by l.name, l.id)
+      from public.locations l
+      where l.workspace_id = target_workspace_id and l.archived_at is null
+        and app_private.time_off_reason(actor_user_id, target_workspace_id, 'time_off.decide', null, l.id) is null), '[]'::jsonb),
     'requests', coalesce((
       select jsonb_agg(app_private.time_off_decider_view(p.request) order by p.at)
       from page p
