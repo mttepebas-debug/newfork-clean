@@ -656,13 +656,13 @@ export function AppShell() {
           links={[
             ...visibleNavItems.filter((item) => item.section !== "employee"),
             ...(canViewSettings ? [settingsNavItem] : []),
-            ...(canSwitchView ? [employeeViewMobileLink] : []),
           ]}
           ownDocuments={
             ownDocuments.asked
               ? { to: managementDocumentsPath, label: "My documents", icon: FileText, count: ownDocuments.waiting }
               : null
           }
+          viewSwitch={canSwitchView ? employeeViewMobileLink : null}
           onSignOut={signOutAfterAvailabilityCheck}
         />
       )}
