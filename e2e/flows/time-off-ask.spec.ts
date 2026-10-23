@@ -4,7 +4,7 @@ import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
 import { psql } from "../global-setup";
 
-// Time off rebuild D2 (KARARLAR S-239, S-242): behind the time-off-v2 flag, an employee asks for time off
+// Time off rebuild D2 (KARARLAR S-239, S-242): an employee asks for time off
 // from Employee Hub -> My Availability -> Time off, sees it waiting in the list, and withdraws it with two
 // clicks. A fresh employee at Kadikoy, so no other spec's time off is in their list; the request is next
 // week's Monday to Wednesday, all day, so it has not started whenever the run is.
@@ -26,7 +26,6 @@ function freshEmployee() {
 
 async function signInWithFlag(browser: Browser, email: string): Promise<Page> {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await context.addInitScript(() => window.localStorage.setItem("newfork:time-off-v2", "1"));
   const page = await context.newPage();
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);

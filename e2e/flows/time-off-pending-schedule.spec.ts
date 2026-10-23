@@ -6,10 +6,10 @@ import { draftName, roundWeek } from "../fixtures/world";
 import { psql } from "../global-setup";
 
 // Time off rebuild D3b (KARARLAR S-239 (9)): time off waiting for an answer is only a warning on the
-// Schedule, behind the time-off-v2 flag. While Ayse edits the week, the day a fresh Kadikoy employee asked
+// Schedule. While Ayse edits the week, the day a fresh Kadikoy employee asked
 // off has a dashed red edge and a small ring whose window says when; a shift written there is written at
 // once, with one short notice; Pre-flight lists a note that opens the request in Requests → Time off and
-// publishing goes ahead. Without the flag the grid draws nothing new. The request is made in the new table
+// publishing goes ahead. The request is made in the new table
 // (ask_time_off_service), on a week about two years out (tests.week) that no other spec uses.
 
 const world: { readonly run: string; readonly password: string; readonly emails: Record<string, string> } = JSON.parse(
@@ -32,9 +32,8 @@ function freshEmployee() {
   return { label, id, name: `${label.charAt(0).toUpperCase()}${label.slice(1)} Person`, first: `${label.charAt(0).toUpperCase()}${label.slice(1)}` };
 }
 
-async function ayse(browser: Browser, flag: boolean): Promise<Page> {
+async function ayse(browser: Browser): Promise<Page> {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  if (flag) await context.addInitScript(() => window.localStorage.setItem("newfork:time-off-v2", "1"));
   const page = await context.newPage();
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(world.emails.ayse!);
@@ -63,14 +62,7 @@ test("time off waiting for an answer: a mark while editing, a short notice on th
       '${friday}'::date, '${friday}'::date, true, null, null, null,
       (select l.timezone from public.locations l where l.id = tests.id('${world.run}:K')), gen_random_uuid()) ->> 'id';`));
 
-  // Without the flag: today's grid, nothing new.
-  const plain = await ayse(browser, false);
-  await plain.goto(`/app/schedule?date=${monday}`);
-  await expect(cell(plain, person.id, friday)).toBeVisible();
-  await expect(plain.locator("[data-pending-time-off='true']")).toHaveCount(0);
-  await plain.context().close();
-
-  const page = await ayse(browser, true);
+  const page = await ayse(browser);
   // The published week shows nothing; editing it does.
   await page.goto(`/app/schedule?date=${monday}`);
   await expect(cell(page, person.id, friday)).toBeVisible();

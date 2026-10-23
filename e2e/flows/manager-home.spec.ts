@@ -159,7 +159,7 @@ test("desktop: a Needs you line opens what it is about: the document's drawer, t
 
   await page.goto("/app/workspace");
   await needs(page).getByRole("link", { name: /Emre Demir asks for time off/ }).click();
-  await expect(page).toHaveURL("/app/schedule/requests?request=e3000000-0000-4000-8000-000000000001");
+  await expect(page).toHaveURL("/app/schedule/requests?type=time_off&request=e3000000-0000-4000-8000-000000000001");
 });
 
 test("desktop: Customize hides a section, Cancel keeps it, Save layout keeps the choice (zeynep)", async ({ browser }) => {

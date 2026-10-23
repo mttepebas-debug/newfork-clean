@@ -83,8 +83,8 @@ test("a shift on hours the employee marked unavailable carries a note with swap 
   const sheet = page.getByRole("dialog", { name: "Your shift", exact: true });
   await expect(sheet.getByRole("note")).toContainText(/You marked Mon .+ unavailable\./);
   await sheet.getByRole("note").getByRole("link", { name: "Request time off" }).click();
-  await expect(page).toHaveURL(/\/app\/employee-hub\/my-availability\?section=time-off#time-off/);
-  await expect(page.getByRole("heading", { name: "Request time off" })).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/employee-hub\/my-availability\?section=time-off$/);
+  await expect(page.getByRole("region", { name: "Time off" }).getByRole("button", { name: "Request time off" })).toBeVisible();
 
   await page.goto(`/app/employee-hub?shift=${morning}`);
   await expect(sheet).toContainText("Besiktas");

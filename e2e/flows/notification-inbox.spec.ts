@@ -7,8 +7,8 @@ import { round, roundWeek, signIn, type Person } from "../fixtures/world";
 
 // BILDIRIM-10 (KARARLAR S-123, variant A): somebody at Kadikoy asks for a day
 // off; Ayse, Kadikoy's manager, sees it in the panel the left menu's
-// Notifications opens, approves it there, and the employee finds the decision
-// in their own list. Needs the time off producers (BILDIRIM-U2) on the shared DB.
+// Notifications opens, reviews it from there in Requests → Time off (time off
+// rebuild D7), and the employee finds the decision in their own list.
 
 const world: { readonly run: string; readonly password: string } = JSON.parse(
   readFileSync(new URL("../.world.json", import.meta.url), "utf8"),
@@ -54,36 +54,43 @@ async function openPanel(page: Page) {
   return panel;
 }
 
-test("a manager approves time off from the notification panel, and the employee sees the decision", async ({ browser }) => {
+test("a manager opens time off from the notification panel, approves it, and the employee sees the decision", async ({ browser }) => {
   const asker = personAtKadikoy();
   const note = `Dentist ${round()}`;
 
-  // Employee Hub -> My availability -> Time Off Requests: one full day.
+  // Employee Hub -> My availability -> Time off: one full day.
   const employee = await signedIn(browser, asker);
   await employee.goto("/app/employee-hub/my-availability?section=time-off");
-  const form = employee.getByRole("group", { name: "Time off details" });
-  await form.getByLabel("Start", { exact: true }).fill(asker.day);
-  await form.getByLabel("End", { exact: true }).fill(asker.day);
-  await form.getByLabel("Note").fill(note);
-  await form.getByRole("button", { name: "Submit request", exact: true }).click();
-  await expect(employee.getByRole("status").filter({ hasText: /^Request sent\./ })).toBeVisible();
-  const request = sql(`select id from public.schedule_time_off_requests
-    where employee_id = tests.id('${run}:${asker.label}') and request_type = 'time_off';`);
+  const mineList = employee.getByRole("region", { name: "Time off" });
+  await mineList.getByRole("button", { name: "Request time off" }).click();
+  const form = employee.getByRole("dialog", { name: "Request time off" });
+  await form.getByRole("radio", { name: /Personal/ }).check();
+  await form.getByLabel("First day").fill(asker.day);
+  await form.getByLabel("Last day").fill(asker.day);
+  await form.getByLabel(/Note/).fill(note);
+  await form.getByRole("button", { name: "Send request" }).click();
+  await expect(form).toBeHidden();
+  const request = sql(`select id from public.time_off_requests
+    where employee_id = tests.id('${run}:${asker.label}') and kind = 'leave';`);
 
-  // Ayse's menu counts it; the panel shows it under Needs action and decides it inline.
+  // Ayse's menu counts it; the panel shows it under Needs action, and Review opens it where it is answered.
   const ayse = await signedIn(browser, "ayse");
-  await ayse.goto("/app/schedule/requests");
+  await ayse.goto("/app/workspace");
   const menuItem = ayse.getByRole("navigation", { name: "Primary" }).getByRole("button", { name: /^Notifications, \d+ unread$/ });
   await expect(menuItem).toBeVisible();
   const panel = await openPanel(ayse);
   await panel.getByRole("tab", { name: /^Needs action/ }).click();
   const row = panel.getByRole("listitem").filter({ hasText: `Time off request from ${asker.name}` });
   await expect(row).toContainText(note);
-  await row.getByRole("button", { name: "Approve", exact: true }).click();
-  await expect(ayse.getByText("Time off approved.")).toBeVisible();
-  await expect.poll(() => sql(`select status from public.schedule_time_off_requests where id = '${request}';`)).toBe("approved");
+  await row.getByRole("button", { name: "Review", exact: true }).click();
+  await expect(ayse).toHaveURL(`/app/schedule/requests?type=time_off&request=${request}`);
+  const drawer = ayse.getByRole("dialog", { name: "Review time off" });
+  await drawer.getByRole("button", { name: "Approve", exact: true }).click();
+  await expect.poll(() => sql(`select status from public.time_off_requests where id = '${request}';`)).toBe("approved");
   // The card closes for every decider; Needs action no longer lists it.
-  await expect(row).toHaveCount(0);
+  const again = await openPanel(ayse);
+  await again.getByRole("tab", { name: /^Needs action/ }).click();
+  await expect(again.getByRole("listitem").filter({ hasText: `Time off request from ${asker.name}` })).toHaveCount(0);
 
   // The employee's own list has the decision, live.
   const mine = await openPanel(employee);

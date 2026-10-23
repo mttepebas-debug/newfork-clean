@@ -5,7 +5,7 @@ import { expect, test } from "../fixtures/test";
 import { roundLabel, roundWeek } from "../fixtures/world";
 import { psql } from "../global-setup";
 
-// Time off rebuild D3 (KARARLAR S-239): behind the time-off-v2 flag, an employee asks for time off in
+// Time off rebuild D3 (KARARLAR S-239): an employee asks for time off in
 // Employee Hub → My Availability → Time off; Ayse, Kadikoy's manager, answers it in Requests → Time off.
 // Approving opens the employee's published shift in those days; the employee sees Approved, and a decline
 // with its note. Fresh employees at Kadikoy, so no other spec's time off is theirs; their days are a week
@@ -28,9 +28,8 @@ function freshEmployee() {
   return { label, email, name };
 }
 
-async function signInWithFlag(browser: Browser, email: string): Promise<Page> {
+async function signInAt(browser: Browser, email: string): Promise<Page> {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await context.addInitScript(() => window.localStorage.setItem("newfork:time-off-v2", "1"));
   const page = await context.newPage();
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);
@@ -54,7 +53,7 @@ async function askForDays(page: Page, first: string, lastDay: string) {
 }
 
 async function openForAyse(browser: Browser, name: string) {
-  const page = await signInWithFlag(browser, world.emails.ayse!);
+  const page = await signInAt(browser, world.emails.ayse!);
   await page.goto("/app/schedule/requests?type=time_off");
   await page.getByRole("row", { name: new RegExp(`${name} asks for vacation`) }).click();
   const drawer = page.getByRole("dialog", { name: "Review time off" });
@@ -71,7 +70,7 @@ test("a manager approves time off, the shift in it goes to open shifts, and the 
     {"label": "${shiftLabel}", "person": "${label}", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
   ]');`);
 
-  const employee = await signInWithFlag(browser, email);
+  const employee = await signInAt(browser, email);
   const panel = await askForDays(employee, tuesday, wednesday);
   await expect(panel.getByRole("row", { name: /Vacation/ })).toContainText("Pending");
 
@@ -102,7 +101,7 @@ test("a manager declines time off with two clicks and a note, and the employee s
   const { label, email, name } = freshEmployee();
   const thursday = sql(`select (tests.week(${roundWeek(790)}) + 3)::text;`);
 
-  const employee = await signInWithFlag(browser, email);
+  const employee = await signInAt(browser, email);
   await askForDays(employee, thursday, thursday);
 
   const { drawer } = await openForAyse(browser, name);

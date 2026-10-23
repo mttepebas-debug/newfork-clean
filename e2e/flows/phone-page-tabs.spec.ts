@@ -85,12 +85,12 @@ test("the employee's page tabs on a phone: label wide, in line with the page, on
   // A tap on the other tab slides the line under it.
   await page.goto("/app/employee-hub/my-availability");
   const strip = ".employee-weekly-workspace > .weekly-preferences-tabs";
-  await page.locator(strip).getByRole("tab", { name: "Time Off Requests" }).tap();
+  await page.locator(strip).getByRole("tab", { name: "Time off" }).tap();
   await expect(page).toHaveURL(/section=time-off/);
   await page.waitForTimeout(400);
   const moved = await measure(page, strip);
   const now = moved.tabs.find((tab) => tab.open)!;
-  soft(moved.line, "the line moved to Time Off Requests").toEqual({ height: "2px", bottom: "0px", x: now.left, width: now.width });
+  soft(moved.line, "the line moved to Time off").toEqual({ height: "2px", bottom: "0px", x: now.left, width: now.width });
 
   // A tab strip inside a page's content keeps its own look (Mert: "içerikler için değil").
   await page.goto("/app/employee-hub/documents");

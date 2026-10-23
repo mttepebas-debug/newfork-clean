@@ -5,7 +5,7 @@ import { expect, test } from "../fixtures/test";
 import { roundLabel, roundWeek } from "../fixtures/world";
 import { psql } from "../global-setup";
 
-// Time off rebuild D4 (KARARLAR S-239 (4), (6)): behind the time-off-v2 flag. An employee asks to cancel
+// Time off rebuild D4 (KARARLAR S-239 (4), (6)): an employee asks to cancel
 // approved time off in Employee Hub → My Availability → Time off; Ayse, Kadikoy's manager, approves the
 // cancellation in Requests → Time off and the rest of the time off goes, while the shift its approval opened
 // stays open. Ayse also revokes approved time off with a note, and the employee reads it. Fresh employees at
@@ -44,7 +44,6 @@ function approvedTimeOff(label: string, first: string, lastDay: string): string 
 
 async function signInWithFlag(browser: Browser, email: string): Promise<Page> {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await context.addInitScript(() => window.localStorage.setItem("newfork:time-off-v2", "1"));
   const page = await context.newPage();
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);

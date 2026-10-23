@@ -36,21 +36,21 @@ async function swipe(page: Page, on: Locator, dx: number, dy = 0) {
 
 const chosen = (page: Page, list: string) => page.getByRole("tablist", { name: list }).locator('[role="tab"][aria-selected="true"]');
 
-test("My Availability: a swipe moves between Availability and Time Off Requests, and stops at the ends", async ({ browser }) => {
+test("My Availability: a swipe moves between Availability and Time off, and stops at the ends", async ({ browser }) => {
   const emre = await phone(browser, "emre", "/app/employee-hub/my-availability");
   const tabs = chosen(emre, "My availability");
   await expect(tabs).toHaveText("Availability");
   const panel = emre.getByRole("tabpanel");
   await swipe(emre, panel, -160);
-  await expect(tabs).toHaveText("Time Off Requests");
+  await expect(tabs).toHaveText("Time off");
   await expect(emre).toHaveURL(/section=time-off/);
   // The end: no going round to the first.
   await swipe(emre, emre.getByRole("tabpanel"), -160);
-  await expect(tabs).toHaveText("Time Off Requests");
+  await expect(tabs).toHaveText("Time off");
   // A scroll down is a scroll, not a tab change; nor is a swipe in a text box (its caret and selection).
   await swipe(emre, emre.getByRole("tabpanel"), -30, -200);
   await swipe(emre, emre.getByRole("textbox", { name: "Note" }), 160);
-  await expect(tabs).toHaveText("Time Off Requests");
+  await expect(tabs).toHaveText("Time off");
   // Across the Start date (no caret there) it goes back.
   await swipe(emre, emre.getByLabel("Start"), 160);
   await expect(tabs).toHaveText("Availability");

@@ -5,7 +5,7 @@ import { expect, test } from "../fixtures/test";
 import { roundLabel, roundWeek } from "../fixtures/world";
 import { psql } from "../global-setup";
 
-// Time off rebuild D5 (KARARLAR S-239 (1), (6)): behind the time-off-v2 flag. Ayse, Kadikoy's manager, adds
+// Time off rebuild D5 (KARARLAR S-239 (1), (6)): Ayse, Kadikoy's manager, adds
 // approved time off for a fresh employee at Kadikoy from Requests → Time off → Add time off, from today to
 // tomorrow. It is a record, not a request: approved at once, and the employee's published shift tomorrow goes
 // to open shifts. The employee reads it as approved, added by Ayse, in Employee Hub → My Availability → Time off.
@@ -29,7 +29,6 @@ function freshEmployee() {
 
 async function signInWithFlag(browser: Browser, email: string): Promise<Page> {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  await context.addInitScript(() => window.localStorage.setItem("newfork:time-off-v2", "1"));
   const page = await context.newPage();
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);
