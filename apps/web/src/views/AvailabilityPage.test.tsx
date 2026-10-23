@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
 import {
   act,
   cleanup,
@@ -336,6 +337,23 @@ describe("Availability on a phone (720 px and below)", () => {
     expect(screen.queryByText("Read only. Only Sam can change this.")).toBeNull();
     expect(screen.queryByText("Sam is open to work any time.")).toBeNull();
     expect(screen.getByRole("list", { name: "Sam's week" })).toBeTruthy();
+  });
+
+  // The person's page sat in a white top (back, the person, the two tabs) and the
+  // page's sky started under it (Mert 2026-10-22, "sayfanın en tepesinde gökyüzü
+  // arka planı gözükmüyor"). The top paints no ground: the sky shows through.
+  it("lets the page's sky through the person's top and its tabs", () => {
+    const css = readFileSync("src/availability/weekly-team.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const media = "@media (max-width: 720px) {";
+    const phone = css.slice(css.indexOf(media) + media.length);
+    const body = (selector: string) =>
+      [...phone.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+        .filter(([, head]) => head!.trim() === selector)
+        .map(([, , rule]) => rule!)
+        .join(";");
+    expect(body(".avt-person-top")).not.toMatch(/background/);
+    // The tabs are white in the desktop drawer (manager-availability.css); here they are clear.
+    expect(body(".avt-person-page .avm-tabs")).toMatch(/background\s*:\s*transparent/);
   });
 });
 

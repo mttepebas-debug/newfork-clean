@@ -354,10 +354,11 @@
     padding: 12px 0;
   }
 
-  /* A person's page: one white top under the app bar (back, the person, the
-     two tabs) and the white Save bar right on the bottom bar; the week
-     between them on the page's grey (Mert 2026-10-20, "hiçbir şey harmoni
-     içinde durmuyor"). */
+  /* A person's page: one top under the app bar (back, the person, the two
+     tabs) and the white Save bar right on the bottom bar (Mert 2026-10-20,
+     "hiçbir şey harmoni içinde durmuyor"). The top paints no ground: the
+     page's sky starts under the app bar, as on every other page (Mert
+     2026-10-22, "sayfanın en tepesinde gökyüzü arka planı gözükmüyor"). */
   .availability-page.list-page.list-page.avt-person-page {
     padding-top: 0;
   }
@@ -365,7 +366,6 @@
     gap: 4px;
     margin: 0 -16px;
     padding: 4px 16px 16px;
-    background: var(--theme-surface);
   }
   /* The chevron's own drawing starts 6 px into its box: the arrow, the
      avatar and the tabs' text all start on the page's 16 px line. */
@@ -377,6 +377,7 @@
   }
   .avt-person-page .avm-tabs {
     border-top: 0;
+    background: transparent;
   }
   .avt-split.is-phone {
     grid-template-columns: minmax(0, 1fr);
