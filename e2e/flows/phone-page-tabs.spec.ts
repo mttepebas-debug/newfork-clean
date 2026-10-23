@@ -91,6 +91,9 @@ async function checkStrips(page: Page, strips: [string, string][], list: boolean
     const open = m.tabs.find((tab) => tab.open)!;
     soft(m.sliding, `${path}: the line is placed`).toBe(true);
     soft(m.line, `${path}: one 2 px line under the open tab, inside the strip`).toEqual({ height: "2px", bottom: "0px", x: open.left, width: open.width });
+    // S-253: Add is never in a list page's tab row - Requests is the one exception (S-254, checked below).
+    if (list && !path.startsWith("/app/schedule/requests"))
+      soft(await page.locator(".catalog-toolbar-status-row .list-add-button").count(), `${path}: no Add in the tab row`).toBe(0);
   }
 }
 
@@ -126,6 +129,54 @@ test("a list page's status tabs on a phone follow the same standard, and the lin
   soft(now, "Past is open").toBeTruthy();
   soft(moved.line, "the line moved to Past").toEqual({ height: "2px", bottom: "0px", x: now.left, width: now.width });
 });
+
+// KARARLAR S-254 (Mert 2026-10-23), Requests' one exception to S-253: on a phone "+ Add" stands at the right end
+// of the tab row, the tabs on the left in their own strip, which scrolls and fades alone; Add keeps the list
+// pages' shape, 32 high and 8 px above the row's bottom, the row's line under both. Shown where Add is offered
+// (Time off), at 390 and 340.
+for (const width of [390, 340]) {
+  test(`Requests' Add stands at the tab row's right end on a ${width} px phone`, async ({ browser }) => {
+    const page = await (await browser.newContext({ viewport: { width, height: 844 }, hasTouch: true, isMobile: true })).newPage();
+    await signIn(page, "zeynep");
+    await expect(page).not.toHaveURL(/\/sign-in/);
+    await page.goto("/app/schedule/requests?type=time_off");
+    const add = page.locator(".catalog-toolbar-status-row > .list-add-button");
+    await expect(add).toBeVisible({ timeout: 30_000 });
+    await expect(add).toHaveAccessibleName("Add time off");
+    await expect(page.getByRole("button", { name: "Add time off" })).toHaveCount(1);
+    await page.waitForTimeout(300);
+    const m = await page.evaluate(() => {
+      const box = (el: Element) => el.getBoundingClientRect();
+      const row = document.querySelector(".catalog-toolbar-status-row")!;
+      const strip = row.querySelector(":scope > .catalog-status-tabs")!;
+      const add = row.querySelector(":scope > .list-add-button")!;
+      const style = getComputedStyle(add);
+      return {
+        row: { right: Math.round(box(row).right), bottom: Math.round(box(row).bottom), line: getComputedStyle(row).boxShadow },
+        strip: { left: Math.round(box(strip).left), right: Math.round(box(strip).right) },
+        add: {
+          left: Math.round(box(add).left), right: Math.round(box(add).right), top: Math.round(box(add).top),
+          bottom: Math.round(box(add).bottom), height: Math.round(box(add).height), inStrip: strip.contains(add),
+          font: style.fontSize, radius: style.borderRadius, padding: style.padding, mask: style.maskImage,
+        },
+        page: [document.documentElement.scrollWidth, window.innerWidth],
+      };
+    });
+    soft(m.strip.left, "the tabs start on the page's left side").toBe(16);
+    soft(m.add.right, "Add ends on the page's right side").toBe(width - 16);
+    soft(m.add.right, "Add ends the row").toBe(m.row.right);
+    soft(m.add.inStrip, "Add is outside the scrolling strip").toBe(false);
+    soft(m.add.left - m.strip.right, "12 px between the tabs and Add").toBe(12);
+    soft(m.add.height, "32 high").toBe(32);
+    soft(m.row.bottom - m.add.bottom, "8 px above the row's bottom").toBe(8);
+    soft(m.add.font, "the list pages' 13 px").toBe("13px");
+    soft(m.add.radius, "the list pages' 7 px corner").toBe("7px");
+    soft(m.add.padding, "the list pages' 14 px sides").toBe("0px 14px");
+    soft(m.add.mask, "Add never fades").toBe("none");
+    soft(m.row.line, "the row's line runs under Add too").toMatch(/inset/);
+    soft(m.page[0], "no sideways page scroll").toBe(m.page[1]);
+  });
+}
 
 test("the desktop keeps the page tabs it had", async ({ browser }) => {
   const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
