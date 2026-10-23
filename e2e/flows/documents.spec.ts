@@ -237,6 +237,6 @@ test("the owner sends their own card when they choose; it goes on file, never to
 
   // Account > Documents: the owner is never asked, but may send it (D5).
   await signInAs(page, owner);
-  await sendOwnDocument(page, title);
+  await sendOwnDocument(page, title, "Completed");
   expect(standing(documentId, owner)).toBe("completed accepted");
 });
