@@ -46,6 +46,9 @@ export const notificationItemSchema = z.object({
   resolved_at: instant.nullable(),
   resolution: z.string().nullable(),
   resolved_by: id.nullable(),
+  // Who closed it, as the workspace names people (S-247): "Approved by Maria Lopez". Optional: a core
+  // without it (before the slice 2 migration) still answers the contract.
+  resolved_by_name: z.string().nullable().optional(),
 });
 export type NotificationItem = z.infer<typeof notificationItemSchema>;
 

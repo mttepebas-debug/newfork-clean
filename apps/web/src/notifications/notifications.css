@@ -266,12 +266,19 @@
 .ni-row:hover .ni-row-title:not(:disabled) {
   text-decoration: underline;
 }
+/* S-248: a notice is short; an older one that still carries every detail stops at two lines (the page it
+   opens shows the rest). */
 .ni-row-body {
+  display: -webkit-box;
+  overflow: hidden;
   margin: 0;
   color: var(--theme-text-secondary);
   font-size: 13px;
   line-height: 1.45;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 .ni-row-meta {
   margin: 2px 0 0;

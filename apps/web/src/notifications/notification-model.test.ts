@@ -60,6 +60,23 @@ describe("resolutionLabel", () => {
     expect(resolutionLabel({ resolution: "completed", resolved_by: null }, me)).toBe("Done");
     expect(resolutionLabel({ resolution: null, resolved_by: null }, me)).toBeNull();
   });
+
+  // S-247 (3): everyone who got the card reads who closed it.
+  it("names whoever else closed it", () => {
+    const me = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
+    expect(resolutionLabel({ resolution: "approved", resolved_by: "someone-else", resolved_by_name: "Maria Lopez" }, me)).toBe("Approved by Maria Lopez");
+    expect(resolutionLabel({ resolution: "declined", resolved_by: "someone-else", resolved_by_name: "Maria Lopez" }, me)).toBe("Declined by Maria Lopez");
+    expect(resolutionLabel({ resolution: "approved", resolved_by: me, resolved_by_name: "Ayse Person" }, me)).toBe("You approved");
+    expect(resolutionLabel({ resolution: "expired", resolved_by: null, resolved_by_name: null }, me)).toBe("Not decided in time");
+  });
+
+  it("says what the person did on cards they answered themselves", () => {
+    const me = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
+    expect(resolutionLabel({ resolution: "applied", resolved_by: me }, me)).toBe("You applied");
+    expect(resolutionLabel({ resolution: "taken", resolved_by: null }, me)).toBe("Taken");
+    expect(resolutionLabel({ resolution: "submitted", resolved_by: me }, me)).toBe("You handed it in");
+    expect(resolutionLabel({ resolution: "acknowledged", resolved_by: me }, me)).toBe("You acknowledged");
+  });
 });
 
 describe("resolvedLine", () => {

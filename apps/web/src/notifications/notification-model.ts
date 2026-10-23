@@ -80,28 +80,45 @@ export function isNewNotice(item: Pick<NotificationItem, "id" | "seen_at">, fres
   return !item.seen_at || fresh.has(item.id);
 }
 
-/** "Approved", "Declined"; "You approved" when the reader decided it. */
-export function resolutionLabel(item: Pick<NotificationItem, "resolution" | "resolved_by">, viewerId: string | undefined): string | null {
+/**
+ * How it closed: "You approved" when the reader did it, "Approved by Maria Lopez" when someone else did
+ * and the core names them (S-247 (3)), else "Approved".
+ */
+export function resolutionLabel(
+  item: Pick<NotificationItem, "resolution" | "resolved_by" | "resolved_by_name">,
+  viewerId: string | undefined,
+): string | null {
   if (!item.resolution) return null;
-  const words: Record<string, [string, string]> = {
-    approved: ["Approved", "You approved"],
-    declined: ["Declined", "You declined"],
-    denied: ["Declined", "You declined"],
-    expired: ["Not decided in time", "Not decided in time"],
-    cancelled: ["Cancelled", "You cancelled"],
-    accepted: ["Accepted", "You accepted"],
-    completed: ["Done", "Done"],
+  // [someone else did it, the reader did it, names the one who did it]
+  const words: Record<string, [string, string, boolean]> = {
+    approved: ["Approved", "You approved", true],
+    declined: ["Declined", "You declined", true],
+    denied: ["Declined", "You declined", true],
+    expired: ["Not decided in time", "Not decided in time", false],
+    cancelled: ["Cancelled", "You cancelled", true],
+    accepted: ["Accepted", "You accepted", true],
+    withdrawn: ["Withdrawn", "You withdrew it", true],
+    completed: ["Done", "Done", false],
+    applied: ["Applied", "You applied", false],
+    taken: ["Taken", "Taken", false],
+    submitted: ["Handed in", "You handed it in", false],
+    acknowledged: ["Acknowledged", "You acknowledged", false],
+    fixed: ["Fixed", "You fixed it", true],
+    removed: ["Removed", "You removed it", true],
   };
   const known = words[item.resolution];
   const mine = Boolean(viewerId) && item.resolved_by === viewerId;
-  if (known) return mine ? known[1] : known[0];
+  if (known) {
+    if (mine) return known[1];
+    return known[2] && item.resolved_by_name ? `${known[0]} by ${item.resolved_by_name}` : known[0];
+  }
   const plain = item.resolution.replace(/_/g, " ");
   return plain.charAt(0).toUpperCase() + plain.slice(1);
 }
 
 /** How it closed and when: "You approved · 2m ago". */
 export function resolvedLine(
-  item: Pick<NotificationItem, "resolution" | "resolved_by" | "resolved_at">,
+  item: Pick<NotificationItem, "resolution" | "resolved_by" | "resolved_by_name" | "resolved_at">,
   viewerId: string | undefined,
   now: Date,
   timeFormat: TimeFormat = "12h",
