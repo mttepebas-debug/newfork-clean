@@ -333,10 +333,27 @@
     background: transparent;
     box-shadow: none;
   }
-  /* ...and an empty list's note is then the card. */
-  .list-page.list-page :is(.job-catalog, .employee-table-wrap) > :is(.announcement-list-empty, .catalog-table-empty) {
-    border-radius: 18px;
-    box-shadow: var(--theme-shadow-card);
+  /* ...and an empty list's note sits on the page's sky with no card, under a line 16 px below the
+     filters; a full list draws no line (KARARLAR S-250, Mert 2026-10-23). The note keeps its own
+     spacing under the line: 16 px more on top. Availability's note sits right in the page. */
+  :is(.list-page.list-page, .list-page.list-page :is(.job-catalog, .employee-table-wrap)) > :is(.announcement-list-empty, .catalog-table-empty) {
+    border-top: 1px solid var(--theme-border);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  :is(.list-page.list-page, .list-page.list-page :is(.job-catalog, .employee-table-wrap)) > .catalog-table-empty {
+    min-height: 277px;
+    padding-top: 56px;
+  }
+  :is(.list-page.list-page, .list-page.list-page :is(.job-catalog, .employee-table-wrap)) > .announcement-list-empty {
+    padding-top: 44px;
+  }
+  /* A table that stays a table on a phone (Documents) drops its heading row while it is empty, so the
+     line sits under the filters there too. */
+  .list-page.list-page .employee-table-wrap:has(> .catalog-table-empty) > table,
+  .list-page.list-page .job-catalog:has(> .catalog-table-empty) > .job-column-headings {
+    display: none;
   }
   .list-add-button .list-add-short {
     display: inline;
