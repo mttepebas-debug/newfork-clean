@@ -713,9 +713,9 @@ describe("Time off tab", () => {
     expect(screen.getByRole("button", { name: "Add time off" })).toBeTruthy();
   });
 
-  // Mert 2026-10-23: on a phone Add sits beside the location list at the right edge, the search under
-  // them (the Employees row); on a computer it stays at the row's end.
-  it("puts Add beside the location list on a phone", async () => {
+  // Mert 2026-10-23 (requests-add-top): on a phone Add sits at the right end of the tab row, as on
+  // Important Dates, outside the tabs that scroll; on a computer it stays at the filter row's end.
+  it("puts Add at the right end of the tab row on a phone, short label Add", async () => {
     const before = window.matchMedia;
     window.matchMedia = ((media: string) => ({
       matches: media === "(max-width: 720px)",
@@ -726,8 +726,13 @@ describe("Time off tab", () => {
     try {
       renderPage("/app/schedule/requests?type=time_off");
       await screen.findByRole("row", { name: /Alex Kim asks for/ });
-      const locations = screen.getByRole("combobox", { name: "Filter by location" });
-      expect(locations.nextElementSibling).toBe(screen.getByRole("button", { name: "Add time off" }));
+      const add = screen.getByRole("button", { name: "Add time off" });
+      expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
+      expect(add.querySelector(".list-add-short")?.textContent).toBe("Add");
+      // The tabs scroll and fade on their own; Add never scrolls or fades with them.
+      const tabs = screen.getByRole("group", { name: "Request type" });
+      expect(tabs.parentElement!.contains(add)).toBe(false);
+      expect(screen.getByLabelText("Search requests").closest("label")?.nextElementSibling).toBeNull();
     } finally {
       window.matchMedia = before;
     }

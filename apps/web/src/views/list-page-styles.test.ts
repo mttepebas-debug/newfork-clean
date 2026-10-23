@@ -75,3 +75,32 @@ describe("Employees location cell", () => {
     expect(rule(".employee-location-name")).toMatch(/white-space\s*:\s*nowrap/);
   });
 });
+
+// Mert 2026-10-23 (requests-add-top): every list page's search box and location list wear one frame.
+describe("one filter frame on every list page", () => {
+  const rules = (path: string) =>
+    [...readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^}]*)\}/g)].map(
+      ([, head, body]) => [head!.trim().replace(/\s+/g, " "), body!] as const,
+    );
+
+  // Requests drew its own box, thinner on a phone (36 px, 12 px text) than Important Dates' (44 px).
+  it("lets Requests' search box take the shared frame", () => {
+    const own = rules("src/views/requests-catalog.css")
+      .filter(([head]) => /toolbar-search|requests-search/.test(head) && !/ input$/.test(head))
+      .map(([head]) => head);
+    expect(own).toEqual([]);
+  });
+
+  it("frames Shift Hub's location list and search like the list pages", () => {
+    const all = rules("src/employee-hub/shift-exchanges/shift-exchanges.css");
+    const body = (selector: string) => all.filter(([head]) => head === selector).map(([, rule]) => rule).join(";");
+    for (const box of [".sx-root .sx-filters select", ".sx-root .sx-filters .sx-filter-search"]) {
+      expect(body(box)).toMatch(/height\s*:\s*36px/);
+      expect(body(box)).toMatch(/border\s*:\s*1px solid var\(--theme-border-control\)/);
+      expect(body(box)).toMatch(/border-radius\s*:\s*6px/);
+      expect(body(box)).toMatch(/font-size\s*:\s*13px/);
+    }
+    expect(body(".sx-root .sx-filters .sx-filter-search input")).toMatch(/border\s*:\s*0/);
+    expect(body(".sx-root .sx-filters select, .sx-root .sx-filters .sx-filter-search")).toMatch(/height\s*:\s*44px/);
+  });
+});
