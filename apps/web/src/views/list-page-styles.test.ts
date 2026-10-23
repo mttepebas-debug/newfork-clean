@@ -46,6 +46,18 @@ describe("list pages on a phone", () => {
     expect(body(`${wrap} > .employee-table`)).toMatch(/display\s*:\s*none/);
   });
 
+  // The empty note took the desktop table's soft ground as a card, a grey box over the page's sky
+  // (Mert 2026-10-23). It sits on the sky under a line, which a full list does not draw (KARARLAR S-250).
+  it("sets an empty list's note on the sky under a line, with no card", () => {
+    const note = body(":is(.list-page.list-page, .list-page.list-page :is(.job-catalog, .employee-table-wrap)) > :is(.announcement-list-empty, .catalog-table-empty)");
+    expect(note).toMatch(/background\s*:\s*transparent/);
+    expect(note).toMatch(/box-shadow\s*:\s*none/);
+    expect(note).toMatch(/border-radius\s*:\s*0/);
+    expect(note).toMatch(/border-top\s*:\s*1px solid var\(--theme-border\)/);
+    // A table kept on a phone hides its heading row while empty, so no grey bar sits over the sky.
+    expect(body(".list-page.list-page .employee-table-wrap:has(> .catalog-table-empty) > table,\n  .list-page.list-page .job-catalog:has(> .catalog-table-empty) > .job-column-headings")).toMatch(/display\s*:\s*none/);
+  });
+
   it("runs Employees to both edges and swaps in the short add label", () => {
     expect(body(".employees-page.list-page.list-page")).toMatch(/padding-inline\s*:\s*16px/);
     expect(body(".employees-page.list-page.list-page")).toMatch(/margin-inline\s*:\s*0/);
