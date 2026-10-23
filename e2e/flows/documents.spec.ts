@@ -115,6 +115,8 @@ test("a two-location employee's card is seen by both managers, and one approval 
   await expect.poll(() => standing(documentId, ali)).toBe("completed accepted");
   await kadikoy.page.reload();
   await kadikoy.page.getByLabel("Search employee documents").fill(`${key}-ali`);
+  // Approved, it moves from Needs review to Completed (KARARLAR S-255).
+  await kadikoy.page.getByLabel("Document status").getByRole("button", { name: /^Completed/ }).click();
   await expect(kadikoy.row.getByText("Completed", { exact: true })).toBeVisible();
 });
 
@@ -172,6 +174,8 @@ test("a fellow manager doesn't see a manager's card while it waits for review, o
   const other = await documentsListOf(browser, fellow, `${key}-deniz`, title);
   await expect(other.page.getByText("No documents match these filters.")).toBeVisible();
   await expect(other.row).toHaveCount(0);
+  // On no tab either: none of them counts a row (KARARLAR S-255, no All).
+  await expect(other.page.getByLabel("Document status").getByRole("button")).toHaveText(["Needs review", "To do", "Completed"]);
 
   // Zeynep approves it; now the fellow manager sees it like any approved card.
   await zeynep.row.click();
@@ -180,6 +184,7 @@ test("a fellow manager doesn't see a manager's card while it waits for review, o
   await expect.poll(() => standing(documentId, deniz)).toBe("completed accepted");
   await other.page.reload();
   await other.page.getByLabel("Search employee documents").fill(`${key}-deniz`);
+  await other.page.getByLabel("Document status").getByRole("button", { name: /^Completed/ }).click();
   await expect(other.row.getByText("Completed", { exact: true })).toBeVisible();
 });
 

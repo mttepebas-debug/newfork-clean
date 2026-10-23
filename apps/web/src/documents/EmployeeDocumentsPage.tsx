@@ -1,4 +1,4 @@
-import { documentStatusFilters } from "@newfork/shared";
+import { documentStatusFilterFromLink } from "@newfork/shared";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
@@ -17,8 +17,7 @@ export default function EmployeeDocumentsPage() {
   const [search] = useSearchParams();
   const audience = { workspaceId: context?.workspace.id ?? "", selfOnly: false };
   const query = useEmployeeDocuments(audience, context?.userId ?? "");
-  const status = search.get("status");
-  const initialStatus = documentStatusFilters.find((filter) => filter === status);
+  const initialStatus = documentStatusFilterFromLink(search.get("status"));
   // Refused: the card alone, no page header (Mert 2026-10-14).
   if (isNoAccess(query.error))
     return (

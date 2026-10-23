@@ -2284,6 +2284,8 @@ describe("EmployeeDrawer", () => {
       history: [],
     });
     renderDrawer("documents", detail);
+    // The manager's list opens on Needs review; a missing one sits under To do (KARARLAR S-255).
+    fireEvent.click(await screen.findByRole("button", { name: /^To do/ }));
     fireEvent.click(
       await screen.findByRole("row", {
         name: "Alex Kim Food handler card Missing",

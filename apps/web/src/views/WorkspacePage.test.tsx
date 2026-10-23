@@ -573,7 +573,7 @@ describe("WorkspacePage", () => {
       ]);
       // Each opens what it is about: Sam's permit, Emre's request (Mert 2026-10-22).
       expect(within(needs()).getAllByRole("link").map((row) => row.getAttribute("href"))).toEqual([
-        `/app/employees/documents?location=${besiktas.id}&status=expired&requirement=ab000000-0000-4000-8000-000000000001`,
+        `/app/employees/documents?location=${besiktas.id}&status=to_do&requirement=ab000000-0000-4000-8000-000000000001`,
         "/app/schedule/requests?type=time_off&request=ab000000-0000-4000-8000-000000000001",
       ]);
       expect(needs().querySelector(".dl-cnt")?.className).toContain("is-warn");
