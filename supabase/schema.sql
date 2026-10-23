@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 583, last: 20261023050000_time_off_switch_over.sql
--- fingerprint: sha256:a204a8516803604d1b75cfb3faad6838abf51b2aa1c7113524fcdd2a0ff59be1
+-- migrations: 583, last: 20261023104307_time_off_switch_over.sql
+-- fingerprint: sha256:c16276eb2ac338a17d07f044315a0df33f36e303f062ca1f77a1d4c085e5d716
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
