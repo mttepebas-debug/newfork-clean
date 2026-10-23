@@ -9,6 +9,7 @@ import {
   rowExpires,
   rowKind,
   rowKindLabels,
+  rowKindShortLabels,
   rowStatus,
   sentenceText,
   timeOffSentence,
@@ -18,9 +19,9 @@ import {
 
 // Schedule → Requests as one table of thin rows (TAKAS-RELEASE; shift changes:
 // Mert, 2026-10-14; time off in the same form: Mert, 2026-10-17): the kind's
-// icon on a rounded tile, one sentence, a short status, and Expires (when the
-// request closes on its own; red in its last 12 hours). The detail is in the
-// drawer. The phone draws the same as cards.
+// icon on a rounded tile, its Type in a word (Mert, 2026-10-23), one sentence,
+// Expires (when the request closes on its own; red in its last 12 hours), and a
+// short status. The detail is in the drawer. The phone draws the same as cards.
 
 /** Steps in (Mert, 2026-10-14 00:28): a person and an arrow coming in. */
 function StepsIn({ size = 22 }: { size?: number }) {
@@ -108,19 +109,21 @@ export function RequestsTable({
     <table className="employee-table requests-table">
       <colgroup>
         <col style={{ width: "64px" }} />
+        <col style={{ width: "110px" }} />
         <col />
-        {/* "Needs decision" and "Oct 23, 12:00 PM" fit whole. */}
-        <col style={{ width: "190px" }} />
+        {/* "Oct 23, 12:00 PM" and "Needs decision" fit whole. */}
         <col style={{ width: "180px" }} />
+        <col style={{ width: "190px" }} />
       </colgroup>
       <thead>
         <tr>
           <th scope="col">
-            <span className="sr-only">Type</span>
+            <span className="sr-only">Icon</span>
           </th>
+          <th scope="col">Type</th>
           <th scope="col">Request</th>
-          <th scope="col">Status</th>
           <th scope="col">Expires</th>
+          <th scope="col">Status</th>
         </tr>
       </thead>
       <tbody>
@@ -149,20 +152,20 @@ function RequestRowView({ row, timeFormat, onOpen }: { row: RequestRow; timeForm
     >
       <td className="request-kind-cell">
         <KindIcon kind={kind} />
-        <span className="sr-only">{rowKindLabels[kind]}</span>
       </td>
+      <td className="request-type-cell">{rowKindShortLabels[kind]}</td>
       <td>
         <span className="request-sentence">
           <Sentence parts={parts} />
         </span>
       </td>
-      <td>
+      <td className="request-expires-cell">
+        <Expires row={row} timeFormat={timeFormat} />
+      </td>
+      <td className="request-status-cell">
         <span className="list-chip" data-tone={status.tone}>
           {status.label}
         </span>
-      </td>
-      <td>
-        <Expires row={row} timeFormat={timeFormat} />
       </td>
     </tr>
   );

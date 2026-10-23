@@ -665,6 +665,16 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(row.textContent).toContain("1 shift becomes open.");
   });
 
+  // Mert, 2026-10-23: the icon, Type, Request, Expires, Status; a cancel of a
+  // time off is Time off too.
+  it("names each request's type in its own column, before the request, with Status last", async () => {
+    renderPage();
+    const row = await screen.findByRole("row", { name: /Alex Kim/ });
+    const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
+    expect(headers).toEqual(["Icon", "Type", "Request", "Expires", "Status"]);
+    expect(within(row).getAllByRole("cell")[1]!.textContent).toBe("Time off");
+  });
+
   // Mert, 2026-10-11: the drawer speaks the Important Dates drawer's language:
   // a header with type and status, Details · Shifts · Activity tabs.
   it("heads the drawer with the person, the type, the status and the deadline", async () => {

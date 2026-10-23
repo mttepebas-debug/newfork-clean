@@ -185,11 +185,15 @@
   padding-top: 10px;
   padding-right: 4px;
 }
-.requests-table td:nth-child(3) {
+.requests-table td.request-type-cell {
   padding-top: 21px;
   white-space: nowrap;
 }
-.requests-table td:nth-child(4) {
+.requests-table td.request-status-cell {
+  padding-top: 21px;
+  white-space: nowrap;
+}
+.requests-table td.request-expires-cell {
   padding-top: 13px;
   white-space: nowrap;
 }

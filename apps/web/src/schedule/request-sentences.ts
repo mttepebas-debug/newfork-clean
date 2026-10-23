@@ -19,6 +19,14 @@ export const rowKindLabels: Record<RowKind, string> = {
   swap: "Shift swap",
 };
 
+/** The table's Type column (Mert, 2026-10-23): one word each; a cancel of a time off is Time off. */
+export const rowKindShortLabels: Record<RowKind, string> = {
+  time_off: "Time off",
+  swap: "Swap",
+  cover: "Cover",
+  pickup: "Pickup",
+};
+
 /** A release (a cover asked of everyone eligible) is a pickup on the manager's side. */
 export function rowKind(row: RequestRow): RowKind {
   if (row.source === "time_off") return "time_off";
