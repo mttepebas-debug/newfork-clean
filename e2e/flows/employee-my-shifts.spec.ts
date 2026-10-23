@@ -48,12 +48,15 @@ async function open(browser: Browser, person: Person, size: typeof PHONE, path: 
           { ...where, id: uuid(2), scheduled_date: addDays(start, 8), start_time: "16:00", end_time: "22:00" },
         ].filter((item) => inWeek(item.scheduled_date)),
       );
-      if (inWeek(addDays(start, 3)))
+      if (inWeek(addDays(start, 3))) {
         body.requests.push({
           id: uuid(3), kind: "time_off", status: "approved", title: "Time off", detail: "", revision: 1,
           created_at: new Date().toISOString(), can_cancel: false,
           periods: [{ id: uuid(4), segment_date: addDays(start, 3), start_time: null, end_time: null, status: "approved" }],
         });
+        // A read with leave_days (time off rebuild D3) is what My shifts goes by: the day goes there too.
+        if (Array.isArray(body.leave_days)) body.leave_days.push(addDays(start, 3));
+      }
       await route.fulfill({ response, json: body });
     },
   );
