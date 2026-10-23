@@ -18,8 +18,28 @@ const PAGE_TABS = [
   ".sx-root .sx-tabs",
   ".my-documents-page .requests-tabs",
   ".avm-panel .avm-tabs",
-  ".list-page.list-page .catalog-toolbar-status-row > .catalog-status-tabs",
+  ".list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs",
 ];
+
+/** A head's first `:is(A, B, …)` written out: one head per A, B, …. */
+function expandIs(head: string): string[] {
+  const at = head.indexOf(":is(");
+  if (at < 0) return [head];
+  const parts: string[] = [];
+  let depth = 0;
+  let from = at + 4;
+  for (let i = at + 3; i < head.length; i++) {
+    if (head[i] === "(") depth++;
+    else if (head[i] === ")" && --depth === 0) {
+      parts.push(head.slice(from, i));
+      return parts.map((part) => `${head.slice(0, at)}${part.trim()}${head.slice(i + 1)}`);
+    } else if (head[i] === "," && depth === 1) {
+      parts.push(head.slice(from, i));
+      from = i + 1;
+    }
+  }
+  return [head];
+}
 
 describe("phone page tabs", () => {
   const css = sheet("src/shell/phone-page-tabs.css");
@@ -52,7 +72,7 @@ describe("phone page tabs", () => {
     expect(list).toMatch(/box-shadow\s*:\s*inset 0 -1px 0 var\(--theme-border\)/);
     expect(list).toMatch(/overflow-x\s*:\s*auto/);
     // A list page's status row lends its line to the strip.
-    expect(body((head) => head === ":root:root:root:root .list-page.list-page .catalog-toolbar-status-row")).toMatch(/border-bottom\s*:\s*0/);
+    expect(body((head) => head === ":root:root:root:root .list-page:not(.lineup-page) .catalog-toolbar-status-row")).toMatch(/border-bottom\s*:\s*0/);
   });
 
   it("sizes every tab to its label, the first one on the title's edge, 14 px and 44 high", () => {
@@ -70,6 +90,26 @@ describe("phone page tabs", () => {
     expect(chosen).toMatch(/font-weight\s*:\s*600/);
     const widths = phone.match(/(?:border-bottom|height)\s*:\s*\d+px/g)?.map((m) => m.replace(/\s/g, "")) ?? [];
     expect(widths.filter((w) => w.startsWith("border-bottom"))).toEqual(["border-bottom:2px"]);
+  });
+
+  // The manager's phone Lineup is a list page too, and its shift tabs sit in a status row: they kept the
+  // Lineup's own look on the employee's phone only, and the two Lineups lost their one rhythm
+  // (lineup-publish.spec.ts, main CI 2026-10-23).
+  it("leaves the manager's Lineup shift tabs to the Lineup, while Requests' strip takes the standard", () => {
+    document.body.innerHTML = `
+      <section class="lineup-page list-page lineup-phone-page"><div class="lineup-card"><div class="catalog-toolbar lineup-shift-tabs">
+        <div class="catalog-toolbar-status-row" id="lineup-row"><div class="catalog-status-tabs" id="lineup-tabs"><button class="active" id="lineup-tab">Dinner</button></div></div>
+      </div></div></section>
+      <section class="requests-page list-page"><div class="requests-toolbar catalog-toolbar">
+        <div class="catalog-toolbar-status-row" id="requests-row"><div class="catalog-status-tabs" id="requests-tabs"><button class="active" id="requests-tab">All</button></div></div>
+      </div></section>`;
+    const element = (id: string) => document.getElementById(id)!;
+    // jsdom matches no :is() that holds combinators, so each rule's strip list is written out, one strip a head.
+    const heads = all.flatMap(({ head }) => expandIs(head.replace(/(::after|::-webkit-scrollbar|:hover|:focus-visible)$/, "")));
+    const matching = (id: string) => heads.filter((head) => element(id).matches(head));
+    for (const id of ["lineup-row", "lineup-tabs", "lineup-tab"]) expect(matching(id), id).toEqual([]);
+    for (const id of ["requests-row", "requests-tabs", "requests-tab"]) expect(matching(id).length, id).toBeGreaterThan(0);
+    document.body.innerHTML = "";
   });
 
   it("slides that line to the tab opened (useTabLine says where), still at 2 px", () => {
