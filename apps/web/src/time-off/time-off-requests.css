@@ -133,6 +133,10 @@
 .tor-day svg { flex: none; color: var(--theme-muted); }
 .tor-day-empty { color: var(--theme-muted); }
 .tor-calendar { max-width: calc(100vw - 32px); }
+/* On a phone the calendar spans both fields, its days a thumb tall. */
+.tor-sheet.is-phone .tor-calendar { right: 0; width: auto; max-width: none; }
+.tor-sheet.is-phone .tor-calendar .mini-calendar { width: 100%; }
+.tor-sheet.is-phone .tor-calendar .calendar-day { height: 40px; font-size: 14px; }
 .tor-sheet [aria-invalid="true"] { border-color: var(--theme-danger-border); }
 .tor-count { justify-self: end; color: var(--theme-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .tor-check { display: flex; align-items: center; gap: 10px; color: var(--theme-text); font-size: 14.5px; font-weight: 600; }

@@ -311,7 +311,13 @@ export function RangeFields({
   const [calendar, setCalendar] = useState<"start" | "end" | null>(null);
   const [hover, setHover] = useState<string | null>(null);
   const box = useRef<HTMLDivElement | null>(null);
-  useCloseOnEscape(calendar ? () => setCalendar(null) : null);
+  const panel = useRef<HTMLDivElement | null>(null);
+  const shown = calendar !== null;
+  useCloseOnEscape(shown ? () => setCalendar(null) : null);
+  // The drawer scrolls: an opened calendar comes into view whole, not cut by the footer.
+  useEffect(() => {
+    if (shown) panel.current?.scrollIntoView?.({ block: "nearest" });
+  }, [shown]);
   useEffect(() => {
     if (!calendar) return;
     const away = (event: PointerEvent) => {
@@ -381,7 +387,7 @@ export function RangeFields({
           {/* Waiting for the last day, it shows none until one is clicked. */}
           {dayField("end", "Last day", waiting && !draft.end ? "" : end)}
           {calendar ? (
-            <div className="schedule-mini-calendar-panel tor-calendar" role="dialog" aria-label={waiting ? "Pick the last day" : "Pick the first day"}>
+            <div ref={panel} className="schedule-mini-calendar-panel tor-calendar" role="dialog" aria-label={waiting ? "Pick the last day" : "Pick the first day"}>
               <MiniCalendar
                 selectedDate={draft.start || null}
                 rangeEnd={draft.start ? (waiting && hover && hover >= draft.start ? hover : end) : null}
