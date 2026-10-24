@@ -13,6 +13,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { RequestError } from "../lib/request-error";
+import { todayIn } from "../lib/today";
 import { errorText } from "../settings/GeneralSettingsPage";
 import { TimezoneSelect } from "../settings/TimezoneSelect";
 import { DrawerSection } from "../views/RequestDrawer";
@@ -338,7 +339,12 @@ export function ManagerDocumentContent({
   const fileCount = (version?.files.length ?? 0) + (renewal?.files.length ?? 0);
   const periods = periodChoices(obligation);
   const progress = reviewing && current ? reviewProgress(current.files, choices, reasons) : null;
-  const expires = current?.expiry_date ? formatDate(current.expiry_date) : null;
+  // The date the copy stays on file, once approved; none for a copy already past it, which the server refuses to
+  // approve (its sentence says so in the band).
+  const expires =
+    current?.expiry_date && current.expiry_date >= todayIn(obligation.timezone ?? undefined, now)
+      ? formatDate(current.expiry_date)
+      : null;
 
   // More options (K1 decisions 1 and 3): Extend only where today's drawer offers it (the server refuses the rest),
   // Excuse on a document not excused, Ask for it again on an excused one; never for the owner, whose excuse stands.

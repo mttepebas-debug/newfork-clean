@@ -2576,6 +2576,16 @@ describe("file decisions and the dock", () => {
     expect(within(renewalFiles).getByText("Expired")).toBeTruthy();
   });
 
+  // K1 fix pass: a copy whose expiration date has passed is not promised "on file" (the server refuses to approve it
+  // and says so in the band).
+  it("promises no date on file for a copy that has already expired", async () => {
+    const doc = detail();
+    doc.submissions[0]!.expiry_date = "2026-01-01";
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    await decide("certificate.pdf", "Approve");
+    expect(dockLine()).toBe("Save approves it");
+  });
   // K1 decision 10: the field stops typing at 500, but a common reason added by its chip can pass it; what is sent
   // never does.
   it("sends 500 characters at most when a chip makes the reason longer", async () => {
