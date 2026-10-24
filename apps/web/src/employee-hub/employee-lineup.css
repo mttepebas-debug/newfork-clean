@@ -37,7 +37,15 @@
 .employee-lineup > .lineup-shift-tabs { margin-top: 14px; }
 /* The ticket 16 px under the shift tabs (Mert 2026-10-17 ~8:30 AM; no heading over it any more). */
 .employee-lineup > .lineup-shift-tabs + .employee-lineup-view > .employee-lineup-head > .employee-lineup-ticket,
+.employee-lineup > .lineup-shift-tabs + .employee-lineup-view > .employee-lineup-head > :is(.employee-lineup-place, .employee-lineup-note):first-child,
 .employee-lineup > .lineup-shift-tabs + .employee-lineup-calm { margin-top: 16px; }
+
+/* A lineup she is not on (Mert 2026-10-24): no ticket; in its place its location when more than one is shown, and one
+   quiet line, today or a day ahead (none on a past day); Team · Notes 16 px under them as under a ticket. */
+.employee-lineup-head > .employee-lineup-place { display: flex; align-items: center; gap: 5px; margin: 14px 0 0; color: var(--theme-text); font-size: 14px; font-weight: 650; }
+.employee-lineup-head > .employee-lineup-place svg { flex: none; color: var(--theme-text-secondary); }
+.employee-lineup-note { margin: 14px 0 0; color: var(--theme-text-secondary); font-size: 14px; line-height: 1.4; }
+.employee-lineup-head > .employee-lineup-place + .employee-lineup-note { margin-top: 4px; }
 .employee-lineup :is(button, a):focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
 
 /* The ticket: a stub with the shift's color, a dashed tear, her time, job and place */
@@ -145,7 +153,7 @@
 /* All locations (Mert 2026-10-17 ~9:10 AM): her lineups of the shift at every place, one under the other, a line
    between (mockup v-e.css .e-lsep). */
 .employee-lineup-sep { height: 0; margin: 28px -4px 24px; border: 0; border-top: 1px solid var(--theme-border-strong); }
-.employee-lineup-sep + .employee-lineup-view > .employee-lineup-head > .employee-lineup-ticket { margin-top: 0; }
+.employee-lineup-sep + .employee-lineup-view > .employee-lineup-head > :first-child { margin-top: 0; }
 
 .employee-lineup-calm { display: grid; justify-items: center; gap: 6px; max-width: 700px; margin-top: 16px; padding: 26px 18px; border-radius: 22px; background: var(--theme-surface); box-shadow: var(--theme-shadow-card); text-align: center; }
 .employee-lineup-calm svg { margin-bottom: 4px; color: var(--theme-accent-deep); }
@@ -183,5 +191,6 @@
   .employee-lineup-view > .employee-lineup-head { position: sticky; top: var(--elu-shift-tabs, 43px); z-index: 2; background: inherit; }
   /* The 16 px over the ticket is the head's own, so what passes under it never shows through. */
   .employee-lineup > .lineup-shift-tabs + .employee-lineup-view > .employee-lineup-head { padding-top: 16px; }
-  .employee-lineup > .lineup-shift-tabs + .employee-lineup-view > .employee-lineup-head > .employee-lineup-ticket { margin-top: 0; }
+  /* Whatever comes first in the head: her ticket, or on a lineup she is not on its place, its line or Team · Notes. */
+  .employee-lineup > .lineup-shift-tabs + .employee-lineup-view > .employee-lineup-head > :first-child { margin-top: 0; }
 }
