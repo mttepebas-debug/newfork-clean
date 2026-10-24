@@ -1,5 +1,5 @@
 import type { EmployeeHubReadModel } from "@newfork/shared";
-import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router";
 import { formatTime, formatTimeRange } from "../schedule/lib/scheduleDateTime";
 import type { HomeDay } from "./home-model";
@@ -85,6 +85,23 @@ export function HomeWeekStrip({ model, week, today }: { model: EmployeeHubReadMo
     }
     show(dayAt(event.clientX));
   };
+  // The strip lets the page pan up and down (touch-action: pan-y). Safari took a held or sideways slide's
+  // slightest vertical part as a scroll, moved the page and cancelled the gesture (Mert 2026-10-24). Once the
+  // strip owns the touch (held, or moving more sideways than up or down), its moves never scroll.
+  useEffect(() => {
+    const el = strip.current;
+    if (!el) return;
+    const hold = (event: TouchEvent) => {
+      const g = gesture.current;
+      const touch = event.touches[0];
+      if (!g || !touch || !event.cancelable) return;
+      const dx = Math.abs(touch.clientX - g.x);
+      const dy = Math.abs(touch.clientY - g.y);
+      if (g.mode || dx >= dy) event.preventDefault();
+    };
+    el.addEventListener("touchmove", hold, { passive: false });
+    return () => el.removeEventListener("touchmove", hold);
+  }, []);
   const day = preview ? week[preview.index] : null;
   return (
     <div
