@@ -5,8 +5,10 @@
 --    type's colour and default times as HH:MM; null when the shift has no type or the type has no times). The
 --    shift's own start_time/end_time stay; the web falls back to the type's when they are null.
 -- 2. posted_days: the days of the range whose week has a current publication at one of the person's locations
---    (an assignment not ended). ponytail: a publication's department_ids are not read yet, so a week posted for
---    one department counts as posted for everyone at that location.
+--    (an assignment not ended) that covers the person the way it covers a shift
+--    (schedule_shift_in_department_scope_service): it names no department, or one of the person's active jobs is
+--    in its departments, or has no department and it takes those. A week posted for Kitchen only is not posted
+--    for a bartender at the same location.
 
 CREATE OR REPLACE FUNCTION "public"."get_employee_hub_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_from" "date", "target_to" "date") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
@@ -85,8 +87,8 @@ begin
       ) off_day
       where off_day.day between target_from and target_to
     ),'[]'::jsonb),
-    -- The days of the range whose week is posted at one of the person's locations: a day with no shift there is
-    -- a day off, not a schedule still to come (Home's week strip).
+    -- The days of the range whose week is posted at one of the person's locations, for one of their jobs: a day
+    -- with no shift there is a day off, not a schedule still to come (Home's week strip).
     'posted_days', coalesce((
       select jsonb_agg(to_char(posted.day, 'YYYY-MM-DD') order by posted.day)
       from (
@@ -96,7 +98,11 @@ begin
           join public.employee_location_assignments assignment
             on assignment.location_id=publication.location_id and assignment.employee_id=employee.id and assignment.ended_at is null
           where publication.workspace_id=target_workspace_id and publication.status='current'
-            and publication.week_start<=d::date and d::date<publication.week_start+7)
+            and publication.week_start<=d::date and d::date<publication.week_start+7
+            and (publication.department_ids is null or exists(select 1 from public.employee_job_assignments job_assignment
+              where job_assignment.employee_id=employee.id and job_assignment.ended_at is null
+                and public.schedule_shift_in_department_scope_service(job_assignment.job_id,
+                  publication.department_ids, publication.include_no_department))))
       ) posted
     ),'[]'::jsonb),
     'team', coalesce((
