@@ -167,16 +167,41 @@ describe("headSub", () => {
 
 // Details' facts (mockup-spec 4.3): who, what, where, what was sent, and when it is due.
 describe("documentFacts", () => {
-  it("lists a document waiting for review with what was sent and when it is due", () => {
-    expect(documentFacts(detail(), now)).toEqual([
+  // Mert, 24 Oct: the clock stops while a document waits for review, so Due says the time frozen at sending, the same
+  // number "What's left" offers, never the deadline's live count.
+  it("lists a document waiting for review with what was sent and the time left, paused while it waits", () => {
+    const doc = detail();
+    doc.obligation.remaining_seconds = 9 * 86_400 + 600;
+    expect(documentFacts(doc, now)).toEqual([
       ["Name", "Maria Lopez"],
       ["Document", "Food Handler Card"],
       ["Locations", "Downtown, Midtown"],
       ["Sent", "Wed, Oct 21, 4:12 PM"],
       ["Expires", "Sep 30, 2029"],
       ["Card number", "FH-448812"],
-      ["Due", "Fri, Oct 30 · 7 days left"],
+      ["Due", "9 days left · paused while it waits"],
     ]);
+  });
+  it("says a day, or less than a day, of paused time as What's left does", () => {
+    const doc = detail();
+    doc.obligation.remaining_seconds = 86_400 + 60;
+    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", "1 day left · paused while it waits"]);
+    doc.obligation.remaining_seconds = 3600;
+    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", "less than a day left · paused while it waits"]);
+  });
+  it("keeps the date when a waiting document has no paused time (sent late, or its publication paused)", () => {
+    const doc = detail();
+    doc.obligation.remaining_seconds = 0;
+    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", "Fri, Oct 30 · 7 days left"]);
+    doc.obligation.remaining_seconds = null;
+    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", "Fri, Oct 30 · 7 days left"]);
+  });
+  it("counts the deadline itself once the document is no longer waiting", () => {
+    const doc = detail();
+    doc.obligation.status = "rejected";
+    doc.obligation.remaining_seconds = 9 * 86_400;
+    doc.submissions[0]!.state = "rejected";
+    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", "Fri, Oct 30 · 7 days left"]);
   });
   it("leaves out what is not there", () => {
     const doc = detail();

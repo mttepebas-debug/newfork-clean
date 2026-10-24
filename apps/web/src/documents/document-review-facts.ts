@@ -1,5 +1,6 @@
 import type { DocumentDetail, DocumentObligation } from "@newfork/shared";
 import { zoneName } from "../lib/today";
+import { daysLeftLabel } from "./review-decision";
 
 // What the manager's review drawer says about a document in its head and its Details facts (A2 Tur 6,
 // mockup-spec 2.4 and 4.3), from the real lifecycle data only: no sample clock, no "11:59 PM", no pronouns.
@@ -191,7 +192,14 @@ export function documentFacts(
     facts.push([decided.label, `${formatDay(decided.at, obligation.timezone, now)} · You`]);
     return facts;
   }
-  if (showsDue(obligation, now))
+  // Sending a document for review stops its clock (Mert, 24 Oct): Due then says the time frozen at sending, the same
+  // count "What's left" offers, not the deadline's.
+  const paused =
+    obligation.status === "pending_review" && obligation.deadline_at && (obligation.remaining_seconds ?? 0) > 0
+      ? obligation.remaining_seconds
+      : null;
+  if (paused !== null) facts.push(["Due", `${daysLeftLabel(paused)} left · paused while it waits`]);
+  else if (showsDue(obligation, now))
     facts.push([
       "Due",
       `${formatDay(obligation.deadline_at, obligation.timezone, now)} · ${timeLeft(obligation.deadline_at, now)}`,
