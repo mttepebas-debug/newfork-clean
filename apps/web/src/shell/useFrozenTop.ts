@@ -40,8 +40,9 @@ export function useFrozenTop(area: HTMLElement | null, root: HTMLElement | null 
     let watched: ResizeObserver;
     const observed = new Set<HTMLElement>();
 
-    // A phone's Account lets the document scroll (account.css).
-    const documentScrolls = () => !/(auto|scroll)/.test(getComputedStyle(area).overflowY);
+    // A phone's Account lets the document scroll (account.css). A sheet that holds the page still sets the area
+    // to hidden: it still scrolls its page (Mert 2026-10-24, the heading stuck over the tabs).
+    const documentScrolls = () => !/(auto|scroll|hidden)/.test(getComputedStyle(area).overflowY);
     const scroller = () => (documentScrolls() ? document.documentElement : area);
     const scrolled = () => (documentScrolls() ? window.scrollY : area.scrollTop);
 

@@ -218,3 +218,60 @@ describe("the phone Lineup's pinned top", () => {
     expect(pin).toMatch(/backdrop-filter\s*:\s*none/);
   });
 });
+
+// A sheet over the page (Your shift) holds the main area still with overflow: hidden. The area still scrolls
+// its page; read as the document scrolling, the heading was measured from the window and stuck 56 px down, over
+// the tabs, even after the sheet closed (Mert 2026-10-24).
+function HeldArea() {
+  const [main, setMain] = useState<HTMLElement | null>(null);
+  useFrozenTop(main);
+  return (
+    <main className="app-main" ref={setMain} style={{ overflowY: "hidden" }}>
+      <section className="employee-hub-page">
+        <header className="catalog-page-header">
+          <h1>Schedule</h1>
+        </header>
+      </section>
+    </main>
+  );
+}
+
+describe("useFrozenTop under a sheet that holds the page still", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: true, media: query, addEventListener() {}, removeEventListener() {} }));
+    vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+      run(0);
+      return 1;
+    });
+    // The main area starts under the 56 px app bar, and the heading rests at its top.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      top: 56,
+      bottom: 116,
+      left: 0,
+      right: 390,
+      width: 390,
+      height: 60,
+      x: 0,
+      y: 56,
+      toJSON: () => ({}),
+    } as DOMRect);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("measures the heading from the area, not the window", () => {
+    const { container } = render(<HeldArea />);
+    const heading = container.querySelector<HTMLElement>(".catalog-page-header")!;
+    expect(heading.style.getPropertyValue("--frozen-top")).toBe("0px");
+  });
+});
