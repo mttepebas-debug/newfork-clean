@@ -5,6 +5,16 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { feedPage, notice } from "./notification-fixtures.test-util";
 
+// jsdom has no PointerEvent: a mouse event with a pointer id stands in for it.
+class TestPointerEvent extends MouseEvent {
+  readonly pointerId: number;
+  constructor(type: string, init: PointerEventInit = {}) {
+    super(type, init);
+    this.pointerId = init.pointerId ?? 1;
+  }
+}
+window.PointerEvent ??= TestPointerEvent as unknown as typeof PointerEvent;
+
 const w = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const me = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const requestId = "98020000-0000-4000-8000-000000000001";
@@ -35,7 +45,7 @@ vi.mock("../employee-hub/shift-exchanges/exchange-data", () => ({ refreshExchang
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("@newfork/ui", async (original) => ({ ...(await original<typeof import("@newfork/ui")>()), toast }));
 
-const { NotificationBell, NotificationsPage, NotificationsPanel } = await import("./NotificationViews");
+const { NotificationBell, NotificationsPage, NotificationsPanel, NotificationsSheet } = await import("./NotificationViews");
 const { NotificationList } = await import("./NotificationList");
 
 /** Answers the API by path: the list per filter (an older page when a cursor is sent), counts, seen and read. */
@@ -421,6 +431,119 @@ describe("a row", () => {
     expect((await tile(tom)).querySelector("svg")!.getAttribute("class")).toContain("lucide-calendar-x");
     expect((await tile(/^(Unread: )?Ali P\. asks you to take a shift$/)).querySelector("svg")!.getAttribute("class")).toContain("lucide-circle-help");
     expect((await tile(/^(Unread: )?Can K\. wants to cover for Ali P\.$/)).querySelector("svg")!.getAttribute("class")).toContain("steps-in");
+  });
+});
+
+// S-251 (variant A, frame.js): on the phone an unread row slides either way to show Read under it.
+describe("on the phone, a row", () => {
+  // jsdom lays nothing out: every row is 390 px wide.
+  let width: { mockRestore: () => void };
+  beforeEach(() => {
+    HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    };
+    width = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, top: 0, left: 0, right: 390, bottom: 68, width: 390, height: 68, toJSON: () => ({}),
+    } as DOMRect);
+  });
+  afterEach(() => width.mockRestore());
+
+  const sheet = (items: Parameters<typeof feedPage>[0]) => {
+    answer({ all: feedPage(items) });
+    const onClose = vi.fn();
+    mount(<NotificationsSheet workspaceId={w} onClose={onClose} />);
+    return onClose;
+  };
+  const press = (node: Element) => fireEvent.pointerDown(node, { pointerId: 1, button: 0, clientX: 100, clientY: 100 });
+  const drag = (node: Element, dx: number, dy = 0) => {
+    press(node);
+    fireEvent.pointerMove(node, { pointerId: 1, clientX: 100 + dx / 2, clientY: 100 + dy / 2 });
+    fireEvent.pointerMove(node, { pointerId: 1, clientX: 100 + dx, clientY: 100 + dy });
+    fireEvent.pointerUp(node, { pointerId: 1, clientX: 100 + dx, clientY: 100 + dy });
+  };
+  const slid = (row: Element) => row.querySelector<HTMLElement>(".ni-swipe")!.style.transform;
+
+  it("stays open on Read from 72 px, and Read reads it", async () => {
+    sheet([notice()]);
+    const row = await rowOf(tom);
+    drag(within(row).getByRole("button", { name: tom }), 80);
+    expect(slid(row)).toBe("translateX(96px)");
+    const read = within(row).getByRole("button", { name: "Read" });
+    expect(read.tabIndex).toBe(0);
+    fireEvent.click(read);
+    await waitFor(() => expect(calls("/read")).toHaveLength(1));
+    expect(JSON.parse(String((calls("/read")[0]![2] as RequestInit).body))).toEqual({ ids: [notice().id] });
+  });
+
+  it("opens the other way the same", async () => {
+    sheet([notice()]);
+    const row = await rowOf(tom);
+    drag(within(row).getByRole("button", { name: tom }), -90);
+    expect(slid(row)).toBe("translateX(-96px)");
+    expect(within(row).getByRole("button", { name: "Read" }).className).toContain("is-right");
+  });
+
+  it("springs back under 72 px", async () => {
+    sheet([notice()]);
+    const row = await rowOf(tom);
+    drag(within(row).getByRole("button", { name: tom }), 60);
+    expect(slid(row)).toBe("");
+    expect(within(row).queryByRole("button", { name: "Read" })).toBeNull();
+    expect(calls("/read")).toHaveLength(0);
+  });
+
+  it("reads it at once from half the row, either way", async () => {
+    sheet([notice()]);
+    const row = await rowOf(tom);
+    drag(within(row).getByRole("button", { name: tom }), -200);
+    await waitFor(() => expect(calls("/read")).toHaveLength(1));
+    expect(slid(row)).toBe("");
+  });
+
+  it("lets the list scroll when the finger goes more up or down than sideways", async () => {
+    sheet([notice()]);
+    const row = await rowOf(tom);
+    drag(within(row).getByRole("button", { name: tom }), 10, 80);
+    expect(slid(row)).toBe("");
+    expect(within(row).queryByRole("button", { name: "Read" })).toBeNull();
+  });
+
+  it("does not open the row with the click that ends a drag, but with the next tap", async () => {
+    const onClose = sheet([notice()]);
+    const title = within(await rowOf(tom)).getByRole("button", { name: tom });
+    drag(title, 80);
+    fireEvent.click(title);
+    expect(screen.getByTestId("where").textContent).toBe("/app/workspace");
+    expect(onClose).not.toHaveBeenCalled();
+    press(title);
+    fireEvent.pointerUp(title, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.click(title);
+    expect(screen.getByTestId("where").textContent).toBe(`/app/schedule/requests?type=time_off&request=${requestId}`);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("closes an open row on a tap anywhere else", async () => {
+    sheet([notice(), notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", title: "Walk-in cooler repair on Tuesday", needs_action: false })]);
+    const row = await rowOf(tom);
+    drag(within(row).getByRole("button", { name: tom }), 80);
+    expect(within(row).getByRole("button", { name: "Read" })).toBeTruthy();
+    press(await rowOf(/^(Unread: )?Walk-in cooler repair on Tuesday$/));
+    expect(within(row).queryByRole("button", { name: "Read" })).toBeNull();
+    expect(slid(row)).toBe("");
+  });
+
+  it("does not slide once read, nor in the desktop panel", async () => {
+    sheet([notice({ read_at: "2026-10-16T17:00:00Z" })]);
+    const read = await rowOf(tom);
+    drag(within(read).getByRole("button", { name: tom }), 120);
+    expect(slid(read)).toBe("");
+    cleanup();
+    answer({ all: feedPage([notice()]) });
+    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
+    const panelRow = await rowOf(tom);
+    drag(within(panelRow).getByRole("button", { name: tom }), 120);
+    expect(slid(panelRow)).toBe("");
+    expect(within(panelRow).queryByRole("button", { name: "Read" })).toBeNull();
   });
 });
 

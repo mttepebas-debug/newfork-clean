@@ -8,6 +8,7 @@ const ruleBody = (head: (selector: string) => boolean, sheet = css) =>
     .filter(([, selector]) => selector!.split(",").some((one) => head(one.replace(/\s+/g, " ").trim())))
     .map(([, , body]) => body)
     .join(";");
+const reducedMotion = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
 
 describe("a notification row", () => {
   it("is the same height every time: 64 px, and 68 px on the phone", () => {
@@ -28,6 +29,12 @@ describe("a notification row", () => {
   it("has a dot to read it that is a 44 px target on the phone, with a visible focus", () => {
     expect(ruleBody((head) => head === ".ni-sheet .ni-dot")).toMatch(/width\s*:\s*44px[\s\S]*height\s*:\s*44px|height\s*:\s*44px[\s\S]*width\s*:\s*44px/);
     expect(ruleBody((head) => head === "button.ni-dot:focus-visible")).toMatch(/outline\s*:\s*2px solid var\(--theme-focus\)/);
+  });
+
+  it("slides sideways on the phone while the list still scrolls, and without motion when motion is reduced", () => {
+    expect(ruleBody((head) => head === ".ni-sheet .ni-row")).toMatch(/touch-action\s*:\s*pan-y/);
+    expect(ruleBody((head) => head === ".ni-swipe")).toMatch(/transition\s*:\s*transform/);
+    expect(ruleBody((head) => head === ".ni-swipe", reducedMotion)).toMatch(/transition\s*:\s*none/);
   });
 });
 

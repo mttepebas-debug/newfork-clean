@@ -130,7 +130,7 @@ export function NotificationsSheet({
       </div>
       <NotificationTabs workspaceId={workspaceId} filter={filter} onChange={setFilter} panelId={panelId} />
       <div className="ni-sheet-body">
-        <NotificationList workspaceId={workspaceId} viewerId={context?.userId} filter={filter} panelId={panelId} onNavigate={onClose} />
+        <NotificationList workspaceId={workspaceId} viewerId={context?.userId} filter={filter} panelId={panelId} swipe onNavigate={onClose} />
         <button
           type="button"
           className="ni-link ni-sheet-readall"

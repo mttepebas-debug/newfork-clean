@@ -6,6 +6,7 @@ import {
   CalendarCheck,
   CalendarDays,
   CalendarX,
+  Check,
   CircleCheck,
   CircleHelp,
   CircleX,
@@ -23,14 +24,16 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { Fragment, useEffect, useId, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type ComponentType, type KeyboardEvent, type MouseEvent } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { resolveTimeInputFormat, type TimeFormat } from "../schedule/timeInput";
 import { LinesOutline, LoadError } from "../shell/LoadState";
 import { StepsIn } from "../shell/StepsIn";
 import { arrivalLabel, arrivalTitle, emptyTitle, isNewNotice, rowLines, rowLook, type TileIcon } from "./notification-model";
+import type { SwipeSide } from "./notification-swipe";
 import { useMarkNotificationsRead, useMarkNotificationsSeen, useNotificationCounts, useNotificationFeed } from "./notifications-data";
+import { useRowSwipe } from "./useRowSwipe";
 import "./notifications.css";
 import { useViewAddress } from "../shell/view-address";
 
@@ -135,7 +138,7 @@ function useMinuteClock(fixed: Date | undefined): Date {
 /**
  * The list itself, newest first: what came since the list was last opened under New, the rest under
  * Earlier (S-247 (2)). Showing the list marks it seen; a row stays where it is while the list is open.
- * A row opens its link and reads it; its unread dot reads it.
+ * A row opens its link and reads it; its unread dot reads it; on the phone an unread row slides to Read.
  */
 export function NotificationList({
   workspaceId,
@@ -143,6 +146,7 @@ export function NotificationList({
   filter,
   panelId,
   wide = false,
+  swipe = false,
   onNavigate,
   now: fixedNow,
 }: {
@@ -151,6 +155,8 @@ export function NotificationList({
   readonly filter: NotificationFilter;
   readonly panelId: string;
   readonly wide?: boolean;
+  /** The phone's full-screen list: an unread row slides either way to show Read (S-251). */
+  readonly swipe?: boolean;
   /** Called after a row sends the person somewhere (the panel closes). */
   readonly onNavigate?: () => void;
   readonly now?: Date;
@@ -166,6 +172,8 @@ export function NotificationList({
   const labelledBy = `${panelId}-tab-${filter}`;
   // What this opening of the list showed as new; it stays New after the core marks it seen.
   const [fresh] = useState(() => new Set<string>());
+  // The one row left open on Read (the phone).
+  const [slid, setSlid] = useState<{ readonly id: string; readonly side: SwipeSide } | null>(null);
   const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
   const unseen = items
     .filter((item) => !item.seen_at && !fresh.has(item.id))
@@ -257,6 +265,9 @@ export function NotificationList({
                   item={item}
                   viewerId={viewerId}
                   wide={wide}
+                  swipe={swipe}
+                  slid={slid?.id === item.id ? slid.side : null}
+                  onSlide={(side) => setSlid(side ? { id: item.id, side } : null)}
                   now={now}
                   timeFormat={timeFormat}
                   onOpen={() => open(item)}
@@ -295,6 +306,9 @@ function NotificationRow({
   item,
   viewerId,
   wide,
+  swipe,
+  slid,
+  onSlide,
   now,
   timeFormat,
   onOpen,
@@ -303,6 +317,9 @@ function NotificationRow({
   readonly item: NotificationItem;
   readonly viewerId: string | undefined;
   readonly wide: boolean;
+  readonly swipe: boolean;
+  readonly slid: SwipeSide | null;
+  readonly onSlide: (side: SwipeSide | null) => void;
   readonly now: Date;
   readonly timeFormat: TimeFormat;
   readonly onOpen: () => void;
@@ -316,13 +333,43 @@ function NotificationRow({
   const first = useRef<HTMLButtonElement>(null);
   const second = useRef<HTMLParagraphElement>(null);
   const [whole, setWhole] = useState<string>();
-  const classes = ["ni-row", unread ? "is-unread" : "", wide ? "is-wide" : ""].filter(Boolean).join(" ");
+  const slide = useRowSwipe({ enabled: swipe && unread, open: slid, onOpen: onSlide, onRead });
+  const openRow = (event: MouseEvent) => {
+    if (!slide.endsDrag(event)) onOpen();
+  };
+  const classes = [
+    "ni-row",
+    unread ? "is-unread" : "",
+    wide ? "is-wide" : "",
+    slide.dragging ? "is-dragging" : "",
+    slide.open ? "is-slid" : "",
+    slide.full ? "is-full" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <li
+      ref={slide.row}
       className={classes}
+      {...slide.handlers}
       onPointerEnter={() => setWhole(isCut(first.current) || isCut(second.current) ? [lines.first, lines.second].filter(Boolean).join("\n") : undefined)}
     >
-      <div className="ni-swipe">
+      {slide.side ? (
+        <button
+          type="button"
+          className={`ni-under is-${slide.side}`}
+          tabIndex={slide.open ? 0 : -1}
+          aria-hidden={slide.open ? undefined : true}
+          onClick={() => {
+            onSlide(null);
+            onRead();
+          }}
+        >
+          <Check size={16} aria-hidden />
+          <span>Read</span>
+        </button>
+      ) : null}
+      <div className="ni-swipe" style={slide.style}>
         {unread ? (
           <button type="button" className="ni-dot" onClick={onRead} aria-label={`Mark as read: ${item.title}`} title="Mark as read" />
         ) : (
@@ -337,7 +384,7 @@ function NotificationRow({
             ref={first}
             type="button"
             className="ni-row-title"
-            onClick={onOpen}
+            onClick={openRow}
             disabled={!item.url && !unread}
             aria-describedby={lines.second ? lineId : undefined}
             title={whole}
@@ -349,7 +396,7 @@ function NotificationRow({
             <p ref={second} id={lineId} className={lines.closed ? "ni-row-sub is-closed" : "ni-row-sub"}>
               {lines.second}
             </p>
-            <time dateTime={item.created_at} title={arrivalTitle(item.created_at, timeFormat)} onClick={onOpen}>
+            <time dateTime={item.created_at} title={arrivalTitle(item.created_at, timeFormat)} onClick={openRow}>
               {arrivalLabel(item.created_at, now)}
             </time>
           </div>

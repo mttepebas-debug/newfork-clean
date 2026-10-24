@@ -180,7 +180,8 @@
 }
 /* S-251 (variant A): every row is exactly two one-line lines and the same height (64 px; 68 px on the
    phone), with no buttons in it but the unread dot; the short time sits at the right of the second line.
-   A long older notice is cut at the end of each line. */
+   A long older notice is cut at the end of each line. The row slides over its own background on the
+   phone (below). */
 .ni-row {
   position: relative;
   overflow: hidden;
@@ -194,6 +195,7 @@
   height: 64px;
   padding: 0 14px 0 8px;
   background: var(--theme-surface);
+  transition: transform 180ms ease;
 }
 .ni-row:hover .ni-swipe {
   background: var(--theme-surface-soft);
@@ -332,14 +334,61 @@ button.ni-dot:focus-visible {
     z-index: 1;
   }
 }
-/* The phone's rows are 68 px, and its unread dot is a 44 px target. */
+/* The phone: drag an unread row either way to show Read under it (S-251, Mert 2026-10-23: both ways work
+   the same). Past 72 px it stays open on Read; past half the row it is read at once. */
+.ni-sheet .ni-row {
+  touch-action: pan-y;
+}
 .ni-sheet .ni-swipe {
   height: 68px;
 }
+/* The phone's unread dot is a 44 px target. */
 .ni-sheet .ni-dot {
   width: 44px;
   height: 44px;
   margin-left: -17px;
+}
+.ni-row.is-dragging .ni-swipe {
+  transition: none;
+}
+.ni-row.is-dragging,
+.ni-row.is-slid {
+  background: var(--theme-accent);
+}
+.ni-row.is-full {
+  background: var(--theme-accent-strong);
+}
+.ni-row.is-dragging .ni-row-title,
+.ni-row.is-slid .ni-row-title {
+  text-decoration: none;
+}
+.ni-under {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  width: 96px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--theme-surface);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ni-under.is-left {
+  left: 0;
+}
+.ni-under.is-right {
+  right: 0;
+}
+.ni-under:focus-visible {
+  outline: 2px solid var(--theme-surface);
+  outline-offset: -4px;
 }
 .ni-empty {
   display: grid;
@@ -516,5 +565,8 @@ button.ni-dot:focus-visible {
   .ni-panel,
   .ni-sheet {
     animation: none;
+  }
+  .ni-swipe {
+    transition: none;
   }
 }
