@@ -111,7 +111,7 @@ const row = (over: Partial<DocumentObligation> = {}): DocumentObligation => ({
 });
 function page(
   selfOnly = false,
-  extra: { queue?: DocumentObligation[]; sitting?: ReviewSitting } = {},
+  extra: { queue?: DocumentObligation[]; sitting?: ReviewSitting; canReview?: boolean } = {},
 ) {
   const onClose = vi.fn(),
     onNext = vi.fn(),
@@ -127,7 +127,7 @@ function page(
         audience={{ workspaceId: "workspace", selfOnly }}
         userId="user"
         requirementId={requirementId}
-        canReview={!selfOnly}
+        canReview={extra.canReview ?? !selfOnly}
         onClose={onClose}
         onNext={onNext}
         onOpen={onOpen}
@@ -1764,6 +1764,17 @@ describe("manager review drawer", () => {
     } finally {
       now.mockRestore();
     }
+  });
+
+  // Today's view-only manager keeps reading: the strip and the facts, nothing to decide.
+  it("shows a manager who may only read the document, with nothing to decide", async () => {
+    page(false, { canReview: false, queue: [row(), sam()] });
+    await screen.findByText("Test Employee", { selector: "dd" });
+    expect(screen.getByRole("button", { name: "Next: Sam Lee" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
+    expect(screen.queryByLabelText("Rejection reason")).toBeNull();
+    expect(screen.queryByRole("region", { name: "More options" })).toBeNull();
   });
 
   it("closes from its X or Escape at once", async () => {
