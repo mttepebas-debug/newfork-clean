@@ -87,8 +87,11 @@ export function ManagerDocumentHistory({
                             type="button"
                             className="docr-ev-fname"
                             title={file.name}
-                            disabled={opening}
-                            onClick={() => onOpen(file.submissionId, file.id)}
+                            aria-disabled={opening ? "true" : undefined}
+                            onClick={() => {
+                              // Focusable while a file opens (a disabled button drops focus); opens nothing more.
+                              if (!opening) onOpen(file.submissionId, file.id);
+                            }}
                           >
                             {file.name}
                           </button>

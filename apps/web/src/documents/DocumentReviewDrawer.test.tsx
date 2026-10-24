@@ -1273,6 +1273,44 @@ describe("download, document time zone and deadline extension", () => {
     );
     expect(invalidate).not.toHaveBeenCalled();
   });
+  // K1 fix pass: a disabled button drops its focus to the page, and inside the Employee drawer Escape then closes
+  // both drawers. While a file opens, its button stays focusable, says it is busy, and opens nothing more.
+  it("keeps a file's button in reach while the file opens, and opens it once", async () => {
+    let opened: () => void = () => undefined;
+    vi.mocked(downloadDocument).mockReturnValue(new Promise<void>((resolve) => (opened = resolve)));
+    page();
+    const file = await screen.findByRole("button", { name: "certificate.pdf" });
+    file.focus();
+    fireEvent.click(file);
+    await waitFor(() => expect(file.getAttribute("aria-disabled")).toBe("true"));
+    expect(file).toHaveProperty("disabled", false);
+    expect(document.activeElement).toBe(file);
+    fireEvent.click(file);
+    expect(downloadDocument).toHaveBeenCalledOnce();
+    opened();
+    await waitFor(() => expect(file.getAttribute("aria-disabled")).toBeNull());
+  });
+  it("keeps a History file's button in reach while it opens", async () => {
+    const doc = detail();
+    doc.history = [
+      {
+        id: "00000000-0000-4000-8000-000000000001",
+        action: "document.submitted",
+        occurred_at: "2026-09-15T12:00:00Z",
+        metadata: { submission_id: "submission" },
+      },
+    ];
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    vi.mocked(downloadDocument).mockReturnValue(new Promise<void>(() => undefined));
+    page();
+    fireEvent.click(await screen.findByRole("tab", { name: "History" }));
+    const file = within(screen.getByRole("list", { name: "History" })).getByRole("button", { name: "certificate.pdf" });
+    fireEvent.click(file);
+    await waitFor(() => expect(file.getAttribute("aria-disabled")).toBe("true"));
+    expect(file).toHaveProperty("disabled", false);
+    fireEvent.click(file);
+    expect(downloadDocument).toHaveBeenCalledOnce();
+  });
   it("saves a changed document time zone against the employee's revision, then refreshes", async () => {
     const doc = detail();
     doc.timezone_settings = {
@@ -1300,6 +1338,30 @@ describe("download, document time zone and deadline extension", () => {
       }),
     );
     await waitFor(() => expectRefreshed(invalidate));
+  });
+  // K1 fix pass: the time zone's Save turns itself off once saved (and while saving), which drops focus to the page;
+  // focus goes back to the time zone choice.
+  it("gives focus back to the time zone choice once it is saved", async () => {
+    const doc = detail();
+    doc.timezone_settings = {
+      value: "America/Chicago",
+      configured_value: "America/Chicago",
+      employee_revision: 4,
+      can_manage: true,
+    };
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    vi.mocked(setDocumentTimezone).mockResolvedValue({});
+    page();
+    const save = await screen.findByRole("button", { name: "Save document time zone" });
+    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), { target: { value: "America/Denver" } });
+    const saved = detail();
+    saved.obligation.revision = 2;
+    saved.timezone_settings = { ...doc.timezone_settings, configured_value: "America/Denver", value: "America/Denver" };
+    vi.mocked(getDocument).mockResolvedValue(saved);
+    save.focus();
+    fireEvent.click(save);
+    await waitFor(() => expect(setDocumentTimezone).toHaveBeenCalledOnce());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Time zone" })));
   });
   // BL-828: someone changed the person's record first; the document revision
   // is the same, the person's is newer. The drawer reloads and says so.

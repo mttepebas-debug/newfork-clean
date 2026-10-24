@@ -190,6 +190,9 @@ export function ManagerDocumentContent({
   const [changed, setChanged] = useState(false);
   const green = useRef<HTMLButtonElement>(null);
   const focusGreen = useRef(false);
+  // The time zone's Save turns itself off once saved (and its fieldset while saving): focus goes back to the choice.
+  const zone = useRef<HTMLFieldSetElement>(null);
+  const focusZone = useRef(false);
   const sending = useRef(false);
   const noteId = useId();
 
@@ -246,6 +249,7 @@ export function ManagerDocumentContent({
         timezone: referenceTimezone,
       }),
     onSuccess: async () => {
+      focusZone.current = true;
       await refresh();
       forget("timezone");
     },
@@ -424,7 +428,7 @@ export function ManagerDocumentContent({
     );
   if (detail.timezone_settings?.can_manage)
     notes.push(
-      <fieldset key="zone" className="docr-zone" disabled={busy}>
+      <fieldset key="zone" ref={zone} className="docr-zone" disabled={busy}>
         <legend>Document time zone</legend>
         <p>
           This employee has no active location. This time zone is used only for their document dates and reminders.
@@ -675,6 +679,11 @@ export function ManagerDocumentContent({
     if (busy || !focusGreen.current) return;
     focusGreen.current = false;
     green.current?.focus({ preventScroll: true });
+  });
+  useEffect(() => {
+    if (busy || !focusZone.current) return;
+    focusZone.current = false;
+    (zone.current?.querySelector<HTMLElement>("select") ?? green.current)?.focus({ preventScroll: true });
   });
   // Save turning on is said: the line over it is not live.
   const on = greenNow.act === "save" && !greenNow.off;

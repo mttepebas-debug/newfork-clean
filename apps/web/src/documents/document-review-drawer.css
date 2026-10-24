@@ -301,6 +301,10 @@
   cursor: default;
   opacity: 1;
 }
+/* While a file opens, every file button stays as it is, focus included, and says it is busy. */
+.catalog-drawer.document-review-drawer :is(.docr-file-name, .docr-file-open, button.docr-ev-fname)[aria-disabled="true"] {
+  cursor: progress;
+}
 .catalog-drawer.document-review-drawer .docr-file-meta {
   color: var(--theme-muted);
   font-size: 12.5px;

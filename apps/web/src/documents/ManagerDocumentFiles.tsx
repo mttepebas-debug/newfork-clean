@@ -76,7 +76,11 @@ function FileRow({
 }) {
   // The server hands out kept files only.
   const closed = file.decision === "discard";
-  const open = () => shared.onOpen(version.id, file.id);
+  // While a file opens the buttons stay focusable (a disabled one drops focus to the page) and open nothing more.
+  const open = () => {
+    if (!shared.opening) shared.onOpen(version.id, file.id);
+  };
+  const opening = shared.opening && !closed ? "true" : undefined;
   const chip = tag ? <span className={`rd-chip ${tag.tone}`}>{tag.label}</span> : null;
   const note = tag?.label === "Rejected" && file.note ? <span className="docr-ro-note">{file.note}</span> : null;
   const metaText = meta ?? fileMeta(file);
@@ -87,7 +91,8 @@ function FileRow({
           type="button"
           className={`docr-file-open${chip ? " has-tag" : ""}`}
           aria-label={`Open ${file.filename}${tag ? ` · ${tag.label}` : ""}`}
-          disabled={closed || shared.opening}
+          aria-disabled={opening}
+          disabled={closed}
           onClick={open}
         >
           <span className="docr-thumb" aria-hidden>
@@ -115,7 +120,8 @@ function FileRow({
               type="button"
               className="docr-file-name"
               title={file.filename}
-              disabled={closed || shared.opening}
+              aria-disabled={opening}
+              disabled={closed}
               onClick={open}
             >
               {file.filename}
