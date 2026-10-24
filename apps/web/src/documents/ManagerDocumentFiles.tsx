@@ -78,8 +78,7 @@ function FileRow({
   const closed = file.decision === "discard";
   const open = () => shared.onOpen(version.id, file.id);
   const chip = tag ? <span className={`rd-chip ${tag.tone}`}>{tag.label}</span> : null;
-  const note =
-    tag?.label === "Rejected" && file.note ? <span className="docr-ro-note">{file.note}</span> : null;
+  const note = tag?.label === "Rejected" && file.note ? <span className="docr-ro-note">{file.note}</span> : null;
   const metaText = meta ?? fileMeta(file);
   return (
     <div className={`docr-file${choice ? (choice === "reject" ? " is-no" : " is-ok") : ""}`}>
@@ -319,6 +318,7 @@ function VersionFiles({
 export function ManagerDocumentFiles({
   detail,
   version,
+  renewal = null,
   review,
   again,
   off,
@@ -328,6 +328,8 @@ export function ManagerDocumentFiles({
 }: Shared & {
   detail: DocumentDetail;
   version: Submission | null;
+  /** A renewal sent back while the copy on file still counts: its own version, as decided (gaps A2). */
+  renewal?: Submission | null;
   review: FileReview | null;
   /** An approved version can be reviewed again (K1 decision 2). */
   again: { open: boolean; onToggle: () => void } | null;
@@ -367,38 +369,46 @@ export function ManagerDocumentFiles({
   const live = review && off ? { ...review, off: true } : review;
   const rejected = live ? version.files.some((file) => live.choices[file.id] === "reject") : false;
   const aside = shared.phone ? sent : `Version ${version.version}`;
-  return (
-    <DrawerSection
-      title={shared.phone ? `Version ${version.version}` : "Files"}
-      aside={aside ? <span>{aside}</span> : undefined}
-    >
-      <VersionFiles version={version} shared={shared} review={live} exempt={obligation.status === "exempt"} />
-      {live && rejected ? <PeriodRow review={live} busy={shared.busy} /> : null}
-      {off && (live || again) ? (
-        <p className="rd-foot-note docr-offnote">
-          <Info size={14} aria-hidden className="docr-offnote-icon" />
-          <span className="docr-offnote-text">Save or cancel {off.name} first</span>
-          <button type="button" className="docr-textbtn" data-guard="" disabled={shared.busy} onClick={off.onCancel}>
-            Cancel
-          </button>
-        </p>
-      ) : null}
-      {again ? (
-        <div className="docr-files-foot">
-          <button
-            type="button"
-            className="docr-textbtn"
-            aria-disabled={off ? "true" : undefined}
-            data-guard=""
-            disabled={shared.busy}
-            onClick={() => {
-              if (!off) again.onToggle();
-            }}
-          >
-            {again.open ? "Cancel review" : "Review again"}
-          </button>
-        </div>
-      ) : null}
+  const sentBack = renewal ? (
+    <DrawerSection title={`Version ${renewal.version} · Sent back`}>
+      <VersionFiles version={renewal} shared={shared} review={null} exempt={false} />
     </DrawerSection>
+  ) : null;
+  return (
+    <>
+      <DrawerSection
+        title={shared.phone ? `Version ${version.version}` : "Files"}
+        aside={aside ? <span>{aside}</span> : undefined}
+      >
+        <VersionFiles version={version} shared={shared} review={live} exempt={obligation.status === "exempt"} />
+        {live && rejected ? <PeriodRow review={live} busy={shared.busy} /> : null}
+        {off && (live || again) ? (
+          <p className="rd-foot-note docr-offnote">
+            <Info size={14} aria-hidden className="docr-offnote-icon" />
+            <span className="docr-offnote-text">Save or cancel {off.name} first</span>
+            <button type="button" className="docr-textbtn" data-guard="" disabled={shared.busy} onClick={off.onCancel}>
+              Cancel
+            </button>
+          </p>
+        ) : null}
+        {again ? (
+          <div className="docr-files-foot">
+            <button
+              type="button"
+              className="docr-textbtn"
+              aria-disabled={off ? "true" : undefined}
+              data-guard=""
+              disabled={shared.busy}
+              onClick={() => {
+                if (!off) again.onToggle();
+              }}
+            >
+              {again.open ? "Cancel review" : "Review again"}
+            </button>
+          </div>
+        ) : null}
+      </DrawerSection>
+      {sentBack}
+    </>
   );
 }

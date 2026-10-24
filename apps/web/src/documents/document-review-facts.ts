@@ -62,14 +62,27 @@ export function timeLeft(deadline: string, now: Date): string {
   return days === 1 ? "1 day left" : `${days} days left`;
 }
 
-/** The version a manager is shown: the one sent (for review, or sent back), else the approved one. */
+/**
+ * A renewal sent back while the approved copy is still valid (gaps A2): the document stays Completed (or waits for a
+ * time zone) on the copy on file, and the renewal is a version of its own. Null in every other case.
+ */
+export function keptRenewal(detail: DocumentDetail): Submission | null {
+  const { submitted_id, approved_id, status } = detail.obligation;
+  if (!approved_id || approved_id === submitted_id) return null;
+  if (status !== "completed" && status !== "timezone_required") return null;
+  if (!detail.submissions.some((s) => s.id === approved_id)) return null;
+  const renewal = detail.submissions.find((s) => s.id === submitted_id);
+  return renewal?.state === "rejected" ? renewal : null;
+}
+
+/**
+ * The version a manager is shown: the one sent (for review, or sent back), else the approved one; the copy on file
+ * when a renewal of it was sent back.
+ */
 export function shownVersion(detail: DocumentDetail): Submission | null {
   const { submitted_id, approved_id } = detail.obligation;
-  return (
-    detail.submissions.find((s) => s.id === submitted_id) ??
-    detail.submissions.find((s) => s.id === approved_id) ??
-    null
-  );
+  const sent = keptRenewal(detail) ? undefined : detail.submissions.find((s) => s.id === submitted_id);
+  return sent ?? detail.submissions.find((s) => s.id === approved_id) ?? null;
 }
 
 type Head = Pick<

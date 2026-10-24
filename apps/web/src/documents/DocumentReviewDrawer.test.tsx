@@ -2456,6 +2456,55 @@ describe("file decisions and the dock", () => {
     );
     expect(screen.getByText("Completed", { selector: ".rd-head .rd-chip" })).toBeTruthy();
     expect(screen.queryByText("Missing", { selector: ".rd-head .rd-chip" })).toBeNull();
+    // What the document is now is the copy on file; the renewal stands apart, as sent back.
+    expect(screen.getByText("Expires", { selector: "dt" }).nextElementSibling?.textContent).toBe("Dec 31, 2026");
+    expect(chipOf("old.pdf")?.textContent).toBe("Approved");
+    const renewalFiles = screen.getByRole("region", { name: "Version 2 · Sent back" });
+    expect(within(renewalFiles).getByText("certificate.pdf").closest(".docr-file")?.querySelector(".rd-chip")?.textContent).toBe(
+      "Rejected",
+    );
+    expect(within(renewalFiles).getByText("Expired")).toBeTruthy();
+  });
+
+  // K1 fix pass (gaps A2): opened fresh, the same document reads as the copy on file, with the renewal apart.
+  it("opens a renewal sent back while its old copy stays on the copy on file", async () => {
+    const doc = detail();
+    doc.obligation.status = "completed";
+    doc.obligation.approved_id = "old";
+    doc.obligation.expiry_date = "2026-12-31";
+    doc.obligation.rejection_reason = "Blurry photo.";
+    doc.submissions[0] = {
+      ...doc.submissions[0]!,
+      version: 2,
+      state: "rejected",
+      expiry_date: "2029-09-30",
+      rejection_reason: "Blurry photo.",
+      files: [{ ...doc.submissions[0]!.files[0]!, filename: "lena-2026.jpg", decision: "discard", note: "Blurry photo" }],
+    };
+    doc.submissions.push({
+      ...doc.submissions[0]!,
+      id: "old",
+      version: 1,
+      state: "accepted",
+      submitted_at: "2025-11-28T18:00:00Z",
+      reviewed_at: "2025-12-02T18:00:00Z",
+      expiry_date: "2026-12-31",
+      rejection_reason: null,
+      files: [{ ...doc.submissions[0]!.files[0]!, id: "old-file", filename: "lena-2025.jpg", decision: "keep", note: "" }],
+    });
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    const files = await screen.findByRole("region", { name: "Files" });
+    expect(screen.getByText("Expires", { selector: "dt" }).nextElementSibling?.textContent).toBe("Dec 31, 2026");
+    expect(within(files).getByText("Version 1")).toBeTruthy();
+    expect(chipOf("lena-2025.jpg")?.textContent).toBe("Approved");
+    expect(within(files).queryByText("lena-2026.jpg")).toBeNull();
+    const renewal = screen.getByRole("region", { name: "Version 2 · Sent back" });
+    expect(chipOf("lena-2026.jpg")?.textContent).toBe("Rejected");
+    expect(within(renewal).getByText("Blurry photo")).toBeTruthy();
+    // Each rejected file says its own reason; the document's reason is not said twice.
+    expect(screen.queryByText("Blurry photo.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Review again" })).toBeNull();
   });
 
   // K1 decision 12: a row that waits for the person's document time zone keeps today's time zone parts.

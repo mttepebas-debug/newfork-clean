@@ -8,7 +8,7 @@ import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { LinesOutline, LoadError } from "../shell/LoadState";
 import { RequestDrawer, type DrawerTab } from "../views/RequestDrawer";
 import { documentQueryKey, getDocument, type DocumentAudience } from "./document-data";
-import { headSub, shownVersion } from "./document-review-facts";
+import { headSub, keptRenewal, shownVersion } from "./document-review-facts";
 import { initials, statusLabel, statusTone } from "./document-rules";
 import { ManagerDocumentContent, type ManagerTab } from "./ManagerDocumentContent";
 import { createReviewGuard } from "./review-guard";
@@ -67,7 +67,9 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
   const escape = useRef<(() => boolean) | null>(null);
   // Each document opens on Details; a tab chosen for one is not carried to the next.
   const [chosen, setChosen] = useState<{ id: string; tab: ManagerTab }>({ id: requirementId, tab: "details" });
-  const files = detail ? (shownVersion(detail)?.files.length ?? 0) : 0;
+  const files = detail
+    ? (shownVersion(detail)?.files.length ?? 0) + (keptRenewal(detail)?.files.length ?? 0)
+    : 0;
   const wanted = chosen.id === requirementId ? chosen.tab : "details";
   // A desktop has the files inside Details; a phone has its Files tab only when there are files.
   const tab: ManagerTab = wanted === "files" && (!phone || !files) ? "details" : wanted;

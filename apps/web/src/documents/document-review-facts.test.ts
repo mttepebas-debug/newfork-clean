@@ -11,6 +11,8 @@ import {
   formatDay,
   formatMoment,
   headSub,
+  keptRenewal,
+  shownVersion,
   timeLeft,
 } from "./document-review-facts";
 
@@ -234,6 +236,60 @@ describe("documentFacts", () => {
       ["Card number", "FH-448812"],
       ["Sent back", "Fri, Oct 23 · You"],
     ]);
+  });
+});
+
+// K1 fix pass (gaps A2): a renewal sent back while the approved copy is still valid leaves the document Completed;
+// what the document is (sent, expires, its fields) is the copy on file, and the renewal stands as its own version.
+describe("a renewal sent back while the approved copy still counts", () => {
+  function lena(status: "completed" | "timezone_required" = "completed"): DocumentDetail {
+    const doc = detail();
+    doc.obligation.status = status;
+    doc.obligation.approved_id = "v1";
+    doc.obligation.deadline_at = null;
+    doc.submissions[0]!.state = "rejected";
+    doc.submissions.push({
+      id: "v1",
+      version: 1,
+      state: "accepted",
+      submitted_at: "2025-11-28T18:00:00Z",
+      reviewed_at: "2025-12-02T18:00:00Z",
+      expiry_date: "2026-12-31",
+      metadata: { card: "FH-100200" },
+      rejection_reason: null,
+      files: [],
+    });
+    return doc;
+  }
+  it("shows the copy on file and keeps the renewal apart", () => {
+    const doc = lena();
+    expect(shownVersion(doc)?.id).toBe("v1");
+    expect(keptRenewal(doc)?.id).toBe("v2");
+    expect(keptRenewal(lena("timezone_required"))?.id).toBe("v2");
+    expect(documentFacts(doc, now)).toEqual([
+      ["Name", "Maria Lopez"],
+      ["Document", "Food Handler Card"],
+      ["Locations", "Downtown, Midtown"],
+      ["Sent", "Fri, Nov 28, 2025, 10:00 AM"],
+      ["Expires", "Dec 31, 2026"],
+      ["Card number", "FH-100200"],
+    ]);
+  });
+  it("is no renewal when the version sent is the one on file, waits for review, or nothing is on file", () => {
+    const same = lena();
+    same.obligation.submitted_id = "v1";
+    expect(keptRenewal(same)).toBeNull();
+    expect(shownVersion(same)?.id).toBe("v1");
+    const waiting = lena();
+    waiting.obligation.status = "pending_review";
+    waiting.submissions[0]!.state = "pending_review";
+    expect(keptRenewal(waiting)).toBeNull();
+    expect(shownVersion(waiting)?.id).toBe("v2");
+    const sentBack = detail();
+    sentBack.obligation.status = "rejected";
+    sentBack.submissions[0]!.state = "rejected";
+    expect(keptRenewal(sentBack)).toBeNull();
+    expect(shownVersion(sentBack)?.id).toBe("v2");
   });
 });
 

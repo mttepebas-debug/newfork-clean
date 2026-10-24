@@ -29,6 +29,7 @@ import {
   firstName,
   formatDate,
   formatDay,
+  keptRenewal,
   shownVersion,
 } from "./document-review-facts";
 import { isObligationClosed, statusLabel } from "./document-rules";
@@ -314,7 +315,9 @@ export function ManagerDocumentContent({
   const version = obligation.status === "expired"
     ? (detail.submissions.find((s) => s.id === obligation.approved_id) ?? null)
     : shownVersion(detail);
-  const fileCount = version?.files.length ?? 0;
+  // A renewal sent back while the copy on file still counts stands as its own version under it (gaps A2).
+  const renewal = keptRenewal(detail);
+  const fileCount = (version?.files.length ?? 0) + (renewal?.files.length ?? 0);
   const periods = periodChoices(obligation);
   const progress = reviewing && current ? reviewProgress(current.files, choices, reasons) : null;
   const expires = current?.expiry_date ? formatDate(current.expiry_date) : null;
@@ -441,7 +444,8 @@ export function ManagerDocumentContent({
     );
   // A document sent back from this drawer has its reason made of the files' own reasons, which stand under their
   // files; the reason shows here only when a rejected file of the version carries none (sent back before them).
-  const rejectedFiles = version?.state === "rejected" ? version.files.filter((file) => file.decision === "discard") : [];
+  const sentBack = version?.state === "rejected" ? version : renewal;
+  const rejectedFiles = sentBack ? sentBack.files.filter((file) => file.decision === "discard") : [];
   const reasonOnFiles = rejectedFiles.length > 0 && rejectedFiles.every((file) => file.note.trim());
   if (obligation.rejection_reason && !reasonOnFiles)
     notes.push(
@@ -538,6 +542,7 @@ export function ManagerDocumentContent({
       {...shared}
       detail={detail}
       version={version}
+      renewal={renewal}
       review={fileReview}
       again={canReviewAgain ? { open: reviewAgain, onToggle: () => setReviewAgain(!reviewAgain) } : null}
       off={off}
@@ -555,6 +560,7 @@ export function ManagerDocumentContent({
           : `All ${fileCount} files checked`;
     if (!version || obligation.status === "exempt" || obligation.status === "expired")
       return plural(fileCount, "file", "files");
+    if (renewal) return "Renewal sent back";
     const rejected = version.files.filter((file) => file.decision === "discard").length;
     if (version.state === "rejected")
       return fileCount === 1 ? "File rejected" : `${rejected} of ${fileCount} files rejected`;
