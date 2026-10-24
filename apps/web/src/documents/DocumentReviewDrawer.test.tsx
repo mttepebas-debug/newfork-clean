@@ -1958,6 +1958,54 @@ describe("manager review drawer", () => {
       expect(document.activeElement).toBe(files);
       expect(screen.getByRole("button", { name: "Open certificate.pdf" })).toBeTruthy();
     });
+    // K1 fix pass (mockup tur2-a2.js:294-296): an expired document has no Files tab; its last approved copy is in
+    // Details, each file opening from its row.
+    it("keeps an expired document's last approved copy in Details, with no Files tab", async () => {
+      const doc = detail();
+      doc.obligation.status = "expired";
+      doc.obligation.approved_id = "submission";
+      doc.obligation.expiry_date = "2026-10-14";
+      doc.submissions[0]!.state = "accepted";
+      doc.submissions[0]!.reviewed_at = "2024-10-11T18:00:00Z";
+      vi.mocked(getDocument).mockResolvedValue(doc);
+      page();
+      const last = await screen.findByRole("region", { name: "Last approved" });
+      expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "History"]);
+      expect(within(last).getByRole("button", { name: "Open certificate.pdf" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /^1 file/ })).toBeNull();
+    });
+    // The server hands out kept files only (23 Oct rule: refused means hidden): a rejected file shows no eye.
+    it("shows the eye only on files that open", async () => {
+      const doc = detail();
+      doc.obligation.status = "rejected";
+      doc.submissions[0]!.state = "rejected";
+      doc.submissions[0]!.files = [
+        { ...doc.submissions[0]!.files[0]!, decision: "discard", note: "Blurry" },
+        { ...doc.submissions[0]!.files[0]!, id: "kept", filename: "front.pdf", decision: "keep" },
+      ];
+      vi.mocked(getDocument).mockResolvedValue(doc);
+      page();
+      fireEvent.click(await screen.findByRole("tab", { name: "Files, 2 files" }));
+      const rejected = screen.getByRole("button", { name: "Open certificate.pdf · Rejected" });
+      const kept = screen.getByRole("button", { name: "Open front.pdf · Kept" });
+      expect(rejected.querySelector(".docr-file-eye")).toBeNull();
+      expect(rejected.querySelector(".docr-file-noeye")).toBeTruthy();
+      expect(kept.querySelector(".docr-file-eye")).toBeTruthy();
+    });
+  });
+
+  // K1 fix pass (mockup tur2-a2.js:291-293): "Nothing sent yet" belongs to a document still owed, not to one excused.
+  // (A missing one says it: "offers no card to excuse a policy to sign, and no options to a manager who may only read".)
+  it("says nothing was sent only while the document is owed", async () => {
+    const excused = detail();
+    excused.obligation.status = "exempt";
+    excused.obligation.submitted_id = null;
+    excused.submissions = [];
+    vi.mocked(getDocument).mockResolvedValue(excused);
+    page();
+    await screen.findByText("Test Employee", { selector: "dd" });
+    expect(screen.queryByText("Nothing sent yet")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Files" })).toBeNull();
   });
 });
 

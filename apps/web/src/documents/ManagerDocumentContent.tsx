@@ -749,9 +749,10 @@ export function ManagerDocumentContent({
           {facts}
           {notes.length ? <DrawerSection>{notes}</DrawerSection> : null}
           {policy}
+          {/* An expired document keeps its last approved copy in Details on a phone too (mockup tur2-a2.js:294-296). */}
           {obligation.kind === "acknowledgement" && !detail.submissions.length
             ? null
-            : phone
+            : phone && obligation.status !== "expired"
               ? goFiles
               : fileSection}
           {moreOptions}

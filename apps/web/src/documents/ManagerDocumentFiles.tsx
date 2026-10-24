@@ -98,7 +98,12 @@ function FileRow({
             <span className="docr-file-meta">{metaText}</span>
           </span>
           {chip}
-          <Eye size={18} aria-hidden className="docr-file-eye" />
+          {/* A file the server no longer hands out draws no eye; its slot keeps the chip where it is. */}
+          {closed ? (
+            <span aria-hidden className="docr-file-noeye" />
+          ) : (
+            <Eye size={18} aria-hidden className="docr-file-eye" />
+          )}
         </button>
       ) : (
         <>
@@ -353,6 +358,8 @@ export function ManagerDocumentFiles({
         />
       </DrawerSection>
     );
+  // Nothing sent says so while the document is owed; an excused, paused or closed one has no files to speak of.
+  if (!version && !["missing", "grace", "rejected"].includes(obligation.status)) return null;
   if (!version)
     return (
       <DrawerSection title="Files">

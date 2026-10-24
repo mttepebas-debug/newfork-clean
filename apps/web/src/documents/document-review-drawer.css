@@ -939,14 +939,15 @@
   margin-top: 2px;
 }
 
-/* The phone's way to the files: one boxed 44 px row button (icon, what is there, "Files", the chevron). */
+/* The phone's way to the files: one boxed row button (icon, what is there, "Files", the chevron), 48 px inside its
+   1 px edge, as tall as the More options cards under it (mockup tur2-a2.css:248). */
 .catalog-drawer.document-review-drawer .docr-gofiles {
   display: grid;
   grid-template-columns: 18px auto minmax(0, 1fr) 16px;
   align-items: center;
   gap: 10px;
   width: 100%;
-  min-height: 44px;
+  min-height: 50px;
   padding: 0 12px;
   border: 1px solid var(--theme-border-control);
   border-radius: 10px;
@@ -1167,6 +1168,7 @@
   }
   .catalog-drawer.document-review-drawer .rd .docr-nofile {
     grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
   }
   .catalog-drawer.document-review-drawer .docr-file-open {
     display: grid;
@@ -1209,8 +1211,9 @@
   .catalog-drawer.document-review-drawer .docr-file-eye {
     color: var(--theme-accent-deep);
   }
-  .catalog-drawer.document-review-drawer .docr-file-open:disabled .docr-file-eye {
-    color: var(--theme-muted);
+  .catalog-drawer.document-review-drawer .docr-file-noeye {
+    width: 18px;
+    height: 18px;
   }
   .catalog-drawer.document-review-drawer .docr-ro-note {
     grid-column: 1 / -1;

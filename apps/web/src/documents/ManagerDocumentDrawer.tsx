@@ -67,9 +67,11 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
   const escape = useRef<(() => boolean) | null>(null);
   // Each document opens on Details; a tab chosen for one is not carried to the next.
   const [chosen, setChosen] = useState<{ id: string; tab: ManagerTab }>({ id: requirementId, tab: "details" });
-  const files = detail
-    ? (shownVersion(detail)?.files.length ?? 0) + (keptRenewal(detail)?.files.length ?? 0)
-    : 0;
+  // An expired document's last approved copy stays in Details: no Files tab for it.
+  const files =
+    detail && detail.obligation.status !== "expired"
+      ? (shownVersion(detail)?.files.length ?? 0) + (keptRenewal(detail)?.files.length ?? 0)
+      : 0;
   const wanted = chosen.id === requirementId ? chosen.tab : "details";
   // A desktop has the files inside Details; a phone has its Files tab only when there are files.
   const tab: ManagerTab = wanted === "files" && (!phone || !files) ? "details" : wanted;
