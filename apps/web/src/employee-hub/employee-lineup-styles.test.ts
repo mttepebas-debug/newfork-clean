@@ -26,14 +26,36 @@ describe("employee lineup styles", () => {
     );
   });
 
-  // Mert 2026-10-23: centred on the whole screen like My shifts (employee-my-shifts.css), so going from My shifts
-  // to Lineup the page doesn't move sideways; the 560 px column keeps inside the page box where the screen is narrow.
-  it("centres the day and the lineup on the whole screen in a held page, like My shifts", () => {
+  // Mert 2026-10-23, A: the middle of the room right of the open menu, the same on My shifts (employee-my-shifts.css),
+  // so going from My shifts to Lineup the page doesn't move sideways; the menu folding moves nothing (the page is
+  // held); the column keeps inside the page box where the screen is narrow.
+  const centre =
+    "margin-left: clamp(0px, 50vw - var(--app-sidebar-width) / 2 - var(--app-page-gutter-start) - 350px, 100% - 700px);";
+
+  it("centres the day and the lineup on the room right of the open menu in a held page", () => {
     const desktop = mediaBlock("(min-width: 721px)");
 
     expect(desktop).toContain(
       '.app-shell[data-content-held="true"] > .app-main > .employee-hub-page > .employee-lineup-page > :is(.employee-lineup-day, .employee-lineup) {\n' +
-        "    margin-left: clamp(0px, 50vw - var(--app-sidebar-width) - var(--app-page-gutter-start) - 280px, 100% - 560px);",
+        `    ${centre}`,
     );
   });
+
+  it("centres My shifts on the same line", () => {
+    const myShifts = readFileSync("src/employee-hub/employee-my-shifts.css", "utf8");
+
+    expect(myShifts).toContain(
+      '.app-shell[data-content-held="true"] > .app-main > .employee-hub-page > .ems {\n' + `    ${centre}`,
+    );
+  });
+
+  // Mert 2026-10-23 ("1- olsun"): the column is as wide as My shifts', 700 px, so their edges meet too.
+  it.each([".employee-lineup-day", ".employee-lineup", ".employee-lineup-calm"])(
+    "makes %s as wide as My shifts",
+    (selector) => {
+      const rule = styles.split("\n").find((line) => line.startsWith(`${selector} {`)) ?? "";
+
+      expect(rule).toContain("max-width: 700px;");
+    },
+  );
 });
