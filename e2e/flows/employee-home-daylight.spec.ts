@@ -66,7 +66,7 @@ test("phone: the next shift folds into the top bar as Home scrolls, and opens fr
   await pill.tap();
   await expect(page).toHaveURL(new RegExp(`\\?shift=${shift}`));
   await expect(page.getByRole("dialog", { name: "Your shift", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Close shift details" }).tap();
+  await page.getByRole("dialog", { name: "Your shift", exact: true }).getByRole("button", { name: "Close" }).tap();
 
   await scrollMain(page, 0);
   await expect(workspace).toHaveCSS("opacity", "1");

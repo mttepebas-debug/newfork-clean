@@ -2,11 +2,12 @@ import { ArrowLeft, X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { WindowAlert } from "../../shell/WindowAlert";
+import { usePullToClose } from "./usePullToClose";
 import "./shift-release.css";
 
 // One window language for the shift change plan (Mert, 2026-10-13 10:31): a small
 // centred eyebrow, the names below it, the body, a grey foot that says what
-// happens. A bottom sheet on the phone.
+// happens. A bottom sheet on the phone, with a grip on top: pulled down, it closes (Mert 2026-10-24).
 
 const FOCUSABLE =
   "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]";
@@ -33,6 +34,7 @@ export function PlanDialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const pull = usePullToClose(ref, onClose, { handle: ".sx-w-head", scroller: ".sx-w-body", off: busy });
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
     const dialog = ref.current;
@@ -66,9 +68,11 @@ export function PlanDialog({
         event.preventDefault();
         if (!busy) onClose();
       }}
+      {...pull}
     >
       <div className="sx-w">
         <header className="sx-w-head">
+          <span className="sx-w-grip" aria-hidden />
           {onBack ? (
             <button type="button" className="sx-w-icon" aria-label="Back" disabled={busy} onClick={onBack}>
               <ArrowLeft size={18} />
