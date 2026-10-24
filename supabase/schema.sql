@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 584, last: 20261023140000_time_off_old_system_dropped.sql
--- fingerprint: sha256:0738b3215ec39e365a09cffb568eac077437e90fefb5c09eaaf317d1d2d5e0cd
+-- migrations: 585, last: 20261024100000_employee_hub_week_strip.sql
+-- fingerprint: sha256:01bcce9464c97e305f0c18a0c15f528ea0c1d5d56acdc97a151482615704ccb9
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -15661,7 +15661,9 @@ begin
         'id',shift.id,'location_id',shift.location_id,'location_name',location.name,'job_name',job.name,
         'scheduled_date',shift.scheduled_date,'time_basis',shift.time_basis,'time_snapshot',shift.time_snapshot,'time_timezone',shift.time_timezone,'start_time',to_char(shift.start_time,'HH24:MI'),
         'end_time',to_char(shift.end_time,'HH24:MI'),'note',shift.note,'employee_id',shift.employee_id,
-        'shift_type_name',shift_type.name
+        'shift_type_name',shift_type.name,'shift_type_color',shift_type.color,
+        'shift_type_start_time',to_char(shift_type.default_start_time,'HH24:MI'),
+        'shift_type_end_time',to_char(shift_type.default_end_time,'HH24:MI')
       ) order by shift.scheduled_date,shift.start_time)
       from public.schedule_published_shifts shift
       join public.schedule_location_publications publication on publication.id=shift.publication_id and publication.status='current'
@@ -15706,6 +15708,20 @@ begin
         where not away.pending
       ) off_day
       where off_day.day between target_from and target_to
+    ),'[]'::jsonb),
+    -- The days of the range whose week is posted at one of the person's locations: a day with no shift there is
+    -- a day off, not a schedule still to come (Home's week strip).
+    'posted_days', coalesce((
+      select jsonb_agg(to_char(posted.day, 'YYYY-MM-DD') order by posted.day)
+      from (
+        select d::date as day
+        from generate_series(target_from, target_to, interval '1 day') d
+        where exists(select 1 from public.schedule_location_publications publication
+          join public.employee_location_assignments assignment
+            on assignment.location_id=publication.location_id and assignment.employee_id=employee.id and assignment.ended_at is null
+          where publication.workspace_id=target_workspace_id and publication.status='current'
+            and publication.week_start<=d::date and d::date<publication.week_start+7)
+      ) posted
     ),'[]'::jsonb),
     'team', coalesce((
       select jsonb_agg(jsonb_build_object(
