@@ -1,7 +1,7 @@
 import type { EmployeeHubReadModel } from "@newfork/shared";
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router";
-import { formatTime, formatTimeRange } from "../schedule/lib/scheduleDateTime";
+import { formatTime } from "../schedule/lib/scheduleDateTime";
 import type { HomeDay } from "./home-model";
 import { shiftDate } from "./dashboard-model";
 
@@ -124,7 +124,7 @@ export function HomeWeekStrip({ model, week, today }: { model: EmployeeHubReadMo
           style={{ "--h": Math.min(1, item.hours / 8).toFixed(3) } as CSSProperties}
           aria-label={`${shiftDate(item.date, true)}: ${
             item.shifts.length
-              ? item.shifts.map((shift) => formatTimeRange(shift.start_time, shift.end_time, format, " to ")).join(", ")
+              ? item.shifts.map((shift) => `${formatTime(shift.start_time, format, "long")} to ${formatTime(shift.end_time, format, "long")}`).join(", ")
               : item.timeOff
                 ? "time off, approved"
                 : "no shift"
@@ -144,22 +144,28 @@ export function HomeWeekStrip({ model, week, today }: { model: EmployeeHubReadMo
       <div className="dl-wk-tip" aria-hidden style={{ "--tx": `${preview?.left ?? 0}px` } as CSSProperties}>
         {day ? (
           <>
-            <b>{day.date === today ? "Today" : shiftDate(day.date, true)}</b>
-            <span>
-              {day.shifts.length ? (
-                <>
-                  {day.shifts.map((shift) => `${formatTime(shift.start_time, format, "long")} – ${formatTime(shift.end_time, format, "long")}`).join(" · ")}
-                  <br />
-                  {day.shifts[0]!.location_name} · {day.shifts[0]!.job_name}
-                </>
-              ) : day.timeOff ? (
-                "Time off · Approved"
-              ) : day.open ? (
-                `Day off · ${day.open} open shift${day.open > 1 ? "s" : ""} you can pick up`
-              ) : (
-                "Day off"
-              )}
-            </span>
+            {/* The day, then each shift's hours and place, one line each; a long name ends in "…" (Mert 2026-10-24). */}
+            <b className="dl-wk-tip-d">{day.date === today ? "Today" : shiftDate(day.date, true)}</b>
+            {day.shifts.length ? (
+              day.shifts.map((shift) => (
+                <span className="dl-wk-tip-s" key={shift.id}>
+                  <span className="dl-wk-tip-t">
+                    {formatTime(shift.start_time, format, "long")} – {formatTime(shift.end_time, format, "long")}
+                  </span>
+                  <span className="dl-wk-tip-w">
+                    {shift.location_name} · {shift.job_name}
+                  </span>
+                </span>
+              ))
+            ) : (
+              <span className="dl-wk-tip-w">
+                {day.timeOff
+                  ? "Time off · Approved"
+                  : day.open
+                    ? `Day off · ${day.open} open shift${day.open > 1 ? "s" : ""} you can pick up`
+                    : "Day off"}
+              </span>
+            )}
           </>
         ) : null}
       </div>
