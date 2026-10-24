@@ -3,6 +3,7 @@ import { expect, test } from "../fixtures/test";
 import { password } from "../global-setup";
 import { emailOf, signIn } from "../fixtures/world";
 import {
+  approveInDrawer,
   card,
   lastLine,
   ownJob,
@@ -144,7 +145,7 @@ test("an invited employee onboards, waits on the document, and lands in the empl
     .getByRole("row", { name: new RegExp(title) })
     .click();
   const review = manager.getByRole("dialog", { name: title });
-  await review.getByRole("button", { name: "Approve", exact: true }).click();
+  await approveInDrawer(review);
   await expect.poll(() => standing(documentId, email)).toBe("completed accepted");
 
   // Nothing else was waiting: access opens and onboarding hands them over to

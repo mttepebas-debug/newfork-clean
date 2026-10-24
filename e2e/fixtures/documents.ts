@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
 
 // Shared by the onboarding (flow 3) and documents (flow 4) specs (FB-6.6 A3).
@@ -148,6 +148,18 @@ export async function sendOwnDocument(page: Page, title: string, tab?: "Complete
   await drawer.getByLabel("Upload document").setInputFiles(card);
   await drawer.getByRole("button", { name: "Submit document", exact: true }).click();
   await expect(drawer.getByRole("button", { name: "Submit document", exact: true })).toHaveCount(0);
+}
+
+/**
+ * Employees > Documents, the manager's drawer (A2 Tur 6): each file of the open document approved, then Save. The
+ * green turns into "Next: <who>" or "Close", so Save is gone once the decision is in.
+ */
+export async function approveInDrawer(review: Locator) {
+  const files = review.getByRole("group", { name: /^Approve or reject / });
+  await expect(files.first()).toBeVisible();
+  for (const file of await files.all()) await file.getByRole("button", { name: "Approve", exact: true }).click();
+  await review.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(review.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
 }
 
 /**

@@ -3,6 +3,7 @@ import { expect, test } from "../fixtures/test";
 import { emailOf } from "../fixtures/world";
 import {
   approveAs,
+  approveInDrawer,
   assignedTo,
   deadlinePassed,
   lastLine,
@@ -111,7 +112,7 @@ test("a two-location employee's card is seen by both managers, and one approval 
   // Besiktas approves; that one decision is the card's, at both locations.
   await besiktas.row.click();
   const review = besiktas.page.getByRole("dialog", { name: title });
-  await review.getByRole("button", { name: "Approve", exact: true }).click();
+  await approveInDrawer(review);
   await expect.poll(() => standing(documentId, ali)).toBe("completed accepted");
   await kadikoy.page.reload();
   await kadikoy.page.getByLabel("Search employee documents").fill(`${key}-ali`);
@@ -180,7 +181,7 @@ test("a fellow manager doesn't see a manager's card while it waits for review, o
   // Zeynep approves it; now the fellow manager sees it like any approved card.
   await zeynep.row.click();
   const review = zeynep.page.getByRole("dialog", { name: title });
-  await review.getByRole("button", { name: "Approve", exact: true }).click();
+  await approveInDrawer(review);
   await expect.poll(() => standing(documentId, deniz)).toBe("completed accepted");
   await other.page.reload();
   await other.page.getByLabel("Search employee documents").fill(`${key}-deniz`);
