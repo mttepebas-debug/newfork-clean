@@ -1,14 +1,15 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(18);
 
 -- Notification panel, slice 2b (KARARLAR S-251, Mert 2026-10-23): a person can mark their own read notices
 -- unread again (on a phone, a swipe on a read row says "Unread").
 --   1. one's own read notice turns unread and keeps the time it was first seen; an unread one stays as it is;
 --      a notice about one's account (no workspace) turns unread too;
---   2. never somebody else's: not a teammate's in the same workspace, not a stranger's in another workspace,
---      nor one's own in another workspace;
---   3. the unread count it answers with is the list's (a card a newer reminder replaced is not counted);
+--   2. never somebody else's: not a teammate's in the same workspace, not a teammate's about their own account
+--      (no workspace either), not a stranger's in another workspace, nor one's own in another workspace;
+--   3. the unread count it answers with is the list's (a card a newer reminder replaced is not counted, whether
+--      it was 'superseded' or 'reminded_again');
 --   4. it tells one's other tabs and phones once, naming the workspace only, and not when nothing changed;
 --   5. it asks for rows by id (none named: 22023), and a stranger is refused (42501, authz.not_member);
 --   6. only the API (service role) may call it; it runs as its owner with an empty search path.
@@ -49,15 +50,23 @@ exception when others then
   return sqlstate || ' ' || coalesce(nullif(h, ''), '(no hint)');
 end $$;
 
--- Ali and Emre hear of week 1; Ali changed his password; a time off card of Ali's was replaced by a newer one.
+-- Ali and Emre hear of week 1; each changed his password; a time off card of Ali's was replaced by a newer one,
+-- and a shift change reminder of his was reminded again.
 select app_private.notify('schedule.published', tests.id('nu'), array[tests.user('nu:ali'), tests.user('nu:emre')],
   'nu:published:1', 'Your schedule for week 1 is out');
 select app_private.notify('account.password_changed', null, array[tests.user('nu:ali')], 'nu:password:1',
   'Your password was changed', target_actor => tests.user('nu:ali'));
+select app_private.notify('account.password_changed', null, array[tests.user('nu:emre')], 'nu:password:emre',
+  'Your password was changed', target_actor => tests.user('nu:emre'));
 select app_private.notify('time_off.requested', tests.id('nu'), array[tests.user('nu:ali')], 'nu:replaced:1',
   'Time off request from Emre Person', target_subject_type => 'time_off',
   target_subject_id => '00000000-0000-0000-0000-0000000000b1');
 select app_private.notification_resolve(tests.id('nu'), 'time_off', '00000000-0000-0000-0000-0000000000b1', 'superseded', null);
+select app_private.notify('shift_changes.approval_reminder', tests.id('nu'), array[tests.user('nu:ali')], 'nu:reminded:1',
+  'Shift change still needs your approval', target_subject_type => 'shift_exchange_case',
+  target_subject_id => '00000000-0000-0000-0000-0000000000c1');
+select app_private.shift_exchange_resolve(tests.id('nu'), '00000000-0000-0000-0000-0000000000c1',
+  array['shift_changes.approval_reminder'], 'reminded_again', null, array[tests.user('nu:ali')]);
 select app_private.notify('schedule.published', tests.id('nv'), array[tests.user('nv:xena')], 'nv:published:1',
   'Your schedule for week 1 is out');
 -- Each reads all of theirs.
@@ -77,9 +86,12 @@ values (tests.id('nv'), tests.user('nu:ali'), 'schedule.published', 'nv:publishe
 
 select is(
   array[pg_temp.state('nu:published:1', 'nu:ali'), pg_temp.state('nu:password:1', 'nu:ali'),
-        pg_temp.state('nu:published:2', 'nu:ali'), pg_temp.state('nu:published:1', 'nu:emre')],
-  array['read before seen before', 'read before seen before', 'unread unseen', 'read before seen before'],
-  'Ali read week 1 and his password notice an hour ago, week 2 is new; Emre read his week 1');
+        pg_temp.state('nu:replaced:1', 'nu:ali'), pg_temp.state('nu:reminded:1', 'nu:ali'),
+        pg_temp.state('nu:published:2', 'nu:ali'),
+        pg_temp.state('nu:published:1', 'nu:emre'), pg_temp.state('nu:password:emre', 'nu:emre')],
+  array['read before seen before', 'read before seen before', 'read before seen before', 'read before seen before',
+        'unread unseen', 'read before seen before', 'read before seen before'],
+  'Ali read week 1, his password notice and both replaced cards an hour ago, week 2 is new; Emre read his week 1 and his password notice');
 
 -- 1-3. Ali marks rows unread: his own and others' ----------------------------------------------------------
 
@@ -90,11 +102,11 @@ insert into heard values
 create temp table answer (j jsonb);
 insert into answer select public.mark_notifications_unread_service(tests.user('nu:ali'), tests.id('nu'), array[
   pg_temp.n('nu:published:1', 'nu:ali'), pg_temp.n('nu:password:1', 'nu:ali'), pg_temp.n('nu:published:2', 'nu:ali'),
-  pg_temp.n('nu:replaced:1', 'nu:ali'), pg_temp.n('nu:published:1', 'nu:emre'), pg_temp.n('nv:published:1', 'nv:xena'),
-  pg_temp.n('nv:published:ali', 'nu:ali')]);
+  pg_temp.n('nu:replaced:1', 'nu:ali'), pg_temp.n('nu:reminded:1', 'nu:ali'), pg_temp.n('nu:published:1', 'nu:emre'),
+  pg_temp.n('nu:password:emre', 'nu:emre'), pg_temp.n('nv:published:1', 'nv:xena'), pg_temp.n('nv:published:ali', 'nu:ali')]);
 
-select is((select j from answer), '{"updated": 3, "unread_count": 3}'::jsonb,
-  '1. three of Ali''s own read rows here turn unread; three are unread now, as his list counts');
+select is((select j from answer), '{"updated": 4, "unread_count": 3}'::jsonb,
+  '1. four of Ali''s own read rows here turn unread (two are replaced cards); three are unread now, as his list counts');
 select is(pg_temp.state('nu:published:1', 'nu:ali'), 'unread seen before',
   '1. his week 1 is unread again, and keeps the time he first saw it');
 select is(pg_temp.state('nu:password:1', 'nu:ali'), 'unread seen before',
@@ -102,6 +114,8 @@ select is(pg_temp.state('nu:password:1', 'nu:ali'), 'unread seen before',
 select is(pg_temp.state('nu:published:2', 'nu:ali'), 'unread unseen', '1. week 2, still unread, stays as it was');
 select is(pg_temp.state('nu:published:1', 'nu:emre'), 'read before seen before',
   '2. Emre''s week 1, in the same workspace, is not Ali''s to mark: still read');
+select is(pg_temp.state('nu:password:emre', 'nu:emre'), 'read before seen before',
+  '2. nor is Emre''s notice about his own account, though it is in no workspace either');
 select is(pg_temp.state('nv:published:1', 'nv:xena'), 'read before seen before',
   '2. Xena''s, in another workspace, is not either');
 select is(pg_temp.state('nv:published:ali', 'nu:ali'), 'read before seen before',
@@ -114,7 +128,7 @@ select is(
      lateral (select public.get_notification_feed_service(tests.user('nu:ali'), tests.id('nu'), 'unread') u) y),
   '{"answer": 3, "list": 3,
     "unread": ["Your password was changed", "Your schedule for week 1 is out", "Your schedule for week 2 is out"]}'::jsonb,
-  '3. the count it answers is the list''s, and the replaced card is in neither');
+  '3. the count it answers is the list''s, and neither replaced card (superseded, reminded again) is in either');
 
 -- 4. The signal to one's other tabs and phones --------------------------------------------------------------
 
