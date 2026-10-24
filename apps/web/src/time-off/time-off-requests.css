@@ -124,6 +124,15 @@
 .tor-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .tor-sheet select, .tor-sheet input[type="date"], .tor-sheet textarea { width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--theme-border-strong); border-radius: 5px; background: var(--theme-surface); color: inherit; font: inherit; font-size: 16px; }
 .tor-sheet textarea { min-height: 58px; resize: vertical; }
+/* First day and Last day: two buttons over one calendar (Mert 2026-10-23); the one it fills is outlined. */
+.tor-days { position: relative; }
+.tor-sheet .tor-day { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--theme-border-strong); border-radius: 5px; background: var(--theme-surface); color: var(--theme-text); font: inherit; font-size: 16px; text-align: left; cursor: pointer; }
+.tor-sheet .tor-day:hover { border-color: var(--theme-border-hover); }
+.tor-sheet .tor-day[data-invalid="true"] { border-color: var(--theme-danger-border); }
+.tor-sheet .tor-day[aria-expanded="true"] { border-color: var(--theme-accent); box-shadow: 0 0 0 1px var(--theme-accent); }
+.tor-day svg { flex: none; color: var(--theme-muted); }
+.tor-day-empty { color: var(--theme-muted); }
+.tor-calendar { max-width: calc(100vw - 32px); }
 .tor-sheet [aria-invalid="true"] { border-color: var(--theme-danger-border); }
 .tor-count { justify-self: end; color: var(--theme-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .tor-check { display: flex; align-items: center; gap: 10px; color: var(--theme-text); font-size: 14.5px; font-weight: 600; }

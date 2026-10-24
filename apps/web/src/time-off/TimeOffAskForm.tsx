@@ -1,6 +1,8 @@
 import type { TimeOffAskInput } from "@newfork/shared";
-import { AlertCircle, Info } from "lucide-react";
-import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { AlertCircle, CalendarDays, Info } from "lucide-react";
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { MiniCalendar } from "../schedule/components/MiniCalendar";
+import { useCloseOnEscape } from "../schedule/lib/useCloseOnEscape";
 import { LeaveIcon } from "./leave-icon";
 import { useMyTimeOffShifts } from "./time-off-data";
 import {
@@ -302,6 +304,59 @@ export function RangeFields({
   const end = draft.end || draft.start;
   const multi = Boolean(draft.start && end && draft.start !== end);
   const msg = (field: AskField) => `${ids}-${field}-msg`;
+
+  // One calendar picks both days (Mert 2026-10-23): a day clicked is the first day and the calendar waits for
+  // the last, the days between banded under the pointer; a day before the first starts over. Last day opens it
+  // waiting. Escape or a click outside closes it.
+  const [calendar, setCalendar] = useState<"start" | "end" | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
+  const box = useRef<HTMLDivElement | null>(null);
+  useCloseOnEscape(calendar ? () => setCalendar(null) : null);
+  useEffect(() => {
+    if (!calendar) return;
+    const away = (event: PointerEvent) => {
+      if (!box.current?.contains(event.target as Node)) setCalendar(null);
+    };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [calendar]);
+  const waiting = calendar === "end";
+  function openAt(field: "start" | "end") {
+    const next = field === "end" && draft.start ? "end" : "start";
+    setHover(null);
+    setCalendar(calendar === next ? null : next);
+  }
+  function pick(day: string) {
+    onQuick(null);
+    setHover(null);
+    if (waiting && day >= draft.start) {
+      change({ end: day });
+      setCalendar(null);
+    } else {
+      change({ start: day, end: "" });
+      setCalendar("end");
+    }
+  }
+  const dayField = (field: "start" | "end", label: string, value: string) => (
+    <div className="tor-field">
+      <span className="tor-sublabel" id={`${ids}-${field}-l`}>{label}</span>
+      <button
+        type="button"
+        id={`${ids}-${field}`}
+        className="tor-day"
+        aria-labelledby={`${ids}-${field}-l ${ids}-${field}`}
+        aria-haspopup="dialog"
+        aria-expanded={calendar === field}
+        aria-describedby={describedBy("dates")}
+        data-invalid={messages.dates ? "true" : undefined}
+        onClick={() => openAt(field)}
+      >
+        <span className={value ? undefined : "tor-day-empty"}>{value ? dayText(value) : "Choose a day"}</span>
+        <CalendarDays size={16} aria-hidden />
+      </button>
+    </div>
+  );
+
   return (
     <>
       <Field label={label} message={<FieldMessage id={msg("dates")} text={messages.dates} />}>
@@ -321,38 +376,24 @@ export function RangeFields({
             </button>
           ))}
         </div>
-        <div className="tor-two">
-          <label className="tor-field" htmlFor={`${ids}-start`}>
-            <span className="tor-sublabel">First day</span>
-            <input
-              id={`${ids}-start`}
-              type="date"
-              min={minDate}
-              value={draft.start}
-              aria-invalid={messages.dates ? true : undefined}
-              aria-describedby={describedBy("dates")}
-              onChange={(event) => {
-                onQuick(null);
-                const start = event.target.value;
-                change({ start, end: draft.end && draft.end < start ? start : draft.end });
-              }}
-            />
-          </label>
-          <label className="tor-field" htmlFor={`${ids}-end`}>
-            <span className="tor-sublabel">Last day</span>
-            <input
-              id={`${ids}-end`}
-              type="date"
-              min={draft.start || minDate}
-              value={end}
-              aria-invalid={messages.dates ? true : undefined}
-              aria-describedby={describedBy("dates")}
-              onChange={(event) => {
-                onQuick(null);
-                change({ end: event.target.value });
-              }}
-            />
-          </label>
+        <div className="tor-two tor-days" ref={box}>
+          {dayField("start", "First day", draft.start)}
+          {/* Waiting for the last day, it shows none until one is clicked. */}
+          {dayField("end", "Last day", waiting && !draft.end ? "" : end)}
+          {calendar ? (
+            <div className="schedule-mini-calendar-panel tor-calendar" role="dialog" aria-label={waiting ? "Pick the last day" : "Pick the first day"}>
+              <MiniCalendar
+                selectedDate={draft.start || null}
+                rangeEnd={draft.start ? (waiting && hover && hover >= draft.start ? hover : end) : null}
+                weekStartDate={draft.start || minDate}
+                weekStartDay="sunday"
+                today={minDate}
+                minDate={minDate}
+                onDayHover={setHover}
+                onDayPick={pick}
+              />
+            </div>
+          ) : null}
         </div>
       </Field>
       <label className="tor-check">

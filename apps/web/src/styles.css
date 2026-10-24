@@ -3423,7 +3423,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: var(--theme-muted);
   font-weight: 650;
 }
-.calendar-day.in-week {
+/* The Schedule's week, and the days between a time off range's two ends. */
+.calendar-day.in-week,
+.calendar-day.in-range {
   background: #f4d7a7;
   color: #272d2b;
 }
@@ -3431,6 +3433,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .calendar-day:hover {
   z-index: 2;
   background: #edf3f0;
+}
+/* A day before the first one allowed (time off): faded, no hover. */
+.calendar-day:disabled {
+  background: transparent;
+  color: var(--theme-muted);
+  cursor: default;
+  opacity: 0.45;
 }
 .calendar-day.selected {
   z-index: 3;
