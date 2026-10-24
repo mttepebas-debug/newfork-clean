@@ -184,6 +184,13 @@
 .catalog-drawer.document-review-drawer .rd-head .rd-tabs button {
   line-height: 20px;
 }
+/* A keyboard on a tab draws its ring (jobs-settings.css takes every tab's ring away inside a drawer); a pointer,
+   a touch and an Escape still draw none (styles.css, jobs-settings.css BL-899). */
+.catalog-drawer.document-review-drawer .rd-tabs [role="tab"]:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .catalog-drawer.document-review-drawer .rd-head .rd-tabs .rd-badge {
   line-height: 1;
 }
@@ -273,6 +280,7 @@
   gap: 2px;
   min-width: 0;
 }
+/* As the approved mockup draws it: regular 14 px (the phone's name is 13.5/650, .docr-fname). */
 .catalog-drawer.document-review-drawer .docr-file-name {
   justify-self: start;
   max-width: 100%;
@@ -283,8 +291,8 @@
   background: none;
   color: var(--theme-text);
   font: inherit;
-  font-size: 13.5px;
-  font-weight: 650;
+  font-size: 14px;
+  font-weight: 400;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -691,7 +699,6 @@
   color: var(--theme-text);
   font-size: 13px;
   font-weight: 650;
-  line-height: 18px;
 }
 .catalog-drawer.document-review-drawer .docr-hint {
   color: var(--theme-muted);
@@ -1103,7 +1110,11 @@
   cursor: not-allowed;
   opacity: 0.55;
 }
-.catalog-drawer.document-review-drawer .rd .rd-foot .nf-button.docr-green[aria-disabled="true"]:hover {
+/* Shaped as request-drawer.css's green hover (0,10,0) plus one, so an off green never darkens under the mouse. */
+.catalog-drawer.document-review-drawer
+  .rd
+  :is(.rd-body, .rd-foot)
+  .nf-button.docr-green[aria-disabled="true"]:not(.secondary):not(.secondary-button):not(.danger-button):not(:disabled):hover {
   background: var(--theme-accent);
 }
 
@@ -1325,7 +1336,10 @@
   .catalog-drawer.document-review-drawer .docr-card:not(.is-open) > .docr-card-head:hover {
     background: none;
   }
-  .catalog-drawer.document-review-drawer .rd .rd-foot .nf-button.docr-green:hover {
+  .catalog-drawer.document-review-drawer
+    .rd
+    :is(.rd-body, .rd-foot)
+    .nf-button.docr-green:not(.secondary):not(.secondary-button):not(.danger-button):not(:disabled):hover {
     background: var(--theme-accent);
   }
 }
