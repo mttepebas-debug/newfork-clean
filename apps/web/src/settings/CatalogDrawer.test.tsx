@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { createPortal } from "react-dom";
 import { describe, expect, it, vi } from "vitest";
 import { TOAST_LAYER_ATTRIBUTE } from "../shell/toastLayer";
@@ -134,5 +134,52 @@ describe("CatalogDrawer keyboard (BL-960)", () => {
     expect(tab.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(screen.getByLabelText("Title"));
     layout.mockRestore();
+  });
+});
+
+// Documents (K1, A2 Tur 6): the double click that opened the drawer must not close it on the dim.
+describe("CatalogDrawer backdrop grace", () => {
+  function dim() {
+    return document.querySelector<HTMLElement>(".catalog-drawer-backdrop")!;
+  }
+  it("closes on the dim at once when no grace is asked for", () => {
+    const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+    const onClose = vi.fn();
+    render(
+      <CatalogDrawer label="Review time off" onClose={onClose}>
+        <button type="button">Approve</button>
+      </CatalogDrawer>,
+    );
+    fireEvent.pointerDown(dim());
+    expect(onClose).toHaveBeenCalledOnce();
+    now.mockRestore();
+  });
+  it("ignores the dim for the grace after opening, then closes on it", () => {
+    const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+    const onClose = vi.fn();
+    render(
+      <CatalogDrawer label="Maria Lopez · Food Handler Card" onClose={onClose} backdropGrace={500}>
+        <button type="button">Save</button>
+      </CatalogDrawer>,
+    );
+    now.mockReturnValue(1200);
+    fireEvent.pointerDown(dim());
+    now.mockReturnValue(1499);
+    fireEvent.pointerDown(dim());
+    expect(onClose).not.toHaveBeenCalled();
+    now.mockReturnValue(1500);
+    fireEvent.pointerDown(dim());
+    expect(onClose).toHaveBeenCalledOnce();
+    now.mockRestore();
+  });
+  it("never closes on a press inside the drawer", () => {
+    const onClose = vi.fn();
+    render(
+      <CatalogDrawer label="Maria Lopez · Food Handler Card" onClose={onClose} backdropGrace={500}>
+        <button type="button">Save</button>
+      </CatalogDrawer>,
+    );
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Save" }));
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

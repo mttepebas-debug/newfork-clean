@@ -12,6 +12,7 @@ export function CatalogDrawer({
   onEscape,
   busy = false,
   className = "",
+  backdropGrace = 0,
 }: {
   label: string;
   children: ReactNode;
@@ -19,12 +20,19 @@ export function CatalogDrawer({
   onEscape?: () => void;
   busy?: boolean;
   className?: string;
+  /**
+   * Opt-in (Documents, A2 Tur 6): for this many milliseconds after opening, a press on the dim does not close
+   * the drawer, so the second click of the double click that opened it never closes it again.
+   */
+  backdropGrace?: number;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
+  const openedAt = useRef(0);
 
   useLayoutEffect(() => {
     const root = dialog.current;
     if (!root) return;
+    openedAt.current = performance.now();
     const active = document.activeElement as HTMLElement | null;
     const opener =
       active?.closest(".job-row-menu")?.querySelector<HTMLElement>("summary") ??
@@ -62,7 +70,7 @@ export function CatalogDrawer({
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) {
           event.preventDefault();
-          if (!busy) onClose();
+          if (!busy && performance.now() - openedAt.current >= backdropGrace) onClose();
         }
       }}
     >
