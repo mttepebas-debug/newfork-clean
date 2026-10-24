@@ -49,15 +49,24 @@ export function documentWaits(status: DocumentObligationStatus): boolean {
 }
 
 /**
+ * What the green's "Next" and "All caught up" count: a row that waits on the person or on a review. A row that waits
+ * for an administrator's document time zone stays in the queue (the strip walks it, K1 decision 12) but waits on
+ * nobody reviewing (gaps A3).
+ */
+export function greenWaits(status: DocumentObligationStatus): boolean {
+  return documentWaits(status) && status !== "timezone_required";
+}
+
+/**
  * Where "Next" goes after a decision: the next row still waiting after the open one, else the first one still
- * waiting before it. Rows answered in this sitting are skipped.
+ * waiting before it. Rows answered in this sitting are skipped; `answered` reads the row as it is now.
  */
 export function nextWaiting<Row extends { id: string; status: DocumentObligationStatus }>(
   queue: readonly Row[],
   currentId: string,
-  answered: (id: string) => boolean,
+  answered: (row: Row) => boolean,
 ): Row | null {
   const at = queue.findIndex((row) => row.id === currentId);
-  const open = queue.filter((row) => row.id !== currentId && documentWaits(row.status) && !answered(row.id));
+  const open = queue.filter((row) => row.id !== currentId && greenWaits(row.status) && !answered(row));
   return open.find((row) => queue.indexOf(row) > at) ?? open[0] ?? null;
 }

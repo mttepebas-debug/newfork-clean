@@ -1,3 +1,4 @@
+import type { DocumentObligation } from "@newfork/shared";
 import type { FileChoices, FileReasons, Period } from "./review-decision";
 import type { ReviewResult } from "./review-dock";
 import type { ExtendPick, OptionPanel } from "./review-options";
@@ -30,16 +31,23 @@ export type ManagerDraft = {
   [K in keyof ManagerTypedValues]?: { for: string; value: ManagerTypedValues[K] };
 };
 
-/** One page's sitting: a draft per document, and the documents answered since the page opened with what was done. */
+/** A document as it reads now, for whether its answer still stands. */
+export type AnsweredRow = Pick<DocumentObligation, "id" | "status" | "submitted_id">;
+
+/**
+ * One page's sitting: a draft per document, and the documents answered since the page opened with what was done.
+ * An answer is the answer to the version it decided: once a newer version waits for review, it no longer stands.
+ */
 export type ReviewSitting = {
   subscribe(listener: () => void): () => void;
   /** The same object until it changes, so a reader can hold it. */
   draft(id: string): ManagerDraft;
   setDraft(id: string, next: (draft: ManagerDraft) => ManagerDraft): void;
-  answered(id: string): boolean;
+  answered(row: AnsweredRow): boolean;
   /** What the Save that answered it did, for its dock. */
-  result(id: string): ReviewResult | undefined;
-  answer(id: string, result?: ReviewResult): void;
+  result(row: AnsweredRow): ReviewResult | undefined;
+  /** `version`: the version sent when it was answered (none when nothing was sent). */
+  answer(id: string, version: string | null, result?: ReviewResult): void;
   /** A new change on an answered document: it is open again, and its result line gives way. */
   reopen(id: string): void;
 };
@@ -48,7 +56,12 @@ const empty: ManagerDraft = Object.freeze({});
 
 export function createReviewSitting(): ReviewSitting {
   const drafts = new Map<string, ManagerDraft>();
-  const done = new Map<string, ReviewResult | undefined>();
+  const done = new Map<string, { version: string | null; result: ReviewResult | undefined }>();
+  const standing = (row: AnsweredRow) => {
+    const answer = done.get(row.id);
+    if (!answer) return undefined;
+    return row.status === "pending_review" && row.submitted_id !== answer.version ? undefined : answer;
+  };
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((listener) => listener());
   return {
@@ -67,11 +80,12 @@ export function createReviewSitting(): ReviewSitting {
       else drafts.delete(id);
       emit();
     },
-    answered: (id) => done.has(id),
-    result: (id) => done.get(id),
-    answer(id, result) {
-      if (done.has(id) && done.get(id) === result) return;
-      done.set(id, result);
+    answered: (row) => standing(row) !== undefined,
+    result: (row) => standing(row)?.result,
+    answer(id, version, result) {
+      const was = done.get(id);
+      if (was && was.version === version && was.result === result) return;
+      done.set(id, { version, result });
       emit();
     },
     reopen(id) {

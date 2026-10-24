@@ -106,6 +106,7 @@ export function ManagerDocumentContent({
   dock,
   guard,
   nextUp,
+  othersWait,
   onBusy,
   onAlert,
   onShowFiles,
@@ -127,6 +128,8 @@ export function ManagerDocumentContent({
   guard: ReviewGuard;
   /** The next document still waiting, by its label, for the green after a decision. */
   nextUp: () => { id: string; label: string } | null;
+  /** Another document of the whole list (any tab) still waits: no "All caught up" then. */
+  othersWait: () => boolean;
   onBusy: (busy: boolean) => void;
   onAlert: (message: string | null) => void;
   /** The phone's row in Details opens the Files tab. */
@@ -143,8 +146,9 @@ export function ManagerDocumentContent({
   const obligation = detail.obligation;
   const id = obligation.id;
   const typed = useSyncExternalStore(sitting.subscribe, () => sitting.draft(id));
-  const answered = useSyncExternalStore(sitting.subscribe, () => sitting.answered(id));
-  const result = useSyncExternalStore(sitting.subscribe, () => sitting.result(id));
+  // An answer made in this sitting stands until a newer version waits for review (then there is that to decide).
+  const answered = useSyncExternalStore(sitting.subscribe, () => sitting.answered(obligation));
+  const result = useSyncExternalStore(sitting.subscribe, () => sitting.result(obligation));
   const current = detail.submissions.find((s) => s.id === obligation.submitted_id);
   // A typed value counts while what it was typed for is still here (BL-467); typed for another version under
   // review, it gives way to the saved value. A new change on a document answered in this sitting opens it again.
@@ -224,8 +228,8 @@ export function ManagerDocumentContent({
     onError: conflict,
     mutationFn: ({ command }: { command: ReturnType<typeof reviewCommand>; result: ReviewResult }) =>
       reviewDocument(audience, id, command),
-    onSuccess: async (_, { result: done }) => {
-      sitting.answer(id, done);
+    onSuccess: async (_, { command, result: done }) => {
+      sitting.answer(id, command.submission_id, done);
       focusGreen.current = true;
       await refresh();
       forget("choices", "reasons", "period", "reviewAgain");
@@ -257,10 +261,10 @@ export function ManagerDocumentContent({
   const extension = useMutation({
     onMutate: started,
     onError: conflict,
-    mutationFn: ({ days, reason }: { days: number; reason: string }) =>
+    mutationFn: ({ days, reason }: { days: number; reason: string; version: string | null }) =>
       extendDocumentDeadline(audience, id, { revision: obligation.revision, additional_days: days, reason }),
-    onSuccess: async (_, { days }) => {
-      sitting.answer(id, { kind: "extended", at: new Date().toISOString(), days });
+    onSuccess: async (_, { days, version }) => {
+      sitting.answer(id, version, { kind: "extended", at: new Date().toISOString(), days });
       focusGreen.current = true;
       await refresh();
       forget("panel", "extendPick", "extendOther", "extensionReason");
@@ -273,10 +277,10 @@ export function ManagerDocumentContent({
   const exemption = useMutation({
     onMutate: started,
     onError: conflict,
-    mutationFn: ({ exempt, reason }: { exempt: boolean; reason: string }) =>
+    mutationFn: ({ exempt, reason }: { exempt: boolean; reason: string; version: string | null }) =>
       setDocumentExemption(audience, id, { revision: obligation.revision, exempt, reason }),
-    onSuccess: async (_, { exempt }) => {
-      sitting.answer(id, { kind: exempt ? "excused" : "asked", at: new Date().toISOString() });
+    onSuccess: async (_, { exempt, version }) => {
+      sitting.answer(id, version, { kind: exempt ? "excused" : "asked", at: new Date().toISOString() });
       focusGreen.current = true;
       await refresh();
       forget("panel", exempt ? "excuseReason" : "againReason");
@@ -651,7 +655,8 @@ export function ManagerDocumentContent({
             line: resultLine(result, {
               first,
               phone,
-              end: greenNow.act === "close",
+              // Nobody else waits, here or in the list's other tabs.
+              end: greenNow.act === "close" && !othersWait(),
               now: {
                 status: obligation.status,
                 expiry: obligation.expiry_date ? formatDate(obligation.expiry_date) : null,
@@ -696,8 +701,14 @@ export function ManagerDocumentContent({
   const savePanel = () => {
     if (!panel || !panelNow?.ready || busy || sending.current) return;
     sending.current = true;
-    if (panel === "extend") extension.mutate({ days: extendNow!.days!, reason: extensionReason.trim() });
-    else exemption.mutate({ exempt: panel === "excuse", reason: (panel === "excuse" ? excuseReason : againReason).trim() });
+    const version = obligation.submitted_id;
+    if (panel === "extend") extension.mutate({ days: extendNow!.days!, reason: extensionReason.trim(), version });
+    else
+      exemption.mutate({
+        exempt: panel === "excuse",
+        reason: (panel === "excuse" ? excuseReason : againReason).trim(),
+        version,
+      });
   };
   const save = () => {
     if (panel) return savePanel();

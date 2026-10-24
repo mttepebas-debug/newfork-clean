@@ -2576,6 +2576,53 @@ describe("file decisions and the dock", () => {
     expect(within(renewalFiles).getByText("Expired")).toBeTruthy();
   });
 
+  // K1 fix pass: an answer is the answer to the version it decided; a version sent after it is new to decide.
+  it("decides a version sent after its answer afresh", async () => {
+    const time = clock();
+    try {
+      const sitting = createReviewSitting();
+      const { show } = page(false, { queue: [row(), sam()], sitting });
+      const approved = detail();
+      approved.obligation.revision = 2;
+      approved.obligation.status = "completed";
+      approved.obligation.approved_id = "submission";
+      approved.submissions[0]!.state = "accepted";
+      vi.mocked(getDocument).mockResolvedValue(approved);
+      await approveAndSave();
+      await waitFor(() => expect(green().textContent).toBe("Next: Sam Lee"));
+      // The person sends version 2, which waits for review.
+      const sentAgain = detail();
+      sentAgain.obligation.revision = 3;
+      sentAgain.obligation.submitted_id = "v2";
+      sentAgain.obligation.approved_id = "submission";
+      sentAgain.submissions = [
+        { ...approved.submissions[0]! },
+        { ...detail().submissions[0]!, id: "v2", version: 2, files: [{ ...detail().submissions[0]!.files[0]!, id: "v2-file", filename: "renewed.pdf" }] },
+      ];
+      vi.mocked(getDocument).mockResolvedValue(sentAgain);
+      show("second");
+      await screen.findByRole("dialog", { name: /Sam Lee/ });
+      show("requirement");
+      await screen.findByRole("group", { name: "Approve or reject renewed.pdf" });
+      await waitFor(() => expect(green().textContent).toBe("Save"));
+      expect(green().getAttribute("aria-disabled")).toBe("true");
+      expect(dockLine()).toBe("Approve or reject each file · 1 left");
+      expect(screen.queryByText("Approved", { selector: "dt" })).toBeNull();
+      // Nor does the walk skip it: from Sam, the green comes back to it.
+      expect(sitting.answered(sentAgain.obligation)).toBe(false);
+    } finally {
+      time.restore();
+    }
+  });
+
+  // gaps A3: a row that waits for an administrator's time zone stays in the strip, but the green never goes to it.
+  it("closes rather than going to a row that waits for a time zone", async () => {
+    page(false, { queue: [row(), { ...sam(), status: "timezone_required" }] });
+    await approveAndSave();
+    await waitFor(() => expect(green().textContent).toBe("Close"));
+    expect(screen.getByRole("button", { name: "Next: Sam Lee" })).toBeTruthy();
+  });
+
   // K1 fix pass (gaps A2): opened fresh, the same document reads as the copy on file, with the renewal apart.
   it("opens a renewal sent back while its old copy stays on the copy on file", async () => {
     const doc = detail();

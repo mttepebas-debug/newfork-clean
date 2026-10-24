@@ -22,7 +22,7 @@ import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
 import { statusLabel, statusTone, statusWeight, type StatusTone } from "./document-rules";
-import { snapshotQueue } from "./review-queue";
+import { greenWaits, snapshotQueue } from "./review-queue";
 import { createReviewSitting } from "./review-sitting";
 import "./documents.css";
 
@@ -451,6 +451,9 @@ export function EmployeeDocumentsList(props: {
             ? {
                 queue: walked,
                 sitting,
+                // "All caught up" only when nothing in the whole list (every tab) still waits.
+                othersWait: (id: string) =>
+                  items.some((r) => r.id !== id && greenWaits(r.status) && !sitting.answered(r)),
                 onOpen: (id: string) => setSelected({ id, ordinal: 0 }),
               }
             : next

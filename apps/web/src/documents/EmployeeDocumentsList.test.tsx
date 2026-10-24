@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { defaultDocumentLifecycleSettings } from "@newfork/shared";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { RequestError } from "../lib/request-error";
 import { getDocument, listDocuments, reviewDocument } from "./document-data";
 import { EmployeeDocumentsList } from "./EmployeeDocumentsList";
@@ -712,6 +712,91 @@ describe("the manager's review drawer from the list", () => {
     expect([count(/^Needs review/), count(/^Completed/)]).toEqual(["1", "1"]);
     expect(screen.getByRole("row", { name: /^Blake/ })).toBeTruthy();
     expect(reviewDocument).toHaveBeenCalledOnce();
+  });
+  // K1 decision 6, through the list: the green's "Next" reads each row as the list has it now (a row decided
+  // elsewhere no longer waits) and skips what was answered in this sitting (even while the list still shows it).
+  it("sends the green to the next row still waiting by the list's latest data, skipping what was answered here", async () => {
+    const cache = client();
+    const id = (n: number) => detailOf(n).obligation.id;
+    vi.mocked(getDocument).mockImplementation(async (_audience, requirementId) => {
+      const n = [1, 2, 3].find((k) => id(k) === requirementId) ?? 1;
+      return { ...detailOf(n), obligation: { ...detailOf(n).obligation, employee_name: ["", "Avery", "Blake", "Casey"][n]! } } as never;
+    });
+    vi.mocked(reviewDocument).mockReset().mockResolvedValue({});
+    vi.mocked(listDocuments)
+      .mockReset()
+      .mockResolvedValueOnce([
+        row(1, "pending_review", "Avery"),
+        row(2, "pending_review", "Blake"),
+        row(3, "pending_review", "Casey"),
+      ] as never)
+      // Casey is decided elsewhere; the list keeps showing Avery as waiting until it refreshes.
+      .mockResolvedValue([
+        row(1, "pending_review", "Avery"),
+        row(2, "pending_review", "Blake"),
+        row(3, "completed", "Casey"),
+      ] as never);
+    // The green holds for 400 ms after its meaning changes (a move to another document is one).
+    let at = 10_000;
+    const now = vi.spyOn(performance, "now").mockImplementation(() => at);
+    onTestFinished(() => now.mockRestore());
+    renderManager(cache);
+    fireEvent.click(await screen.findByRole("row", { name: /^Avery/ }));
+    await act(async () => {
+      await cache.refetchQueries({
+        queryKey: ["document-lifecycle", "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5", "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", "manager"],
+        exact: true,
+      });
+    });
+    const green = () => document.querySelector<HTMLElement>(".rd-foot .docr-green");
+    const approve = async () => {
+      const pair = await screen.findByRole("group", { name: "Approve or reject card.pdf" });
+      fireEvent.click(within(pair).getByRole("button", { name: "Approve" }));
+      at += 450;
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    };
+    await approve();
+    await waitFor(() => expect(green()?.textContent).toBe("Next: Blake"));
+    // The strip waits for the refresh after a Save.
+    await waitFor(() => expect(within(strip()).getByRole("button", { name: "Next: Blake" })).toHaveProperty("disabled", false));
+    fireEvent.click(within(strip()).getByRole("button", { name: "Next: Blake" }));
+    await screen.findByRole("dialog", { name: "Blake · Food handler card" });
+    await approve();
+    await waitFor(() => expect(green()?.textContent).toBe("Close"));
+    expect(reviewDocument).toHaveBeenCalledTimes(2);
+  });
+  // "All caught up" is said only when nothing in the whole list waits, whichever tab the drawer was opened from.
+  it("says all caught up only when no tab has anything waiting", async () => {
+    const approved = () => {
+      const doc = detailOf(7);
+      return {
+        ...doc,
+        obligation: { ...doc.obligation, status: "completed", employee_name: "Gray", approved_id: doc.obligation.submitted_id },
+        submissions: [{ ...doc.submissions[0]!, state: "accepted" }],
+      };
+    };
+    vi.mocked(getDocument).mockImplementation(async () => approved() as never);
+    vi.mocked(reviewDocument).mockReset().mockResolvedValue({});
+    vi.mocked(listDocuments)
+      .mockReset()
+      .mockResolvedValue([row(1, "pending_review", "Avery"), row(7, "completed", "Gray")] as never);
+    // The green holds for 400 ms once Review again turns it into Save.
+    let at = 10_000;
+    const now = vi.spyOn(performance, "now").mockImplementation(() => at);
+    try {
+      renderManager(client(), { initialStatus: "completed" });
+      fireEvent.click(await screen.findByRole("row", { name: /^Gray/ }));
+      fireEvent.click(await screen.findByRole("button", { name: "Review again" }));
+      const pair = await screen.findByRole("group", { name: "Approve or reject card.pdf" });
+      fireEvent.click(within(pair).getByRole("button", { name: "Approve" }));
+      at += 450;
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      const line = () => document.querySelector(".rd-foot .docr-note")?.textContent;
+      await waitFor(() => expect(line()).toBe("Approved · Gray is told."));
+      expect(document.querySelector(".rd-foot .docr-green")?.textContent).toBe("Close");
+    } finally {
+      now.mockRestore();
+    }
   });
   // K1 fix pass: the row that opened the drawer can leave the tab once it is decided; closing then puts focus on
   // the row now in its place, never on the page itself.

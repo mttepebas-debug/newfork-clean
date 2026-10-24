@@ -2,6 +2,7 @@ import type { DocumentObligationStatus } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
 import {
   documentWaits,
+  greenWaits,
   neighbours,
   nextWaiting,
   queueLabel,
@@ -82,6 +83,17 @@ describe("documentWaits", () => {
   });
 });
 
+// gaps A3, K1 decision 12: a row that waits for an administrator's time zone stays in the queue (the strip walks
+// it), but it waits on nobody reviewing: the green's "Next" and "All caught up" leave it out.
+describe("greenWaits", () => {
+  it("waits as documentWaits does, except for a time zone", () => {
+    for (const status of ["pending_review", "missing", "grace", "rejected", "expired"] as const)
+      expect(greenWaits(status)).toBe(true);
+    for (const status of ["timezone_required", "completed", "exempt", "paused", "removed"] as const)
+      expect(greenWaits(status)).toBe(false);
+  });
+});
+
 // K1 decision 6: "Next: <label>" after a decision skips what was answered in this sitting and what no longer waits.
 describe("nextWaiting", () => {
   const queue = [
@@ -94,15 +106,31 @@ describe("nextWaiting", () => {
   it("is the next one still waiting after the open one", () => {
     expect(nextWaiting(queue, "a", none)?.id).toBe("c");
   });
-  it("skips what was answered in this sitting", () => {
-    expect(nextWaiting(queue, "a", (id) => id === "c")?.id).toBe("d");
+  it("skips what was answered in this sitting, asking by the row as it reads now", () => {
+    const asked: string[] = [];
+    expect(
+      nextWaiting(queue, "a", (r) => {
+        asked.push(`${r.id}:${r.status}`);
+        return r.id === "c";
+      })?.id,
+    ).toBe("d");
+    expect(asked).toEqual(["c:pending_review", "d:missing"]);
   });
   it("goes back to the first one still waiting before it when none waits after it", () => {
     expect(nextWaiting(queue, "d", none)?.id).toBe("a");
   });
   it("is nobody when nothing else waits", () => {
-    expect(nextWaiting(queue, "a", (id) => id !== "a")).toBeNull();
+    expect(nextWaiting(queue, "a", (r) => r.id !== "a")).toBeNull();
     expect(nextWaiting([queue[0]!], "a", none)).toBeNull();
+  });
+  it("never goes to a row that waits for a time zone", () => {
+    const zones = [
+      row("a", "1", "A", "T"),
+      row("b", "2", "B", "T", "timezone_required"),
+      row("c", "2", "B", "U", "timezone_required"),
+    ];
+    expect(nextWaiting(zones, "a", none)).toBeNull();
+    expect(nextWaiting(zones, "b", none)?.id).toBe("a");
   });
   it("starts from the front for a document outside the queue", () => {
     expect(nextWaiting(queue, "z", none)?.id).toBe("a");

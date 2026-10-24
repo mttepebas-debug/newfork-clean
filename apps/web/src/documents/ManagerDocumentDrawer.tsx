@@ -37,6 +37,8 @@ export type ManagerDrawerProps = {
   onOpen?: (requirementId: string) => void;
   /** The page's drafts and answers (K1 decision 5); the drawer keeps its own while open when none is given. */
   sitting?: ReviewSitting;
+  /** Another row of the whole list (any tab) still waits; without it, only the queue counts. */
+  othersWait?: (requirementId: string) => boolean;
 };
 
 type Named = Pick<DocumentObligation, "id" | "employee_id" | "employee_name" | "title">;
@@ -202,7 +204,7 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
   const { previous, next } = neighbours(queue, requirementId);
   // K1 decisions 6 and 7: after a decision the green goes to the next row still waiting and not answered here.
   const nextUp = () => {
-    const row = nextWaiting(queue, requirementId, sitting.answered);
+    const row = nextWaiting(queue, requirementId, (item) => sitting.answered(item));
     return row ? { id: row.id, label: queueLabel(row, obligation ?? { employee_id: "" }) } : null;
   };
   const tabs: DrawerTab<ManagerTab>[] = [
@@ -278,6 +280,7 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
             dock={dock}
             guard={guard}
             nextUp={nextUp}
+            othersWait={() => props.othersWait?.(requirementId) ?? false}
             onBusy={onBusy}
             onAlert={onAlert}
             onShowFiles={showFiles}

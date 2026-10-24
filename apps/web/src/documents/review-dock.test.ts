@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { DocumentObligationStatus } from "@newfork/shared";
 import { filesNote, greenFor, greenKey, resultLine, timezoneNote, waitingNote } from "./review-dock";
 
 // The dock of the manager's review drawer: one line and one green button (A2 Tur 6, mockup-spec 15).
@@ -41,7 +42,7 @@ describe("the line over Save", () => {
 });
 
 describe("the result of a Save", () => {
-  const now = (status: "completed" | "rejected" | "missing", extra: { expiry?: string; due?: string } = {}) => ({
+  const now = (status: DocumentObligationStatus, extra: { expiry?: string; due?: string } = {}) => ({
     status,
     expiry: extra.expiry ?? null,
     due: extra.due ?? null,
