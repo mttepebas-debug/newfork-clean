@@ -2576,6 +2576,38 @@ describe("file decisions and the dock", () => {
     expect(within(renewalFiles).getByText("Expired")).toBeTruthy();
   });
 
+  // K1 decision 10: the field stops typing at 500, but a common reason added by its chip can pass it; what is sent
+  // never does.
+  it("sends 500 characters at most when a chip makes the reason longer", async () => {
+    page();
+    await decide("certificate.pdf", "Reject");
+    fireEvent.change(why("certificate.pdf"), { target: { value: "x".repeat(495) } });
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Common reasons for certificate.pdf" })).getByRole("button", {
+        name: "Name doesn't match",
+      }),
+    );
+    expect(why("certificate.pdf").value.length).toBeGreaterThan(500);
+    fireEvent.click(save());
+    await waitFor(() => expect(reviewDocument).toHaveBeenCalledOnce());
+    const command = vi.mocked(reviewDocument).mock.calls[0]![2];
+    expect(command.files[0]!.note).toHaveLength(500);
+    expect(command.reason).toHaveLength(500);
+    expect(command.reason.endsWith("…")).toBe(true);
+  });
+  // A note the file stores stays with it when it is approved (the server writes what is sent).
+  it("keeps a kept file's stored note when it is approved", async () => {
+    const doc = detail();
+    doc.submissions[0]!.files[0]!.note = "Copy from the front desk";
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    await approveAndSave();
+    await waitFor(() => expect(reviewDocument).toHaveBeenCalledOnce());
+    expect(vi.mocked(reviewDocument).mock.calls[0]![2].files).toEqual([
+      { id: "file", decision: "keep", note: "Copy from the front desk" },
+    ]);
+  });
+
   // K1 fix pass: an answer is the answer to the version it decided; a version sent after it is new to decide.
   it("decides a version sent after its answer afresh", async () => {
     const time = clock();

@@ -10,7 +10,8 @@ export type FileChoice = "approve" | "reject";
 export type FileChoices = Readonly<Record<string, FileChoice>>;
 export type FileReasons = Readonly<Record<string, string>>;
 export type Period = "full" | "remaining";
-type ReviewFile = { id: string; filename: string };
+/** A file of the version under review; `note` is what it stores (kept with a kept file). */
+type ReviewFile = { id: string; filename: string; note?: string };
 
 /** The server takes a reason (and a file note) of 500 characters at most. */
 export const reasonLimit = 500;
@@ -50,17 +51,36 @@ function asSentence(text: string): string {
   return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
+function cut(text: string, length: number): string {
+  return text.length <= length ? text : `${text.slice(0, length - 1).trimEnd()}…`;
+}
+
 /**
  * The document's reason: each rejected file's reason as a sentence, named by its file when the version holds more
- * than one, joined; 500 characters at most, cut with an ellipsis (K1 decision 10).
+ * than one, joined; 500 characters at most (K1 decision 10). The cap never drops a file's reason: past 500 the names
+ * go first (each file's own reason stands under it as its note), then each reason gets its share of what is left,
+ * a short one whole, a long one cut with an ellipsis.
  */
 export function composeReason(files: readonly ReviewFile[], choices: FileChoices, reasons: FileReasons): string {
   const many = files.length > 1;
-  const text = files
-    .filter((file) => choices[file.id] === "reject")
-    .map((file) => `${many ? `${file.filename}: ` : ""}${asSentence(reasons[file.id] ?? "")}`)
-    .join(" ");
-  return text.length <= reasonLimit ? text : `${text.slice(0, reasonLimit - 1).trimEnd()}…`;
+  const rejected = files.filter((file) => choices[file.id] === "reject");
+  const said = rejected.map((file) => asSentence(reasons[file.id] ?? ""));
+  const named = rejected.map((file, at) => `${many ? `${file.filename}: ` : ""}${said[at]}`).join(" ");
+  if (named.length <= reasonLimit) return named;
+  const plain = said.join(" ");
+  if (plain.length <= reasonLimit) return plain;
+  // Shares, shortest first: what a short reason leaves goes to the longer ones.
+  let left = reasonLimit - (said.length - 1);
+  const shares = new Map<number, number>();
+  said
+    .map((text, at) => ({ text, at }))
+    .sort((a, b) => a.text.length - b.text.length || a.at - b.at)
+    .forEach(({ text, at }, index, all) => {
+      const share = Math.min(text.length, Math.floor(left / (all.length - index)));
+      shares.set(at, share);
+      left -= share;
+    });
+  return said.map((text, at) => cut(text, shares.get(at)!)).join(" ");
 }
 
 /** What Save sends for the version under review; call it only when the review is ready. */
@@ -83,7 +103,8 @@ export function reviewCommand(input: {
     files: input.files.map((file) =>
       input.choices[file.id] === "reject"
         ? { id: file.id, decision: "discard", note: (input.reasons[file.id] ?? "").trim().slice(0, reasonLimit) }
-        : { id: file.id, decision: "keep", note: "" },
+        : // A note the file stores is kept; a reason typed for it before it was approved is not (BL-832).
+          { id: file.id, decision: "keep", note: (file.note ?? "").trim().slice(0, reasonLimit) },
     ),
   };
 }
