@@ -26,7 +26,10 @@ const {
 const w = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const base = `/v1/workspaces/${w}/notifications`;
 
-beforeEach(() => apiRequest.mockReset());
+// A function beforeEach returns runs after the test: mockReset returns the mock, which must not be called then.
+beforeEach(() => {
+  apiRequest.mockReset();
+});
 
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -161,6 +164,49 @@ describe("notification hooks", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(client.getQueryData<{ unread_count: number }>(notificationKeys.counts(w))?.unread_count).toBe(6);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: notificationKeys.all(w) });
+  });
+
+  // S-251: on the phone a row is read and then made unread again (or the other way) in a moment; the refresh the first
+  // one started must not undo the second while it is on its way.
+  it.each([
+    { first: "read", then: "unread" },
+    { first: "unread", then: "read" },
+  ] as const)("keeps $then shown when the refresh $first started lands after it", async ({ first, then }) => {
+    const { client, Wrapper } = wrapper();
+    const unreadRow = notice({ seen_at: "2026-10-16T16:40:00Z" });
+    const readRow = { ...unreadRow, read_at: "2026-10-16T16:41:00Z" };
+    const before = first === "read" ? unreadRow : readRow;
+    let feeds = 0;
+    let land: (value: unknown) => void = () => undefined;
+    let answerThen: (value: unknown) => void = () => undefined;
+    apiRequest.mockImplementation(async (_client: unknown, path: string) => {
+      if (path.endsWith("/count")) return { unseen_count: 0, unread_count: 0, needs_action_count: 1 };
+      if (path.endsWith(`/${then}`)) return new Promise((resolve) => (answerThen = resolve));
+      if (path.endsWith(`/${first}`)) return { updated: 1, unread_count: 0 };
+      feeds += 1;
+      // The refresh the first one's settle starts: it carries the core's answer from before the second.
+      if (feeds === 2) return new Promise((resolve) => (land = resolve));
+      return feedPage([before]);
+    });
+    const { result } = renderHook(
+      () => ({ feed: useNotificationFeed(w, "all"), read: useMarkNotificationsRead(w), unread: useMarkNotificationsUnread(w) }),
+      { wrapper: Wrapper },
+    );
+    const readAt = () => client.getQueryData<InfiniteData<NotificationFeed>>(notificationKeys.feed(w, "all"))?.pages[0]?.items[0]?.read_at;
+    await waitFor(() => expect(readAt()).toBe(before.read_at));
+    act(() => result.current[first].mutate({ ids: [unreadRow.id] }));
+    await waitFor(() => expect(feeds).toBe(2));
+    act(() => result.current[then].mutate({ ids: [unreadRow.id] }));
+    const shown = () => (then === "unread" ? expect(readAt()).toBeNull() : expect(readAt()).toBeTruthy());
+    await waitFor(shown);
+    await act(async () => {
+      land(feedPage([first === "read" ? readRow : unreadRow]));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(result.current[then].isPending).toBe(true);
+    shown();
+    answerThen({ updated: 1, unread_count: 0 });
+    await waitFor(() => expect(result.current[then].isSuccess).toBe(true));
   });
 
   it("marks everything up to now as seen", async () => {

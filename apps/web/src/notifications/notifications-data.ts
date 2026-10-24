@@ -79,7 +79,9 @@ export function useMarkNotificationsRead(workspaceId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (read: NotificationReadInput) => markNotificationsRead(workspaceId, read),
-    onMutate: (read) => {
+    onMutate: async (read) => {
+      // A refresh already on its way (the one an Unread just started) carries the answer from before this read.
+      await client.cancelQueries({ queryKey: notificationKeys.all(workspaceId) });
       // The row looks read at once, and the bell and the tabs drop with it; the refetch below brings the core's own answer.
       // The list keeps pages; employee Home keeps one plain page under the same key prefix.
       const now = new Date().toISOString();
@@ -116,7 +118,9 @@ export function useMarkNotificationsUnread(workspaceId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (unread: NotificationUnreadInput) => markNotificationsUnread(workspaceId, unread),
-    onMutate: (unread) => {
+    onMutate: async (unread) => {
+      // A refresh already on its way (the one a Read just started) carries the answer from before this Unread.
+      await client.cancelQueries({ queryKey: notificationKeys.all(workspaceId) });
       const isRead = (item: NotificationFeed["items"][number]) => unread.ids.includes(item.id) && Boolean(item.read_at);
       const feeds = client.getQueriesData<CachedFeed>({ queryKey: [...notificationKeys.all(workspaceId), "feed"] });
       const newlyUnread = new Set(feeds.flatMap(([, data]) => (data ? feedItems(data) : [])).filter(isRead).map((item) => item.id));
