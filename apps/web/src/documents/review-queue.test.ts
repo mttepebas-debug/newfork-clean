@@ -1,3 +1,4 @@
+import type { DocumentObligationStatus } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
 import {
   documentWaits,
@@ -7,8 +8,13 @@ import {
   snapshotQueue,
 } from "./review-queue";
 
-const row = (id: string, employee_id: string, employee_name: string, title: string, status = "pending_review") =>
-  ({ id, employee_id, employee_name, title, status }) as const;
+const row = (
+  id: string,
+  employee_id: string,
+  employee_name: string,
+  title: string,
+  status: DocumentObligationStatus = "pending_review",
+) => ({ id, employee_id, employee_name, title, status });
 const byName = (a: { employee_name: string }, b: { employee_name: string }) =>
   a.employee_name.localeCompare(b.employee_name);
 
