@@ -1,5 +1,5 @@
 import type { DocumentDetail, DocumentObligation } from "@newfork/shared";
-import { zoneName } from "../lib/today";
+import { dateInZone, zoneName } from "../lib/today";
 import { daysLeftLabel } from "./review-decision";
 
 // What the manager's review drawer says about a document in its head and its Details facts (A2 Tur 6,
@@ -113,10 +113,18 @@ type Head = Pick<
   "status" | "deadline_at" | "timezone" | "expiry_date" | "approved_id"
 >;
 
+// A renewal waits for review while the approved copy still counts (no expiry, or not run out today in the document's
+// zone), as the server's own state reads it: nothing is due, and the deadline approving kept has long passed.
+function renewalWaitsOnValidCopy(obligation: Head, now: Date): boolean {
+  if (obligation.status !== "pending_review" || !obligation.approved_id) return false;
+  return !obligation.expiry_date || obligation.expiry_date >= dateInZone(now, zoneOf(obligation.timezone));
+}
+
 // A due date is shown while the person still owes the document; an expired one only when a new date lies ahead
 // (approving keeps the old deadline, which has long passed by the time a copy expires).
 function showsDue(obligation: Head, now: Date): obligation is Head & { deadline_at: string } {
   if (!obligation.deadline_at) return false;
+  if (renewalWaitsOnValidCopy(obligation, now)) return false;
   if (["pending_review", "missing", "grace", "rejected"].includes(obligation.status)) return true;
   return obligation.status === "expired" && Date.parse(obligation.deadline_at) > now.getTime();
 }
@@ -193,12 +201,15 @@ export function documentFacts(
     return facts;
   }
   // Sending a document for review stops its clock (Mert, 24 Oct): Due then says the time frozen at sending, the same
-  // count "What's left" offers, not the deadline's.
+  // count "What's left" offers, not the deadline's. No-break spaces keep a narrow phone's break after the "·".
   const paused =
-    obligation.status === "pending_review" && obligation.deadline_at && (obligation.remaining_seconds ?? 0) > 0
+    obligation.status === "pending_review" &&
+    !renewalWaitsOnValidCopy(obligation, now) &&
+    (obligation.remaining_seconds ?? 0) > 0
       ? obligation.remaining_seconds
       : null;
-  if (paused !== null) facts.push(["Due", `${daysLeftLabel(paused)} left · paused while it waits`]);
+  if (paused !== null)
+    facts.push(["Due", `${daysLeftLabel(paused)} left · paused while it waits`]);
   else if (showsDue(obligation, now))
     facts.push([
       "Due",

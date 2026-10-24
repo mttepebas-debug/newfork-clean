@@ -168,7 +168,8 @@ describe("headSub", () => {
 // Details' facts (mockup-spec 4.3): who, what, where, what was sent, and when it is due.
 describe("documentFacts", () => {
   // Mert, 24 Oct: the clock stops while a document waits for review, so Due says the time frozen at sending, the same
-  // number "What's left" offers, never the deadline's live count.
+  // number "What's left" offers, never the deadline's live count. On a narrow phone the line breaks only after "·".
+  const paused = (left: string) => `${left} · paused while it waits`;
   it("lists a document waiting for review with what was sent and the time left, paused while it waits", () => {
     const doc = detail();
     doc.obligation.remaining_seconds = 9 * 86_400 + 600;
@@ -179,15 +180,40 @@ describe("documentFacts", () => {
       ["Sent", "Wed, Oct 21, 4:12 PM"],
       ["Expires", "Sep 30, 2029"],
       ["Card number", "FH-448812"],
-      ["Due", "9 days left · paused while it waits"],
+      ["Due", paused("9 days left")],
     ]);
   });
   it("says a day, or less than a day, of paused time as What's left does", () => {
     const doc = detail();
     doc.obligation.remaining_seconds = 86_400 + 60;
-    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", "1 day left · paused while it waits"]);
+    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", paused("1 day left")]);
     doc.obligation.remaining_seconds = 3600;
-    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", "less than a day left · paused while it waits"]);
+    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", paused("less than a day left")]);
+  });
+  // Someone not yet active has no deadline, but a period change can still freeze time for a waiting copy; "What's
+  // left" offers it, so Due says it too.
+  it("says paused time with no deadline yet", () => {
+    const doc = detail();
+    doc.obligation.deadline_at = null;
+    doc.obligation.remaining_seconds = 10 * 86_400;
+    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", paused("10 days left")]);
+  });
+  // A renewal waits while the approved copy still counts: nothing is due, so no old deadline reads "overdue" and no
+  // paused time is shown; once the copy has run out, the due date is back.
+  it("shows no due date while a renewal waits and the copy on file still counts", () => {
+    const doc = detail();
+    doc.obligation.approved_id = "v1";
+    doc.obligation.expiry_date = "2026-12-31";
+    doc.obligation.deadline_at = "2025-12-11T07:59:00Z";
+    doc.obligation.remaining_seconds = 0;
+    expect(documentFacts(doc, now).map(([label]) => label)).not.toContain("Due");
+    doc.obligation.remaining_seconds = 3 * 86_400;
+    expect(documentFacts(doc, now).map(([label]) => label)).not.toContain("Due");
+    doc.obligation.expiry_date = null;
+    expect(documentFacts(doc, now).map(([label]) => label)).not.toContain("Due");
+    doc.obligation.expiry_date = "2026-10-01";
+    doc.obligation.remaining_seconds = 0;
+    expect(documentFacts(doc, now).at(-1)).toEqual(["Due", "Wed, Dec 10, 2025 · overdue"]);
   });
   it("keeps the date when a waiting document has no paused time (sent late, or its publication paused)", () => {
     const doc = detail();
@@ -207,6 +233,7 @@ describe("documentFacts", () => {
     const doc = detail();
     doc.obligation.location_names = [];
     doc.obligation.deadline_at = null;
+    doc.obligation.remaining_seconds = null;
     doc.submissions[0]!.expiry_date = null;
     doc.submissions[0]!.metadata = { card: null };
     expect(documentFacts(doc, now)).toEqual([
