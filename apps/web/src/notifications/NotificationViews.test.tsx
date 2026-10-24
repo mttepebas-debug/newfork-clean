@@ -58,6 +58,7 @@ function answer(
     if (path.endsWith("/count")) return counts;
     if (path.endsWith("/seen")) return { unseen_count: 0 };
     if (path.endsWith("/read")) return { updated: 1, unread_count: 0 };
+    if (path.endsWith("/unread")) return { updated: 1, unread_count: 1 };
     const query = new URLSearchParams(path.split("?")[1]);
     if (query.has("before")) return older;
     const filter = query.get("filter") as "all";
@@ -584,18 +585,80 @@ describe("on the phone, a row", () => {
     expect(slid(row)).toBe("");
   });
 
-  it("does not slide once read, nor in the desktop panel", async () => {
-    sheet([notice({ read_at: "2026-10-16T17:00:00Z" })]);
-    const read = await rowOf(tom);
-    drag(within(read).getByRole("button", { name: tom }), 120);
-    expect(slid(read)).toBe("");
-    cleanup();
-    answer({ all: feedPage([notice()]) });
-    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    const panelRow = await rowOf(tom);
-    drag(within(panelRow).getByRole("button", { name: tom }), 120);
-    expect(slid(panelRow)).toBe("");
-    expect(within(panelRow).queryByRole("button", { name: "Read" })).toBeNull();
+  // S-251 (Mert 2026-10-24): "telefonda kaydırınca okundu, sağa da sola da; okunmuş satırda Unread".
+  const readAt = "2026-10-16T17:00:00Z";
+  const seenAt = "2026-10-16T16:50:00Z";
+  const cooler = notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", title: "Walk-in cooler repair on Tuesday", needs_action: false, seen_at: seenAt, read_at: readAt });
+  const unreadBody = () => JSON.parse(String((calls("/unread")[0]![2] as RequestInit).body)) as unknown;
+
+  it("once read, stays open on Unread from 72 px, and Unread marks it unread with the focus kept on the row", async () => {
+    sheet([notice({ seen_at: seenAt, read_at: readAt })]);
+    const row = await rowOf(tom);
+    drag(within(row).getByRole("button", { name: tom }), 80);
+    expect(slid(row)).toBe("translateX(96px)");
+    expect(within(row).queryByRole("button", { name: "Read" })).toBeNull();
+    const unread = within(row).getByRole("button", { name: "Unread" });
+    expect(unread.className).toContain("is-left");
+    expect(unread.querySelector("svg.lucide-mail")).not.toBeNull();
+    expect(unread.tabIndex).toBe(0);
+    unread.focus();
+    fireEvent.click(unread);
+    // From here the core answers the row unread.
+    answer({ all: feedPage([notice({ seen_at: seenAt })]) });
+    await waitFor(() => expect(calls("/unread")).toHaveLength(1));
+    expect(unreadBody()).toEqual({ ids: [notice().id] });
+    expect(calls("/read")).toHaveLength(0);
+    // Unread leaves with the row closed; its focus stays on the row, and the dot comes back to read it again.
+    expect(within(row).queryByRole("button", { name: "Unread" })).toBeNull();
+    expect(slid(row)).toBe("");
+    expect(document.activeElement).toBe(row.querySelector(".ni-row-title"));
+    expect(await within(row).findByRole("button", { name: "Mark as read: Time off request from Tom Becker" })).toBeTruthy();
+    // Its place under New or Earlier stays: it was seen before.
+    expect(row.parentElement!.querySelector(".ni-group")).toBeNull();
+  });
+
+  it("once read, opens on Unread the other way the same, and is unread at once from half the row", async () => {
+    sheet([notice({ seen_at: seenAt, read_at: readAt }), cooler]);
+    const row = await rowOf(tom);
+    drag(within(row).getByRole("button", { name: tom }), -90);
+    expect(slid(row)).toBe("translateX(-96px)");
+    expect(within(row).getByRole("button", { name: "Unread" }).className).toContain("is-right");
+    const other = await rowOf(/^Walk-in cooler repair on Tuesday$/);
+    drag(within(other).getByRole("button", { name: /^Walk-in cooler repair on Tuesday$/ }), 200);
+    await waitFor(() => expect(calls("/unread")).toHaveLength(1));
+    expect(unreadBody()).toEqual({ ids: [cooler.id] });
+    expect(slid(other)).toBe("");
+  });
+
+  // A read notice with no link has nothing to open: the focus Unread had goes to the list, never out of it.
+  it("keeps the focus in the list when the row Unread leaves has nothing to open", async () => {
+    sheet([notice({ url: null, seen_at: seenAt, read_at: readAt })]);
+    const row = await rowOf(tom);
+    expect(row.querySelector<HTMLButtonElement>(".ni-row-title")!.disabled).toBe(true);
+    drag(row.querySelector(".ni-tile")!, 80);
+    const unread = within(row).getByRole("button", { name: "Unread" });
+    unread.focus();
+    fireEvent.click(unread);
+    await waitFor(() => expect(calls("/unread")).toHaveLength(1));
+    expect(document.activeElement).toBe(row.closest('[role="tabpanel"]'));
+  });
+
+  it("does not slide in the desktop panel nor on the See all page, read or unread", async () => {
+    for (const view of [<NotificationsPanel workspaceId={w} onClose={() => undefined} />, <NotificationsPage />]) {
+      answer({ all: feedPage([notice(), cooler]) });
+      mount(view);
+      for (const name of [tom, /^Walk-in cooler repair on Tuesday$/]) {
+        const row = await rowOf(name);
+        drag(within(row).getByRole("button", { name }), 120);
+        expect(slid(row)).toBe("");
+        expect(within(row).queryByRole("button", { name: /^(Read|Unread)$/ })).toBeNull();
+        drag(within(row).getByRole("button", { name }), -250);
+        expect(slid(row)).toBe("");
+      }
+      expect(calls("/read")).toHaveLength(0);
+      expect(calls("/unread")).toHaveLength(0);
+      cleanup();
+    }
   });
 });
 

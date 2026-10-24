@@ -337,8 +337,9 @@ button.ni-dot:focus-visible {
     z-index: 1;
   }
 }
-/* The phone: drag an unread row either way to show Read under it (S-251, Mert 2026-10-23: both ways work
-   the same). Past 72 px it stays open on Read; past half the row it is read at once. */
+/* The phone: drag a row either way to show Read under it, or Unread once it is read (S-251, Mert 2026-10-23: both
+   ways work the same; 2026-10-24: a read row says Unread). Past 72 px it stays open on it; past half the row it is
+   done at once. */
 .ni-sheet .ni-row {
   touch-action: pan-y;
   /* A pinch that touches a row still zooms; a browser that knows no pinch-zoom keeps the line above. */
@@ -366,6 +367,18 @@ button.ni-dot:focus-visible {
 }
 .ni-row.is-full {
   background: var(--theme-accent-strong);
+}
+/* Unread under a read row sits on grey, darker past half the row (variant A, frame.js). */
+.ni-row:not(.is-unread).is-dragging,
+.ni-row:not(.is-unread).is-slid {
+  background: var(--theme-muted-strong);
+}
+.ni-row:not(.is-unread).is-full {
+  background: var(--theme-text-secondary);
+}
+/* A read notice with no link has a disabled title: a finger on it still reaches the row, to slide it. */
+.ni-sheet .ni-row-title:disabled {
+  pointer-events: none;
 }
 .ni-row.is-dragging .ni-row-title,
 .ni-row.is-slid .ni-row-title {

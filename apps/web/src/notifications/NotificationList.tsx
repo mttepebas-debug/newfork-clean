@@ -14,6 +14,7 @@ import {
   Crown,
   FileText,
   Hand,
+  Mail,
   MapPinOff,
   Megaphone,
   Repeat2,
@@ -32,7 +33,13 @@ import { LinesOutline, LoadError } from "../shell/LoadState";
 import { StepsIn } from "../shell/StepsIn";
 import { arrivalLabel, arrivalTitle, emptyTitle, isNewNotice, rowLines, rowLook, type TileIcon } from "./notification-model";
 import type { SwipeSide } from "./notification-swipe";
-import { useMarkNotificationsRead, useMarkNotificationsSeen, useNotificationCounts, useNotificationFeed } from "./notifications-data";
+import {
+  useMarkNotificationsRead,
+  useMarkNotificationsSeen,
+  useMarkNotificationsUnread,
+  useNotificationCounts,
+  useNotificationFeed,
+} from "./notifications-data";
 import { useRowSwipe } from "./useRowSwipe";
 import "./notifications.css";
 import { useViewAddress } from "../shell/view-address";
@@ -138,7 +145,8 @@ function useMinuteClock(fixed: Date | undefined): Date {
 /**
  * The list itself, newest first: what came since the list was last opened under New, the rest under
  * Earlier (S-247 (2)). Showing the list marks it seen; a row stays where it is while the list is open.
- * A row opens its link and reads it; its unread dot reads it; on the phone an unread row slides to Read.
+ * A row opens its link and reads it; its unread dot reads it; on the phone a row slides to Read, or once read to
+ * Unread.
  */
 export function NotificationList({
   workspaceId,
@@ -155,7 +163,7 @@ export function NotificationList({
   readonly filter: NotificationFilter;
   readonly panelId: string;
   readonly wide?: boolean;
-  /** The phone's full-screen list: an unread row slides either way to show Read (S-251). */
+  /** The phone's full-screen list: a row slides either way to show Read, or Unread once read (S-251). */
   readonly swipe?: boolean;
   /** Called after a row sends the person somewhere (the panel closes). */
   readonly onNavigate?: () => void;
@@ -163,6 +171,7 @@ export function NotificationList({
 }) {
   const feed = useNotificationFeed(workspaceId, filter);
   const read = useMarkNotificationsRead(workspaceId);
+  const unreadAgain = useMarkNotificationsUnread(workspaceId);
   const { mutate: markSeen } = useMarkNotificationsSeen(workspaceId);
   const navigate = useNavigate();
   const viewAddress = useViewAddress();
@@ -172,7 +181,7 @@ export function NotificationList({
   const labelledBy = `${panelId}-tab-${filter}`;
   // What this opening of the list showed as new; it stays New after the core marks it seen.
   const [fresh] = useState(() => new Set<string>());
-  // The one row left open on Read (the phone).
+  // The one row left open on Read or Unread (the phone).
   const [slid, setSlid] = useState<{ readonly id: string; readonly side: SwipeSide } | null>(null);
   const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
   const unseen = items
@@ -274,6 +283,7 @@ export function NotificationList({
                   timeFormat={timeFormat}
                   onOpen={() => open(item)}
                   onRead={() => read.mutate({ ids: [item.id] })}
+                  onUnread={() => unreadAgain.mutate({ ids: [item.id] })}
                 />
               ))}
             </Fragment>
@@ -300,14 +310,15 @@ export function NotificationList({
 const isCut = (line: HTMLElement | null) => Boolean(line && line.scrollWidth > line.clientWidth);
 
 /**
- * The dot and Read leave the row once its notice is read: the focus on them goes to the row's title when it `stays`
- * (it still opens something, and the list keeps the row), else on to the next row that has a button, else to the list.
+ * The dot, Read and Unread leave the row once they act: the focus on them goes to the row's title when the list keeps
+ * the row (`stays`) and the title opens something, else to the list; a row the list drops passes it on to the next row
+ * that has a button, else to the list.
  */
 function keepFocus(row: HTMLElement, stays: boolean) {
   const rows = [...(row.parentElement?.children ?? [])].filter((other): other is HTMLElement => other.classList.contains("ni-row"));
   const at = rows.indexOf(row);
   const next = stays
-    ? row.querySelector<HTMLElement>(".ni-row-title")
+    ? row.querySelector<HTMLElement>(".ni-row-title:not(:disabled)")
     : [...rows.slice(at + 1), ...rows.slice(0, at).reverse()]
         .map((other) => other.querySelector<HTMLElement>("button.ni-dot, .ni-row-title:not(:disabled)"))
         .find(Boolean);
@@ -331,6 +342,7 @@ function NotificationRow({
   timeFormat,
   onOpen,
   onRead,
+  onUnread,
 }: {
   readonly item: NotificationItem;
   readonly viewerId: string | undefined;
@@ -344,6 +356,7 @@ function NotificationRow({
   readonly timeFormat: TimeFormat;
   readonly onOpen: () => void;
   readonly onRead: () => void;
+  readonly onUnread: () => void;
 }) {
   const look = rowLook(item);
   const Icon = icons[look.icon];
@@ -353,15 +366,18 @@ function NotificationRow({
   const first = useRef<HTMLButtonElement>(null);
   const second = useRef<HTMLParagraphElement>(null);
   const [whole, setWhole] = useState<string>();
-  const slide = useRowSwipe({ enabled: swipe && unread, open: slid, onOpen: onSlide, onRead });
+  // An unread row slides to Read, a read one to Unread (S-251).
+  const act = unread ? onRead : onUnread;
+  const slide = useRowSwipe({ enabled: swipe, open: slid, onOpen: onSlide, onAct: act });
   const openRow = (event: MouseEvent) => {
     if (!slide.endsDrag(event)) onOpen();
   };
-  /** The dot and Read: the row closes, and the focus they had stays in the list. */
-  const readHere = (event: MouseEvent<HTMLButtonElement>) => {
-    if (event.currentTarget === document.activeElement && slide.row.current) keepFocus(slide.row.current, Boolean(item.url) && !readLeaves);
+  /** The dot, Read and Unread: the row closes, and the focus they had stays in the list (every list keeps a row made unread). */
+  const actHere = (event: MouseEvent<HTMLButtonElement>) => {
+    if (event.currentTarget === document.activeElement && slide.row.current)
+      keepFocus(slide.row.current, unread ? Boolean(item.url) && !readLeaves : true);
     if (slid) onSlide(null);
-    onRead();
+    act();
   };
   const classes = [
     "ni-row",
@@ -386,15 +402,15 @@ function NotificationRow({
           className={`ni-under is-${slide.side}`}
           tabIndex={slide.open ? 0 : -1}
           aria-hidden={slide.open ? undefined : true}
-          onClick={readHere}
+          onClick={actHere}
         >
-          <Check size={16} aria-hidden />
-          <span>Read</span>
+          {unread ? <Check size={16} aria-hidden /> : <Mail size={16} aria-hidden />}
+          <span>{unread ? "Read" : "Unread"}</span>
         </button>
       ) : null}
       <div className="ni-swipe" style={slide.style}>
         {unread ? (
-          <button type="button" className="ni-dot" onClick={readHere} aria-label={`Mark as read: ${item.title}`} title="Mark as read" />
+          <button type="button" className="ni-dot" onClick={actHere} aria-label={`Mark as read: ${item.title}`} title="Mark as read" />
         ) : (
           <span className="ni-dot" aria-hidden />
         )}

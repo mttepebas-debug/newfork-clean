@@ -3,19 +3,20 @@ import { swipeAxis, swipeEnd, swipeOffset, swipeSlidTo, type SwipeSide } from ".
 
 /**
  * A row that slides on the phone (S-251): `open` is the side it stays open on, `onOpen` opens or closes it,
- * `onRead` reads it. The list holds which row is open, so opening one closes another; a tap anywhere else
- * closes it too. Vertical moves stay the list's scroll (touch-action: pan-y in the sheet's CSS).
+ * `onAct` does the action under it (reads it, or marks a read row unread). The list holds which row is open, so
+ * opening one closes another; a tap anywhere else closes it too. Vertical moves stay the list's scroll
+ * (touch-action: pan-y in the sheet's CSS).
  */
 export function useRowSwipe({
   enabled,
   open,
   onOpen,
-  onRead,
+  onAct,
 }: {
   readonly enabled: boolean;
   readonly open: SwipeSide | null;
   readonly onOpen: (side: SwipeSide | null) => void;
-  readonly onRead: () => void;
+  readonly onAct: () => void;
 }) {
   const row = useRef<HTMLLIElement>(null);
   const drag = useRef<{ pointer: number; x: number; y: number; from: number; width: number; axis: "x" | "y" | null } | null>(null);
@@ -38,7 +39,7 @@ export function useRowSwipe({
 
   const onPointerDown = (event: PointerEvent<HTMLLIElement>) => {
     ended.current = null;
-    // The dot and Read are taps of their own.
+    // The dot and the action under the row are taps of their own.
     if (!enabled || event.button !== 0 || (event.target as Element).closest("button:not(.ni-row-title)")) return;
     const { width } = event.currentTarget.getBoundingClientRect();
     drag.current = { pointer: event.pointerId, x: event.clientX, y: event.clientY, from: rest, width, axis: null };
@@ -69,23 +70,23 @@ export function useRowSwipe({
     // The browser took the gesture over: the row goes back to where it was.
     if (event.type === "pointercancel") return;
     const end = swipeEnd(swipeOffset(at.from + event.clientX - at.x, at.width), at.width);
-    if (end.action === "read") {
+    if (end.action === "act") {
       onOpen(null);
-      onRead();
+      onAct();
     } else onOpen(end.action === "open" ? end.side : null);
   };
 
   const offset = dragged ? dragged.offset : rest;
-  /** The side Read shows on now, while dragged or open. */
+  /** The side the action shows on now, while dragged or open. */
   const side: SwipeSide | null = offset > 0 ? "left" : offset < 0 ? "right" : null;
   const style: CSSProperties | undefined = offset ? { transform: `translateX(${offset}px)` } : undefined;
   return {
     row,
     side,
-    /** Read is a button to reach only while the row stays open on it. */
+    /** The action is a button to reach only while the row stays open on it. */
     open: !dragged && opened !== null,
     dragging: dragged !== null,
-    /** Past half the row: letting go reads it. */
+    /** Past half the row: letting go does the action. */
     full: dragged !== null && Math.abs(dragged.offset) >= dragged.width / 2,
     style,
     handlers: { onPointerDown, onPointerMove, onPointerUp: onLetGo, onPointerCancel: onLetGo },

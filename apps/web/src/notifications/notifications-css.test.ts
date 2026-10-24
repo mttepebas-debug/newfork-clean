@@ -78,6 +78,22 @@ describe("a notification row", () => {
     expect(ruleBody((head) => head === ".ni-swipe")).toMatch(/transition\s*:\s*transform/);
     expect(ruleBody((head) => head === ".ni-swipe", reducedMotion)).toMatch(/transition\s*:\s*none/);
   });
+
+  // S-251 (variant A, frame.js): a read row slides to Unread on grey, a darker grey past half the row; Read stays green.
+  it("shows Unread under a read row on grey, and Read under an unread one on green", () => {
+    expect(ruleBody((head) => head === ".ni-row.is-slid")).toMatch(/background\s*:\s*var\(--theme-accent\)/);
+    expect(ruleBody((head) => head === ".ni-row.is-full")).toMatch(/background\s*:\s*var\(--theme-accent-strong\)/);
+    expect(ruleBody((head) => head === ".ni-row:not(.is-unread).is-dragging")).toMatch(/background\s*:\s*var\(--theme-muted-strong\)/);
+    expect(ruleBody((head) => head === ".ni-row:not(.is-unread).is-slid")).toMatch(/background\s*:\s*var\(--theme-muted-strong\)/);
+    expect(ruleBody((head) => head === ".ni-row:not(.is-unread).is-full")).toMatch(/background\s*:\s*var\(--theme-text-secondary\)/);
+    // The full grey comes after the plain one: a row past half is still dragged.
+    expect(css.indexOf(".ni-row:not(.is-unread).is-full")).toBeGreaterThan(css.indexOf(".ni-row:not(.is-unread).is-dragging"));
+  });
+
+  // A read notice with no link has a disabled title: the finger on it must still reach the row to slide it.
+  it("lets a finger on a read row's disabled title slide the row on the phone", () => {
+    expect(ruleBody((head) => head === ".ni-sheet .ni-row-title:disabled")).toMatch(/pointer-events\s*:\s*none/);
+  });
 });
 
 // S-251 (Mert 2026-10-23, "Gökyüzü temasi ve bütünlüğü bozuluyor"): the header's buttons sit on the sky.

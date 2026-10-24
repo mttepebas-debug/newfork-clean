@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { swipeAxis, swipeEnd, swipeOffset } from "./notification-swipe";
 
-// S-251 (variant A, frame.js): on a phone an unread row is dragged either way to show Read under it.
+// S-251 (variant A, frame.js): on a phone a row is dragged either way to show Read (or, once read, Unread) under it.
 describe("swipeAxis", () => {
   it("waits for about 8 px before it decides", () => {
     expect(swipeAxis(0, 0)).toBeNull();
@@ -33,14 +33,14 @@ describe("swipeEnd", () => {
     expect(swipeEnd(-71.5, 390)).toEqual({ action: "close" });
   });
 
-  it("stays open from 72 px, with Read on the side the row left", () => {
+  it("stays open from 72 px, with its action on the side the row left", () => {
     expect(swipeEnd(72, 390)).toEqual({ action: "open", side: "left" });
     expect(swipeEnd(-72, 390)).toEqual({ action: "open", side: "right" });
     expect(swipeEnd(194, 390)).toEqual({ action: "open", side: "left" });
   });
 
-  it("reads it at once from half the row", () => {
-    expect(swipeEnd(195, 390)).toEqual({ action: "read" });
-    expect(swipeEnd(-300, 390)).toEqual({ action: "read" });
+  it("does its action at once from half the row", () => {
+    expect(swipeEnd(195, 390)).toEqual({ action: "act" });
+    expect(swipeEnd(-300, 390)).toEqual({ action: "act" });
   });
 });
