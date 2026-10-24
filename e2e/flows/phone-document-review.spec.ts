@@ -2,11 +2,13 @@ import type { Locator } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
 import { emailOf } from "../fixtures/world";
 import {
+  lastLine,
   ownJob,
   personWithPassword,
   publishedDocument,
   sentWithFiles,
   signInAs,
+  sql,
   standing,
   tag,
 } from "../fixtures/documents";
@@ -26,6 +28,47 @@ async function tap(control: Locator) {
   await control.page().waitForTimeout(450);
   await control.tap();
 }
+
+/**
+ * Every control the finger reaches is 44 px or more. An absolute ::before counts as its reach: measured on the box
+ * it is laid out in (the control, or the nearest positioned box around it, as for `inset: 0`).
+ */
+async function shortControls(scope: Locator) {
+  return scope.evaluate((root) => {
+    const laidIn = (control: HTMLElement): HTMLElement => {
+      let box: HTMLElement | null = control;
+      while (box && getComputedStyle(box).position === "static") box = box.parentElement;
+      return box ?? document.documentElement;
+    };
+    return [...root.querySelectorAll<HTMLElement>("button, input, select, textarea, [role=tab]")]
+      .filter((control) => control.getClientRects().length)
+      .map((control) => {
+        const own = control.getBoundingClientRect().height;
+        const before = getComputedStyle(control, "::before");
+        const reach =
+          before.content !== "none" && before.position === "absolute"
+            ? laidIn(control).getBoundingClientRect().height -
+              (parseFloat(before.top) || 0) -
+              (parseFloat(before.bottom) || 0)
+            : 0;
+        return { name: control.getAttribute("aria-label") ?? control.textContent, h: Math.max(own, reach) };
+      })
+      .filter((control) => control.h < 44);
+  });
+}
+
+/** What the server stored for the person's version sent back: the document's reason, and each file's decision. */
+const sentBackAs = (documentId: string, email: string): string =>
+  lastLine(
+    sql(`
+    select r.rejection_reason || ' | ' || string_agg(f.decision || ':' || f.note, ', ' order by f.decision)
+    from public.employee_onboarding_requirements r
+    join auth.users u on u.id = r.lifecycle_user_id
+    join public.employee_document_submissions s on s.requirement_id = r.id and s.state = 'rejected'
+    join public.employee_document_submission_files f on f.submission_id = s.id
+    where r.source_id = '${documentId}' and u.email = '${email}'
+    group by r.rejection_reason;`),
+  );
 
 test("phone: the manager rejects a file with a quick reason in the bottom card, saves, reads Missing and goes on", async ({
   page,
@@ -80,25 +123,14 @@ test("phone: the manager rejects a file with a quick reason in the bottom card, 
   await expect(review.getByLabel(/^Why reject card-back\.pdf\?/)).toHaveValue("Blurry photo.");
   await expect(review.locator(".docr-note")).toHaveText("Save sends it back · 1 of 2 files rejected");
   // Every control the finger reaches is 44 px or more (a ::before reach counts).
-  const short = await review.evaluate((dialog) =>
-    [...dialog.querySelectorAll<HTMLElement>("button, input, [role=tab]")]
-      .filter((control) => control.getClientRects().length)
-      .map((control) => {
-        const before = getComputedStyle(control, "::before");
-        const reach =
-          before.content !== "none" && before.position === "absolute"
-            ? -parseFloat(before.top || "0") - parseFloat(before.bottom || "0")
-            : 0;
-        return { name: control.getAttribute("aria-label") ?? control.textContent, h: control.getBoundingClientRect().height + reach };
-      })
-      .filter((control) => control.h < 44),
-  );
-  expect(short).toEqual([]);
+  expect(await shortControls(review)).toEqual([]);
 
   // Save sends it back: the server keeps the approved file for the next version, the person owes it again.
   await tap(save);
   await expect(save).toHaveCount(0);
   await expect.poll(() => standing(documentId, ada)).toBe("rejected draft");
+  // K1 decision 10 at the server: the document's reason is made of the rejected file's reason, which is its note.
+  expect(sentBackAs(documentId, ada)).toBe("card-back.pdf: Blurry photo. | discard:Blurry photo., keep:");
   await expect(review.locator(".rd-head .rd-chip")).toHaveText("Missing");
   await expect(review.locator(".docr-note")).toHaveText(/^Sent back · .+ has a new 7 days\.$/);
   await expect(review.getByRole("button", { name: "Open card-back.pdf · Rejected" })).toBeVisible();
@@ -114,4 +146,23 @@ test("phone: the manager rejects a file with a quick reason in the bottom card, 
   await expect(following.locator(".rd-head .rd-chip")).toHaveText("Needs review");
   await expect(following.getByRole("button", { name: /^1 file to review/ })).toBeVisible();
   expect(standing(documentId, bo)).toBe("awaiting_review pending_review");
+
+  // More options and History are as reachable: an open Excuse panel, then the timeline (its kept file opens from
+  // its whole 44 px row, a ::before with inset 0).
+  await tap(following.getByRole("button", { name: /^Excuse / }));
+  await expect(following.getByRole("group", { name: /^Excuse / })).toBeVisible();
+  expect(await shortControls(following)).toEqual([]);
+  await tap(following.getByRole("button", { name: "Cancel", exact: true }).first());
+  await tap(following.getByRole("tab", { name: "History" }));
+  await expect(following.getByRole("list", { name: "History" })).toBeVisible();
+  expect(await shortControls(following)).toEqual([]);
+  expect(standing(documentId, bo)).toBe("awaiting_review pending_review");
+
+  // Behind the card, the list reads the document sent back in the manager's word, under To do.
+  await tap(following.getByRole("button", { name: "Close details" }));
+  await expect(following).toHaveCount(0);
+  await tap(page.getByLabel("Document status").getByRole("button", { name: /^To do/ }));
+  await expect(
+    rows.filter({ hasText: new RegExp(`${key}-ada`, "i") }).locator(".list-chip"),
+  ).toHaveText("Missing");
 });
