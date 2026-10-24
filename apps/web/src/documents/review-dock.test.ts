@@ -124,6 +124,33 @@ describe("the result of a Save", () => {
     });
     expect([phone.word, phone.text]).toEqual(["Extended 10 days", "Due Fri, Nov 6."]);
   });
+  it("says an excuse, and who is no longer asked", () => {
+    const excused = { kind: "excused" as const, at };
+    expect(resultLine(excused, { first: "Daniel", phone: false, end: false, now: now("missing") })).toEqual({
+      tone: "muted",
+      word: "Excused",
+      text: "Daniel won't be asked for it.",
+      title: "Excused · Daniel won't be asked for it.",
+    });
+    expect(resultLine(excused, { first: "Daniel", phone: true, end: true, now: now("missing") }).text).toBe(
+      "Daniel won't be asked for it. All caught up.",
+    );
+  });
+  // K1 decision 3: an excuse taken back asks for the document again, by the refreshed due date.
+  it("says a document asked for again, and by when", () => {
+    const asked = { kind: "asked" as const, at };
+    expect(
+      resultLine(asked, { first: "Daniel", phone: false, end: false, now: now("missing", { due: "Fri, Nov 6" }) }),
+    ).toEqual({
+      tone: "muted",
+      word: "Asked again",
+      text: "Daniel needs to send it by Fri, Nov 6.",
+      title: "Asked again · Daniel needs to send it by Fri, Nov 6.",
+    });
+    expect(resultLine(asked, { first: "Daniel", phone: false, end: true, now: now("missing") }).text).toBe(
+      "Daniel needs to send it again. All caught up.",
+    );
+  });
 });
 
 describe("the green button", () => {
@@ -142,5 +169,12 @@ describe("the green button", () => {
       greenKey("maria", { act: "next", id: "ana", label: "Next: Ana Ruiz" }),
     );
     expect(greenKey("maria", { act: "close" })).not.toBe(greenKey("ana", { act: "close" }));
+  });
+  // mockup-spec 17.1: Save that now saves an open panel is a new meaning, so it holds too.
+  it("keys an open panel into Save's meaning", () => {
+    const save = { act: "save" as const, off: true };
+    expect(greenKey("maria", save, "extend")).not.toBe(greenKey("maria", save));
+    expect(greenKey("maria", save, "extend")).not.toBe(greenKey("maria", save, "excuse"));
+    expect(greenKey("maria", save, null)).toBe(greenKey("maria", save));
   });
 });

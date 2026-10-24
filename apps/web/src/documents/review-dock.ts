@@ -15,7 +15,10 @@ export type ReviewResult =
       /** The time the person has now: a new period, what was left, or none (no period). */
       time: { kind: "new"; days: number } | { kind: "left"; left: string } | null;
     }
-  | { kind: "extended"; at: string; days: number };
+  | { kind: "extended"; at: string; days: number }
+  /** More options: an excuse (K1 decision 1), or an excuse taken back (K1 decision 3). */
+  | { kind: "excused"; at: string }
+  | { kind: "asked"; at: string };
 
 export type ResultTone = "ok" | "red" | "warn" | "muted";
 export type ResultLine = { tone: ResultTone; word: string; text: string; title: string };
@@ -143,6 +146,16 @@ export function resultLine(
         phoneText: now.due ? `Due ${now.due}.` : "The due date moved.",
       };
       break;
+    case "excused":
+      line = { tone: "muted", word: "Excused", text: `${first} won't be asked for it.` };
+      break;
+    case "asked":
+      line = {
+        tone: "muted",
+        word: "Asked again",
+        text: now.due ? `${first} needs to send it by ${now.due}.` : `${first} needs to send it again.`,
+      };
+      break;
   }
   const word = (phone && line.phoneWord) || line.word;
   const text = phone ? (end && line.phoneEnd) || line.phoneText || line.text : line.text;
@@ -165,7 +178,10 @@ export function greenFor({
   return next ? { act: "next", id: next.id, label: `Next: ${next.label}` } : { act: "close" };
 }
 
-/** The green's meaning: for which document, what it does, and where it goes. Turning on is the same meaning. */
-export function greenKey(documentId: string, green: Green): string {
-  return `${documentId}|${green.act}|${green.act === "next" ? green.id : ""}`;
+/**
+ * The green's meaning: for which document, what it does, where it goes, and for Save the panel it saves (mockup-spec
+ * 17.1). Turning on is the same meaning.
+ */
+export function greenKey(documentId: string, green: Green, panel?: string | null): string {
+  return `${documentId}|${green.act}|${green.act === "next" ? green.id : ""}${panel && green.act === "save" ? `|${panel}` : ""}`;
 }
