@@ -50,6 +50,7 @@ function mine(overrides: Partial<MyLineups["lineups"][number]> = {}): MyLineups 
       ],
       ...overrides,
     }],
+    others: [],
   };
 }
 
@@ -214,7 +215,7 @@ describe("EmployeeLineup", () => {
   });
 
   it("greys every shift tab over the calm card when she is on no published lineup", async () => {
-    answer = { workspace_id: ws, date: "2026-10-13", lineups: [] };
+    answer = { workspace_id: ws, date: "2026-10-13", lineups: [], others: [] };
     board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
     renderLineup();
     const calm = await screen.findByText("Your Dinner lineup isn't published yet");
@@ -331,7 +332,7 @@ describe("EmployeeLineup", () => {
   });
 
   it("says her lineup isn't published yet when she works that day", async () => {
-    answer = { workspace_id: ws, date: "2026-10-13", lineups: [] };
+    answer = { workspace_id: ws, date: "2026-10-13", lineups: [], others: [] };
     board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
     renderLineup();
     expect(await screen.findByText("Your Dinner lineup isn't published yet")).toBeTruthy();
@@ -339,7 +340,7 @@ describe("EmployeeLineup", () => {
   });
 
   it("says she isn't on a lineup when she doesn't work that day", async () => {
-    answer = { workspace_id: ws, date: "2026-10-13", lineups: [] };
+    answer = { workspace_id: ws, date: "2026-10-13", lineups: [], others: [] };
     board.mockResolvedValue(model([]));
     renderLineup();
     expect(await screen.findByText("You're not on a lineup today")).toBeTruthy();
@@ -535,7 +536,7 @@ describe("EmployeeLineup", () => {
   });
 
   it("keeps the location row on a day with no published lineup: where she works", async () => {
-    answer = { workspace_id: ws, date: "2026-10-13", lineups: [] };
+    answer = { workspace_id: ws, date: "2026-10-13", lineups: [], others: [] };
     board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
     renderLineup();
     await screen.findByText("Your Dinner lineup isn't published yet");
