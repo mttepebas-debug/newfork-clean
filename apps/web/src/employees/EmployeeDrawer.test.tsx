@@ -2291,8 +2291,12 @@ describe("EmployeeDrawer", () => {
         name: "Alex Kim Food handler card Missing",
       }),
     );
+    // A2 Tur 6: the drawer is headed by the person; its name says whose document it is.
+    const review = await screen.findByRole("dialog", {
+      name: "Alex Kim · Food handler card",
+    });
     expect(
-      await screen.findByRole("heading", { name: "Food handler card" }),
+      within(review).getByRole("heading", { level: 2, name: "Alex Kim Missing" }),
     ).toBeTruthy();
     expect(getDocument).toHaveBeenCalledWith(
       { workspaceId, selfOnly: false },

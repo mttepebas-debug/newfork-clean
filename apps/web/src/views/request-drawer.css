@@ -361,6 +361,34 @@
 .catalog-drawer .rd-refusals {
   padding-left: 28px;
 }
+/* Facts (Mert 2026-10-23, Time off's Details; also the Documents review drawer's): one list, the label left and the
+   value right, every line 22 px and 10 px apart. Here and not with Time off's own rules, which load only with
+   Requests (K1 decision 17). */
+.catalog-drawer .rd .toa-facts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.catalog-drawer .rd .toa-facts div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.catalog-drawer .rd .toa-facts :is(dt, dd) {
+  line-height: 22px;
+}
+.catalog-drawer .rd .toa-facts dt {
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+  font-weight: 600;
+}
+.catalog-drawer .rd .toa-facts dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--theme-text);
+  overflow-wrap: anywhere;
+}
 .rd-activity {
   margin: 0;
   padding: 0;

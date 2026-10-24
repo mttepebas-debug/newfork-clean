@@ -1,0 +1,436 @@
+/* Employees → Documents: the manager's review drawer (A2 Tur 6, file buttons design a; Mert 23 Oct). On top of the
+   Requests drawer's own parts (views/request-drawer.css); light theme, --theme-* tokens only. The head is one sky from
+   the top edge to the tabs' line: the strip (‹ Previous · Next › ✕), who (initials, name, status) and what (document,
+   when), then the tabs. Desktop 157 px in all, a phone 161 px; the same for every document. */
+
+/* A move slides the person, the tabs and the body in from the side (ManagerDocumentDrawer); nothing pokes out. */
+.catalog-drawer.document-review-drawer .rd {
+  overflow-x: clip;
+}
+.catalog-drawer.document-review-drawer .rd-head {
+  position: relative;
+  gap: 0;
+  padding-top: 0;
+}
+
+/* The strip: ‹ Previous on the left; Next › and the X on the right; nothing in the middle. Text buttons (no box,
+   edge or fill at rest), 13 / 600 on one line; a long name ends in an ellipsis inside its half. It reaches 8 px past
+   the 16 px gutter, so hover fills and focus rings sit 8 px from the drawer's edges and the strokes of ‹ and ✕ sit
+   about 18 px in. Desktop: 32 px controls; the X taps at 40, 8 px from Next. */
+.catalog-drawer.document-review-drawer .docr-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin: 8px -8px 0;
+}
+.catalog-drawer.document-review-drawer .docr-strip-nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.catalog-drawer.document-review-drawer .docr-strip-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.catalog-drawer.document-review-drawer .docr-strip-previous {
+  justify-self: start;
+}
+.catalog-drawer.document-review-drawer .docr-strip-next {
+  justify-self: end;
+  text-align: right;
+}
+.catalog-drawer.document-review-drawer .docr-strip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalog-drawer.document-review-drawer .docr-strip-word {
+  white-space: nowrap;
+}
+/* The chevron's 16 px box has 6 px of air each side of its stroke: -3 px margins keep about 9 px to the name. */
+.catalog-drawer.document-review-drawer .docr-strip-icon {
+  flex: none;
+  margin: 0 -3px;
+  color: var(--theme-muted-strong);
+}
+.catalog-drawer.document-review-drawer .docr-strip .rd-close {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+.catalog-drawer.document-review-drawer .docr-strip .rd-close::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+.catalog-drawer.document-review-drawer :is(.docr-strip-btn:not([aria-disabled="true"]):not(:disabled), .docr-strip .rd-close:not(:disabled)):hover {
+  background: color-mix(in srgb, var(--theme-text) 7%, transparent);
+}
+.catalog-drawer.document-review-drawer .docr-strip-btn:not([aria-disabled="true"]):not(:disabled):hover .docr-strip-icon {
+  color: var(--theme-text);
+}
+/* At an end the word stays in its place, faint, and does nothing. */
+.catalog-drawer.document-review-drawer .docr-strip-btn[aria-disabled="true"] {
+  color: var(--theme-text-faint);
+  cursor: default;
+}
+.catalog-drawer.document-review-drawer .docr-strip-btn[aria-disabled="true"] .docr-strip-icon {
+  color: inherit;
+}
+/* While a command runs the strip and the X hold still. */
+.catalog-drawer.document-review-drawer :is(.docr-strip-btn, .docr-strip .rd-close):disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.catalog-drawer.document-review-drawer :is(.docr-strip-btn, .docr-strip .rd-close):focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 0;
+}
+
+/* Who and what, 10 px under the strip: the initials in a 40 px circle, the name (20 / 700 on 24) on one line with its
+   chip, then the document (13.5 / 600 on 18) and when (12.5, muted, on 16), 2 px apart. */
+.catalog-drawer.document-review-drawer .rd-head .rd-head-row {
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+.catalog-drawer.document-review-drawer .docr-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+.catalog-drawer.document-review-drawer .rd-head h2 {
+  flex-wrap: nowrap;
+  min-width: 0;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  outline: none;
+}
+/* Opened, the name has focus with no ring; a keyboard that comes back to it draws one. */
+.catalog-drawer.document-review-drawer .rd-head h2:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.catalog-drawer.document-review-drawer .rd-head h2 .rd-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalog-drawer.document-review-drawer .rd-head h2 .rd-chip {
+  letter-spacing: normal;
+  line-height: 1.2;
+}
+.catalog-drawer.document-review-drawer .rd-head .rd-kicker {
+  color: var(--theme-text-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.catalog-drawer.document-review-drawer .rd-head .rd-sub {
+  flex-wrap: nowrap;
+  margin-top: 0;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+  line-height: 16px;
+}
+.catalog-drawer.document-review-drawer .rd-head :is(.rd-kicker, .rd-sub span) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Tabs as Time off's: 40 px, 4 px under who; the Files badge never makes its tab taller. Not a clipping box, so a
+   tab's focus ring stays whole. */
+.catalog-drawer.document-review-drawer .rd-head .rd-tabs {
+  margin-top: 4px;
+  overflow: visible;
+}
+.catalog-drawer.document-review-drawer .rd-head .rd-tabs button {
+  line-height: 20px;
+}
+.catalog-drawer.document-review-drawer .rd-head .rd-tabs .rd-badge {
+  line-height: 1;
+}
+
+/* Body. A fact's label sits on its value's first line. */
+.catalog-drawer.document-review-drawer .rd .toa-facts div {
+  align-items: start;
+}
+.catalog-drawer.document-review-drawer .rd-body:focus-visible {
+  outline-offset: -2px;
+}
+/* Desktop: a fixed 8 px lane for the scrollbar, so nothing moves sideways when the body starts or stops scrolling;
+   the phone draws none. */
+@media (min-width: 721px) {
+  .catalog-drawer.document-review-drawer .rd-body {
+    scrollbar-gutter: stable;
+    padding-right: 8px;
+  }
+  .catalog-drawer.document-review-drawer .rd-body::-webkit-scrollbar {
+    width: 8px;
+  }
+  .catalog-drawer.document-review-drawer .rd-body::-webkit-scrollbar-thumb {
+    border: 2px solid var(--theme-surface);
+    border-radius: 4px;
+    background: var(--theme-border-control);
+  }
+}
+
+/* An expired document says so first (mockup-spec 4.2). */
+.catalog-drawer.document-review-drawer .docr-call {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.catalog-drawer.document-review-drawer .docr-call b {
+  display: block;
+  font-size: 13.5px;
+}
+.catalog-drawer.document-review-drawer .docr-call.red {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+.catalog-drawer.document-review-drawer .docr-call.red > span > span {
+  color: var(--theme-text-body);
+}
+
+/* The files box: the control edge (3:1), rows 10 px 12 px apart on a hairline. */
+.catalog-drawer.document-review-drawer .docr-files {
+  overflow: hidden;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 10px;
+}
+.catalog-drawer.document-review-drawer .docr-file {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-border);
+}
+.catalog-drawer.document-review-drawer .docr-file:first-child {
+  border-top: 0;
+}
+.catalog-drawer.document-review-drawer .docr-nofile {
+  grid-template-columns: 36px minmax(0, 1fr);
+}
+.catalog-drawer.document-review-drawer .docr-thumb {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-accent-strong);
+}
+.catalog-drawer.document-review-drawer .docr-file-meta {
+  color: var(--theme-muted);
+  font-size: 13.5px;
+}
+
+/* The phone's way to the files: one boxed 44 px row button (icon, what is there, "Files", the chevron). */
+.catalog-drawer.document-review-drawer .docr-gofiles {
+  display: grid;
+  grid-template-columns: 18px auto minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+.catalog-drawer.document-review-drawer .docr-gofiles:focus-visible {
+  outline-offset: -2px;
+}
+.catalog-drawer.document-review-drawer :is(.docr-gofiles-icon, .docr-gofiles-chevron) {
+  color: var(--theme-muted-strong);
+}
+.catalog-drawer.document-review-drawer .docr-gofiles-label {
+  white-space: nowrap;
+}
+.catalog-drawer.document-review-drawer .docr-gofiles-aside {
+  justify-self: end;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+/* What today's drawer also says or does, kept inside the new layout until each part is rebuilt: the time zone, the
+   policy text, the versions with their review fields, the exemption and the extension. */
+.catalog-drawer.document-review-drawer .rd-body fieldset {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.catalog-drawer.document-review-drawer .rd-body legend {
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+.catalog-drawer.document-review-drawer .rd-body fieldset > p {
+  margin: 0;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+}
+.catalog-drawer.document-review-drawer .rd-body fieldset > .nf-button {
+  justify-self: start;
+}
+.catalog-drawer.document-review-drawer .docr-policy {
+  max-height: 280px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 8px;
+  color: var(--theme-text-body);
+  font-size: 13.5px;
+  white-space: pre-wrap;
+}
+.catalog-drawer.document-review-drawer .docr-legacy-files {
+  display: grid;
+  gap: 12px;
+}
+.catalog-drawer.document-review-drawer .docr-legacy-files h3 {
+  margin: 0;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+  font-weight: 650;
+}
+.catalog-drawer.document-review-drawer .docr-legacy-history {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--theme-text-body);
+  font-size: 13px;
+}
+
+/* The dock lives in the footer; a document with nothing to decide yet leaves no empty bar. */
+.catalog-drawer.document-review-drawer .docr-dock {
+  display: contents;
+}
+.catalog-drawer.document-review-drawer .rd-foot:has(> .docr-dock:empty) {
+  display: none;
+}
+
+/* Phone: one fixed card height (the strip, tabs and dock never move between documents) and 44 px targets. */
+@media (max-width: 720px) {
+  .jobs-settings-page.catalog-drawer.requests-review-drawer.document-review-drawer {
+    height: 92dvh;
+  }
+  /* The handle (38 × 4 at 6 px) sits over the strip's empty middle. The strip's controls are drawn 36 px at
+     12..48 and reach 4 px further up and down. */
+  .catalog-drawer.document-review-drawer .rd-head > .rd-grab {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    z-index: 1;
+    margin: 0 0 0 -19px;
+  }
+  .catalog-drawer.document-review-drawer .docr-strip {
+    grid-template-columns: minmax(0, 1fr) 36px;
+    height: 36px;
+    margin: 12px -10px 0;
+  }
+  .catalog-drawer.document-review-drawer .docr-strip-btn {
+    height: 36px;
+    padding: 0 10px;
+  }
+  .catalog-drawer.document-review-drawer .docr-strip-btn::before {
+    content: "";
+    position: absolute;
+    inset: -4px 0;
+  }
+  .catalog-drawer.document-review-drawer .docr-strip .rd-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+  }
+  /* Who: a 36 px circle, the name 18 / 700 on a 22 px line, 8 px under the strip. */
+  .catalog-drawer.document-review-drawer .rd-head .rd-head-row {
+    margin-top: 8px;
+  }
+  .catalog-drawer.document-review-drawer .docr-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+  .catalog-drawer.document-review-drawer .rd-head h2 {
+    gap: 8px;
+    font-size: 18px;
+    line-height: 22px;
+  }
+  /* Tabs: drawn 40 px; each reaches 4 px up into the gap over it, a 44 px target that never covers the dates. */
+  .catalog-drawer.document-review-drawer .rd-head .rd-tabs button {
+    position: relative;
+  }
+  .catalog-drawer.document-review-drawer .rd-head .rd-tabs button::before {
+    content: "";
+    position: absolute;
+    inset: -4px 0 0;
+  }
+}
+/* Touch has no hover: a control drawn under the finger after a tap must not look pressed. */
+@media (hover: none) {
+  .catalog-drawer.document-review-drawer :is(.docr-strip-btn, .docr-strip .rd-close):hover {
+    background: none;
+  }
+}

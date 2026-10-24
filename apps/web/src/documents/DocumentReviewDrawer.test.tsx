@@ -6,12 +6,14 @@ import {
   within,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   defaultDocumentLifecycleSettings,
   type DocumentDetail,
+  type DocumentObligation,
 } from "@newfork/shared";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
+import { createReviewSitting, type ReviewSitting } from "./review-sitting";
 import { RequestError } from "../lib/request-error";
 import {
   acknowledgeDocument,
@@ -102,9 +104,18 @@ const detail = (): DocumentDetail => ({
   ],
   history: [],
 });
-function page(selfOnly = false) {
+// A row of the manager's list, as the drawer's queue holds it.
+const row = (over: Partial<DocumentObligation> = {}): DocumentObligation => ({
+  ...detail().obligation,
+  ...over,
+});
+function page(
+  selfOnly = false,
+  extra: { queue?: DocumentObligation[]; sitting?: ReviewSitting } = {},
+) {
   const onClose = vi.fn(),
-    onNext = vi.fn();
+    onNext = vi.fn(),
+    onOpen = vi.fn();
   const cache = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -119,13 +130,21 @@ function page(selfOnly = false) {
         canReview={!selfOnly}
         onClose={onClose}
         onNext={onNext}
+        onOpen={onOpen}
+        queue={extra.queue}
+        sitting={extra.sitting}
       />
     </QueryClientProvider>
   );
-  const { rerender } = render(drawer("requirement"));
+  const { rerender, unmount } = render(drawer("requirement"));
   // The list keeps one drawer mounted and only changes which document it shows.
   const show = (requirementId: string) => rerender(drawer(requirementId));
-  return { onClose, onNext, invalidate, cache, show };
+  // Closed, then opened again from the list on the same page.
+  const reopen = (requirementId = "requirement") => {
+    unmount();
+    return render(drawer(requirementId));
+  };
+  return { onClose, onNext, onOpen, invalidate, cache, show, reopen };
 }
 beforeEach(() => {
   vi.clearAllMocks();
@@ -288,7 +307,9 @@ describe("shared document review", () => {
   });
 
   it("requires rejection reason, disables exhausted remaining time, keeps the drawer open and advances only on Next", async () => {
-    const { onClose, onNext } = page();
+    const { onClose, onOpen } = page(false, {
+      queue: [row(), row({ id: "second", employee_id: "other", employee_name: "Sam Lee" })],
+    });
     const reject = await screen.findByRole("button", { name: "Reject" });
     expect(reject).toHaveProperty("disabled", true);
     expect(
@@ -319,19 +340,25 @@ describe("shared document review", () => {
       expect(screen.queryByRole("button", { name: "Reject" })).toBeNull(),
     );
     expect(
-      screen.getByRole("heading", { name: "Safety certificate" }),
+      screen.getByRole("dialog", { name: "Test Employee · Safety certificate" }),
     ).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
-    expect(onNext).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(onNext).toHaveBeenCalledOnce();
+    expect(onOpen).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Next: Sam Lee" }));
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith("second");
   });
   it("requires an exemption reason and locks parent navigation while the action is being confirmed", async () => {
-    const { onClose } = page();
+    const { onClose } = page(false, {
+      queue: [row(), row({ id: "second", employee_id: "other", employee_name: "Sam Lee" })],
+    });
     fireEvent.click(
       await screen.findByRole("button", { name: "Exempt from this document" }),
     );
-    expect(screen.getByRole("button", { name: "Next" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Next: Sam Lee" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(screen.getByRole("button", { name: "Close details" })).toHaveProperty(
       "disabled",
       true,
     );
@@ -1308,7 +1335,8 @@ describe("download, document time zone and deadline extension", () => {
     change(doc);
     vi.mocked(getDocument).mockResolvedValue(doc);
     page(selfOnly);
-    await screen.findByRole("heading", { name: "Safety certificate" });
+    await screen.findByRole("dialog", { name: /Safety certificate/ });
+    await screen.findByText(selfOnly ? "Upload a new version" : "Name");
     expect(screen.queryByRole("button", { name: "Extend deadline" })).toBeNull();
   });
 });
@@ -1339,18 +1367,16 @@ describe("typed fields beyond the draft", () => {
     );
   }
   const close = () =>
-    fireEvent.click(
-      screen.getByRole("button", { name: "Close document details" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Close details" }));
 
-  it("keeps the rejection reason, correction period and file decisions through a new revision", async () => {
+  it("keeps the rejection reason, correction period and file decisions through a new revision and a close, sending nothing until Reject", async () => {
     base = () => {
       const doc = detail();
       doc.obligation.remaining_seconds = 3600;
       return doc;
     };
     vi.mocked(getDocument).mockResolvedValue(base());
-    const { cache, onClose } = page();
+    const { cache, onClose, reopen } = page(false, { sitting: createReviewSitting() });
     await screen.findByRole("button", { name: "Reject" });
     fireEvent.change(screen.getByLabelText("Rejection reason"), {
       target: { value: "Unreadable" },
@@ -1369,10 +1395,18 @@ describe("typed fields beyond the draft", () => {
     expect(value("Correction period")).toBe("remaining");
     expect(value("Decision for certificate.pdf")).toBe("discard");
     expect(value("Note for certificate.pdf")).toBe("Blurry");
+    // K1 decision 5: closing asks nothing and sends nothing; the draft waits with its document.
     close();
-    expect(await screen.findByText("Discard unsaved changes?")).toBeTruthy();
-    expect(onClose).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(screen.queryByText("Discard unsaved changes?")).toBeNull();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(reviewDocument).not.toHaveBeenCalled();
+    reopen();
+    await waitFor(() => expect(value("Rejection reason")).toBe("Unreadable"));
+    expect(value("Correction period")).toBe("remaining");
+    expect(value("Decision for certificate.pdf")).toBe("discard");
+    expect(value("Note for certificate.pdf")).toBe("Blurry");
+    expect(reviewDocument).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Reject" }));
     await waitFor(() =>
       expect(reviewDocument).toHaveBeenCalledWith(manager, "requirement", {
@@ -1559,4 +1593,237 @@ it("shows the load-error card with Try again, not the server's sentence", async 
     expect(screen.queryByRole("heading", { name: "We couldn't load this document" })).toBeNull(),
   );
   expect(screen.queryByText("Loading document")).toBeNull();
+});
+
+// A2 Tur 6, file buttons design a (Mert 23 Oct): the manager's drawer is one card that stays open while it walks
+// the list: the strip (Previous / Next and the X), the person's head, Details · History, the facts. The files, the
+// dock and More options are drawn in their own slots.
+describe("manager review drawer", () => {
+  const sam = () =>
+    row({ id: "second", employee_id: "other", employee_name: "Sam Lee", title: "Food handler card" });
+  function second(): DocumentDetail {
+    const doc = detail();
+    doc.obligation = { ...doc.obligation, ...sam(), submitted_id: "second-submission" };
+    doc.submissions[0]!.id = "second-submission";
+    return doc;
+  }
+  beforeEach(() => {
+    vi.mocked(getDocument).mockImplementation(async (_audience, id) =>
+      id === "second" ? second() : detail(),
+    );
+  });
+
+  it("heads the drawer with the person, the status and the document, and gives the person's name the first focus", async () => {
+    page();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Test Employee · Safety certificate",
+    });
+    const name = within(dialog).getByRole("heading", {
+      level: 2,
+      name: "Test Employee Needs review",
+    });
+    expect(document.activeElement).toBe(name);
+    expect(dialog.querySelector(".rd-kicker")?.textContent).toBe("Safety certificate");
+    await waitFor(() =>
+      expect(dialog.querySelector(".rd-sub")?.textContent).toMatch(/^Sent: Tue, Sep 15/),
+    );
+    const tile = dialog.querySelector(".docr-avatar")!;
+    expect([tile.textContent, tile.getAttribute("aria-hidden")]).toEqual(["TE", "true"]);
+  });
+
+  // K1 decision 4.
+  it.each([
+    ["rejected", "Missing", "red"],
+    ["exempt", "Excused", "grey"],
+    ["pending_review", "Needs review", "warn"],
+  ] as const)("reads a %s document as %s", async (status, label, tone) => {
+    const doc = detail();
+    doc.obligation.status = status;
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    const chip = await screen.findByText(label, { selector: ".rd-chip" });
+    expect(chip.className).toBe(`rd-chip ${tone}`);
+  });
+
+  it("shows the person from the list while the document loads", async () => {
+    vi.mocked(getDocument).mockReturnValue(new Promise(() => {}));
+    page(false, { queue: [row()] });
+    expect(
+      screen.getByRole("dialog", { name: "Test Employee · Safety certificate" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Test Employee Needs review" }),
+    ).toBeTruthy();
+    expect(await screen.findByText("Loading document")).toBeTruthy();
+  });
+
+  // K1 decisions 6 and 7: the strip walks the list as it was shown, naming the neighbour.
+  it("names each neighbour by its person, or by its document when it is the same person's", async () => {
+    const ana = row({ id: "first", employee_id: "ana", employee_name: "Ana Ruiz", title: "I-9" });
+    const own = row({ id: "own", title: "Food handler card" });
+    const { onOpen } = page(false, { queue: [ana, row(), own] });
+    await screen.findByRole("dialog", { name: "Test Employee · Safety certificate" });
+    const strip = screen.getByRole("navigation", { name: "Documents in this list" });
+    const previous = within(strip).getByRole("button", { name: "Previous: Ana Ruiz" });
+    const next = within(strip).getByRole("button", { name: "Next: Food handler card" });
+    expect(previous.getAttribute("title")).toBe("Previous: Ana Ruiz · I-9");
+    expect(next.getAttribute("title")).toBe("Next: Food handler card");
+    expect(within(strip).getAllByRole("button")).toHaveLength(2);
+    fireEvent.click(next);
+    expect(onOpen).toHaveBeenLastCalledWith("own");
+    fireEvent.click(previous);
+    expect(onOpen).toHaveBeenLastCalledWith("first");
+  });
+
+  it("keeps Previous and Next in place at the ends, where they do nothing", async () => {
+    const { onOpen } = page(false, { queue: [row()] });
+    await screen.findByRole("dialog", { name: /Safety certificate/ });
+    for (const name of ["Previous", "Next"]) {
+      const end = screen.getByRole("button", { name });
+      expect(end.getAttribute("aria-disabled")).toBe("true");
+      expect(end.textContent).toBe(name);
+      fireEvent.click(end);
+    }
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("stays one drawer when it moves, keeps focus on the pressed button and says where it landed", async () => {
+    const { onOpen, show } = page(false, { queue: [row(), sam()] });
+    const dialog = await screen.findByRole("dialog", {
+      name: "Test Employee · Safety certificate",
+    });
+    const next = screen.getByRole("button", { name: "Next: Sam Lee" });
+    next.focus();
+    fireEvent.click(next);
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith("second");
+    show("second");
+    expect(
+      await screen.findByRole("dialog", { name: "Sam Lee · Food handler card" }),
+    ).toBe(dialog);
+    expect(document.activeElement).toBe(next);
+    expect(next.getAttribute("aria-label")).toBe("Next");
+    expect(screen.getByRole("button", { name: "Previous: Test Employee" })).toBeTruthy();
+    await waitFor(() =>
+      expect(dialog.querySelector("[aria-live='polite']")?.textContent).toBe(
+        "Sam Lee · Food handler card",
+      ),
+    );
+  });
+
+  it("closes from its X or Escape at once", async () => {
+    const { onClose } = page();
+    const dialog = await screen.findByRole("dialog", { name: /Safety certificate/ });
+    fireEvent.click(screen.getByRole("button", { name: "Close details" }));
+    expect(onClose).toHaveBeenCalledOnce();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  // K1 decision 5: what was typed stays with its document while the drawer walks the list.
+  it("keeps what was typed for a document when the drawer moves away and back", async () => {
+    const { show } = page(false, { queue: [row(), sam()], sitting: createReviewSitting() });
+    fireEvent.change(await screen.findByLabelText("Rejection reason"), {
+      target: { value: "Unreadable" },
+    });
+    show("second");
+    await screen.findByRole("dialog", { name: "Sam Lee · Food handler card" });
+    await waitFor(() =>
+      expect((screen.getByLabelText("Rejection reason") as HTMLTextAreaElement).value).toBe(""),
+    );
+    show("requirement");
+    await waitFor(() =>
+      expect((screen.getByLabelText("Rejection reason") as HTMLTextAreaElement).value).toBe(
+        "Unreadable",
+      ),
+    );
+    expect(reviewDocument).not.toHaveBeenCalled();
+  });
+
+  it("holds the strip and the X while a decision is being saved", async () => {
+    vi.mocked(reviewDocument).mockReturnValue(new Promise(() => {}));
+    page(false, { queue: [row(), sam()] });
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Close details" })).toHaveProperty("disabled", true),
+    );
+    expect(screen.getByRole("button", { name: "Next: Sam Lee" })).toHaveProperty("disabled", true);
+  });
+
+  it("has Details and History on a desktop, the files a section of Details", async () => {
+    const doc = detail();
+    doc.history = [
+      {
+        id: "00000000-0000-4000-8000-000000000001",
+        action: "document.submitted",
+        occurred_at: "2026-09-15T12:00:00Z",
+        metadata: {},
+      },
+    ];
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    const tabs = await screen.findByRole("tablist", { name: "Document sections" });
+    expect(within(tabs).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Details",
+      "History",
+    ]);
+    const files = await screen.findByRole("region", { name: "Files" });
+    expect(within(files).getByRole("button", { name: "certificate.pdf" })).toBeTruthy();
+    expect(screen.getByText("Name")).toBeTruthy();
+    expect(screen.getByText("Test Employee", { selector: "dd" })).toBeTruthy();
+    fireEvent.keyDown(within(tabs).getByRole("tab", { name: "Details" }), { key: "End" });
+    expect(screen.getByRole("tab", { name: "History" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByRole("region", { name: "Files" })).toBeNull();
+    expect(screen.getByText(/submitted/)).toBeTruthy();
+  });
+
+  it("keeps the restriction note of a suspended person in Details", async () => {
+    const doc = detail();
+    doc.obligation.suspended = true;
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    expect(
+      await screen.findByText(
+        "Workspace access is restricted until the outstanding requirements are completed.",
+      ),
+    ).toBeTruthy();
+  });
+
+  describe("on a phone", () => {
+    const matchMedia = window.matchMedia;
+    beforeEach(() => {
+      window.matchMedia = ((query: string) => ({
+        matches: query === "(max-width: 720px)",
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })) as unknown as typeof window.matchMedia;
+    });
+    afterEach(() => {
+      window.matchMedia = matchMedia;
+    });
+    it("adds a Files tab named by its count, reached from a row in Details", async () => {
+      page();
+      const files = await screen.findByRole("tab", { name: "Files, 1 file" });
+      expect(
+        screen.getAllByRole("tab").map((tab) => tab.getAttribute("aria-label") ?? tab.textContent),
+      ).toEqual(["Details", "Files, 1 file", "History"]);
+      expect(screen.queryByRole("button", { name: "certificate.pdf" })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: /^1 file to review/ }));
+      expect(files.getAttribute("aria-selected")).toBe("true");
+      expect(document.activeElement).toBe(files);
+      expect(screen.getByRole("button", { name: "certificate.pdf" })).toBeTruthy();
+    });
+  });
+});
+
+// K1 decision 14: a decision in the drawer also refreshes the Employee drawer's onboarding card, which reads the
+// onboarding under its own key.
+it("refreshes the Employee drawer's onboarding review after a decision", async () => {
+  const { invalidate } = page();
+  fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+  await waitFor(() =>
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["employee-onboarding-review", "workspace"],
+    }),
+  );
 });

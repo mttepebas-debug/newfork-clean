@@ -40,6 +40,7 @@ import {
 } from "./document-rules";
 import { WindowAlert } from "../shell/WindowAlert";
 import { zoneName } from "../lib/today";
+import { ManagerDocumentDrawer, type ManagerDrawerProps } from "./ManagerDocumentDrawer";
 
 // What a person typed into the drawer. Nothing stores it before its own
 // command runs, so each value is kept here against what it was typed for:
@@ -70,9 +71,18 @@ type DrawerProps = {
   onNext?: () => void;
 };
 
+// A manager reviews in the A2 drawer (ManagerDocumentDrawer, K1); the person's own documents keep this drawer
+// until their own slice.
+export function DocumentReviewDrawer(
+  props: DrawerProps & Omit<ManagerDrawerProps, keyof DrawerProps>,
+) {
+  if (!props.audience.selfOnly) return <ManagerDocumentDrawer {...props} />;
+  return <EmployeeDocumentDrawer {...props} />;
+}
+
 // The list keeps one drawer open and moves it from document to document;
 // each document starts clean, so nothing typed for one returns on a way back.
-export function DocumentReviewDrawer(props: DrawerProps) {
+function EmployeeDocumentDrawer(props: DrawerProps) {
   return <DocumentDrawer key={props.requirementId} {...props} />;
 }
 

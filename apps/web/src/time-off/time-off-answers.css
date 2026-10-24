@@ -39,37 +39,17 @@
 .catalog-drawer .rd .rd-group + .rd-group {
   margin-top: 10px;
 }
-/* Details (Mert 2026-10-23): one list, the label left and the value right, every line 22 px and 10 px apart; When
-   heads its Start and End, whose values line up with the others' (14 px in + 82 px label = 96 px label). */
-.catalog-drawer .rd .toa-facts,
+/* Details (Mert 2026-10-23): the facts list (.toa-facts) lives in request-drawer.css, shared with the Documents review
+   drawer. When heads its Start and End, whose values line up with the others' (14 px in + 82 px label = 96 px label). */
 .catalog-drawer .rd .toa-when dl {
   display: grid;
   gap: 10px;
   margin: 0;
 }
-.catalog-drawer .rd .toa-facts div {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-}
-.catalog-drawer .rd .toa-facts :is(dt, dd, .toa-type) {
-  line-height: 22px;
-}
 /* The type's icon sits in its own 22 px line, not on the text's baseline. */
 .catalog-drawer .rd .toa-facts .toa-type {
   display: flex;
-}
-.catalog-drawer .rd .toa-facts dt {
-  color: var(--theme-muted-strong);
-  font-size: 13px;
-  font-weight: 600;
-}
-.catalog-drawer .rd .toa-facts dd {
-  margin: 0;
-  min-width: 0;
-  color: var(--theme-text);
-  overflow-wrap: anywhere;
+  line-height: 22px;
 }
 .catalog-drawer .rd .toa-facts .toa-when {
   grid-template-columns: minmax(0, 1fr);
