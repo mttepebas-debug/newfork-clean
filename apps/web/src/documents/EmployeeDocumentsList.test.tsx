@@ -208,14 +208,30 @@ describe("personal list (Account › Documents)", () => {
       Array.from(document.querySelectorAll("tbody tr")).map((r) =>
         (r.querySelector("td")?.textContent ?? "").replace("Downtown", ""),
       );
-    // A manager reads a document sent back as Missing (K1 decision 4); the order is the status's weight.
-    expect(names()).toEqual(["Emery", "Drew", "Casey"]);
-    expect(chips()).toEqual(["Missing", "Expired", "Missing"]);
+    // A manager reads a document sent back as Missing (K1 decision 4) and sorts it with the other Missing ones;
+    // rows of one weight keep the list's order.
+    expect(names()).toEqual(["Casey", "Emery", "Drew"]);
+    expect(chips()).toEqual(["Missing", "Missing", "Expired"]);
     fireEvent.click(screen.getByRole("button", { name: /Status/ }));
-    expect(names()).toEqual(["Casey", "Drew", "Emery"]);
-    expect(chips()).toEqual(["Missing", "Expired", "Missing"]);
+    expect(names()).toEqual(["Drew", "Casey", "Emery"]);
+    expect(chips()).toEqual(["Expired", "Missing", "Missing"]);
     fireEvent.click(screen.getByRole("button", { name: /^Completed/ }));
     expect(chips()).toEqual(["Completed", "Paused"]);
+  });
+  // The person's own list keeps today's words and order: Rejected after Expired.
+  it("sorts the person's own Status by today's weights", async () => {
+    const row = (id: string, status: string, title: string) => ({ ...obligation, id, status, title });
+    vi.mocked(listDocuments).mockResolvedValue([
+      row("3", "rejected", "C card"),
+      row("4", "expired", "D card"),
+      row("5", "missing", "E card"),
+    ] as never);
+    renderList(true);
+    await screen.findByRole("cell", { name: /C card/ });
+    fireEvent.click(screen.getByRole("button", { name: /Status/ }));
+    const cells = () =>
+      Array.from(document.querySelectorAll("tbody tr")).map((r) => r.querySelectorAll("td")[1]?.textContent);
+    expect(cells()).toEqual(["Missing", "Expired", "Rejected"]);
   });
 
   // BL-855: loading and a failed load sit where the rows go, not under the

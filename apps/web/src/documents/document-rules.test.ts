@@ -10,6 +10,7 @@ import {
   sameSignerName,
   statusLabel,
   statusTone,
+  statusWeight,
   versionStateLabel,
 } from "./document-rules";
 
@@ -80,6 +81,20 @@ describe("statusLabel by reader", () => {
     const onFile = { status: "exempt", exemption_locked: true, approved_id: "copy" } as const;
     expect(statusLabel(onFile, "manager")).toBe("On file");
     expect(statusLabel(onFile, "employee")).toBe("On file");
+  });
+});
+
+// BL-831's order, read by who reads it: a manager reads a document sent back as Missing (K1 decision 4), so it
+// sorts with the other Missing ones; the person keeps today's order.
+describe("statusWeight by reader", () => {
+  it("sorts a manager's Missing kinds together, before Expired", () => {
+    expect(statusWeight("rejected", "manager")).toBe(statusWeight("missing", "manager"));
+    expect(statusWeight("rejected", "manager")).toBeLessThan(statusWeight("expired", "manager"));
+    expect(statusWeight("pending_review", "manager")).toBe(0);
+  });
+  it("keeps the person's order: Rejected after Expired", () => {
+    expect(statusWeight("rejected")).toBe(4);
+    expect(statusWeight("rejected", "employee")).toBeGreaterThan(statusWeight("expired", "employee"));
   });
 });
 

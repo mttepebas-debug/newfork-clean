@@ -146,7 +146,7 @@ export function EmployeeDocumentsList(props: {
   const compare = (a: DocumentObligation, b: DocumentObligation) => {
     const order =
       sort.key === "status"
-        ? statusWeight(a.status) - statusWeight(b.status)
+        ? statusWeight(a.status, reader) - statusWeight(b.status, reader)
         : a[sort.key].localeCompare(b[sort.key]);
     return (sort.descending ? -1 : 1) * order;
   };

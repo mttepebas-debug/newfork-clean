@@ -60,13 +60,16 @@ const statusWeights: Record<DocumentObligationStatus, number> = {
   removed: 8,
 };
 
-/** Status order for the list's Status column: most urgent first. */
-export function statusWeight(status: DocumentObligationStatus): number {
-  return statusWeights[status];
-}
-
 /** Who reads a status: the person it is asked of, or a manager reviewing it. */
 export type StatusReader = "employee" | "manager";
+
+/**
+ * Status order for the list's Status column: most urgent first. A manager reads a document sent back as Missing
+ * (K1 decision 4), so it sorts with the other Missing ones; the person keeps today's order.
+ */
+export function statusWeight(status: DocumentObligationStatus, reader: StatusReader = "employee"): number {
+  return reader === "manager" && status === "rejected" ? statusWeights.missing : statusWeights[status];
+}
 
 // K1 decision 4 (Mert 23 Oct, A2 Tur 5): a manager reads a document sent back as Missing (it waits on the person
 // again) and an exempt one as Excused. The person keeps today's words.
