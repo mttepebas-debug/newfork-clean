@@ -80,6 +80,7 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
   ["onboarding approval", () => createOnboardingApprovalService(options).save({ actorUserId: actor, workspaceId: workspace, finalApprovalRequired: false })],
   ["shift exchanges", () => createShiftExchangesService(options).read(actor, workspace, false)],
   ["notifications", () => createNotificationsService(options).counts(input)],
+  ["notifications unread", () => createNotificationsService(options).markUnread({ actorUserId: actor, workspaceId: workspace, unread: { ids: [id] } })],
   ["employee documents", () => createDocumentLifecycleServiceWithClient(documentsClient).list("token", { workspaceId: workspace, selfOnly: false })],
   ["lineup", () => createLineupService(options).myLineups({ actorUserId: actor, workspaceId: workspace, date: "2028-09-11" })],
   ["lineup day", () => createLineupService(options).day({ actorUserId: actor, workspaceId: workspace, date: "2028-09-11" })],

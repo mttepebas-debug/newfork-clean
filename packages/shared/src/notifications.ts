@@ -84,6 +84,10 @@ export const notificationReadInputSchema = z.union([
 ]);
 export type NotificationReadInput = z.infer<typeof notificationReadInputSchema>;
 
+/** Read rows to mark unread again, by id (S-251); there is no "all". The answer is a read's. */
+export const notificationUnreadInputSchema = z.object({ ids: z.array(id).min(1).max(100) }).strict();
+export type NotificationUnreadInput = z.infer<typeof notificationUnreadInputSchema>;
+
 export const notificationReadResultSchema = z.object({
   updated: z.number().int().nonnegative(),
   unread_count: z.number().int().nonnegative(),
