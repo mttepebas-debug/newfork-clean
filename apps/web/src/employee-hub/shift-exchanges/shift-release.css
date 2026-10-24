@@ -148,6 +148,19 @@
 .sx-w-head .sx-w-icon[data-end] {
   grid-column: 3;
 }
+/* The grip a bottom sheet is pulled down by (phone only, below); its whole top row takes the pull, never a
+   scroll. A window with nothing to scroll takes a touch's pull anywhere (usePullToClose, Mert 2026-10-24). */
+.sx-w-head {
+  position: relative;
+  touch-action: none;
+}
+.sx-plan-dialog.is-still,
+.sx-plan-dialog.is-still .sx-w-body {
+  touch-action: none;
+}
+.sx-w-grip {
+  display: none;
+}
 .sx-root .sx-w-names,
 .sx-w-names {
   margin: -8px 0 12px;
@@ -238,6 +251,20 @@
     margin: auto 0 0;
     padding: 0 0 env(safe-area-inset-bottom);
     border-radius: 20px 20px 0 0;
+  }
+  .sx-plan-dialog .sx-w-head {
+    padding-top: 12px;
+  }
+  .sx-plan-dialog .sx-w-grip {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    display: block;
+    width: 40px;
+    height: 5px;
+    border-radius: 99px;
+    background: var(--theme-border-strong);
+    transform: translateX(-50%);
   }
   .sx-plan-dialog .sx-w-foot .sx-primary {
     flex: 1 1 100%;

@@ -652,7 +652,8 @@ describe("EmployeeHubPage", () => {
   });
 
   // jsdom has no showModal, so the sheet's dialog is never "open" and has no role to find it by.
-  const yourShift = () => document.querySelector<HTMLDialogElement>('dialog.eh-sheet[aria-label="Your shift"]');
+  const yourShift = () =>
+    [...document.querySelectorAll<HTMLDialogElement>("dialog.sx-plan-dialog")].find((dialog) => dialog.querySelector("h2")?.textContent === "Your shift") ?? null;
 
   it("opens Your shift from a day card", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -662,12 +663,11 @@ describe("EmployeeHubPage", () => {
     fireEvent.click(await screen.findByRole("link", { name: /9:00 AM – 5:00 PM/ }));
     // jsdom has no showModal: the sheet is in the page, not "open".
     const sheet = await waitFor(() => yourShift()!);
-    // The sheet shows the day and the hours as Home's card does, the hours in full ("9:00 AM", never "9a"); no
-    // "Your shift" title and no zone line (Mert 2026-10-24).
-    expect(sheet.querySelector("h2")).toBeNull();
-    expect(sheet.querySelector(".eh-sheet-date")?.textContent).toMatch(/^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}$/);
-    expect(sheet.querySelector(".eh-sheet-time")?.textContent).toBe("9:00 AM–5:00 PM");
-    expect(sheet.textContent).toContain("Main Dining · Server");
+    // The same window as Shift Hub's "Your shift" (Mert 2026-10-24): its ticket, the hours in full ("9:00 AM",
+    // never "9a"), no zone line.
+    expect(sheet.querySelector(".sx-tk-time")?.textContent).toBe("9:00 AM – 5:00 PM");
+    expect(sheet.querySelector(".sx-tk")?.textContent).toContain("Server");
+    expect(sheet.querySelector(".sx-tk")?.textContent).toContain("Main Dining");
     expect(sheet.textContent).not.toContain("Pacific Time");
     // Already on My shifts: no link to it.
     expect(within(sheet).queryByRole("link", { name: /Open in my schedule/, hidden: true })).toBeNull();
@@ -681,7 +681,7 @@ describe("EmployeeHubPage", () => {
     renderPage("/app/employee-hub/schedule");
     fireEvent.click(await screen.findByRole("link", { name: /9:00 AM – 5:00 PM/ }));
     const sheet = await waitFor(() => yourShift()!);
-    const grip = sheet.querySelector(".eh-sheet-grip")!;
+    const grip = sheet.querySelector(".sx-w-grip")!;
     expect(grip).not.toBeNull();
     // jsdom has no PointerEvent: a mouse event under the pointer's name, with its id.
     const pointer = (target: Element, type: string, clientY: number) => {
