@@ -1,5 +1,4 @@
-.eh-dashboard,
-.eh-sheet {
+.eh-dashboard {
   --eh-ink: #243a32;
   --eh-muted: var(--theme-muted);
   --eh-paper: #fff;
@@ -11,24 +10,20 @@
 .eh-dashboard {
   min-width: 0;
 }
-.eh-dashboard *,
-.eh-sheet * {
+.eh-dashboard * {
   box-sizing: border-box;
 }
-.eh-dashboard a,
-.eh-sheet a {
+.eh-dashboard a {
   color: inherit;
   text-decoration: none;
 }
-.eh-dashboard button,
-.eh-sheet button {
+.eh-dashboard button {
   font: inherit;
   cursor: pointer;
 }
 .eh-dashboard a:focus-visible,
 .eh-dashboard button:focus-visible,
-.eh-dashboard input:focus-visible,
-.eh-sheet :focus-visible {
+.eh-dashboard input:focus-visible {
   outline: 3px solid var(--theme-focus);
   outline-offset: 4px;
 }
@@ -353,87 +348,6 @@
   min-height: 44px;
 }
 
-.eh-sheet {
-  border: 1px solid var(--theme-border);
-  background: var(--eh-paper);
-  border-radius: 22px;
-  padding: 28px;
-  width: min(480px, calc(100vw - 32px));
-  max-height: calc(100dvh - 32px);
-  overflow: auto;
-  box-shadow: 0 24px 90px #102c2833;
-}
-.eh-sheet::backdrop {
-  background: #17292360;
-  backdrop-filter: blur(3px);
-}
-/* The top row: the grip (phone), a heading where the sheet has one, and the close button. Pulling from here
-   always closes the sheet, so a touch here never scrolls. */
-.eh-sheet {
-  overscroll-behavior: contain;
-}
-.eh-sheet.is-still,
-.eh-sheet-top {
-  touch-action: none;
-}
-.eh-sheet-top {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: -10px -10px 0 0;
-}
-.eh-sheet-top h2 {
-  margin: 0;
-  font-size: 20px;
-}
-.eh-sheet-top > button {
-  margin-left: auto;
-}
-/* Without a heading the close button sits beside the day, not on a row of its own. */
-.eh-sheet-top.is-bare {
-  margin-bottom: -38px;
-}
-.eh-sheet-top.is-bare + .eh-sheet-date {
-  padding-right: 48px;
-}
-.eh-sheet-grip {
-  display: none;
-}
-/* The day and the hours as Home's card writes them (home-daylight.css .dl-when b, .dl-time; Mert 2026-10-24). */
-.eh-sheet-date {
-  color: var(--theme-text);
-  font-size: 15px;
-  font-weight: 700;
-}
-.eh-sheet-time {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 10px;
-  margin: 8px 0 14px;
-  color: var(--theme-text);
-  font-size: 31px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-}
-.eh-sheet-dash {
-  color: var(--theme-muted);
-  font-weight: 400;
-}
-.eh-sheet-location {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-}
-.eh-sheet .eh-section-description {
-  color: var(--eh-muted);
-  font-size: 12px;
-  line-height: 1.7;
-}
 .eh-primary {
   display: flex;
   align-items: center;
@@ -447,7 +361,10 @@
   font-size: 14px;
   margin-top: 24px;
 }
+/* The shift window's way to My shifts (ShiftSheet, in Shift Hub's window). */
 .eh-sheet-link {
+  color: var(--theme-text);
+  text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -619,26 +536,6 @@
     font-size: 12px;
   }
 
-  .eh-sheet {
-    width: 100%;
-    max-width: none;
-    max-height: calc(100dvh - 24px);
-    margin: auto 0 0;
-    border-radius: 22px 22px 0 0;
-    padding: 20px 22px max(24px, env(safe-area-inset-bottom));
-  }
-  /* A bottom sheet shows its grip, centred on its top edge. */
-  .eh-sheet-grip {
-    position: absolute;
-    top: -2px;
-    left: 50%;
-    display: block;
-    width: 40px;
-    height: 5px;
-    border-radius: 99px;
-    background: var(--theme-border-strong);
-    transform: translateX(calc(-50% + 5px));
-  }
   .employee-hub-page .hub-panel input,
   .employee-hub-page .hub-panel select,
   .employee-hub-page .hub-panel textarea {
