@@ -162,6 +162,24 @@ select ok(
 );
 select is(pg_temp.names('lx:xia', 'others'), '{}'::text[], 'and nothing of this workspace reaches Xia');
 
+-- Reading another lineup is not being on it: only the people on it acknowledge (nf-guvenlik 2026-10-24).
+select throws_ok(
+  format('select public.acknowledge_lineup_service(%L, %L, %L)', tests.user('lo:kai'), tests.id('lo'),
+    (select x ->> 'version_id' from jsonb_array_elements(pg_temp.read('lo:kai') -> 'others') x
+     where x -> 'location' ->> 'name' = 'Kadikoy' and x ->> 'shift_type_name' = 'Dinner')),
+  '42501', null,
+  'Kai reads Kadikoy''s Dinner but cannot acknowledge it'
+);
+-- On a lineup at a place she no longer works: that lineup stays hers, the place's others don't come with it (the
+-- second gate, on top of the read's own places; nf-guvenlik 2026-10-24).
+update public.employee_location_assignments set ended_at = clock_timestamp()
+where employee_id = tests.id('lo:noa') and location_id = tests.id('lo:K') and ended_at is null;
+select is(pg_temp.names('lo:noa', 'lineups'), array['Kadikoy Brunch'], 'Noa''s Kadikoy assignment ended: her Brunch stays hers');
+select is(pg_temp.names('lo:noa', 'others'), '{}'::text[], 'and Kadikoy''s Dinner no longer reaches her');
+-- An archived location gives nothing.
+update public.locations set archived_at = now() where id = tests.id('lo:B');
+select is(pg_temp.names('lo:kai', 'others'), array['Kadikoy Brunch', 'Kadikoy Dinner'], 'Besiktas archived: Kadikoy only');
+
 -- (f) An archived employee record: nothing at all, `others` too.
 update public.employee_profiles set archived_at = now() where id = tests.id('lo:ida');
 select is(
