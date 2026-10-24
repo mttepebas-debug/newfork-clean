@@ -27,7 +27,6 @@ import {
   arcSegments,
   countdown,
   daySlot,
-  homeSubline,
   homeWeek,
   initials,
   managerOnFloor,
@@ -201,7 +200,6 @@ export function EmployeeDashboard({
           >
             <span>{greetingAt(minute, now)},</span> <span className="dl-nm">{firstName}.</span>
           </h1>
-          <p className="dl-sub">{homeSubline(model, now)}</p>
           {arcShifts.length ? <DayArc shifts={arcShifts} minute={minute} done={(item) => shiftState(item, now, zone).state === "finished"} /> : null}
           <HeroCard
             shift={shift}
@@ -421,17 +419,10 @@ function HeroCard({
     >
       <span className="dl-st">
         <i className={`dl-pulse${on ? " is-on" : ""}`} />
-        <span>
-          {on ? (
-            <>
-              On shift now · <b>{countdown(endsIn)}</b> left
-            </>
-          ) : (
-            <>
-              {relDay(shift.scheduled_date, today)} · Starts in <b>{countdown(startsIn)}</b>
-            </>
-          )}
-        </span>
+        <span>{on ? "On shift now" : "Your next shift"}</span>
+      </span>
+      <span className="dl-when">
+        <b>{relDay(shift.scheduled_date, today)}</b> · {on ? <>{countdown(endsIn)} left</> : <>Starts in {countdown(startsIn)}</>}
       </span>
       <span className="dl-time">
         {formatTime(shift.start_time, format, "long")}

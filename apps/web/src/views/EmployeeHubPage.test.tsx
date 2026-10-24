@@ -834,7 +834,10 @@ describe("EmployeeHubPage", () => {
         await screen.findByRole("heading", { level: 1, name: /Good morning,\s*Alex/ }),
       ).toBeTruthy();
       const card = screen.getByRole("link", { name: /^Open details for your today shift, 9:00 AM to/ });
-      expect(card.textContent).toMatch(/Today · Starts in 4h/);
+      // The card says it is the next shift; nothing under the greeting repeats it (Mert 2026-10-24).
+      expect(card.querySelector(".dl-st")?.textContent).toBe("Your next shift");
+      expect(card.querySelector(".dl-when")?.textContent).toBe("Today · Starts in 4h");
+      expect(document.querySelector(".dl-hero .dl-sub")).toBeNull();
       expect(card.getAttribute("href")).toMatch(/\?shift=/);
       expect(screen.getByRole("group", { name: /Next 7 days/ }).querySelectorAll("button")).toHaveLength(7);
       expect(screen.getByText("You’re all caught up")).toBeTruthy();

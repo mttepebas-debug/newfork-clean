@@ -317,7 +317,7 @@
   margin-top: 12px;
   flex-direction: column;
   gap: 12px;
-  padding: 18px 18px 14px;
+  padding: 22px 22px 18px;
   border-radius: var(--dl-r);
   background: var(--theme-surface);
   box-shadow: var(--dl-shadow);
@@ -337,10 +337,19 @@ a.dl-shift:active {
   font-size: 13.5px;
   font-weight: 600;
 }
-.dl-st b {
-  font-weight: 750;
+/* The card says what it is: "Your next shift" in amber, or "On shift now" in green; the day under it is black and
+   the countdown keeps the card's colour. Nothing under the greeting repeats it (Mert 2026-10-24). */
+.dl-when {
+  margin-top: -4px;
+  color: var(--dl-now-ink);
+  font-size: 15px;
+  font-weight: 600;
 }
-.dl-shift.is-on .dl-st {
+.dl-when b {
+  color: var(--theme-text);
+  font-weight: 700;
+}
+.dl-shift.is-on :is(.dl-st, .dl-when) {
   color: var(--dl-ok);
 }
 .dl-time {

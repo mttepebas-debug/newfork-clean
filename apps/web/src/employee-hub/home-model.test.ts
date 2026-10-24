@@ -6,7 +6,6 @@ import {
   countdown,
   managerOnFloor,
   daySlot,
-  homeSubline,
   homeWeek,
   minutesOf,
 } from "./home-model";
@@ -113,15 +112,5 @@ describe("home model", () => {
   it("marks time off from the server's leave days (time off rebuild D3)", () => {
     const week = homeWeek(model({ leave_days: ["2026-10-17", "2026-10-22"] }), "2026-10-16");
     expect(week.filter((day) => day.timeOff).map((day) => day.date)).toEqual(["2026-10-17", "2026-10-22"]);
-  });
-
-  it("writes the line under the greeting from the next shift", () => {
-    const now = new Date("2026-10-16T20:45:00Z"); // 1:45 PM in San Francisco
-    expect(homeSubline(model(), now)).toBe("Your shift starts at 4:00 PM.");
-    expect(homeSubline(model(), new Date("2026-10-16T23:30:00Z"))).toBe("You're on until 11:00 PM. Have a great shift.");
-    expect(homeSubline(model({ shifts: [{ ...base, scheduled_date: "2026-10-17" }] }), now)).toBe(
-      "Enjoy your day off. Next shift: tomorrow at 4:00 PM.",
-    );
-    expect(homeSubline(model({ shifts: [] }), now)).toBe("No shifts on your schedule yet.");
   });
 });

@@ -1,10 +1,7 @@
 // The employee's Home, variant A "Gün ışığı" (Mert 2026-10-18): the pure part.
 // Every time here is a wall time in the shift's own location.
 import type { EmployeeHubReadModel, EmployeeHubShift } from "@newfork/shared";
-import { formatTime } from "../schedule/lib/scheduleDateTime";
 import { addDays } from "../schedule/lib/scheduleDateTime";
-import { dateInZone } from "../lib/today";
-import { nextShift, shiftState, shiftZone } from "./dashboard-model";
 
 export function minutesOf(time: string): number {
   const [hour, minute] = time.split(":").map(Number);
@@ -101,29 +98,6 @@ export function homeWeek(model: EmployeeHubReadModel, today: string, openDates: 
       open: openDates.filter((day) => day === date).length,
     };
   });
-}
-
-const relDay = (date: string, today: string) =>
-  date === today
-    ? "today"
-    : date === addDays(today, 1)
-      ? "tomorrow"
-      : new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
-
-/** The line under the greeting. */
-export function homeSubline(model: EmployeeHubReadModel, now: Date): string {
-  const shift = nextShift(model, now);
-  const format = model.settings.time_format;
-  if (!shift) return "No shifts on your schedule yet.";
-  const zone = shiftZone(model, shift);
-  const today = dateInZone(now, zone);
-  const state = shiftState(shift, now, zone).state;
-  if (state === "scheduled_now") return `You're on until ${formatTime(shift.end_time, format, "long")}. Have a great shift.`;
-  const at = formatTime(shift.start_time, format, "long");
-  if (shift.scheduled_date === today) return `Your shift starts at ${at}.`;
-  const todayOff = !model.shifts.some((item) => item.scheduled_date === today);
-  if (todayOff) return `Enjoy your day off. Next shift: ${relDay(shift.scheduled_date, today)} at ${at}.`;
-  return `Next shift: ${relDay(shift.scheduled_date, today)} at ${at}.`;
 }
 
 /**
