@@ -22,7 +22,7 @@ const model = {
   requests: [leave], team: [],
 };
 // From get_employee_hub_service for Alex on the "ws" world of supabase/tests/employee_hub_week_strip.test.sql,
-// migration 20261024100000_employee_hub_week_strip applied and rolled back (Home's week strip).
+// migration 20261024113847_employee_hub_week_strip applied and rolled back (Home's week strip).
 const weekStrip = {
   shifts: [
     { id: "3032309b-e744-49d9-bd02-8234a3cc9b03", note: "", end_time: "13:00", job_name: "Cook", start_time: "09:00", time_basis: "explicit", employee_id: "e56cad12-fc6f-4845-ad98-35ecd6b52bf8", location_id: "8d06a05b-0583-45f7-b63f-c2f97dd37ebd", location_name: "Kadikoy", time_snapshot: null, time_timezone: "Europe/Istanbul", scheduled_date: "2028-09-25", shift_type_name: null, shift_type_color: null, shift_type_end_time: null, shift_type_start_time: null },
