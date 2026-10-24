@@ -651,6 +651,9 @@ describe("EmployeeHubPage", () => {
     vi.useRealTimers();
   });
 
+  // jsdom has no showModal, so the sheet's dialog is never "open" and has no role to find it by.
+  const yourShift = () => document.querySelector<HTMLDialogElement>('dialog.eh-sheet[aria-label="Your shift"]');
+
   it("opens Your shift from a day card", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));
@@ -658,12 +661,65 @@ describe("EmployeeHubPage", () => {
     renderPage("/app/employee-hub/schedule");
     fireEvent.click(await screen.findByRole("link", { name: /9:00 AM – 5:00 PM/ }));
     // jsdom has no showModal: the sheet is in the page, not "open".
-    await waitFor(() => expect(document.querySelector("dialog.eh-sheet h2")?.textContent).toBe("Your shift"));
-    expect(document.querySelector("dialog.eh-sheet")?.textContent).toContain("Main Dining · Server");
-    // QA 60: the zone in words people use, not the raw "America/Los Angeles".
-    expect(document.querySelector("dialog.eh-sheet")?.textContent).toContain("Pacific Time");
-    expect(document.querySelector("dialog.eh-sheet")?.textContent).not.toContain("America/");
+    const sheet = await waitFor(() => yourShift()!);
+    // The sheet shows the day and the hours as Home's card does, the hours in full ("9:00 AM", never "9a"); no
+    // "Your shift" title and no zone line (Mert 2026-10-24).
+    expect(sheet.querySelector("h2")).toBeNull();
+    expect(sheet.querySelector(".eh-sheet-date")?.textContent).toMatch(/^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}$/);
+    expect(sheet.querySelector(".eh-sheet-time")?.textContent).toBe("9:00 AM–5:00 PM");
+    expect(sheet.textContent).toContain("Main Dining · Server");
+    expect(sheet.textContent).not.toContain("Pacific Time");
+    // Already on My shifts: no link to it.
+    expect(within(sheet).queryByRole("link", { name: /Open in my schedule/, hidden: true })).toBeNull();
     vi.useRealTimers();
+  });
+
+  it("closes the shift sheet when it is pulled down by its grip", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage("/app/employee-hub/schedule");
+    fireEvent.click(await screen.findByRole("link", { name: /9:00 AM – 5:00 PM/ }));
+    const sheet = await waitFor(() => yourShift()!);
+    const grip = sheet.querySelector(".eh-sheet-grip")!;
+    expect(grip).not.toBeNull();
+    // jsdom has no PointerEvent: a mouse event under the pointer's name, with its id.
+    const pointer = (target: Element, type: string, clientY: number) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientY, button: 0 });
+      Object.defineProperty(event, "pointerId", { value: 1 });
+      act(() => void target.dispatchEvent(event));
+    };
+    // A short pull springs back.
+    pointer(grip, "pointerdown", 100);
+    pointer(sheet, "pointermove", 130);
+    pointer(sheet, "pointerup", 130);
+    expect(yourShift()).not.toBeNull();
+    // A long one closes it.
+    pointer(grip, "pointerdown", 100);
+    pointer(sheet, "pointermove", 260);
+    pointer(sheet, "pointerup", 260);
+    await waitFor(() => expect(yourShift()).toBeNull());
+    vi.useRealTimers();
+  });
+
+  it("lands on My shifts with the shift marked, not its sheet, from Open in my schedule", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
+    try {
+      renderPage();
+      fireEvent.click(await screen.findByRole("link", { name: /^Open details for your today shift/ }));
+      const sheet = await waitFor(() => yourShift()!);
+      const href = within(sheet).getByRole("link", { name: /Open in my schedule/, hidden: true }).getAttribute("href")!;
+      expect(href).toMatch(/^\/app\/employee-hub\/schedule\?date=\d{4}-\d{2}-\d{2}&focus=[^&#]+#shift-/);
+      cleanup();
+      vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+      renderPage(href);
+      const id = href.split("#shift-")[1]!;
+      await waitFor(() => expect(document.getElementById(`shift-${id}`)?.classList.contains("flash")).toBe(true));
+      expect(yourShift()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows the published team board and narrows it to My Schedule", async () => {
