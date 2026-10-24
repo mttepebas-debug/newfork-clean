@@ -25,4 +25,15 @@ describe("employee lineup styles", () => {
       /\.employee-lineup-page > :is\(\.employee-lineup-day, \.employee-lineup\)\s*\{[^}]*margin-inline: auto;/,
     );
   });
+
+  // Mert 2026-10-23: centred on the whole screen like My shifts (employee-my-shifts.css), so going from My shifts
+  // to Lineup the page doesn't move sideways; the 560 px column keeps inside the page box where the screen is narrow.
+  it("centres the day and the lineup on the whole screen in a held page, like My shifts", () => {
+    const desktop = mediaBlock("(min-width: 721px)");
+
+    expect(desktop).toContain(
+      '.app-shell[data-content-held="true"] > .app-main > .employee-hub-page > .employee-lineup-page > :is(.employee-lineup-day, .employee-lineup) {\n' +
+        "    margin-left: clamp(0px, 50vw - var(--app-sidebar-width) - var(--app-page-gutter-start) - 280px, 100% - 560px);",
+    );
+  });
 });
