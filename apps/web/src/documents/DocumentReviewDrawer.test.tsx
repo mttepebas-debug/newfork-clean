@@ -152,6 +152,32 @@ beforeEach(() => {
   vi.mocked(reviewDocument).mockResolvedValue({});
   vi.mocked(setDocumentExemption).mockResolvedValue({});
 });
+// The manager's drawer (A2 Tur 6, file buttons design a): each file is approved or rejected on its own row, and the
+// dock holds one line and one green button (Save, then Next: <who> or Close).
+const dockLine = () => document.querySelector<HTMLElement>(".rd-foot .docr-note")?.textContent ?? null;
+const green = () => document.querySelector<HTMLButtonElement>(".rd-foot .docr-green")!;
+const save = () => screen.getByRole("button", { name: "Save" });
+async function decide(file: string, choice: "Approve" | "Reject") {
+  const pair = await screen.findByRole("group", { name: `Approve or reject ${file}` });
+  fireEvent.click(within(pair).getByRole("button", { name: choice }));
+}
+const why = (file: string, first = "Test") =>
+  screen.getByLabelText(`Why reject ${file}? ${first} sees this`) as HTMLInputElement;
+async function approveAndSave(...files: string[]) {
+  for (const file of files.length ? files : ["certificate.pdf"]) await decide(file, "Approve");
+  fireEvent.click(save());
+}
+// The drawer's clock (performance.now): the green holds for 400 ms after its meaning changes.
+function clock(start = 10_000) {
+  let at = start;
+  const spy = vi.spyOn(performance, "now").mockImplementation(() => at);
+  return {
+    tick: (ms: number) => {
+      at += ms;
+    },
+    restore: () => spy.mockRestore(),
+  };
+}
 describe("shared document review", () => {
   it("describes only formats accepted by the current obligation", async () => {
     const draft = detail();
@@ -201,16 +227,20 @@ describe("shared document review", () => {
   // the approval and its history line.
   it("sends no rejection reason with an approval", async () => {
     page();
-    fireEvent.change(await screen.findByLabelText("Rejection reason"), {
-      target: { value: "Unreadable" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    await decide("certificate.pdf", "Reject");
+    fireEvent.change(why("certificate.pdf"), { target: { value: "Unreadable" } });
+    await decide("certificate.pdf", "Approve");
+    fireEvent.click(save());
 
     await waitFor(() =>
       expect(reviewDocument).toHaveBeenCalledWith(
         expect.anything(),
         "requirement",
-        expect.objectContaining({ decision: "approve", reason: "" }),
+        expect.objectContaining({
+          decision: "approve",
+          reason: "",
+          files: [{ id: "file", decision: "keep", note: "" }],
+        }),
       ),
     );
   });
@@ -226,7 +256,7 @@ describe("shared document review", () => {
     decided.obligation.revision = 2;
     decided.obligation.status = "completed";
     decided.submissions[0]!.state = "accepted";
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    await approveAndSave();
     vi.mocked(getDocument).mockResolvedValue(decided);
 
     expect(
@@ -245,7 +275,7 @@ describe("shared document review", () => {
     vi.mocked(reviewDocument).mockRejectedValueOnce(
       new RequestError("document changed; refresh required", "document.changed", undefined, 409),
     );
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    await approveAndSave();
 
     expect(
       await screen.findByText("This document changed. You're seeing the latest version."),
@@ -264,7 +294,7 @@ describe("shared document review", () => {
       new RequestError("Document is unpublished; changes are paused", "document.paused", undefined, 409),
     );
     vi.mocked(getDocument).mockResolvedValueOnce(detail()).mockResolvedValue(later);
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    await approveAndSave();
 
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Document is unpublished; changes are paused",
@@ -281,7 +311,7 @@ describe("shared document review", () => {
     vi.mocked(reviewDocument).mockRejectedValueOnce(
       new RequestError("Internal server error", undefined, undefined, 500),
     );
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    await approveAndSave();
 
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Couldn't save. Try again.",
@@ -307,45 +337,58 @@ describe("shared document review", () => {
   });
 
   it("requires rejection reason, disables exhausted remaining time, keeps the drawer open and advances only on Next", async () => {
-    const { onClose, onOpen } = page(false, {
-      queue: [row(), row({ id: "second", employee_id: "other", employee_name: "Sam Lee" })],
-    });
-    const reject = await screen.findByRole("button", { name: "Reject" });
-    expect(reject).toHaveProperty("disabled", true);
-    expect(
-      screen.getByRole("option", { name: "Remaining time" }),
-    ).toHaveProperty("disabled", true);
-    fireEvent.change(screen.getByLabelText("Rejection reason"), {
-      target: { value: "Unreadable" },
-    });
-    const after = detail();
-    after.obligation.revision = 2;
-    after.obligation.status = "rejected";
-    after.submissions[0]!.state = "rejected";
-    vi.mocked(getDocument).mockResolvedValue(after);
-    fireEvent.click(reject);
-    await waitFor(() =>
-      expect(reviewDocument).toHaveBeenCalledWith(
-        expect.anything(),
-        "requirement",
-        expect.objectContaining({
-          revision: 1,
-          decision: "reject",
-          correction_period: "full",
-          reason: "Unreadable",
-        }),
-      ),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "Reject" })).toBeNull(),
-    );
-    expect(
-      screen.getByRole("dialog", { name: "Test Employee · Safety certificate" }),
-    ).toBeTruthy();
-    expect(onClose).not.toHaveBeenCalled();
-    expect(onOpen).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Next: Sam Lee" }));
-    expect(onOpen).toHaveBeenCalledExactlyOnceWith("second");
+    const time = clock();
+    try {
+      const { onClose, onOpen } = page(false, {
+        queue: [row(), row({ id: "second", employee_id: "other", employee_name: "Sam Lee" })],
+      });
+      await decide("certificate.pdf", "Reject");
+      expect(save().getAttribute("aria-disabled")).toBe("true");
+      expect(dockLine()).toBe("Add a reason for each rejected file");
+      const left = screen.getByRole("button", { name: "What's left (0 days)" });
+      expect(left.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(left);
+      expect(left.getAttribute("aria-pressed")).toBe("false");
+      expect(screen.getByRole("button", { name: "A new 7 days" }).getAttribute("aria-pressed")).toBe("true");
+      fireEvent.click(save());
+      expect(reviewDocument).not.toHaveBeenCalled();
+      fireEvent.change(why("certificate.pdf"), { target: { value: "Unreadable" } });
+      const after = detail();
+      after.obligation.revision = 2;
+      after.obligation.status = "rejected";
+      after.submissions[0]!.state = "rejected";
+      after.submissions[0]!.files[0] = { ...after.submissions[0]!.files[0]!, decision: "discard", note: "Unreadable" };
+      vi.mocked(getDocument).mockResolvedValue(after);
+      fireEvent.click(save());
+      await waitFor(() =>
+        expect(reviewDocument).toHaveBeenCalledWith(
+          expect.anything(),
+          "requirement",
+          expect.objectContaining({
+            revision: 1,
+            decision: "reject",
+            correction_period: "full",
+            reason: "Unreadable.",
+            files: [{ id: "file", decision: "discard", note: "Unreadable" }],
+          }),
+        ),
+      );
+      await waitFor(() => expect(green().textContent).toBe("Next: Sam Lee"));
+      expect(screen.queryByRole("group", { name: "Approve or reject certificate.pdf" })).toBeNull();
+      expect(
+        screen.getByRole("dialog", { name: "Test Employee · Safety certificate" }),
+      ).toBeTruthy();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(onOpen).not.toHaveBeenCalled();
+      // The green holds still for a moment after it changed meaning, then moves on.
+      fireEvent.click(green());
+      expect(onOpen).not.toHaveBeenCalled();
+      time.tick(450);
+      fireEvent.click(green());
+      expect(onOpen).toHaveBeenCalledExactlyOnceWith("second");
+    } finally {
+      time.restore();
+    }
   });
   it("requires an exemption reason and locks parent navigation while the action is being confirmed", async () => {
     const { onClose } = page(false, {
@@ -431,7 +474,7 @@ describe("shared document review", () => {
 // and the person's drawer read it again instead of keeping the old status.
 it("refreshes the Employees list and the person's drawer after a decision", async () => {
   const { invalidate } = page();
-  fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+  await approveAndSave();
   await waitFor(() =>
     expect(reviewDocument).toHaveBeenCalledWith(
       expect.anything(),
@@ -738,6 +781,8 @@ describe("employee surface", () => {
   it("never offers to remove a draft file on the manager's surface", async () => {
     vi.mocked(getDocument).mockResolvedValue(withDraft());
     page();
+    // The manager's drawer keeps every version but the one it shows under History.
+    fireEvent.click(await screen.findByRole("tab", { name: "History" }));
     await screen.findByText("certificate.pdf");
     expect(
       screen.queryByRole("button", { name: "Remove certificate.pdf" }),
@@ -974,11 +1019,13 @@ describe("a row whose unreviewed upload is hidden", () => {
     doc.submissions[0]!.state = "accepted";
     vi.mocked(getDocument).mockResolvedValue(doc);
     page();
-    expect(
-      await screen.findByRole("heading", { name: "Version 1 · Approved" }),
-    ).toBeTruthy();
+    const files = await screen.findByRole("region", { name: "Files" });
+    expect(within(files).getByText("Version 1")).toBeTruthy();
+    expect(within(files).getByText("Approved", { selector: ".rd-chip" }).className).toBe("rd-chip ok");
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
+    // Nothing under review here, so nothing to review again.
+    expect(screen.queryByRole("button", { name: "Review again" })).toBeNull();
     expect(document.body.textContent).not.toMatch(/null|undefined/);
   });
   it("shows a never-approved row as missing, with no reason and no version", async () => {
@@ -1369,7 +1416,7 @@ describe("typed fields beyond the draft", () => {
   const close = () =>
     fireEvent.click(screen.getByRole("button", { name: "Close details" }));
 
-  it("keeps the rejection reason, correction period and file decisions through a new revision and a close, sending nothing until Reject", async () => {
+  it("keeps the file choices, their reasons and the time chosen through a new revision and a close, sending nothing until Save", async () => {
     base = () => {
       const doc = detail();
       doc.obligation.remaining_seconds = 3600;
@@ -1377,24 +1424,17 @@ describe("typed fields beyond the draft", () => {
     };
     vi.mocked(getDocument).mockResolvedValue(base());
     const { cache, onClose, reopen } = page(false, { sitting: createReviewSitting() });
-    await screen.findByRole("button", { name: "Reject" });
-    fireEvent.change(screen.getByLabelText("Rejection reason"), {
-      target: { value: "Unreadable" },
+    await decide("certificate.pdf", "Reject");
+    fireEvent.change(why("certificate.pdf"), { target: { value: "Unreadable" } });
+    fireEvent.click(screen.getByRole("button", { name: "What's left (less than a day)" }));
+    const typed = () => ({
+      reject: screen.getByRole("button", { name: "Reject" }).getAttribute("aria-pressed"),
+      reason: why("certificate.pdf").value,
+      left: screen.getByRole("button", { name: "What's left (less than a day)" }).getAttribute("aria-pressed"),
     });
-    fireEvent.change(screen.getByLabelText("Correction period"), {
-      target: { value: "remaining" },
-    });
-    fireEvent.change(screen.getByLabelText("Decision for certificate.pdf"), {
-      target: { value: "discard" },
-    });
-    fireEvent.change(screen.getByLabelText("Note for certificate.pdf"), {
-      target: { value: "Blurry" },
-    });
+    const kept = { reject: "true", reason: "Unreadable", left: "true" };
     await bump(cache, () => undefined);
-    await waitFor(() => expect(value("Rejection reason")).toBe("Unreadable"));
-    expect(value("Correction period")).toBe("remaining");
-    expect(value("Decision for certificate.pdf")).toBe("discard");
-    expect(value("Note for certificate.pdf")).toBe("Blurry");
+    await waitFor(() => expect(typed()).toEqual(kept));
     // K1 decision 5: closing asks nothing and sends nothing; the draft waits with its document.
     close();
     expect(onClose).toHaveBeenCalledOnce();
@@ -1402,20 +1442,17 @@ describe("typed fields beyond the draft", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(reviewDocument).not.toHaveBeenCalled();
     reopen();
-    await waitFor(() => expect(value("Rejection reason")).toBe("Unreadable"));
-    expect(value("Correction period")).toBe("remaining");
-    expect(value("Decision for certificate.pdf")).toBe("discard");
-    expect(value("Note for certificate.pdf")).toBe("Blurry");
+    await waitFor(() => expect(typed()).toEqual(kept));
     expect(reviewDocument).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    fireEvent.click(save());
     await waitFor(() =>
       expect(reviewDocument).toHaveBeenCalledWith(manager, "requirement", {
         revision: 2,
         submission_id: "submission",
         decision: "reject",
-        reason: "Unreadable",
+        reason: "Unreadable.",
         correction_period: "remaining",
-        files: [{ id: "file", decision: "discard", note: "Blurry" }],
+        files: [{ id: "file", decision: "discard", note: "Unreadable" }],
       }),
     );
   });
@@ -1423,14 +1460,17 @@ describe("typed fields beyond the draft", () => {
     base = detail;
     vi.mocked(getDocument).mockResolvedValue(base());
     const { cache } = page();
-    fireEvent.change(await screen.findByLabelText("Rejection reason"), {
-      target: { value: "Unreadable" },
-    });
+    await decide("certificate.pdf", "Reject");
+    fireEvent.change(why("certificate.pdf"), { target: { value: "Unreadable" } });
     await bump(cache, (doc) => {
       doc.obligation.submitted_id = "resubmitted";
       doc.submissions[0]!.id = "resubmitted";
     });
-    await waitFor(() => expect(value("Rejection reason")).toBe(""));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Reject" }).getAttribute("aria-pressed")).toBe("false"),
+    );
+    expect(screen.queryByLabelText("Why reject certificate.pdf? Test sees this")).toBeNull();
+    expect(dockLine()).toBe("Approve or reject each file · 1 left");
   });
   it("keeps an unsaved deferral reason through an upload", async () => {
     base = () => {
@@ -1789,27 +1829,24 @@ describe("manager review drawer", () => {
   // K1 decision 5: what was typed stays with its document while the drawer walks the list.
   it("keeps what was typed for a document when the drawer moves away and back", async () => {
     const { show } = page(false, { queue: [row(), sam()], sitting: createReviewSitting() });
-    fireEvent.change(await screen.findByLabelText("Rejection reason"), {
-      target: { value: "Unreadable" },
-    });
+    await decide("certificate.pdf", "Reject");
+    fireEvent.change(why("certificate.pdf"), { target: { value: "Unreadable" } });
     show("second");
     await screen.findByRole("dialog", { name: "Sam Lee · Food handler card" });
     await waitFor(() =>
-      expect((screen.getByLabelText("Rejection reason") as HTMLTextAreaElement).value).toBe(""),
+      expect(screen.getByRole("button", { name: "Reject" }).getAttribute("aria-pressed")).toBe("false"),
     );
+    expect(screen.queryByLabelText(/^Why reject/)).toBeNull();
     show("requirement");
-    await waitFor(() =>
-      expect((screen.getByLabelText("Rejection reason") as HTMLTextAreaElement).value).toBe(
-        "Unreadable",
-      ),
-    );
+    await waitFor(() => expect(why("certificate.pdf").value).toBe("Unreadable"));
+    expect(screen.getByRole("button", { name: "Reject" }).getAttribute("aria-pressed")).toBe("true");
     expect(reviewDocument).not.toHaveBeenCalled();
   });
 
   it("holds the strip and the X while a decision is being saved", async () => {
     vi.mocked(reviewDocument).mockReturnValue(new Promise(() => {}));
     page(false, { queue: [row(), sam()] });
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    await approveAndSave();
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Close details" })).toHaveProperty("disabled", true),
     );
@@ -1874,11 +1911,11 @@ describe("manager review drawer", () => {
       expect(
         screen.getAllByRole("tab").map((tab) => tab.getAttribute("aria-label") ?? tab.textContent),
       ).toEqual(["Details", "Files, 1 file", "History"]);
-      expect(screen.queryByRole("button", { name: "certificate.pdf" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Open certificate.pdf" })).toBeNull();
       fireEvent.click(screen.getByRole("button", { name: /^1 file to review/ }));
       expect(files.getAttribute("aria-selected")).toBe("true");
       expect(document.activeElement).toBe(files);
-      expect(screen.getByRole("button", { name: "certificate.pdf" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Open certificate.pdf" })).toBeTruthy();
     });
   });
 });
@@ -1887,10 +1924,545 @@ describe("manager review drawer", () => {
 // onboarding under its own key.
 it("refreshes the Employee drawer's onboarding review after a decision", async () => {
   const { invalidate } = page();
-  fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+  await approveAndSave();
   await waitFor(() =>
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ["employee-onboarding-review", "workspace"],
     }),
   );
+});
+it("refreshes the Employee drawer's onboarding review after a deadline extension too", async () => {
+  const doc = detail();
+  doc.obligation.status = "missing";
+  doc.obligation.submitted_id = null;
+  doc.submissions = [];
+  doc.obligation.deadline_at = new Date(Date.now() + 86_400_000).toISOString();
+  vi.mocked(getDocument).mockResolvedValue(doc);
+  vi.mocked(extendDocumentDeadline).mockResolvedValue({});
+  const { invalidate } = page();
+  fireEvent.change(await screen.findByLabelText("Extension reason"), { target: { value: "Clinic closed" } });
+  fireEvent.click(screen.getByRole("button", { name: "Extend deadline" }));
+  await waitFor(() =>
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["employee-onboarding-review", "workspace"],
+    }),
+  );
+});
+
+// A2 Tur 6, file buttons design a (K1 stage 2): each file of the version under review is approved or rejected on its
+// own row; the dock holds one line and one green button. The rules stay today's (Mert 23 Oct).
+describe("file decisions and the dock", () => {
+  const sam = () =>
+    row({ id: "second", employee_id: "other", employee_name: "Sam Lee", title: "Food handler card" });
+  const back = {
+    id: "back",
+    filename: "back.pdf",
+    media_type: "application/pdf",
+    size_bytes: 2048,
+    decision: "keep" as const,
+    note: "",
+  };
+  function twoFiles(): DocumentDetail {
+    const doc = detail();
+    doc.submissions[0]!.files.push({ ...back });
+    doc.obligation.remaining_seconds = 3 * 86_400 + 60;
+    return doc;
+  }
+  const filesRegion = () => screen.getByRole("region", { name: "Files" });
+  const chipOf = (file: string) =>
+    screen
+      .getAllByText(file)
+      .map((name) => name.closest(".docr-file"))
+      .find(Boolean)
+      ?.querySelector(".rd-chip") ?? null;
+
+  // K1 decision 13: a file stores "keep" until it is decided; that is no choice of the manager's.
+  it("starts every file undecided, whatever it stores, with Save off and the line saying how many are left", async () => {
+    vi.mocked(getDocument).mockResolvedValue(twoFiles());
+    page();
+    for (const file of ["certificate.pdf", "back.pdf"]) {
+      const pair = await screen.findByRole("group", { name: `Approve or reject ${file}` });
+      expect(
+        within(pair)
+          .getAllByRole("button")
+          .map((button) => [button.textContent, button.getAttribute("aria-pressed")]),
+      ).toEqual([
+        ["Approve", "false"],
+        ["Reject", "false"],
+      ]);
+    }
+    expect(dockLine()).toBe("Approve or reject each file · 2 left");
+    expect(save().getAttribute("aria-disabled")).toBe("true");
+    expect(save().getAttribute("aria-describedby")).toBe(
+      document.querySelector(".rd-foot .docr-note")!.id,
+    );
+    fireEvent.click(save());
+    expect(reviewDocument).not.toHaveBeenCalled();
+    // Each row: the file's name opens it, then its type and size.
+    const name = within(filesRegion()).getByRole("button", { name: "back.pdf" });
+    expect(name.getAttribute("title")).toBe("back.pdf");
+    expect(within(filesRegion()).getByText("PDF · 2 KB")).toBeTruthy();
+    expect(within(filesRegion()).getByText("Version 1")).toBeTruthy();
+  });
+
+  it("approves once every file is approved, saying until when it is on file", async () => {
+    const doc = detail();
+    doc.submissions[0]!.expiry_date = "2029-09-30";
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    await decide("certificate.pdf", "Approve");
+    expect(dockLine()).toBe("Save approves it · On file until Sep 30, 2029");
+    expect(save().getAttribute("aria-disabled")).toBeNull();
+    fireEvent.click(save());
+    await waitFor(() =>
+      expect(reviewDocument).toHaveBeenCalledWith(expect.anything(), "requirement", {
+        revision: 1,
+        submission_id: "submission",
+        decision: "approve",
+        reason: "",
+        correction_period: "full",
+        files: [{ id: "file", decision: "keep", note: "" }],
+      }),
+    );
+  });
+
+  // K1 decision 10: the document's reason is made of the rejected files' reasons; each file keeps its own as its note.
+  it("sends the document back with a quick reason, the time chosen and one reason made of the files'", async () => {
+    vi.mocked(getDocument).mockResolvedValue(twoFiles());
+    page();
+    await decide("certificate.pdf", "Approve");
+    await decide("back.pdf", "Reject");
+    expect(dockLine()).toBe("Add a reason for each rejected file");
+    expect(save().getAttribute("aria-disabled")).toBe("true");
+    const reasons = screen.getByRole("group", { name: "Common reasons for back.pdf" });
+    expect(within(reasons).getAllByRole("button").map((chip) => chip.textContent)).toEqual([
+      "Blurry photo",
+      "Wrong document",
+      "Expired",
+      "Name doesn't match",
+      "A side is missing",
+    ]);
+    const input = why("back.pdf");
+    expect([input.placeholder, input.maxLength, input.getAttribute("aria-required")]).toEqual([
+      "Why? Test sees this",
+      500,
+      "true",
+    ]);
+    expect(input.getAttribute("aria-describedby")).toBe(document.querySelector(".rd-foot .docr-note")!.id);
+    fireEvent.click(within(reasons).getByRole("button", { name: "Blurry photo" }));
+    expect(input.value).toBe("Blurry photo.");
+    expect(within(reasons).getByRole("button", { name: "Blurry photo" }).getAttribute("aria-pressed")).toBe("true");
+    expect(dockLine()).toBe("Save sends it back to Test · 1 of 2 files rejected");
+    const time = screen.getByRole("group", { name: "Time to send a new one" });
+    expect(
+      within(time)
+        .getAllByRole("button")
+        .map((choice) => [choice.textContent, choice.getAttribute("aria-pressed")]),
+    ).toEqual([
+      ["A new 7 days", "true"],
+      ["What's left (3 days)", "false"],
+    ]);
+    fireEvent.click(within(time).getByRole("button", { name: "What's left (3 days)" }));
+    fireEvent.click(within(time).getByRole("button", { name: "What's left (3 days)" }));
+    expect(within(time).getByRole("button", { name: "What's left (3 days)" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    fireEvent.click(save());
+    await waitFor(() =>
+      expect(reviewDocument).toHaveBeenCalledWith(expect.anything(), "requirement", {
+        revision: 1,
+        submission_id: "submission",
+        decision: "reject",
+        reason: "back.pdf: Blurry photo.",
+        correction_period: "remaining",
+        files: [
+          { id: "file", decision: "keep", note: "" },
+          { id: "back", decision: "discard", note: "Blurry photo." },
+        ],
+      }),
+    );
+  });
+
+  it("takes a file's reason away on Approve and brings it back on Reject", async () => {
+    page();
+    await decide("certificate.pdf", "Reject");
+    fireEvent.change(why("certificate.pdf"), { target: { value: "Wrong card" } });
+    expect(screen.getByRole("group", { name: "Time to send a new one" })).toBeTruthy();
+    await decide("certificate.pdf", "Approve");
+    expect(screen.queryByLabelText("Why reject certificate.pdf? Test sees this")).toBeNull();
+    expect(screen.queryByRole("group", { name: "Time to send a new one" })).toBeNull();
+    await decide("certificate.pdf", "Reject");
+    expect(why("certificate.pdf").value).toBe("Wrong card");
+  });
+
+  // K1 decision 9: without a period of its own, "full" clears the deadline; it keeps today's words.
+  it("words the full time as today when the document has no period of its own", async () => {
+    const doc = detail();
+    doc.obligation.settings = { ...doc.obligation.settings, period_days: null };
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    await decide("certificate.pdf", "Reject");
+    expect(screen.getByRole("button", { name: "Full correction period" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("shows what was saved in the drawer: the result line, the real decisions, and the next one still waiting", async () => {
+    const time = clock();
+    try {
+      const { onOpen } = page(false, { queue: [row(), sam()] });
+      await decide("certificate.pdf", "Reject");
+      fireEvent.change(why("certificate.pdf"), { target: { value: "Blurry photo" } });
+      const after = detail();
+      after.obligation.revision = 2;
+      after.obligation.status = "rejected";
+      after.obligation.rejection_reason = "Blurry photo.";
+      after.submissions[0]!.state = "rejected";
+      after.submissions[0]!.files[0] = { ...after.submissions[0]!.files[0]!, decision: "discard", note: "Blurry photo" };
+      vi.mocked(getDocument).mockResolvedValue(after);
+      fireEvent.click(save());
+      await waitFor(() => expect(green().textContent).toBe("Next: Sam Lee"));
+      const result = document.querySelector<HTMLElement>(".rd-foot .docr-note")!;
+      expect(result.getAttribute("role")).toBe("status");
+      expect(result.textContent).toBe("Sent back · Test is told why and has a new 7 days.");
+      expect(result.className).toBe("rd-foot-note docr-note docr-result red");
+      expect(document.activeElement).toBe(green());
+      // The real decision, read only: the file rejected with its reason, the head in the manager's word.
+      expect(screen.queryByRole("group", { name: /^Approve or reject/ })).toBeNull();
+      expect(chipOf("certificate.pdf")?.textContent).toBe("Rejected");
+      expect(within(filesRegion()).getByText("Blurry photo")).toBeTruthy();
+      expect(screen.getByText("Missing", { selector: ".rd-head .rd-chip" })).toBeTruthy();
+      // The decision takes the due date's place among the facts.
+      expect(screen.getByText("Sent back", { selector: "dt" }).nextElementSibling?.textContent).toMatch(/ · You$/);
+      fireEvent.click(green());
+      time.tick(250);
+      fireEvent.click(green());
+      expect(onOpen).not.toHaveBeenCalled();
+      time.tick(200);
+      fireEvent.click(green());
+      expect(onOpen).toHaveBeenCalledExactlyOnceWith("second");
+    } finally {
+      time.restore();
+    }
+  });
+
+  it("closes once nobody else waits, saying all caught up", async () => {
+    const time = clock();
+    try {
+      const { onClose } = page(false, { queue: [row(), { ...sam(), status: "completed" }] });
+      const approved = detail();
+      approved.obligation.revision = 2;
+      approved.obligation.status = "completed";
+      approved.obligation.approved_id = "submission";
+      approved.submissions[0]!.state = "accepted";
+      vi.mocked(getDocument).mockResolvedValue(approved);
+      await approveAndSave();
+      await waitFor(() => expect(green().textContent).toBe("Close"));
+      expect(dockLine()).toBe("Approved · Test is told. All caught up.");
+      expect(chipOf("certificate.pdf")?.textContent).toBe("Approved");
+      time.tick(450);
+      fireEvent.click(green());
+      expect(onClose).toHaveBeenCalledOnce();
+    } finally {
+      time.restore();
+    }
+  });
+
+  it("sends once, whatever a double click, a triple click or a quick second click does", async () => {
+    page();
+    await decide("certificate.pdf", "Approve");
+    const button = save();
+    fireEvent.click(button);
+    fireEvent.click(button, { detail: 2 });
+    fireEvent.click(button, { detail: 3 });
+    fireEvent.click(button);
+    await waitFor(() => expect(green().textContent).toBe("Close"));
+    expect(reviewDocument).toHaveBeenCalledOnce();
+  });
+
+  it("drops the second click of a double click on any control, and counts a deliberate one later", async () => {
+    const time = clock();
+    try {
+      page();
+      const pair = await screen.findByRole("group", { name: "Approve or reject certificate.pdf" });
+      const approve = within(pair).getByRole("button", { name: "Approve" });
+      const reject = within(pair).getByRole("button", { name: "Reject" });
+      fireEvent.click(approve, { detail: 1 });
+      time.tick(150);
+      fireEvent.click(reject, { detail: 2 });
+      expect([approve.getAttribute("aria-pressed"), reject.getAttribute("aria-pressed")]).toEqual(["true", "false"]);
+      time.tick(450);
+      fireEvent.click(reject, { detail: 2 });
+      expect(reject.getAttribute("aria-pressed")).toBe("true");
+    } finally {
+      time.restore();
+    }
+  });
+
+  it("never clicks again on a held key, and drops a second key press on the green that comes too soon", async () => {
+    const time = clock();
+    try {
+      page();
+      await decide("certificate.pdf", "Approve");
+      const button = save();
+      const reject = screen.getByRole("button", { name: "Reject" });
+      expect(fireEvent.keyDown(reject, { key: " ", repeat: true })).toBe(false);
+      expect(fireEvent.keyDown(button, { key: "Enter", repeat: true })).toBe(false);
+      expect(fireEvent.keyDown(button, { key: "Enter" })).toBe(true);
+      time.tick(90);
+      expect(fireEvent.keyDown(button, { key: "Enter" })).toBe(false);
+      time.tick(90);
+      expect(fireEvent.keyDown(button, { key: " " })).toBe(false);
+      expect(fireEvent.keyUp(button, { key: " " })).toBe(false);
+      time.tick(500);
+      expect(fireEvent.keyDown(button, { key: "Enter" })).toBe(true);
+    } finally {
+      time.restore();
+    }
+  });
+
+  it("says when Save turns on", async () => {
+    page();
+    await decide("certificate.pdf", "Approve");
+    await waitFor(() =>
+      expect(document.querySelector(".docr-strip [aria-live='polite']")?.textContent).toBe(
+        "Ready · Save approves it",
+      ),
+    );
+  });
+
+  // K1 decision 2: an approved document can be reviewed again; its files read Approved until then.
+  it("reviews an approved document again only when asked, and takes the request back", async () => {
+    const doc = detail();
+    doc.obligation.status = "completed";
+    doc.obligation.approved_id = "submission";
+    doc.submissions[0]!.state = "accepted";
+    doc.submissions[0]!.reviewed_at = "2026-09-16T12:00:00Z";
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    const time = clock();
+    try {
+      page();
+      await screen.findByRole("button", { name: "Review again" });
+      expect(chipOf("certificate.pdf")?.textContent).toBe("Approved");
+      expect(screen.queryByRole("group", { name: /^Approve or reject/ })).toBeNull();
+      expect(dockLine()).toBe("Approved · Nothing to decide here.");
+      expect(green().textContent).toBe("Close");
+      fireEvent.click(screen.getByRole("button", { name: "Review again" }));
+      const pair = screen.getByRole("group", { name: "Approve or reject certificate.pdf" });
+      expect(within(pair).getAllByRole("button").map((b) => b.getAttribute("aria-pressed"))).toEqual(["false", "false"]);
+      expect(dockLine()).toBe("Approve or reject each file · 1 left");
+      expect(save().getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(screen.getByRole("button", { name: "Cancel review" }));
+      expect(screen.queryByRole("group", { name: /^Approve or reject/ })).toBeNull();
+      expect(green().textContent).toBe("Close");
+      fireEvent.click(screen.getByRole("button", { name: "Review again" }));
+      await decide("certificate.pdf", "Reject");
+      fireEvent.change(why("certificate.pdf"), { target: { value: "Wrong person" } });
+      // Close turned into Save: it holds for a moment first.
+      fireEvent.click(save());
+      expect(reviewDocument).not.toHaveBeenCalled();
+      time.tick(450);
+      fireEvent.click(save());
+      await waitFor(() =>
+        expect(reviewDocument).toHaveBeenCalledWith(
+          expect.anything(),
+          "requirement",
+          expect.objectContaining({ submission_id: "submission", decision: "reject", reason: "Wrong person." }),
+        ),
+      );
+    } finally {
+      time.restore();
+    }
+  });
+
+  it("turns the green back into Save on a new change after a Save", async () => {
+    const approved = detail();
+    approved.obligation.revision = 2;
+    approved.obligation.status = "completed";
+    approved.obligation.approved_id = "submission";
+    approved.submissions[0]!.state = "accepted";
+    page();
+    vi.mocked(getDocument).mockResolvedValue(approved);
+    await approveAndSave();
+    await waitFor(() => expect(green().textContent).toBe("Close"));
+    expect(dockLine()).toBe("Approved · Test is told. All caught up.");
+    fireEvent.click(screen.getByRole("button", { name: "Review again" }));
+    expect(green().textContent).toBe("Save");
+    expect(dockLine()).toBe("Approve or reject each file · 1 left");
+  });
+
+  it("shows a document sent back earlier with what was decided on each file", async () => {
+    const doc = twoFiles();
+    doc.obligation.status = "rejected";
+    doc.obligation.rejection_reason = "back.pdf: Blurry photo.";
+    doc.submissions[0]!.state = "rejected";
+    doc.submissions[0]!.files[1] = { ...back, decision: "discard", note: "Blurry photo." };
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    await screen.findByRole("region", { name: "Files" });
+    expect([chipOf("certificate.pdf")?.textContent, chipOf("certificate.pdf")?.className]).toEqual([
+      "Kept",
+      "rd-chip grey",
+    ]);
+    expect([chipOf("back.pdf")?.textContent, chipOf("back.pdf")?.className]).toEqual(["Rejected", "rd-chip red"]);
+    expect(within(filesRegion()).getByText("Blurry photo.")).toBeTruthy();
+    // A rejected file is no longer handed out.
+    expect(within(filesRegion()).getByRole("button", { name: "back.pdf" })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("group", { name: /^Approve or reject/ })).toBeNull();
+    expect(screen.getByText("Missing", { selector: ".rd-head .rd-chip" })).toBeTruthy();
+    expect(dockLine()).toBe("Nothing to review · Excuse Test below");
+    expect(save().getAttribute("aria-disabled")).toBe("true");
+    // The document's reason is made of the files' reasons, which stand under their files.
+    expect(screen.queryByText("back.pdf: Blurry photo.")).toBeNull();
+  });
+
+  it("keeps a send-back reason that no file carries", async () => {
+    const doc = detail();
+    doc.obligation.status = "rejected";
+    doc.obligation.rejection_reason = "Please send the whole card.";
+    doc.submissions[0]!.state = "rejected";
+    doc.submissions[0]!.files[0] = { ...doc.submissions[0]!.files[0]!, decision: "discard", note: "" };
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    expect((await screen.findByText("Please send the whole card.")).getAttribute("role")).toBe("note");
+  });
+
+  // K1 decision 11: a renewal sent back while the old copy is still valid stays Completed.
+  it("follows the refreshed status when a renewal is sent back and its old copy stays", async () => {
+    const renewal = () => {
+      const doc = detail();
+      doc.obligation.approved_id = "old";
+      doc.obligation.expiry_date = "2026-12-31";
+      doc.submissions[0]!.version = 2;
+      doc.submissions.push({
+        ...doc.submissions[0]!,
+        id: "old",
+        version: 1,
+        state: "accepted",
+        reviewed_at: "2025-12-01T12:00:00Z",
+        expiry_date: "2026-12-31",
+        files: [{ ...doc.submissions[0]!.files[0]!, id: "old-file", filename: "old.pdf" }],
+      });
+      return doc;
+    };
+    vi.mocked(getDocument).mockResolvedValue(renewal());
+    page();
+    await decide("certificate.pdf", "Reject");
+    fireEvent.change(why("certificate.pdf"), { target: { value: "Expired" } });
+    const after = renewal();
+    after.obligation.revision = 2;
+    after.obligation.status = "completed";
+    after.submissions[0]!.state = "rejected";
+    after.submissions[0]!.files[0] = { ...after.submissions[0]!.files[0]!, decision: "discard", note: "Expired" };
+    vi.mocked(getDocument).mockResolvedValue(after);
+    fireEvent.click(save());
+    await waitFor(() =>
+      expect(dockLine()).toBe(
+        "Sent back · Test is told why. The approved copy stays on file until Dec 31, 2026. All caught up.",
+      ),
+    );
+    expect(screen.getByText("Completed", { selector: ".rd-head .rd-chip" })).toBeTruthy();
+    expect(screen.queryByText("Missing", { selector: ".rd-head .rd-chip" })).toBeNull();
+  });
+
+  // K1 decision 12: a row that waits for the person's document time zone keeps today's time zone parts.
+  it.each([
+    [true, "Time zone needed · Choose the document time zone above and save it"],
+    [false, "Time zone needed · An administrator needs to set the document time zone"],
+  ])("says what a time zone row needs (can set it: %s)", async (canManage, line) => {
+    const doc = detail();
+    doc.obligation.status = "timezone_required";
+    doc.obligation.timezone = null;
+    doc.obligation.tracks_expiry = true;
+    doc.obligation.approved_id = "submission";
+    doc.submissions[0]!.state = "accepted";
+    doc.submissions[0]!.expiry_date = "2027-03-31";
+    doc.timezone_settings = { value: null, configured_value: null, employee_revision: 4, can_manage: canManage };
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page(false, { queue: [row({ status: "timezone_required" }), sam()] });
+    await screen.findByRole("region", { name: "Files" });
+    expect(screen.getByText("Time zone needed", { selector: ".rd-head .rd-chip" })).toBeTruthy();
+    expect(dockLine()).toBe(line);
+    expect(Boolean(screen.queryByRole("button", { name: "Save document time zone" }))).toBe(canManage);
+    expect(
+      screen.getByText(
+        "An administrator needs to set this employee's document time zone before expiration dates can be checked.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole("group", { name: /^Approve or reject/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Review again" })).toBeNull();
+    expect(green().textContent).toBe("Next: Sam Lee");
+  });
+
+  it("says a document changed meanwhile in the dock's line", async () => {
+    page();
+    vi.mocked(reviewDocument).mockRejectedValueOnce(
+      new RequestError("document changed; refresh required", "document.changed", undefined, 409),
+    );
+    await approveAndSave();
+    await waitFor(() => expect(dockLine()).toBe("This document changed. You're seeing the latest version."));
+    expect(document.querySelector(".rd-foot .docr-note")?.getAttribute("role")).toBe("status");
+  });
+
+  it("keeps the earlier versions and their files in History", async () => {
+    const doc = detail();
+    doc.submissions[0]!.version = 2;
+    doc.submissions.push({
+      ...doc.submissions[0]!,
+      id: "first",
+      version: 1,
+      state: "rejected",
+      rejection_reason: "Blurry.",
+      files: [{ ...doc.submissions[0]!.files[0]!, id: "first-file", filename: "old.jpg", media_type: "image/jpeg", decision: "discard", note: "Blurry" }],
+    });
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    fireEvent.click(await screen.findByRole("tab", { name: "History" }));
+    const earlier = screen.getByRole("region", { name: "Earlier versions" });
+    expect(within(earlier).getByText("Version 1 · Rejected")).toBeTruthy();
+    expect(within(earlier).getByRole("button", { name: "old.jpg" })).toHaveProperty("disabled", true);
+    expect(within(earlier).getByText("Rejected", { selector: ".rd-chip" })).toBeTruthy();
+    expect(within(earlier).getByText("JPG · 100 B")).toBeTruthy();
+  });
+
+  describe("on a phone", () => {
+    const matchMedia = window.matchMedia;
+    beforeEach(() => {
+      window.matchMedia = ((query: string) => ({
+        matches: query === "(max-width: 720px)",
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })) as unknown as typeof window.matchMedia;
+    });
+    afterEach(() => {
+      window.matchMedia = matchMedia;
+    });
+    it("draws each file as one open button over its two halves, and the row in Details says where the review stands", async () => {
+      page();
+      fireEvent.click(await screen.findByRole("button", { name: /^1 file to review/ }));
+      expect(screen.getByRole("heading", { name: "Version 1" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Open certificate.pdf" })).toBeTruthy();
+      await decide("certificate.pdf", "Approve");
+      expect(dockLine()).toBe("Save approves it");
+      fireEvent.click(screen.getByRole("tab", { name: "Details" }));
+      expect(screen.getByRole("button", { name: /^File checked/ })).toBeTruthy();
+    });
+    it("says a sent-back result in its short words", async () => {
+      page();
+      fireEvent.click(await screen.findByRole("button", { name: /^1 file to review/ }));
+      await decide("certificate.pdf", "Reject");
+      fireEvent.change(why("certificate.pdf"), { target: { value: "Blurry photo" } });
+      const after = detail();
+      after.obligation.revision = 2;
+      after.obligation.status = "rejected";
+      after.submissions[0]!.state = "rejected";
+      after.submissions[0]!.files[0] = { ...after.submissions[0]!.files[0]!, decision: "discard", note: "Blurry photo" };
+      vi.mocked(getDocument).mockResolvedValue(after);
+      fireEvent.click(save());
+      await waitFor(() => expect(dockLine()).toBe("Sent back · Test has a new 7 days. All caught up."));
+      expect(document.querySelector(".rd-foot .docr-note")?.getAttribute("title")).toBe(
+        "Sent back · Test is told why and has a new 7 days. All caught up.",
+      );
+      expect(screen.getByRole("button", { name: "Open certificate.pdf · Rejected" })).toBeTruthy();
+    });
+  });
 });

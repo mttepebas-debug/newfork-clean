@@ -1,4 +1,5 @@
-import type { DocumentReviewCommand } from "@newfork/shared";
+import type { FileChoices, FileReasons, Period } from "./review-decision";
+import type { ReviewResult } from "./review-dock";
 
 // K1 decision 5 (Mert 23 Oct): what a manager typed or picked in the review drawer stays with its document while
 // the page is open: across Previous / Next, a new revision, and closing and opening it again. Nothing is sent until
@@ -6,9 +7,14 @@ import type { DocumentReviewCommand } from "@newfork/shared";
 // typed for a version that is gone gives way to what is saved.
 
 export type ManagerTypedValues = {
-  reason: string;
-  correction: "full" | "remaining";
-  files: DocumentReviewCommand["files"];
+  /** Each file's Approve or Reject; none at first (K1 decision 13). */
+  choices: FileChoices;
+  /** Each file's reason, kept when its file is approved again, so Reject brings it back. */
+  reasons: FileReasons;
+  /** The time to send a new one, when a file is rejected. */
+  period: Period;
+  /** An approved version opened for review again (K1 decision 2). */
+  reviewAgain: boolean;
   extensionDays: number;
   extensionReason: string;
   timezone: string;
@@ -17,21 +23,25 @@ export type ManagerDraft = {
   [K in keyof ManagerTypedValues]?: { for: string; value: ManagerTypedValues[K] };
 };
 
-/** One page's sitting: a draft per document and the documents answered since the page opened. */
+/** One page's sitting: a draft per document, and the documents answered since the page opened with what was done. */
 export type ReviewSitting = {
   subscribe(listener: () => void): () => void;
   /** The same object until it changes, so a reader can hold it. */
   draft(id: string): ManagerDraft;
   setDraft(id: string, next: (draft: ManagerDraft) => ManagerDraft): void;
   answered(id: string): boolean;
-  answer(id: string): void;
+  /** What the Save that answered it did, for its dock. */
+  result(id: string): ReviewResult | undefined;
+  answer(id: string, result?: ReviewResult): void;
+  /** A new change on an answered document: it is open again, and its result line gives way. */
+  reopen(id: string): void;
 };
 
 const empty: ManagerDraft = Object.freeze({});
 
 export function createReviewSitting(): ReviewSitting {
   const drafts = new Map<string, ManagerDraft>();
-  const done = new Set<string>();
+  const done = new Map<string, ReviewResult | undefined>();
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((listener) => listener());
   return {
@@ -51,9 +61,14 @@ export function createReviewSitting(): ReviewSitting {
       emit();
     },
     answered: (id) => done.has(id),
-    answer(id) {
-      if (done.has(id)) return;
-      done.add(id);
+    result: (id) => done.get(id),
+    answer(id, result) {
+      if (done.has(id) && done.get(id) === result) return;
+      done.set(id, result);
+      emit();
+    },
+    reopen(id) {
+      if (!done.delete(id)) return;
       emit();
     },
   };

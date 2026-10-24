@@ -8,9 +8,9 @@ describe("createReviewSitting", () => {
     const empty = sitting.draft("a");
     expect(empty).toEqual({});
     expect(sitting.draft("a")).toBe(empty);
-    sitting.setDraft("a", (d) => ({ ...d, reason: { for: "v1", value: "Blurry" } }));
+    sitting.setDraft("a", (d) => ({ ...d, reasons: { for: "v1", value: { file: "Blurry" } } }));
     const typed = sitting.draft("a");
-    expect(typed).toEqual({ reason: { for: "v1", value: "Blurry" } });
+    expect(typed).toEqual({ reasons: { for: "v1", value: { file: "Blurry" } } });
     expect(sitting.draft("a")).toBe(typed);
     expect(sitting.draft("b")).toEqual({});
   });
@@ -20,7 +20,7 @@ describe("createReviewSitting", () => {
     const stop = sitting.subscribe(listener);
     sitting.setDraft("a", (d) => d);
     expect(listener).not.toHaveBeenCalled();
-    sitting.setDraft("a", () => ({ reason: { for: "v1", value: "x" } }));
+    sitting.setDraft("a", () => ({ choices: { for: "v1", value: { file: "reject" } } }));
     expect(listener).toHaveBeenCalledOnce();
     stop();
     sitting.setDraft("a", () => ({}));
@@ -37,5 +37,22 @@ describe("createReviewSitting", () => {
     expect(sitting.answered("a")).toBe(true);
     expect(sitting.answered("b")).toBe(false);
     expect(listener).toHaveBeenCalledOnce();
+  });
+  // A2 Tur 6: what a Save did stays on its document's dock while the page is open, until a new change there.
+  it("keeps what a Save did with its answer, and drops both on a new change", () => {
+    const sitting = createReviewSitting();
+    const listener = vi.fn();
+    sitting.subscribe(listener);
+    const result = { kind: "approved" as const, at: "2026-10-23T18:00:00Z", expires: null };
+    expect(sitting.result("a")).toBeUndefined();
+    sitting.answer("a", result);
+    expect([sitting.answered("a"), sitting.result("a")]).toEqual([true, result]);
+    expect(sitting.result("b")).toBeUndefined();
+    expect(listener).toHaveBeenCalledOnce();
+    sitting.reopen("a");
+    sitting.reopen("a");
+    sitting.reopen("b");
+    expect([sitting.answered("a"), sitting.result("a")]).toEqual([false, undefined]);
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 });

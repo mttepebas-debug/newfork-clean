@@ -5,6 +5,7 @@ import {
 } from "@newfork/shared";
 import {
   documentFacts,
+  fileMeta,
   firstName,
   formatDate,
   formatDay,
@@ -216,5 +217,36 @@ describe("documentFacts", () => {
       "Expires",
       "Card number",
     ]);
+  });
+  // A2 Tur 6 (mockup-spec 4.4): once decided in this sitting the decision takes the Due row's place, so the files
+  // under the facts never jump at Save. "You" only for a decision made here (the API names nobody).
+  it("puts a decision made in this sitting where the due date was", () => {
+    const doc = detail();
+    doc.obligation.status = "rejected";
+    doc.obligation.settings.suspend_on_overdue = true;
+    doc.submissions[0]!.state = "rejected";
+    expect(documentFacts(doc, now, { label: "Sent back", at: "2026-10-23T18:00:00Z" })).toEqual([
+      ["Name", "Maria Lopez"],
+      ["Document", "Food Handler Card"],
+      ["Locations", "Downtown, Midtown"],
+      ["Sent", "Wed, Oct 21, 4:12 PM"],
+      ["Expires", "Sep 30, 2029"],
+      ["Card number", "FH-448812"],
+      ["Sent back", "Fri, Oct 23 · You"],
+    ]);
+  });
+});
+
+// A file's row says what it is and how big (mockup-spec 5.3: "JPG · 471 KB").
+describe("fileMeta", () => {
+  const file = (media_type: string, size_bytes: number, filename = "card") => ({ media_type, size_bytes, filename });
+  it("names the type and the size in the units people read", () => {
+    expect(fileMeta(file("image/jpeg", 482_304))).toBe("JPG · 471 KB");
+    expect(fileMeta(file("application/pdf", 100))).toBe("PDF · 100 B");
+    expect(fileMeta(file("image/png", 2_048))).toBe("PNG · 2 KB");
+    expect(fileMeta(file("image/webp", 3_407_872))).toBe("WebP · 3.3 MB");
+    expect(fileMeta(file("image/png", 10_485_760))).toBe("PNG · 10 MB");
+    expect(fileMeta(file("application/octet-stream", 10, "scan.tiff"))).toBe("TIFF · 10 B");
+    expect(fileMeta(file("application/octet-stream", 10, "scan"))).toBe("File · 10 B");
   });
 });

@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router";
 import { defaultDocumentLifecycleSettings } from "@newfork/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RequestError } from "../lib/request-error";
-import { getDocument, listDocuments } from "./document-data";
+import { getDocument, listDocuments, reviewDocument } from "./document-data";
 import { EmployeeDocumentsList } from "./EmployeeDocumentsList";
 import EmployeeDocumentsPage from "./EmployeeDocumentsPage";
 
@@ -15,6 +15,7 @@ vi.mock("./document-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./document-data")>()),
   listDocuments: vi.fn(),
   getDocument: vi.fn(),
+  reviewDocument: vi.fn(),
 }));
 // A drawer opened from the list waits for its document unless a test hands one over.
 beforeEach(() => {
@@ -680,12 +681,36 @@ describe("the manager's review drawer from the list", () => {
     vi.mocked(listDocuments).mockReset().mockResolvedValue([row(1, "pending_review", "Avery")] as never);
     renderManager(client());
     fireEvent.click(await screen.findByRole("row", { name: /^Avery/ }));
-    fireEvent.change(await screen.findByLabelText("Rejection reason"), { target: { value: "Blurry" } });
+    const pair = await screen.findByRole("group", { name: "Approve or reject card.pdf" });
+    fireEvent.click(within(pair).getByRole("button", { name: "Reject" }));
+    fireEvent.change(screen.getByLabelText("Why reject card.pdf? Avery sees this"), { target: { value: "Blurry" } });
     fireEvent.click(screen.getByRole("button", { name: "Close details" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     fireEvent.click(screen.getByRole("row", { name: /^Avery/ }));
     expect(
-      ((await screen.findByLabelText("Rejection reason")) as HTMLTextAreaElement).value,
+      ((await screen.findByLabelText("Why reject card.pdf? Avery sees this")) as HTMLInputElement).value,
     ).toBe("Blurry");
+  });
+  // A decision in the drawer reaches the list behind it: the row moves to its new tab and the tabs count again.
+  it("moves a decided row out of Needs review and counts the tabs again", async () => {
+    vi.mocked(getDocument).mockImplementation(async () => detailOf(1) as never);
+    vi.mocked(reviewDocument).mockReset().mockResolvedValue({});
+    vi.mocked(listDocuments)
+      .mockReset()
+      .mockResolvedValueOnce([row(1, "pending_review", "Avery"), row(2, "pending_review", "Blake")] as never)
+      .mockResolvedValue([row(1, "completed", "Avery"), row(2, "pending_review", "Blake")] as never);
+    renderManager(client());
+    const count = (tab: RegExp) =>
+      within(screen.getByLabelText("Document status")).getByRole("button", { name: tab }).querySelector("span")
+        ?.textContent ?? null;
+    fireEvent.click(await screen.findByRole("row", { name: /^Avery/ }));
+    expect([count(/^Needs review/), count(/^Completed/)]).toEqual(["2", null]);
+    const pair = await screen.findByRole("group", { name: "Approve or reject card.pdf" });
+    fireEvent.click(within(pair).getByRole("button", { name: "Approve" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("row", { name: /^Avery/ })).toBeNull());
+    expect([count(/^Needs review/), count(/^Completed/)]).toEqual(["1", "1"]);
+    expect(screen.getByRole("row", { name: /^Blake/ })).toBeTruthy();
+    expect(reviewDocument).toHaveBeenCalledOnce();
   });
 });

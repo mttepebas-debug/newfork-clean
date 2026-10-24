@@ -1,8 +1,16 @@
 import type { DocumentDetail } from "@newfork/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@newfork/ui";
-import { ChevronRight, FileClock, FileText, TriangleAlert } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { ChevronRight, FileText, TriangleAlert } from "lucide-react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { RequestError } from "../lib/request-error";
 import { errorText } from "../settings/GeneralSettingsPage";
@@ -23,15 +31,39 @@ import {
   formatDay,
   shownVersion,
 } from "./document-review-facts";
-import { fileDecisionLabel, isObligationClosed, versionStateLabel } from "./document-rules";
+import { isObligationClosed, statusLabel } from "./document-rules";
+import { EarlierVersions, ManagerDocumentFiles, type FileReview } from "./ManagerDocumentFiles";
+import { ManagerDocumentDock, type DockLine } from "./ManagerDocumentDock";
+import {
+  daysLeftLabel,
+  periodChoices,
+  reviewCommand,
+  reviewProgress,
+  type FileChoices,
+  type FileReasons,
+  type Period,
+} from "./review-decision";
+import {
+  doneNote,
+  filesNote,
+  greenFor,
+  greenKey,
+  resultLine,
+  timezoneNote,
+  waitingNote,
+  type ReviewResult,
+} from "./review-dock";
+import type { ReviewGuard } from "./review-guard";
+import { documentWaits } from "./review-queue";
 import type { ManagerDraft, ManagerTypedValues, ReviewSitting } from "./review-sitting";
 
 // One document in the manager's review drawer (A2 Tur 6, K1). The drawer around it (ManagerDocumentDrawer) stays
 // open while it walks the list; this part is keyed by the document, so its commands and their errors belong to
 // it alone. What was typed lives in the page's sitting, so it survives a move, a new revision and a close.
 //
-// Slots for the next stages: the Files section (fileSection), the dock (drawn into the drawer's footer through
-// `dock`), More options (moreOptions) and History (history). Until those stages, they hold today's controls.
+// Details: the facts, today's notes, the Files section (each file approved or rejected on its own, K1 stage 2) and
+// More options (stage 3 slot: today's exemption and extension). History (stage 3 slot) keeps today's lines and the
+// earlier versions. The dock is drawn into the drawer's footer: one line and one green button.
 
 export type ManagerTab = "details" | "files" | "history";
 
@@ -48,6 +80,9 @@ function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
+const noChoices: FileChoices = Object.freeze({});
+const noReasons: FileReasons = Object.freeze({});
+
 export function ManagerDocumentContent({
   audience,
   userId,
@@ -57,9 +92,14 @@ export function ManagerDocumentContent({
   phone,
   sitting,
   dock,
+  guard,
+  nextUp,
   onBusy,
   onAlert,
   onShowFiles,
+  onNext,
+  onClose,
+  onSay,
 }: {
   audience: DocumentAudience;
   userId: string;
@@ -70,18 +110,29 @@ export function ManagerDocumentContent({
   sitting: ReviewSitting;
   /** The drawer's footer, where this document's dock is drawn. */
   dock: HTMLElement | null;
+  /** The drawer's guard against repeated presses, kept across documents. */
+  guard: ReviewGuard;
+  /** The next document still waiting, by its label, for the green after a decision. */
+  nextUp: () => { id: string; label: string } | null;
   onBusy: (busy: boolean) => void;
   onAlert: (message: string | null) => void;
   /** The phone's row in Details opens the Files tab. */
   onShowFiles: () => void;
+  /** The green's "Next: <who>". */
+  onNext: (id: string) => void;
+  onClose: () => void;
+  /** Said by the drawer's polite live region. */
+  onSay: (text: string) => void;
 }) {
   const cache = useQueryClient();
   const obligation = detail.obligation;
   const id = obligation.id;
   const typed = useSyncExternalStore(sitting.subscribe, () => sitting.draft(id));
+  const answered = useSyncExternalStore(sitting.subscribe, () => sitting.answered(id));
+  const result = useSyncExternalStore(sitting.subscribe, () => sitting.result(id));
   const current = detail.submissions.find((s) => s.id === obligation.submitted_id);
   // A typed value counts while what it was typed for is still here (BL-467); typed for another version under
-  // review, it gives way to the saved value.
+  // review, it gives way to the saved value. A new change on a document answered in this sitting opens it again.
   function typedField<K extends keyof ManagerTypedValues>(
     key: K,
     typedFor: string | undefined,
@@ -89,8 +140,10 @@ export function ManagerDocumentContent({
   ) {
     const entry = typed[key];
     const value = typedFor !== undefined && entry?.for === typedFor ? entry.value : saved;
-    const set = (next: ManagerTypedValues[K]) =>
+    const set = (next: ManagerTypedValues[K]) => {
       sitting.setDraft(id, (all) => ({ ...all, [key]: { for: typedFor!, value: next } }) as ManagerDraft);
+      sitting.reopen(id);
+    };
     return [value, set] as const;
   }
   // A command that went through used what it sent; its form starts again.
@@ -100,10 +153,10 @@ export function ManagerDocumentContent({
       for (const key of keys) delete rest[key];
       return rest;
     });
-  const [reason, setReason] = typedField("reason", current?.id, "");
-  const [correction, setCorrection] = typedField("correction", current?.id, "full");
-  const savedFiles = (current?.files ?? []).map((f) => ({ id: f.id, decision: f.decision, note: f.note }));
-  const [files, setFiles] = typedField("files", current?.id, savedFiles);
+  const [choices, setChoices] = typedField("choices", current?.id, noChoices);
+  const [reasons, setReasons] = typedField("reasons", current?.id, noReasons);
+  const [period, setPeriod] = typedField("period", current?.id, "full");
+  const [reviewAgain, setReviewAgain] = typedField("reviewAgain", current?.id, false);
   const [extensionDays, setExtensionDays] = typedField("extensionDays", id, 1);
   const [extensionReason, setExtensionReason] = typedField("extensionReason", id, "");
   const [referenceTimezone, setReferenceTimezone] = typedField(
@@ -111,10 +164,13 @@ export function ManagerDocumentContent({
     id,
     detail.timezone_settings?.configured_value ?? "",
   );
-  const [notice, setNotice] = useState("");
   // BL-828: someone changed this document or the person first; said until the next command.
   const [changed, setChanged] = useState(false);
   const [exemptionLocked, setExemptionLocked] = useState(false);
+  const green = useRef<HTMLButtonElement>(null);
+  const focusGreen = useRef(false);
+  const sending = useRef(false);
+  const noteId = useId();
 
   const refresh = () =>
     Promise.all([
@@ -142,21 +198,16 @@ export function ManagerDocumentContent({
   const review = useMutation({
     onMutate: started,
     onError: conflict,
-    mutationFn: (decision: "approve" | "reject") =>
-      reviewDocument(audience, id, {
-        revision: obligation.revision,
-        submission_id: current!.id,
-        decision,
-        // BL-832: a reason typed before choosing Approve is not the approval's.
-        reason: decision === "reject" ? reason : "",
-        correction_period: correction,
-        files,
-      }),
-    onSuccess: async () => {
-      setNotice("Decision saved");
-      sitting.answer(id);
+    mutationFn: ({ command }: { command: ReturnType<typeof reviewCommand>; result: ReviewResult }) =>
+      reviewDocument(audience, id, command),
+    onSuccess: async (_, { result: done }) => {
+      sitting.answer(id, done);
+      focusGreen.current = true;
       await refresh();
-      forget("reason", "correction", "files");
+      forget("choices", "reasons", "period", "reviewAgain");
+    },
+    onSettled: () => {
+      sending.current = false;
     },
   });
   const download = useMutation({
@@ -188,7 +239,8 @@ export function ManagerDocumentContent({
         reason: extensionReason,
       }),
     onSuccess: async () => {
-      sitting.answer(id);
+      sitting.answer(id, { kind: "extended", at: new Date().toISOString(), days: extensionDays });
+      focusGreen.current = true;
       await refresh();
       forget("extensionDays", "extensionReason");
     },
@@ -213,20 +265,25 @@ export function ManagerDocumentContent({
   }, [shownError, onAlert]);
   useEffect(() => () => onAlert(null), [onAlert]);
 
-  const dirty =
-    extensionReason !== "" ||
-    referenceTimezone !== (detail.timezone_settings?.configured_value ?? "") ||
-    reason !== "" ||
-    JSON.stringify(files) !== JSON.stringify(savedFiles);
+  const dirty = extensionReason !== "" || referenceTimezone !== (detail.timezone_settings?.configured_value ?? "");
+  // The server reviews the version sent while it waits for review, and an approved one again (K1 decision 2).
   const canDecide =
     canReview &&
     !isObligationClosed(obligation.status) &&
     current !== undefined &&
     ["pending_review", "accepted"].includes(current.state);
+  const underReview = canDecide && current.state === "pending_review";
+  const canReviewAgain = canDecide && current.state === "accepted" && obligation.status === "completed";
+  const reviewing = underReview || (canReviewAgain && reviewAgain);
   const now = new Date();
   const first = firstName(obligation.employee_name);
-  const version = shownVersion(detail);
+  const version = obligation.status === "expired"
+    ? (detail.submissions.find((s) => s.id === obligation.approved_id) ?? null)
+    : shownVersion(detail);
   const fileCount = version?.files.length ?? 0;
+  const periods = periodChoices(obligation);
+  const progress = reviewing && current ? reviewProgress(current.files, choices, reasons) : null;
+  const expires = current?.expiry_date ? formatDate(current.expiry_date) : null;
 
   // Details: what the document is and where it stands (mockup-spec 4.3), then what today's drawer also says.
   const expired =
@@ -243,10 +300,15 @@ export function ManagerDocumentContent({
         </span>
       </p>
     ) : null;
+  // A decision made in this sitting takes the due date's place, so the files under the facts never jump.
+  const decided =
+    result && result.kind !== "extended"
+      ? { label: result.kind === "approved" ? "Approved" : "Sent back", at: result.at }
+      : undefined;
   const facts = (
     <DrawerSection>
       <dl className="toa-facts docr-facts">
-        {documentFacts(detail, now).map(([label, value]) => (
+        {documentFacts(detail, now, decided).map(([label, value]) => (
           <div key={label}>
             <dt>{label}</dt>
             <dd>{value}</dd>
@@ -282,7 +344,11 @@ export function ManagerDocumentContent({
         </Button>
       </fieldset>,
     );
-  if (obligation.rejection_reason)
+  // A document sent back from this drawer has its reason made of the files' own reasons, which stand under their
+  // files; the reason shows here only when a rejected file of the version carries none (sent back before them).
+  const rejectedFiles = version?.state === "rejected" ? version.files.filter((file) => file.decision === "discard") : [];
+  const reasonOnFiles = rejectedFiles.length > 0 && rejectedFiles.every((file) => file.note.trim());
+  if (obligation.rejection_reason && !reasonOnFiles)
     notes.push(
       <p key="reason" className="rd-quote" role="note">
         {obligation.rejection_reason}
@@ -341,114 +407,68 @@ export function ManagerDocumentContent({
     </DrawerSection>
   ) : null;
 
-  // The files. Stage 2 slot: today's versions and review fields until the A2 file rows replace them.
-  const fileRows =
-    detail.submissions.length === 0 ? (
-      <div className="docr-files">
-        <div className="docr-file docr-nofile">
-          <span className="docr-thumb" aria-hidden>
-            <FileClock size={18} />
-          </span>
-          <span className="docr-file-meta">Nothing sent yet</span>
-        </div>
-      </div>
-    ) : (
-      <div className="docr-legacy-files">
-        {detail.submissions.map((shown) => (
-          <section key={shown.id} aria-label={`Version ${shown.version}`}>
-            <h3>
-              Version {shown.version} · {versionStateLabel(shown.state)}
-            </h3>
-            {shown.files.map((file) => (
-              <div key={file.id} className="document-file-row">
-                <button
-                  type="button"
-                  className="job-secondary-button"
-                  disabled={file.decision === "discard" || download.isPending}
-                  onClick={() => download.mutate({ submissionId: shown.id, fileId: file.id })}
-                >
-                  {file.filename}
-                </button>
-                {canDecide && current.id === shown.id ? (
-                  <>
-                    <select
-                      aria-label={`Decision for ${file.filename}`}
-                      value={files.find((f) => f.id === file.id)?.decision}
-                      disabled={busy}
-                      onChange={(e) =>
-                        setFiles(
-                          files.map((f) =>
-                            f.id === file.id ? { ...f, decision: e.target.value as "keep" | "discard" } : f,
-                          ),
-                        )
-                      }
-                    >
-                      <option value="keep">Keep</option>
-                      <option value="discard">Discard</option>
-                    </select>
-                    <input
-                      aria-label={`Note for ${file.filename}`}
-                      placeholder="Optional file note"
-                      maxLength={500}
-                      value={files.find((f) => f.id === file.id)?.note ?? ""}
-                      onChange={(e) =>
-                        setFiles(files.map((f) => (f.id === file.id ? { ...f, note: e.target.value } : f)))
-                      }
-                    />
-                  </>
-                ) : (
-                  <span>{fileDecisionLabel(file.decision)}</span>
-                )}
-              </div>
-            ))}
-          </section>
-        ))}
-        {canDecide ? (
-          <fieldset disabled={busy}>
-            <legend>Review decision</legend>
-            <label className="job-field">
-              <span>Rejection reason</span>
-              <textarea value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
-            </label>
-            <label className="job-field">
-              <span>Correction period</span>
-              <select
-                value={correction}
-                onChange={(e) => setCorrection(e.target.value as "full" | "remaining")}
-              >
-                <option value="full">Full correction period</option>
-                <option value="remaining" disabled={!obligation.remaining_seconds}>
-                  Remaining time
-                </option>
-              </select>
-            </label>
-          </fieldset>
-        ) : null}
-      </div>
-    );
-  // A desktop titles the section Files with the version on the right; the phone's Files tab titles it by the
-  // version, with when it was sent on the right (mockup-spec 5.1).
+  // The files (mockup-spec 5-13): to decide while the version waits for review (or is reviewed again), as decided
+  // once it is. A new choice on a document answered in this sitting opens it again (its result gives way).
+  const fileReview: FileReview | null =
+    reviewing && current
+      ? {
+          version: current,
+          choices,
+          reasons,
+          period,
+          periods,
+          onChoose: (fileId, choice) => setChoices({ ...choices, [fileId]: choice }),
+          onReason: (fileId, reason) => setReasons({ ...reasons, [fileId]: reason }),
+          onPeriod: setPeriod,
+        }
+      : null;
+  const openFile = (submissionId: string, fileId: string) => download.mutate({ submissionId, fileId });
+  const shared = {
+    phone,
+    first,
+    busy,
+    describedBy: noteId,
+    onOpen: openFile,
+    opening: download.isPending,
+  };
   const sent = version?.submitted_at ? `Sent ${formatDay(version.submitted_at, obligation.timezone, now)}` : null;
-  const aside = !version ? null : phone ? sent : `Version ${version.version}`;
+  const approvedOn =
+    obligation.status === "expired" && version?.reviewed_at
+      ? formatDay(version.reviewed_at, obligation.timezone, now)
+      : null;
   const fileSection = (
-    <DrawerSection
-      title={phone && version ? `Version ${version.version}` : "Files"}
-      aside={aside ? <span>{aside}</span> : undefined}
-    >
-      {fileRows}
-    </DrawerSection>
+    <ManagerDocumentFiles
+      {...shared}
+      detail={detail}
+      version={version}
+      review={fileReview}
+      again={canReviewAgain ? { open: reviewAgain, onToggle: () => setReviewAgain(!reviewAgain) } : null}
+      sent={sent}
+      approvedOn={approvedOn}
+    />
   );
-  // The phone's Details holds one row that opens the Files tab (mockup-spec 12).
+  // The phone's Details holds one row that opens the Files tab, saying where the review stands (mockup-spec 12).
+  const filesLabel = (() => {
+    if (progress)
+      return progress.open
+        ? `${plural(progress.open, "file", "files")} to review`
+        : fileCount === 1
+          ? "File checked"
+          : `All ${fileCount} files checked`;
+    if (!version || obligation.status === "exempt" || obligation.status === "expired")
+      return plural(fileCount, "file", "files");
+    const rejected = version.files.filter((file) => file.decision === "discard").length;
+    if (version.state === "rejected")
+      return fileCount === 1 ? "File rejected" : `${rejected} of ${fileCount} files rejected`;
+    if (version.state === "accepted") return fileCount === 1 ? "File approved" : `${fileCount} files approved`;
+    return plural(fileCount, "file", "files");
+  })();
   const goFiles =
     fileCount > 0 ? (
       <DrawerSection>
-        <button type="button" className="docr-gofiles" onClick={onShowFiles}>
+        <button type="button" className="docr-gofiles" data-guard="" onClick={onShowFiles}>
           <FileText size={18} aria-hidden className="docr-gofiles-icon" />
-          <span className="docr-gofiles-label">
-            {canDecide && current?.state === "pending_review"
-              ? `${plural(fileCount, "file", "files")} to review`
-              : plural(fileCount, "file", "files")}
-          </span>
+          <span className="docr-gofiles-label">{filesLabel}</span>
           <span className="docr-gofiles-aside">Files</span>
           <ChevronRight size={16} aria-hidden className="docr-gofiles-chevron" />
         </button>
@@ -465,6 +485,8 @@ export function ManagerDocumentContent({
     obligation.deadline_at !== null &&
     Date.parse(obligation.deadline_at) > Date.now() &&
     !["pending_review", "completed", "removed", "exempt", "paused"].includes(obligation.status);
+  const canExcuse =
+    canReview && obligation.kind === "document" && !obligation.exemption_locked && obligation.status !== "exempt";
   const moreOptions =
     (canReview && obligation.kind === "document") || canExtend ? (
       <DrawerSection title="More options">
@@ -523,62 +545,133 @@ export function ManagerDocumentContent({
       </DrawerSection>
     ) : null;
 
-  // History. Stage 3 slot: today's lines until the A2 timeline replaces them.
+  // History. Stage 3 slot: today's lines until the A2 timeline replaces them; the earlier versions stay readable.
   const history = (
-    <DrawerSection>
-      {detail.history.length ? (
-        <ol className="docr-legacy-history">
-          {detail.history.map((event) => (
-            <li key={event.id}>
-              <time dateTime={event.occurred_at}>{event.occurred_at}</time> ·{" "}
-              {event.action.replaceAll("document.", "").replaceAll("_", " ")}
-              {typeof event.metadata.reason === "string" ? <> · {event.metadata.reason}</> : null}
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <p className="rd-empty">Nothing has happened to this document yet.</p>
-      )}
-    </DrawerSection>
-  );
-
-  // The dock. Stage 2 slot: today's Reject and Approve until the one green button replaces them.
-  const dockContent = canDecide ? (
-    <div className="rd-foot-row">
-      <div className="rd-foot-actions">
-        <Button
-          type="button"
-          className="secondary-button"
-          disabled={busy || !reason.trim()}
-          onClick={() => review.mutate("reject")}
-        >
-          Reject
-        </Button>
-        <Button
-          type="button"
-          disabled={busy || !files.some((f) => f.decision === "keep")}
-          onClick={() => review.mutate("approve")}
-        >
-          Approve
-        </Button>
-      </div>
-    </div>
-  ) : null;
-
-  const status = (
     <>
-      {changed && !notice ? (
-        <p className="rd-foot-note" role="status">
-          This document changed. You're seeing the latest version.
-        </p>
-      ) : null}
-      {notice ? (
-        <p className="rd-foot-note" role="status">
-          {notice}
-        </p>
-      ) : null}
+      <DrawerSection>
+        {detail.history.length ? (
+          <ol className="docr-legacy-history">
+            {detail.history.map((event) => (
+              <li key={event.id}>
+                <time dateTime={event.occurred_at}>{event.occurred_at}</time> ·{" "}
+                {event.action.replaceAll("document.", "").replaceAll("_", " ")}
+                {typeof event.metadata.reason === "string" ? <> · {event.metadata.reason}</> : null}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="rd-empty">Nothing has happened to this document yet.</p>
+        )}
+      </DrawerSection>
+      <EarlierVersions
+        {...shared}
+        versions={detail.submissions.filter((submission) => submission.id !== version?.id)}
+      />
     </>
   );
+
+  // The dock (mockup-spec 15): what the green does now, and the one line over it.
+  const waiting = documentWaits(obligation.status);
+  const timezoneRow = obligation.status === "timezone_required";
+  const saving = !answered && (reviewing || (waiting && !timezoneRow));
+  const next = saving ? null : nextUp();
+  const greenNow = greenFor({ saving, ready: progress?.ready ?? false, next });
+  const doneLabel =
+    obligation.status === "completed"
+      ? "Approved"
+      : obligation.status === "exempt"
+        ? "Excused"
+        : statusLabel(obligation, "manager");
+  const line: DockLine =
+    changed && !result
+      ? { kind: "note", text: "This document changed. You're seeing the latest version.", live: true }
+      : result
+        ? {
+            kind: "result",
+            line: resultLine(result, {
+              first,
+              phone,
+              end: greenNow.act === "close",
+              now: {
+                status: obligation.status,
+                expiry: obligation.expiry_date ? formatDate(obligation.expiry_date) : null,
+                due: obligation.deadline_at ? formatDay(obligation.deadline_at, obligation.timezone, now) : null,
+              },
+            }),
+          }
+        : progress
+          ? { kind: "note", text: filesNote(progress, { phone, first, expires }) }
+          : timezoneRow
+            ? { kind: "note", text: timezoneNote(detail.timezone_settings?.can_manage ?? false) }
+            : waiting
+              ? {
+                  kind: "note",
+                  text: waitingNote({ phone, first, label: doneLabel, extend: canExtend, excuse: canExcuse }),
+                }
+              : { kind: "note", text: doneNote(doneLabel) };
+  const meaning = greenKey(id, greenNow);
+  // A new meaning holds the green for a moment, from when it can be pressed (after the refresh).
+  useLayoutEffect(() => {
+    if (!busy) guard.mean(meaning, performance.now());
+  }, [busy, guard, meaning]);
+  // Done: the green takes focus, so Enter moves on.
+  useEffect(() => {
+    if (busy || !focusGreen.current) return;
+    focusGreen.current = false;
+    green.current?.focus({ preventScroll: true });
+  });
+  // Save turning on is said: the line over it is not live.
+  const on = greenNow.act === "save" && !greenNow.off;
+  const wasOn = useRef(on);
+  useEffect(() => {
+    if (on && !wasOn.current && line.kind === "note") onSay(`Ready · ${line.text}`);
+    wasOn.current = on;
+  });
+  const save = () => {
+    if (!reviewing || !current || !progress?.ready || busy || sending.current) return;
+    const chosen: Period = period === "remaining" && periods.remaining.open ? "remaining" : "full";
+    const command = reviewCommand({
+      revision: obligation.revision,
+      submissionId: current.id,
+      files: current.files,
+      choices,
+      reasons,
+      period: chosen,
+    });
+    const at = new Date().toISOString();
+    const days = obligation.settings.period_days;
+    const done: ReviewResult =
+      command.decision === "approve"
+        ? { kind: "approved", at, expires }
+        : {
+            kind: "sent_back",
+            at,
+            time:
+              chosen === "remaining"
+                ? { kind: "left", left: daysLeftLabel(obligation.remaining_seconds) }
+                : days
+                  ? { kind: "new", days }
+                  : null,
+          };
+    sending.current = true;
+    review.mutate({ command, result: done });
+  };
+  const press = () => {
+    if (guard.held(performance.now())) return;
+    if (greenNow.act === "save") save();
+    else if (greenNow.act === "next") onNext(greenNow.id);
+    else onClose();
+  };
+  const dockContent = canReview ? (
+    <ManagerDocumentDock
+      noteId={noteId}
+      line={line}
+      green={greenNow}
+      busy={busy}
+      greenRef={green}
+      onGreen={press}
+    />
+  ) : null;
 
   return (
     <>
@@ -600,7 +693,6 @@ export function ManagerDocumentContent({
           {moreOptions}
         </>
       )}
-      {status}
       {dock && dockContent ? createPortal(dockContent, dock) : null}
     </>
   );

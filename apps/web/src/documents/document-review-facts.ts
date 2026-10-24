@@ -122,8 +122,15 @@ export function headSub(
   return approved ? `Approved: ${formatDay(approved, zone, now)}` : "Approved";
 }
 
-/** Details' facts: who, what, where, the version sent (what it says), and when it is due. */
-export function documentFacts(detail: DocumentDetail, now: Date): Fact[] {
+/**
+ * Details' facts: who, what, where, the version sent (what it says), and when it is due. A decision made in this
+ * sitting takes the due date's place ("Sent back: Fri, Oct 23 · You"), so the files under the facts stay put.
+ */
+export function documentFacts(
+  detail: DocumentDetail,
+  now: Date,
+  decided?: { label: string; at: string },
+): Fact[] {
   const { obligation } = detail;
   const facts: Fact[] = [
     ["Name", obligation.employee_name],
@@ -145,6 +152,10 @@ export function documentFacts(detail: DocumentDetail, now: Date): Fact[] {
       facts.push([fields.find((field) => field.key === key)?.label ?? key, String(value)]);
     }
   }
+  if (decided) {
+    facts.push([decided.label, `${formatDay(decided.at, obligation.timezone, now)} · You`]);
+    return facts;
+  }
   if (showsDue(obligation, now))
     facts.push([
       "Due",
@@ -160,4 +171,25 @@ export function documentFacts(detail: DocumentDetail, now: Date): Fact[] {
       `${firstName(obligation.employee_name)} can open only their documents until it's in`,
     ]);
   return facts;
+}
+
+const mediaNames: Record<string, string> = {
+  "application/pdf": "PDF",
+  "image/jpeg": "JPG",
+  "image/png": "PNG",
+  "image/webp": "WebP",
+};
+
+/** A file's type and size as its row reads them: "JPG · 471 KB". */
+export function fileMeta(file: { media_type: string; size_bytes: number; filename: string }): string {
+  const extension = /\.([a-z0-9]{1,5})$/i.exec(file.filename)?.[1];
+  const type = mediaNames[file.media_type] ?? (extension ? extension.toUpperCase() : "File");
+  const bytes = file.size_bytes;
+  const size =
+    bytes < 1024
+      ? `${bytes} B`
+      : bytes < 1024 * 1024
+        ? `${Math.round(bytes / 1024)} KB`
+        : `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, "")} MB`;
+  return `${type} · ${size}`;
 }

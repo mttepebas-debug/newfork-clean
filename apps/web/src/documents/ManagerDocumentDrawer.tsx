@@ -1,7 +1,7 @@
 import type { DocumentObligation } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { useCallback, useId, useLayoutEffect, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type Ref } from "react";
 import { isNoAccess } from "../lib/no-access";
 import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { CatalogDrawer } from "../settings/CatalogDrawer";
@@ -11,7 +11,8 @@ import { documentQueryKey, getDocument, type DocumentAudience } from "./document
 import { headSub, shownVersion } from "./document-review-facts";
 import { initials, statusLabel, statusTone } from "./document-rules";
 import { ManagerDocumentContent, type ManagerTab } from "./ManagerDocumentContent";
-import { neighbours, queueLabel } from "./review-queue";
+import { createReviewGuard } from "./review-guard";
+import { neighbours, nextWaiting, queueLabel } from "./review-queue";
 import { createReviewSitting, type ReviewSitting } from "./review-sitting";
 import "./document-review-drawer.css";
 
@@ -59,6 +60,8 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
   const [dock, setDock] = useState<HTMLDivElement | null>(null);
   const [said, setSaid] = useState("");
   const strip = useRef<HTMLDivElement>(null);
+  // A2 Tur 6 (mockup-spec 17): repeated presses never answer what was just drawn under them; kept across documents.
+  const [guard] = useState(createReviewGuard);
   // Each document opens on Details; a tab chosen for one is not carried to the next.
   const [chosen, setChosen] = useState<{ id: string; tab: ManagerTab }>({ id: requirementId, tab: "details" });
   const files = detail ? (shownVersion(detail)?.files.length ?? 0) : 0;
@@ -90,6 +93,14 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
   // the left, 220 ms; a short fade under reduced motion), the body starts at its top, and the move is said.
   const shown = useRef(requirementId);
   const saying = useRef<number | undefined>(undefined);
+  // The polite region is cleared, then written a moment later, so the same words are said again.
+  const say = useCallback((text: string) => {
+    setSaid("");
+    window.clearTimeout(saying.current);
+    saying.current = window.setTimeout(() => setSaid(text), 50);
+  }, []);
+  // The green's "Next: <who>" lands on the new person's name; the strip keeps focus on its own button.
+  const toHead = useRef(false);
   useLayoutEffect(() => {
     const from = shown.current;
     if (from === requirementId) return;
@@ -108,18 +119,82 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
         ];
     for (const part of [".rd-head-row", ".rd-tabs", ".rd-body"])
       rd?.querySelector<HTMLElement>(part)?.animate?.(frames, { duration: calm ? 120 : 220, easing: "ease-out" });
-    if (obligation) {
-      const text = `${obligation.employee_name} · ${obligation.title}`;
-      setSaid("");
-      window.clearTimeout(saying.current);
-      saying.current = window.setTimeout(() => setSaid(text), 50);
+    if (toHead.current) {
+      toHead.current = false;
+      rd?.querySelector<HTMLElement>(".rd-head h2")?.focus({ preventScroll: true });
     }
+    if (obligation) say(`${obligation.employee_name} · ${obligation.title}`);
   }, [requirementId]); // eslint-disable-line react-hooks/exhaustive-deps -- runs once per move
   useLayoutEffect(() => () => window.clearTimeout(saying.current), []);
+
+  // A repeated click on a button, a repeated tap on a guarded one, a held Enter or Space, and a key press on the green
+  // too soon after the one before are dropped before the button sees them (mockup-spec 17).
+  useEffect(() => {
+    const dialog = strip.current?.closest<HTMLElement>('[role="dialog"]');
+    if (!dialog) return;
+    let dropSpace = false;
+    const button = (event: Event) => {
+      const found = (event.target as HTMLElement | null)?.closest?.("button");
+      return found && dialog.contains(found) ? found : null;
+    };
+    const stop = (event: Event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    const onClick = (event: MouseEvent) => {
+      const pressed = button(event);
+      if (!pressed) return;
+      const drop = guard.click({
+        now: performance.now(),
+        detail: event.detail,
+        touch: (event as PointerEvent).pointerType === "touch",
+        x: event.clientX,
+        y: event.clientY,
+        guarded: pressed.closest("[data-guard]") !== null,
+      });
+      if (drop) stop(event);
+    };
+    const onMouseDown = (event: MouseEvent) => {
+      if (button(event) && guard.repeatPress(performance.now(), event.detail)) event.preventDefault();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const pressed = button(event);
+      if (!pressed || pressed !== event.target) return;
+      if (event.repeat) {
+        event.preventDefault();
+        return;
+      }
+      if (pressed.classList.contains("docr-green") && guard.greenKey(performance.now())) {
+        event.preventDefault();
+        dropSpace = event.key === " ";
+      }
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key !== " " || !dropSpace) return;
+      dropSpace = false;
+      event.preventDefault();
+    };
+    dialog.addEventListener("click", onClick, true);
+    dialog.addEventListener("mousedown", onMouseDown, true);
+    dialog.addEventListener("keydown", onKeyDown, true);
+    dialog.addEventListener("keyup", onKeyUp, true);
+    return () => {
+      dialog.removeEventListener("click", onClick, true);
+      dialog.removeEventListener("mousedown", onMouseDown, true);
+      dialog.removeEventListener("keydown", onKeyDown, true);
+      dialog.removeEventListener("keyup", onKeyUp, true);
+    };
+  }, [guard]);
 
   const onBusy = useCallback((value: boolean) => setBusy(value), []);
   const onAlert = useCallback((value: string | null) => setAlert(value), []);
   const { previous, next } = neighbours(queue, requirementId);
+  // K1 decisions 6 and 7: after a decision the green goes to the next row still waiting and not answered here.
+  const nextUp = () => {
+    const row = nextWaiting(queue, requirementId, sitting.answered);
+    return row ? { id: row.id, label: queueLabel(row, obligation ?? { employee_id: "" }) } : null;
+  };
   const tabs: DrawerTab<ManagerTab>[] = [
     { key: "details", label: "Details" },
     ...(phone && files
@@ -187,9 +262,17 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
             phone={phone}
             sitting={sitting}
             dock={dock}
+            guard={guard}
+            nextUp={nextUp}
             onBusy={onBusy}
             onAlert={onAlert}
             onShowFiles={showFiles}
+            onNext={(id) => {
+              toHead.current = true;
+              props.onOpen?.(id);
+            }}
+            onClose={props.onClose}
+            onSay={say}
           />
         ) : !query.error ? (
           <LinesOutline label="Loading document" lines={5} />

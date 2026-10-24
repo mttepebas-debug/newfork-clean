@@ -235,7 +235,8 @@
   color: var(--theme-text-body);
 }
 
-/* The files box: the control edge (3:1), rows 10 px 12 px apart on a hairline. */
+/* The files box: the control edge (3:1), rows 10 px 12 px apart on a hairline (mockup-spec 5.2). Each row: the
+   thumb, the name over its type and size, then the pair (or what was decided). */
 .catalog-drawer.document-review-drawer .docr-files {
   overflow: hidden;
   border: 1px solid var(--theme-border-control);
@@ -255,6 +256,9 @@
 .catalog-drawer.document-review-drawer .docr-nofile {
   grid-template-columns: 36px minmax(0, 1fr);
 }
+.catalog-drawer.document-review-drawer .docr-nofile .docr-file-meta {
+  font-size: 13.5px;
+}
 .catalog-drawer.document-review-drawer .docr-thumb {
   display: grid;
   place-items: center;
@@ -264,9 +268,286 @@
   background: var(--theme-surface-muted);
   color: var(--theme-accent-strong);
 }
+.catalog-drawer.document-review-drawer .docr-file-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.catalog-drawer.document-review-drawer .docr-file-name {
+  justify-self: start;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 650;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.catalog-drawer.document-review-drawer .docr-file-name:not(:disabled):hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* A rejected file is no longer handed out: its row reads as the others (the drawer's disabled fade is not for it);
+   only a phone's eye fades. */
+.catalog-drawer.document-review-drawer :is(.docr-file-name, .docr-file-open):disabled {
+  color: var(--theme-text);
+  cursor: default;
+  opacity: 1;
+}
 .catalog-drawer.document-review-drawer .docr-file-meta {
   color: var(--theme-muted);
+  font-size: 12.5px;
+}
+/* What was decided on a file, read only: the chip at the row's end, a rejected file's reason under it. */
+.catalog-drawer.document-review-drawer .docr-file > .rd-chip {
+  justify-self: end;
+}
+.catalog-drawer.document-review-drawer .docr-ro-note {
+  grid-column: 2 / -1;
+  min-width: 0;
+  color: var(--theme-muted-strong);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+/* Approve and Reject (design a, mockup-spec 5.5): a check or an x in its own colour on white, the control edge
+   (3:1). Pressed, it is drawn selected, never as the solid green of Save: its colour's soft tone, a 2 px edge in its
+   colour (the border and a 1 px inset ring, so nothing moves), the word and icon in its colour and bold; the other
+   one fades to the muted tone. A mouse hover gives the edge its colour on the neutral tint, never the pressed tone. */
+.catalog-drawer.document-review-drawer .docr-dec {
+  display: inline-grid;
+  grid-template-columns: repeat(2, 104px);
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+}
+.catalog-drawer.document-review-drawer .docr-db {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.catalog-drawer.document-review-drawer .docr-db-icon {
+  flex: none;
+}
+.catalog-drawer.document-review-drawer .docr-db-ok .docr-db-icon {
+  color: var(--theme-success);
+}
+.catalog-drawer.document-review-drawer .docr-db-no .docr-db-icon {
+  color: var(--theme-danger-strong);
+}
+.catalog-drawer.document-review-drawer .docr-db-ok[aria-pressed="true"] {
+  border-color: var(--theme-success);
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+  box-shadow: inset 0 0 0 1px var(--theme-success);
+  font-weight: 750;
+}
+.catalog-drawer.document-review-drawer .docr-db-no[aria-pressed="true"] {
+  border-color: var(--theme-danger-strong);
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+  box-shadow: inset 0 0 0 1px var(--theme-danger-strong);
+  font-weight: 750;
+}
+.catalog-drawer.document-review-drawer .docr-db[aria-pressed="true"] .docr-db-icon,
+.catalog-drawer.document-review-drawer .docr-dec:has([aria-pressed="true"]) .docr-db[aria-pressed="false"] .docr-db-icon {
+  color: currentColor;
+}
+.catalog-drawer.document-review-drawer .docr-dec:has([aria-pressed="true"]) .docr-db[aria-pressed="false"] {
+  color: var(--theme-muted-strong);
+}
+@media (hover: hover) {
+  .catalog-drawer.document-review-drawer .docr-db-ok:not([aria-pressed="true"]):not(:disabled):hover {
+    border-color: var(--theme-success);
+    background: var(--theme-surface-muted);
+  }
+  .catalog-drawer.document-review-drawer .docr-db-no:not([aria-pressed="true"]):not(:disabled):hover {
+    border-color: var(--theme-danger-strong);
+    background: var(--theme-surface-muted);
+  }
+}
+
+/* A rejected file's reason opens under it, across the whole row: the five common reasons as 28 px chips on one line,
+   then the text (mockup-spec 6). */
+.catalog-drawer.document-review-drawer .docr-why {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.catalog-drawer.document-review-drawer .docr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.catalog-drawer.document-review-drawer .docr-chips button {
+  position: relative;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 999px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.catalog-drawer.document-review-drawer .docr-chips button[aria-pressed="true"] {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+}
+.catalog-drawer.document-review-drawer .docr-why input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
   font-size: 13.5px;
+}
+.catalog-drawer.document-review-drawer .docr-why input::placeholder {
+  color: var(--theme-muted);
+}
+
+/* The time to send a new one (mockup-spec 7): its label, then two choices; the picked one is drawn selected (the
+   accent's soft tone, a 2 px accent ring, the word deep and bold), never as an action. Each holds a hidden bold copy
+   of its word, so picking one never changes widths. */
+.catalog-drawer.document-review-drawer .docr-period {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.catalog-drawer.document-review-drawer .docr-period-label {
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.catalog-drawer.document-review-drawer .docr-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 8px;
+  background: var(--theme-surface);
+}
+.catalog-drawer.document-review-drawer .docr-seg button {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--theme-muted-strong);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.catalog-drawer.document-review-drawer .docr-seg button::after {
+  content: attr(data-label);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 750;
+}
+.catalog-drawer.document-review-drawer .docr-seg button[aria-pressed="true"] {
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+  box-shadow: inset 0 0 0 2px var(--theme-accent);
+  font-weight: 750;
+}
+.catalog-drawer.document-review-drawer .docr-seg button:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+@media (hover: hover) {
+  .catalog-drawer.document-review-drawer .docr-seg button:not([aria-pressed="true"]):not([aria-disabled="true"]):hover {
+    background: var(--theme-surface-muted);
+    color: var(--theme-text);
+  }
+}
+/* Nothing left: the choice stays in its place, dimmed, and does nothing (the server refuses it). */
+.catalog-drawer.document-review-drawer .docr-seg button[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.catalog-drawer.document-review-drawer :is(.docr-db, .docr-chips button, .docr-seg button, .docr-why input):disabled {
+  cursor: not-allowed;
+}
+
+/* Under the files of an approved document: Review again (K1 decision 2), a text button on the gutter. */
+.catalog-drawer.document-review-drawer .docr-files-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+}
+.catalog-drawer.document-review-drawer .docr-textbtn {
+  position: relative;
+  min-height: 32px;
+  margin-right: -8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--theme-accent-deep);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.catalog-drawer.document-review-drawer .docr-textbtn:not(:disabled):hover {
+  background: var(--theme-surface-muted);
+}
+
+/* History keeps the earlier versions, each with its files as decided. */
+.catalog-drawer.document-review-drawer .docr-older {
+  display: grid;
+  gap: 12px;
+}
+.catalog-drawer.document-review-drawer .docr-older-version {
+  display: grid;
+  gap: 6px;
+}
+.catalog-drawer.document-review-drawer .docr-older-head {
+  margin: 0;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+  font-weight: 650;
 }
 
 /* The phone's way to the files: one boxed 44 px row button (icon, what is there, "Files", the chevron). */
@@ -310,7 +591,7 @@
 }
 
 /* What today's drawer also says or does, kept inside the new layout until each part is rebuilt: the time zone, the
-   policy text, the versions with their review fields, the exemption and the extension. */
+   policy text, the exemption and the extension. */
 .catalog-drawer.document-review-drawer .rd-body fieldset {
   display: grid;
   gap: 10px;
@@ -344,16 +625,6 @@
   font-size: 13.5px;
   white-space: pre-wrap;
 }
-.catalog-drawer.document-review-drawer .docr-legacy-files {
-  display: grid;
-  gap: 12px;
-}
-.catalog-drawer.document-review-drawer .docr-legacy-files h3 {
-  margin: 0;
-  color: var(--theme-muted-strong);
-  font-size: 13px;
-  font-weight: 650;
-}
 .catalog-drawer.document-review-drawer .docr-legacy-history {
   display: grid;
   gap: 8px;
@@ -363,12 +634,80 @@
   font-size: 13px;
 }
 
-/* The dock lives in the footer; a document with nothing to decide yet leaves no empty bar. */
+/* The dock lives in the footer (a manager who may only read gets none): one line, 8 px, then the green alone, far
+   right, one width on every document (168 px); 84 px in all on a desktop (mockup-spec 15). */
 .catalog-drawer.document-review-drawer .docr-dock {
   display: contents;
 }
 .catalog-drawer.document-review-drawer .rd-foot:has(> .docr-dock:empty) {
   display: none;
+}
+.catalog-drawer.document-review-drawer .rd .rd-foot {
+  gap: 8px;
+}
+.catalog-drawer.document-review-drawer .docr-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 15px;
+  margin: 0;
+  line-height: 15px;
+}
+.catalog-drawer.document-review-drawer .docr-note-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalog-drawer.document-review-drawer .docr-note b {
+  color: var(--theme-text);
+  font-weight: 700;
+}
+.catalog-drawer.document-review-drawer .docr-note-icon {
+  flex: none;
+}
+.catalog-drawer.document-review-drawer .docr-result.ok .docr-note-icon {
+  color: var(--theme-success);
+}
+.catalog-drawer.document-review-drawer .docr-result.red .docr-note-icon {
+  color: var(--theme-danger-strong);
+}
+.catalog-drawer.document-review-drawer .docr-result.warn .docr-note-icon {
+  color: var(--theme-warning-text);
+}
+.catalog-drawer.document-review-drawer .docr-result.muted .docr-note-icon {
+  color: var(--theme-muted-strong);
+}
+.catalog-drawer.document-review-drawer .rd .rd-foot .docr-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+.catalog-drawer.document-review-drawer .rd .rd-foot .nf-button.docr-green {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 168px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+.catalog-drawer.document-review-drawer .docr-green-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Off (not ready, or saving): the app's disabled look, still focusable so its line can be heard. */
+.catalog-drawer.document-review-drawer .rd .rd-foot .nf-button.docr-green[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.catalog-drawer.document-review-drawer .rd .rd-foot .nf-button.docr-green[aria-disabled="true"]:hover {
+  background: var(--theme-accent);
 }
 
 /* Phone: one fixed card height (the strip, tabs and dock never move between documents) and 44 px targets. */
@@ -427,10 +766,140 @@
     position: absolute;
     inset: -4px 0 0;
   }
+  /* Files: each file is one 44 px button that opens it (thumb, name over type and size, the eye); Approve | Reject
+     two equal 44 px halves under it; the reason under them (chips drawn 36 px, tapping at 44). Read only, the chip
+     sits inside the button just left of the eye, so the eye keeps one place on every row. */
+  .catalog-drawer.document-review-drawer .rd .docr-file {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .catalog-drawer.document-review-drawer .rd .docr-nofile {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+  .catalog-drawer.document-review-drawer .docr-file-open {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 18px;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--theme-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .catalog-drawer.document-review-drawer .docr-file-open.has-tag {
+    grid-template-columns: 36px minmax(0, 1fr) auto 18px;
+  }
+  .catalog-drawer.document-review-drawer .docr-file-open > .rd-chip {
+    justify-self: end;
+  }
+  .catalog-drawer.document-review-drawer .docr-file-text {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .catalog-drawer.document-review-drawer .docr-fname {
+    overflow: hidden;
+    color: var(--theme-text);
+    font-size: 13.5px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .catalog-drawer.document-review-drawer .docr-file-open:not(:disabled):hover .docr-fname {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .catalog-drawer.document-review-drawer .docr-file-eye {
+    color: var(--theme-accent-deep);
+  }
+  .catalog-drawer.document-review-drawer .docr-file-open:disabled .docr-file-eye {
+    color: var(--theme-muted);
+  }
+  .catalog-drawer.document-review-drawer .docr-ro-note {
+    grid-column: 1 / -1;
+  }
+  .catalog-drawer.document-review-drawer .docr-dec {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+  .catalog-drawer.document-review-drawer .docr-db {
+    min-height: 44px;
+    font-size: 13.5px;
+  }
+  .catalog-drawer.document-review-drawer .docr-chips {
+    gap: 8px 6px;
+  }
+  .catalog-drawer.document-review-drawer .docr-chips button {
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  .catalog-drawer.document-review-drawer .docr-chips button::before {
+    content: "";
+    position: absolute;
+    inset: -5px 0;
+  }
+  .catalog-drawer.document-review-drawer .docr-why input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  /* The time to send a new one: its label, then two equal 44 px halves flush with the box's edge. */
+  .catalog-drawer.document-review-drawer .docr-period {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .catalog-drawer.document-review-drawer .docr-seg {
+    display: flex;
+    width: 100%;
+    padding: 0;
+  }
+  .catalog-drawer.document-review-drawer .docr-seg button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 8px;
+    border-radius: 7px;
+  }
+  .catalog-drawer.document-review-drawer .docr-textbtn::before {
+    content: "";
+    position: absolute;
+    inset: -6px 0;
+  }
+  /* The document time zone kept from today's drawer (K1 decision 12): its choice and its button at 44 px. */
+  .catalog-drawer.document-review-drawer .docr-zone :is(select, .nf-button) {
+    min-height: 44px;
+  }
+  .catalog-drawer.document-review-drawer .docr-zone select {
+    font-size: 16px;
+  }
+  /* Dock: the line, then the green across the whole width; 10 px 16 px around it, plus the safe area. */
+  .catalog-drawer.document-review-drawer .rd .rd-foot {
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .catalog-drawer.document-review-drawer .rd .rd-foot .docr-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .catalog-drawer.document-review-drawer .rd .rd-foot .nf-button.docr-green {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 10px;
+  }
 }
 /* Touch has no hover: a control drawn under the finger after a tap must not look pressed. */
 @media (hover: none) {
-  .catalog-drawer.document-review-drawer :is(.docr-strip-btn, .docr-strip .rd-close):hover {
+  .catalog-drawer.document-review-drawer :is(.docr-strip-btn, .docr-strip .rd-close, .docr-textbtn):hover {
     background: none;
+  }
+  .catalog-drawer.document-review-drawer .rd .rd-foot .nf-button.docr-green:hover {
+    background: var(--theme-accent);
   }
 }
