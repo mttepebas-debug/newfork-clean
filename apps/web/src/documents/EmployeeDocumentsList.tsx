@@ -8,7 +8,7 @@ import {
 } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import {
@@ -162,6 +162,32 @@ export function EmployeeDocumentsList(props: {
   // The queue's rows with the list's latest data; one gone from the list stays as it was shown.
   const latest = new Map(items.map((r) => [r.id, r]));
   const walked = (queue ?? []).map((r) => latest.get(r.id) ?? r);
+  // The drawer gives focus back to the row that opened it; a decision can take that row off the tab, and closing
+  // then puts focus on the row now in its place (or the open tab), never on the page itself. The manager's drawer
+  // only: the person's own drawer stays as it is in this slice (K1).
+  const listRef = useRef<HTMLDivElement>(null);
+  const lastShown = useRef<{ id: string; index: number } | null>(null);
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (!manager) return;
+    if (selected) {
+      wasOpen.current = true;
+      const index = visible.findIndex((r) => r.id === selected.id);
+      lastShown.current = { id: selected.id, index: index >= 0 ? index : (lastShown.current?.index ?? 0) };
+      return;
+    }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    const root = listRef.current;
+    const rows = Array.from(root?.querySelectorAll<HTMLElement>("tbody tr[data-document-row]") ?? []);
+    const last = lastShown.current;
+    const target =
+      rows.find((r) => r.dataset.documentRow === last?.id) ??
+      rows[Math.min(last?.index ?? 0, rows.length - 1)] ??
+      root?.querySelector<HTMLElement>(".catalog-status-tabs button[aria-pressed='true']");
+    target?.focus();
+  });
   const currentIndex = visible.findIndex((r) => r.id === selected?.id);
   const nextIndex =
     currentIndex >= 0 ? currentIndex + 1 : (selected?.ordinal ?? 0);
@@ -187,7 +213,7 @@ export function EmployeeDocumentsList(props: {
       />
     );
   return (
-    <div className="employee-documents-list">
+    <div className="employee-documents-list" ref={listRef}>
       {props.audience.selfOnly && blockers.length > 0 && (
         <p role="status">
           Workspace access is restricted until these requests are resolved:{" "}
@@ -317,6 +343,7 @@ export function EmployeeDocumentsList(props: {
             {visible.map((r, ordinal) => (
               <tr
                 key={r.id}
+                data-document-row={r.id}
                 tabIndex={0}
                 onClick={() => open(r.id, ordinal)}
                 onKeyDown={(event) => {

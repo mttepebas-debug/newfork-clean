@@ -713,4 +713,42 @@ describe("the manager's review drawer from the list", () => {
     expect(screen.getByRole("row", { name: /^Blake/ })).toBeTruthy();
     expect(reviewDocument).toHaveBeenCalledOnce();
   });
+  // K1 fix pass: the row that opened the drawer can leave the tab once it is decided; closing then puts focus on
+  // the row now in its place, never on the page itself.
+  it("puts focus back on the list when the drawer closes after its row left the tab", async () => {
+    vi.mocked(getDocument).mockImplementation(async () => detailOf(1) as never);
+    vi.mocked(reviewDocument).mockReset().mockResolvedValue({});
+    vi.mocked(listDocuments)
+      .mockReset()
+      .mockResolvedValueOnce([row(1, "pending_review", "Avery"), row(2, "pending_review", "Blake")] as never)
+      .mockResolvedValue([row(1, "completed", "Avery"), row(2, "pending_review", "Blake")] as never);
+    renderManager(client());
+    const avery = await screen.findByRole("row", { name: /^Avery/ });
+    avery.focus();
+    fireEvent.keyDown(avery, { key: "Enter" });
+    const pair = await screen.findByRole("group", { name: "Approve or reject card.pdf" });
+    fireEvent.click(within(pair).getByRole("button", { name: "Approve" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("row", { name: /^Avery/ })).toBeNull());
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("row", { name: /^Blake/ })));
+  });
+  it("puts focus on the open tab when the drawer closes on a tab left empty", async () => {
+    vi.mocked(getDocument).mockImplementation(async () => detailOf(1) as never);
+    vi.mocked(reviewDocument).mockReset().mockResolvedValue({});
+    vi.mocked(listDocuments)
+      .mockReset()
+      .mockResolvedValueOnce([row(1, "pending_review", "Avery")] as never)
+      .mockResolvedValue([row(1, "completed", "Avery")] as never);
+    renderManager(client());
+    fireEvent.click(await screen.findByRole("row", { name: /^Avery/ }));
+    const pair = await screen.findByRole("group", { name: "Approve or reject card.pdf" });
+    fireEvent.click(within(pair).getByRole("button", { name: "Approve" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("row", { name: /^Avery/ })).toBeNull());
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Needs review/ })));
+  });
 });
