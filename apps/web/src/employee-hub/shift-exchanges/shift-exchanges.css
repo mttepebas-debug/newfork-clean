@@ -105,12 +105,13 @@ main.app-main:has(.sx-root)::-webkit-scrollbar {
   margin-bottom: 8px;
 }
 /* Tabs: underlined, on a 1 px line, like the list pages' tabs
-   (views/list-page.css). */
+   (views/list-page.css). The row does not scroll: its three tabs fit, and as
+   they stand 1 px over its line a scrolling row showed a scroll bar at its
+   right end (Mert 2026-10-23). A phone's strip is phone-page-tabs.css. */
 .sx-tabs {
   display: flex;
   gap: 6px;
   flex-wrap: nowrap;
-  overflow-x: auto;
   border-bottom: 1px solid var(--theme-border);
 }
 .sx-root .sx-tabs button,

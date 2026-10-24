@@ -45,6 +45,14 @@
   :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs):not([data-frozen-piece]) {
     position: relative;
   }
+  /* A frozen strip's sky (frozen-top.css) ends at the strip's right side: drawn to the page's right side, it
+     widened what the strip scrolls, and the tabs slid 16 px once the page moved (Mert 2026-10-23). The strip
+     clips the sky to itself either way; the sky keeps its size and place. */
+  :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs)[data-frozen-piece]::before {
+    right: 0;
+    width: auto;
+    background-size: var(--frozen-sky-w, 100%) 470px;
+  }
   :root:root:root:root :is(.employee-schedule-tabs, .employee-weekly-workspace > .weekly-preferences-tabs, .sx-root .sx-tabs, .my-documents-page .requests-tabs, .avm-panel .avm-tabs, .list-page:not(.lineup-page) .catalog-toolbar-status-row > .catalog-status-tabs)::-webkit-scrollbar {
     display: none;
   }
