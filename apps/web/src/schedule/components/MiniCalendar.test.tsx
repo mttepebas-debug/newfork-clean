@@ -149,6 +149,44 @@ describe("MiniCalendar", () => {
         .querySelector(".date-marker.important"),
     ).toBeTruthy();
   });
+  // Time off (Mert 2026-10-23): a range's two ends are selected and the days
+  // between share a band; days before minDate cannot be picked.
+  it("shows a range's ends and the band between, and refuses days before minDate", () => {
+    const onDayPick = vi.fn();
+    const onDayHover = vi.fn();
+    const { container } = renderCalendar({
+      selectedDate: "2026-08-18",
+      rangeEnd: "2026-08-21",
+      minDate: "2026-08-12",
+      weekStartDate: "2026-08-18",
+      onWeekJump: undefined,
+      onDayPick,
+      onDayHover,
+    });
+    const day = (date: number) =>
+      screen.getByRole("gridcell", { name: `August ${date}, 2026` });
+
+    expect([18, 21].map((date) => day(date).className.includes("selected"))).toEqual([true, true]);
+    expect(
+      [17, 18, 19, 20, 21, 22].map((date) => day(date).className.includes("in-range")),
+    ).toEqual([false, false, true, true, false, false]);
+    expect((day(11) as HTMLButtonElement).disabled).toBe(true);
+    expect((day(12) as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.mouseEnter(day(25));
+    expect(onDayHover).toHaveBeenLastCalledWith("2026-08-25");
+    fireEvent.mouseLeave(screen.getByRole("grid", { name: "August 2026" }));
+    expect(onDayHover).toHaveBeenLastCalledWith(null);
+
+    // The keyboard cannot pick a day before minDate either.
+    fireEvent.click(day(12));
+    onDayPick.mockClear();
+    const calendar = container.querySelector(".mini-calendar")!;
+    fireEvent.keyDown(calendar, { key: "ArrowLeft" });
+    fireEvent.keyDown(calendar, { key: "Enter" });
+    expect(onDayPick).not.toHaveBeenCalled();
+  });
+
   // BL-723 (3): jsdom has no :hover, so the cascade is read from the stylesheet.
   // The rule that comes last among equal selectors wins.
   it("keeps the hover effect on the days of the orange week band", () => {
@@ -160,10 +198,11 @@ describe("MiniCalendar", () => {
       (rule) => ({ selector: rule[1]!.trim(), body: rule[2]! }),
     );
     const at = (selector: string) =>
-      rules.findIndex((rule) => rule.selector === selector);
+      rules.findIndex((rule) => rule.selector.split(/,\s*/).includes(selector));
 
     const hover = at(".calendar-day:hover");
     const inWeek = at(".calendar-day.in-week");
+    expect(at(".calendar-day.in-range")).toBe(inWeek);
     const selected = at(".calendar-day.selected");
     const selectedHover = at(".calendar-day.selected:hover");
     expect(hover).toBeGreaterThan(-1);
