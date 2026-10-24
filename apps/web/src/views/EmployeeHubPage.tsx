@@ -1,9 +1,7 @@
 import { todayIn } from "../lib/today";
-import { ZoneNote } from "../shell/ZoneNote";
 import { homeZone } from "../employee-hub/dashboard-model";
 import type { EmployeeHubReadModel } from "@newfork/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CalendarOff } from "lucide-react";
 import { useEffect } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
@@ -166,6 +164,7 @@ export function EmployeeHubPage() {
         />
       </section>
     );
+  // Only Home says whose clock the pages keep; the pages under it carry no zone note (Mert 2026-10-23).
   return (
     <section className="employee-hub-page" aria-labelledby="employee-hub-title" ref={scheduleSwipe.root}>
       {path === "schedule/lineup" ? (
@@ -173,17 +172,13 @@ export function EmployeeHubPage() {
         // 2026-10-17 ~8:30 AM); the shell's frozen top leaves it alone (data-frozen-own).
         <div className="employee-lineup-pin" data-frozen-own="">
           <CatalogPageHeader {...pageCopy["schedule/lineup"]!} titleId="employee-hub-title" />
-          <ZoneNote zone={zone} now={now} />
         </div>
       ) : (
-        <>
-          <CatalogPageHeader
-            {...(pageCopy[path.startsWith("shift-hub") ? "shift-hub" : path] ??
-              fallbackCopy)}
-            titleId="employee-hub-title"
-          />
-          <ZoneNote zone={zone} now={now} />
-        </>
+        <CatalogPageHeader
+          {...(pageCopy[path.startsWith("shift-hub") ? "shift-hub" : path] ??
+            fallbackCopy)}
+          titleId="employee-hub-title"
+        />
       )}
       {query.isError ? (
         <RefreshError
@@ -240,9 +235,10 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
   const params = new URLSearchParams(location.search);
   const timeOff = params.get("section") === "time-off" || params.get("tab") === "time-off-request"
     || location.hash === "#time-off" || location.hash.startsWith("#request-");
+  // Labels only, like Shift Hub's and the list pages' tabs (Mert 2026-10-23).
   const choices = [
-    { id: "availability", label: "Availability", icon: CalendarDays },
-    { id: "time-off", label: "Time off", icon: CalendarOff },
+    { id: "availability", label: "Availability" },
+    { id: "time-off", label: "Time off" },
   ] as const;
   const active = timeOff ? "time-off" : "availability";
   const swipe = useTabSwipe({ tabs: AVAILABILITY_TABS, active, onSelect: select });
@@ -259,7 +255,7 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
   return (
     <div className="employee-weekly-workspace" ref={swipe.root}>
       <div className="weekly-preferences-tabs" role="tablist" aria-label="My availability" ref={swipe.tabs}>
-        {choices.map(({ id, label, icon: Icon }, index) => (
+        {choices.map(({ id, label }, index) => (
           <button key={id} type="button" role="tab" id={`my-${id}-tab`}
             aria-controls={`my-${id}-panel`} aria-selected={active === id}
             tabIndex={active === id ? 0 : -1} onClick={() => select(id)}
@@ -270,7 +266,7 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
               event.preventDefault();
               select(choices[next]!.id);
             }}>
-            <Icon size={16} aria-hidden />{label}
+            {label}
           </button>
         ))}
       </div>

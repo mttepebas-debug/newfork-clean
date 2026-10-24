@@ -109,10 +109,6 @@
   :root:root:root:root .sx-root .sx-filters {
     margin-top: 10px;
   }
-  /* Labels only: My Availability's tab icons stay on the desktop. */
-  :root:root:root:root .employee-weekly-workspace > .weekly-preferences-tabs > button svg {
-    display: none;
-  }
   /* Shift hub's count of requests waiting for her answer sits after the label. */
   :root:root:root:root .sx-root .sx-tabs .sx-tab-count {
     position: static;
