@@ -781,9 +781,13 @@ describe("employee surface", () => {
   it("never offers to remove a draft file on the manager's surface", async () => {
     vi.mocked(getDocument).mockResolvedValue(withDraft());
     page();
-    // The manager's drawer keeps every version but the one it shows under History.
-    fireEvent.click(await screen.findByRole("tab", { name: "History" }));
-    await screen.findByText("certificate.pdf");
+    // A draft is the person's own until it is sent: the manager reads that nothing was sent, in Details and in
+    // History, and is never offered its files.
+    expect(await screen.findByText("Nothing sent yet")).toBeTruthy();
+    expect(screen.queryByText("certificate.pdf")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "History" }));
+    expect(screen.getByText("Nothing has happened to this document yet.")).toBeTruthy();
+    expect(screen.queryByText("certificate.pdf")).toBeNull();
     expect(
       screen.queryByRole("button", { name: "Remove certificate.pdf" }),
     ).toBeNull();
@@ -1876,7 +1880,7 @@ describe("manager review drawer", () => {
         id: "00000000-0000-4000-8000-000000000001",
         action: "document.submitted",
         occurred_at: "2026-09-15T12:00:00Z",
-        metadata: {},
+        metadata: { submission_id: "submission" },
       },
     ];
     vi.mocked(getDocument).mockResolvedValue(doc);
@@ -1893,7 +1897,7 @@ describe("manager review drawer", () => {
     fireEvent.keyDown(within(tabs).getByRole("tab", { name: "Details" }), { key: "End" });
     expect(screen.getByRole("tab", { name: "History" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("region", { name: "Files" })).toBeNull();
-    expect(screen.getByText(/submitted/)).toBeTruthy();
+    expect(screen.getByText("Version 1 sent")).toBeTruthy();
   });
 
   it("keeps the restriction note of a suspended person in Details", async () => {
@@ -2426,25 +2430,79 @@ describe("file decisions and the dock", () => {
     expect(document.querySelector(".rd-foot .docr-note")?.getAttribute("role")).toBe("status");
   });
 
-  it("keeps the earlier versions and their files in History", async () => {
+  // A2 Tur 6 (mockup-spec 14; K1 decision 8): one timeline, newest first, in plain words; nobody named as the doer,
+  // a draft's uploads left out; every version's files by name with what was decided on each, a kept one opening.
+  it("tells the history as one timeline, each version's files by name, a kept one opening", async () => {
+    const manager = { workspaceId: "workspace", selfOnly: false };
     const doc = detail();
     doc.submissions[0]!.version = 2;
+    const file = doc.submissions[0]!.files[0]!;
     doc.submissions.push({
       ...doc.submissions[0]!,
       id: "first",
       version: 1,
       state: "rejected",
       rejection_reason: "Blurry.",
-      files: [{ ...doc.submissions[0]!.files[0]!, id: "first-file", filename: "old.jpg", media_type: "image/jpeg", decision: "discard", note: "Blurry" }],
+      files: [
+        { ...file, id: "first-file", filename: "old.jpg", media_type: "image/jpeg", decision: "discard", note: "Blurry" },
+        { ...file, id: "kept-file", filename: "kept.pdf", decision: "keep", note: "" },
+      ],
     });
+    const event = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
+    doc.history = [
+      { id: event(4), action: "document.submitted", occurred_at: "2026-09-15T12:00:00Z", metadata: { submission_id: "submission" } },
+      { id: event(3), action: "document.draft_file_added", occurred_at: "2026-09-15T11:58:00Z", metadata: { submission_id: "submission" } },
+      {
+        id: event(2),
+        action: "document.reject",
+        occurred_at: "2026-09-10T16:30:00Z",
+        metadata: {
+          submission_id: "first",
+          reason: "Blurry.",
+          correction_period: "full",
+          new_deadline: "2026-09-17T16:30:00Z",
+          files: [
+            { id: "first-file", decision: "discard", note: "Blurry" },
+            { id: "kept-file", decision: "keep", note: "" },
+          ],
+        },
+      },
+      { id: event(1), action: "document.submitted", occurred_at: "2026-09-09T16:00:00Z", metadata: { submission_id: "first" } },
+    ];
     vi.mocked(getDocument).mockResolvedValue(doc);
+    vi.mocked(downloadDocument).mockResolvedValue(undefined);
     page();
     fireEvent.click(await screen.findByRole("tab", { name: "History" }));
-    const earlier = screen.getByRole("region", { name: "Earlier versions" });
-    expect(within(earlier).getByText("Version 1 · Rejected")).toBeTruthy();
-    expect(within(earlier).getByRole("button", { name: "old.jpg" })).toHaveProperty("disabled", true);
-    expect(within(earlier).getByText("Rejected", { selector: ".rd-chip" })).toBeTruthy();
-    expect(within(earlier).getByText("JPG · 100 B")).toBeTruthy();
+    const timeline = screen.getByRole("list", { name: "History" });
+    const events = Array.from(timeline.children) as HTMLElement[];
+    expect(events.map((item) => [item.querySelector(".docr-ev-title b")?.textContent, item.className])).toEqual([
+      ["Version 2 sent", "docr-ev"],
+      ["Version 1 sent back", "docr-ev red"],
+      ["Version 1 sent", "docr-ev"],
+    ]);
+    expect(events[0]!.querySelector(".docr-ev-when")?.textContent).toBe("Tue, Sep 15, 5:00 AM");
+    expect(within(events[0]!).getByText("Needs review", { selector: ".rd-chip" })).toBeTruthy();
+    expect(within(events[0]!).getByRole("button", { name: "certificate.pdf" })).toBeTruthy();
+    const back = events[1]!;
+    expect(back.querySelector(".rd-quote")?.textContent).toBe("Blurry.");
+    expect(
+      Array.from(back.querySelectorAll(".docr-ev-file")).map((row) => [
+        row.querySelector(".docr-ev-fname")?.textContent,
+        row.querySelector(".rd-chip")?.textContent,
+        row.querySelector(".docr-ev-fnote")?.textContent ?? null,
+      ]),
+    ).toEqual([
+      ["old.jpg", "Rejected", "Blurry"],
+      ["kept.pdf", "Kept", null],
+    ]);
+    // A rejected file is no longer handed out; a kept one opens as today, by its version.
+    expect(within(back).queryByRole("button", { name: "old.jpg" })).toBeNull();
+    fireEvent.click(within(back).getByRole("button", { name: "kept.pdf" }));
+    await waitFor(() =>
+      expect(downloadDocument).toHaveBeenCalledWith(manager, "requirement", "first", "kept-file"),
+    );
+    expect(back.querySelector(".docr-ev-meta")?.textContent).toBe("A new 7 days to send it again · Due Thu, Sep 17");
+    expect(timeline.textContent).not.toMatch(/You|Test Employee|draft|document\./);
   });
 
   describe("on a phone", () => {

@@ -4,7 +4,6 @@ import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { DrawerSection } from "../views/RequestDrawer";
 import { fileMeta } from "./document-review-facts";
 import type { DrawerTone } from "../views/RequestDrawer";
-import { versionStateLabel } from "./document-rules";
 import type { FileChoice, FileChoices, FileReasons, Period, periodChoices } from "./review-decision";
 import { hasReason, quickReasons, toggleReason } from "./review-reasons";
 
@@ -400,30 +399,6 @@ export function ManagerDocumentFiles({
           </button>
         </div>
       ) : null}
-    </DrawerSection>
-  );
-}
-
-/** History keeps every earlier version and its files, readable and, while kept, open. */
-export function EarlierVersions({
-  versions,
-  ...shared
-}: Shared & {
-  versions: readonly Submission[];
-}) {
-  if (!versions.length) return null;
-  return (
-    <DrawerSection title="Earlier versions">
-      <div className="docr-older">
-        {versions.map((version) => (
-          <div key={version.id} className="docr-older-version">
-            <p className="docr-older-head">
-              Version {version.version} · {versionStateLabel(version.state)}
-            </p>
-            <VersionFiles version={version} shared={shared} review={null} exempt={false} />
-          </div>
-        ))}
-      </div>
     </DrawerSection>
   );
 }

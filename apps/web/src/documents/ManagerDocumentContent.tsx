@@ -32,7 +32,8 @@ import {
   shownVersion,
 } from "./document-review-facts";
 import { isObligationClosed, statusLabel } from "./document-rules";
-import { EarlierVersions, ManagerDocumentFiles, type FileReview } from "./ManagerDocumentFiles";
+import { ManagerDocumentFiles, type FileReview } from "./ManagerDocumentFiles";
+import { ManagerDocumentHistory } from "./ManagerDocumentHistory";
 import { ManagerDocumentDock, type DockLine } from "./ManagerDocumentDock";
 import { ManagerDocumentOptions } from "./ManagerDocumentOptions";
 import {
@@ -71,9 +72,9 @@ import type { ManagerDraft, ManagerTypedValues, ReviewSitting } from "./review-s
 // open while it walks the list; this part is keyed by the document, so its commands and their errors belong to
 // it alone. What was typed lives in the page's sitting, so it survives a move, a new revision and a close.
 //
-// Details: the facts, today's notes, the Files section (each file approved or rejected on its own, K1 stage 2) and
-// More options (stage 3 slot: today's exemption and extension). History (stage 3 slot) keeps today's lines and the
-// earlier versions. The dock is drawn into the drawer's footer: one line and one green button.
+// Details: the facts, today's notes, the Files section (each file approved or rejected on its own) and More options
+// (Extend deadline, Excuse, Ask for it again, one change per Save). History: one plain-word timeline. The dock is
+// drawn into the drawer's footer: one line and one green button.
 
 export type ManagerTab = "details" | "files" | "history";
 
@@ -608,29 +609,10 @@ export function ManagerDocumentContent({
       </>
     ) : null;
 
-  // History. Stage 3 slot: today's lines until the A2 timeline replaces them; the earlier versions stay readable.
+  // History (mockup-spec 14, K1 decision 8): one plain-word timeline; every version's files by name, the kept ones
+  // opening as in Details.
   const history = (
-    <>
-      <DrawerSection>
-        {detail.history.length ? (
-          <ol className="docr-legacy-history">
-            {detail.history.map((event) => (
-              <li key={event.id}>
-                <time dateTime={event.occurred_at}>{event.occurred_at}</time> ·{" "}
-                {event.action.replaceAll("document.", "").replaceAll("_", " ")}
-                {typeof event.metadata.reason === "string" ? <> · {event.metadata.reason}</> : null}
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="rd-empty">Nothing has happened to this document yet.</p>
-        )}
-      </DrawerSection>
-      <EarlierVersions
-        {...shared}
-        versions={detail.submissions.filter((submission) => submission.id !== version?.id)}
-      />
-    </>
+    <ManagerDocumentHistory detail={detail} now={now} opening={download.isPending} onOpen={openFile} />
   );
 
   // The dock (mockup-spec 15): what the green does now, and the one line over it.

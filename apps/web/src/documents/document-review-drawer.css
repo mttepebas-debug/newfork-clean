@@ -762,20 +762,181 @@
   line-height: 20px;
 }
 
-/* History keeps the earlier versions, each with its files as decided. */
-.catalog-drawer.document-review-drawer .docr-older {
+/* History (mockup-spec 14): one timeline, a 24 px icon in a soft circle on a 1 px rail in the control edge's colour
+   (3:1); rejected red, approved green, an extension amber, the rest muted. */
+.catalog-drawer.document-review-drawer .docr-hist {
   display: grid;
-  gap: 12px;
-}
-.catalog-drawer.document-review-drawer .docr-older-version {
-  display: grid;
-  gap: 6px;
-}
-.catalog-drawer.document-review-drawer .docr-older-head {
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.catalog-drawer.document-review-drawer .docr-ev {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 12px;
+}
+.catalog-drawer.document-review-drawer .docr-ev:last-child {
+  padding-bottom: 0;
+}
+.catalog-drawer.document-review-drawer .docr-ev::after {
+  content: "";
+  position: absolute;
+  top: 28px;
+  bottom: 4px;
+  left: 11px;
+  width: 1px;
+  background: var(--theme-border-control);
+}
+.catalog-drawer.document-review-drawer .docr-ev:last-child::after {
+  display: none;
+}
+.catalog-drawer.document-review-drawer .docr-ev-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+}
+.catalog-drawer.document-review-drawer .docr-ev.red .docr-ev-icon {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+.catalog-drawer.document-review-drawer .docr-ev.ok .docr-ev-icon {
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+}
+.catalog-drawer.document-review-drawer .docr-ev.warn .docr-ev-icon {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+.catalog-drawer.document-review-drawer .docr-ev-main {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding-top: 1px;
+}
+.catalog-drawer.document-review-drawer .docr-ev-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  line-height: 22px;
+}
+.catalog-drawer.document-review-drawer .docr-ev-title b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 650;
+}
+.catalog-drawer.document-review-drawer .docr-ev-title .rd-chip {
+  flex: none;
+  letter-spacing: normal;
+  line-height: 1.2;
+}
+.catalog-drawer.document-review-drawer .docr-ev-when {
+  margin: -4px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.catalog-drawer.document-review-drawer .docr-ev .rd-quote {
+  font-size: 13px;
+}
+.catalog-drawer.document-review-drawer .docr-ev-files {
+  overflow: hidden;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 8px;
+}
+.catalog-drawer.document-review-drawer .docr-ev-file {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 30px;
+  padding: 4px 10px;
+  border-top: 1px solid var(--theme-border);
   color: var(--theme-muted-strong);
   font-size: 13px;
+}
+.catalog-drawer.document-review-drawer .docr-ev-file:first-child {
+  border-top: 0;
+}
+.catalog-drawer.document-review-drawer .docr-ev-fname {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-text);
+}
+/* A kept file opens: its name is a quiet text button, underlined under a mouse. */
+.catalog-drawer.document-review-drawer button.docr-ev-fname {
+  justify-self: start;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.catalog-drawer.document-review-drawer button.docr-ev-fname:not(:disabled):hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.catalog-drawer.document-review-drawer button.docr-ev-fname:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.catalog-drawer.document-review-drawer .docr-ev-file .rd-chip {
+  letter-spacing: normal;
+  line-height: 1.2;
+}
+.catalog-drawer.document-review-drawer .docr-ev-fnote {
+  grid-column: 2 / -1;
+  margin-top: -4px;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.catalog-drawer.document-review-drawer .docr-ev-entered {
+  display: grid;
+  gap: 2px;
+}
+.catalog-drawer.document-review-drawer .docr-ev-label {
+  color: var(--theme-muted-strong);
+  font-size: 12px;
   font-weight: 650;
+}
+.catalog-drawer.document-review-drawer .rd .docr-ev .toa-facts {
+  gap: 0;
+}
+.catalog-drawer.document-review-drawer .rd .docr-ev .toa-facts div {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+.catalog-drawer.document-review-drawer .rd .docr-ev .toa-facts :is(dt, dd) {
+  font-size: 13px;
+  line-height: 20px;
+}
+.catalog-drawer.document-review-drawer .docr-ev-meta {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.catalog-drawer.document-review-drawer .docr-ev-meta svg {
+  flex: none;
+  margin-top: 2px;
 }
 
 /* The phone's way to the files: one boxed 44 px row button (icon, what is there, "Files", the chevron). */
@@ -818,8 +979,7 @@
   font-weight: 500;
 }
 
-/* What today's drawer also says or does, kept inside the new layout until each part is rebuilt: the time zone, the
-   policy text, the exemption and the extension. */
+/* What today's drawer also says or does, kept inside the new layout: the document time zone and the policy text. */
 .catalog-drawer.document-review-drawer .rd-body fieldset {
   display: grid;
   gap: 10px;
@@ -864,14 +1024,6 @@
   color: var(--theme-text-body);
   font-size: 13.5px;
   white-space: pre-wrap;
-}
-.catalog-drawer.document-review-drawer .docr-legacy-history {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding-left: 18px;
-  color: var(--theme-text-body);
-  font-size: 13px;
 }
 
 /* The dock lives in the footer (a manager who may only read gets none): one line, 8 px, then the green alone, far
