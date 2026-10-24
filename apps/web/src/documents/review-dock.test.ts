@@ -99,6 +99,11 @@ describe("the result of a Save", () => {
     expect(
       resultLine(back, { first: "Maria", phone: true, end: true, now: now("completed") }).text,
     ).toBe("The approved copy stays on file. All caught up.");
+    // A phone's line is short enough for 390 px.
+    expect(
+      resultLine(back, { first: "Maria", phone: true, end: false, now: now("completed", { expiry: "Dec 31, 2026" }) })
+        .text,
+    ).toBe("Maria is told why. The approved copy stays.");
   });
   // K1 decision 15: an extension sends no notice, so nobody "is told".
   it("says an extension and its new date, and tells nobody", () => {

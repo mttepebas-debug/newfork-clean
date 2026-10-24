@@ -108,7 +108,13 @@ export function resultLine(
       // K1 decision 11: a renewal sent back while the old copy is still valid stays Completed.
       if (now.status === "completed") {
         const kept = `The approved copy stays on file${now.expiry ? ` until ${now.expiry}` : ""}.`;
-        line = { tone: "red", word: "Sent back", text: `${first} is told why. ${kept}`, phoneEnd: "The approved copy stays on file." };
+        line = {
+          tone: "red",
+          word: "Sent back",
+          text: `${first} is told why. ${kept}`,
+          phoneText: `${first} is told why. The approved copy stays.`,
+          phoneEnd: "The approved copy stays on file.",
+        };
         break;
       }
       const time = result.time;
