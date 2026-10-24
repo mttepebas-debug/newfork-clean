@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 585, last: 20261024100000_employee_hub_week_strip.sql
--- fingerprint: sha256:01bcce9464c97e305f0c18a0c15f528ea0c1d5d56acdc97a151482615704ccb9
+-- fingerprint: sha256:6185909cc5dbcc50674c5a7884f7faab389d0cc797729c48f02a61894165e0d6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -15709,8 +15709,8 @@ begin
       ) off_day
       where off_day.day between target_from and target_to
     ),'[]'::jsonb),
-    -- The days of the range whose week is posted at one of the person's locations: a day with no shift there is
-    -- a day off, not a schedule still to come (Home's week strip).
+    -- The days of the range whose week is posted at one of the person's locations, for one of their jobs: a day
+    -- with no shift there is a day off, not a schedule still to come (Home's week strip).
     'posted_days', coalesce((
       select jsonb_agg(to_char(posted.day, 'YYYY-MM-DD') order by posted.day)
       from (
@@ -15720,7 +15720,11 @@ begin
           join public.employee_location_assignments assignment
             on assignment.location_id=publication.location_id and assignment.employee_id=employee.id and assignment.ended_at is null
           where publication.workspace_id=target_workspace_id and publication.status='current'
-            and publication.week_start<=d::date and d::date<publication.week_start+7)
+            and publication.week_start<=d::date and d::date<publication.week_start+7
+            and (publication.department_ids is null or exists(select 1 from public.employee_job_assignments job_assignment
+              where job_assignment.employee_id=employee.id and job_assignment.ended_at is null
+                and public.schedule_shift_in_department_scope_service(job_assignment.job_id,
+                  publication.department_ids, publication.include_no_department))))
       ) posted
     ),'[]'::jsonb),
     'team', coalesce((
