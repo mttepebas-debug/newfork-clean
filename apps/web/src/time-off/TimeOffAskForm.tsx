@@ -314,10 +314,11 @@ export function RangeFields({
   const panel = useRef<HTMLDivElement | null>(null);
   const shown = calendar !== null;
   useCloseOnEscape(shown ? () => setCalendar(null) : null);
-  // The drawer scrolls: an opened calendar comes into view whole, not cut by the footer.
+  // The drawer scrolls: an opened calendar comes into view whole, not cut by the footer, and stays so when a
+  // picked day grows the summary card above it.
   useEffect(() => {
     if (shown) panel.current?.scrollIntoView?.({ block: "nearest" });
-  }, [shown]);
+  }, [shown, draft.start, draft.end]);
   useEffect(() => {
     if (!calendar) return;
     const away = (event: PointerEvent) => {
