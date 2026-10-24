@@ -116,7 +116,7 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
 
   await emre.reload();
   await expect(emre.getByText(/lineup isn't published yet$/)).toBeVisible();
-  await expect(emre.getByText("You'll get a notification when it is.", { exact: true })).toBeVisible();
+  await expect(emre.getByText("It shows here once it's published.", { exact: true })).toBeVisible();
 });
 
 // LINEUP-PUBLISH-PHONE (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih): on a phone Ayse turns the day wheel
