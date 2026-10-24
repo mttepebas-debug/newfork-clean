@@ -112,6 +112,23 @@ test("desktop: My shifts first, the week from the switch, Team schedule is the b
   await expect.poll(async () => Math.round((await nextWeek.boundingBox())!.x)).toBe(await listLeft());
   await emre.screenshot({ path: `${shots}my-shifts-next-1440.png` });
 
+  // Week switch variant A (Mert 2026-10-23, "1-A"): the arrows go on past Next week, the switch names that week
+  // under its dates, and This week brings it back to This week · Next week, not the week the arrows reached.
+  const tabs = emre.getByRole("tablist", { name: "Week" }).getByRole("tab");
+  await emre.getByRole("button", { name: "Following week" }).click();
+  await emre.getByRole("button", { name: "Following week" }).click();
+  await expect(tabs).toHaveText(["This week", /^[A-Z][a-z]{2} \d{1,2} – [A-Z][a-z]{2} \d{1,2}$/]);
+  await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
+  await expect(emre.getByRole("tabpanel").locator(`[data-day="${addDays(start, 21)}"]`)).toHaveCount(1);
+  await tabs.nth(0).click();
+  await expect(tabs).toHaveText(["This week", "Next week"]);
+  await expect(tabs.nth(0)).toHaveAttribute("aria-selected", "true");
+  await expect(thisWeek.locator(`[data-day="${start}"]`)).toHaveCount(1);
+  // The week that left is gone once it slid out: one list, where the list starts.
+  await expect(emre.locator(".ems-week")).toHaveCount(1);
+  await expect.poll(async () => Math.round((await thisWeek.boundingBox())!.x)).toBe(await listLeft());
+  await expect(emre).not.toHaveURL(/[?&]date=/);
+
   await pages.getByRole("link", { name: "Team schedule" }).click();
   await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule\/team/);
   await expect(emre.locator(".employee-schedule-board")).toBeVisible();

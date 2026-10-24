@@ -602,10 +602,39 @@ describe("EmployeeHubPage", () => {
     await waitFor(() => expect(screen.getByRole("tab", { name: "Next week" }).getAttribute("aria-selected")).toBe("true"));
     fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
     await waitFor(() => expect(screen.getByRole("tab", { name: "This week" }).getAttribute("aria-selected")).toBe("true"));
-    // From This week chosen on the switch itself, back is the week before it.
+    // From This week chosen on the switch itself, back is the week before it: Last week, then its dates (variant A).
     fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Aug 17 – Aug 23" }).getAttribute("aria-selected")).toBe("true"));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Last week" }).getAttribute("aria-selected")).toBe("true"));
     expect(getEmployeeHub).toHaveBeenCalledWith(workspaceId, "2026-08-17", "2026-08-23");
+    fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Aug 10 – Aug 16" }).getAttribute("aria-selected")).toBe("true"));
+    vi.useRealTimers();
+  });
+
+  // Mert 2026-10-23 (week switch variant A, "1-A"): This week brings the whole switch back to this week; the
+  // second button is Next week again, not the week the arrows reached, and the list goes back the way it came.
+  it("brings the switch back to This week · Next week from a week the arrows reached", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage("/app/employee-hub/schedule");
+    await screen.findByRole("tabpanel", { name: "This week" });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Next week" }));
+    fireEvent.click(screen.getByRole("button", { name: "Following week" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Sep 7 – Sep 13" }).getAttribute("aria-selected")).toBe("true"));
+    fireEvent.click(screen.getByRole("button", { name: "Following week" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Sep 14 – Sep 20" }).getAttribute("aria-selected")).toBe("true"));
+
+    fireEvent.click(screen.getByRole("tab", { name: "This week" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Next week" }).getAttribute("aria-selected")).toBe("false"));
+    expect(screen.getByRole("tab", { name: "This week" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByRole("tab", { name: "Sep 14 – Sep 20" })).toBeNull();
+    expect(await screen.findByRole("tabpanel", { name: "This week" })).toBeTruthy();
+    expect(screen.getByRole("tabpanel", { name: "This week" }).querySelector('[data-day="2026-08-24"]')).not.toBeNull();
+    // Next week is one tap again.
+    fireEvent.click(screen.getByRole("tab", { name: "Next week" }));
+    await waitFor(() => expect(screen.getByRole("tabpanel", { name: "Next week" }).querySelector('[data-day="2026-08-31"]')).not.toBeNull());
     vi.useRealTimers();
   });
 

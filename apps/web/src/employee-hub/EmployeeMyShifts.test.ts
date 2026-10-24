@@ -47,7 +47,9 @@ describe("My shifts: the two weeks asked one by one", () => {
     const week = mergedWeeks([model(["2026-08-26"]), { ...model(["2026-09-02"]), shifts: [{ ...shift, id: "22000000-0000-4000-8000-000000000009", scheduled_date: "2026-09-01" }] }]);
     expect(week?.leave_days).toEqual(["2026-08-26", "2026-09-02"]);
     expect(week?.shifts.map((item) => item.scheduled_date)).toEqual(["2026-08-25", "2026-09-01"]);
-    expect(mergedWeeks([model(), undefined])).toBeUndefined();
+    // A week still on its way leaves only its own days out: the switch and the other week stay (variant A).
+    expect(mergedWeeks([undefined, model(["2026-08-26"])])?.leave_days).toEqual(["2026-08-26"]);
+    expect(mergedWeeks([undefined, undefined])).toBeUndefined();
   });
 });
 
@@ -61,6 +63,8 @@ describe("My shifts: the two weeks of the switch", () => {
   it("puts a week further on, or back, beside This week under its dates", () => {
     expect(switchWeeks("2026-08-24", "2026-09-16", "monday")).toEqual({ starts: ["2026-08-24", "2026-09-14"], labels: ["This week", "Sep 14 – Sep 20"], open: 1 });
     expect(switchWeeks("2026-08-24", "2026-08-12", "monday")).toEqual({ starts: ["2026-08-10", "2026-08-24"], labels: ["Aug 10 – Aug 16", "This week"], open: 0 });
+    // The week just before this one is Last week (week switch variant A, Mert 2026-10-23).
+    expect(switchWeeks("2026-08-24", "2026-08-19", "monday")).toEqual({ starts: ["2026-08-17", "2026-08-24"], labels: ["Last week", "This week"], open: 0 });
     expect(switchWeeks("2026-08-23", "2026-09-16", "sunday").starts[1]).toBe("2026-09-13");
     expect(weekRange("2026-10-26")).toBe("Oct 26 – Nov 1");
   });
