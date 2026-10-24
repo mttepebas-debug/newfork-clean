@@ -13558,18 +13558,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   }
 }
 
-/* "Times in Pacific Time" (S-226): under a page's title when the device keeps another zone's clock. */
+/* "Times in Pacific Time" (S-226): under the employee's Home date when the device keeps another zone's clock (S-257). */
 .zone-note {
   margin: 0 0 12px;
   color: var(--theme-muted);
   font-size: 13px;
   line-height: 18px;
-}
-/* A phone's page top keeps its measured rhythm (phone-page-top.css): there the note is Home's, under the date. */
-@media (max-width: 720px) {
-  .zone-note:not(.dl-hero .zone-note) {
-    display: none;
-  }
 }
 /* The open shifts the publish asks about (Mert, 2026-10-20): a finding group with one choice. */
 fieldset.schedule-publish-open-shifts {

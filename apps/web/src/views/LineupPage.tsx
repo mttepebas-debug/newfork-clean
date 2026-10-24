@@ -8,7 +8,6 @@ import { isNoAccess } from "../lib/no-access";
 import { clockIn, todayIn } from "../lib/today";
 import { usePhoneWidth } from "../lib/usePhoneWidth";
 import { useScheduleQuery, useScheduleZone } from "../schedule/hooks/useScheduleQuery";
-import { ZoneNote } from "../shell/ZoneNote";
 import { useScheduleRealtime } from "../schedule/hooks/useScheduleRealtime";
 import { lineupDay, unpublishedCount, type LineupLocation } from "../schedule/lineup";
 import { useLineupDay } from "../schedule/lineup-data";
@@ -169,15 +168,12 @@ export function LineupPage() {
     return (
       <PhoneLineupPage
         header={
-          <>
-            <CatalogPageHeader
-              eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
-              title="Lineup"
-              titleId="lineup-title"
-              description="Today's lineups, live from the Schedule."
-            />
-            <ZoneNote zone={zone} />
-          </>
+          <CatalogPageHeader
+            eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
+            title="Lineup"
+            titleId="lineup-title"
+            description="Today's lineups, live from the Schedule."
+          />
         }
         workspaceId={workspaceId}
         date={date}
@@ -242,16 +238,13 @@ export function LineupPage() {
   return (
     <DesktopLineupPage
       header={
-        <>
-          <CatalogPageHeader
-            eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
-            title="Lineup"
-            titleId="lineup-title"
-            description="Today's lineups, live from the Schedule."
-            action={publishControl}
-          />
-          <ZoneNote zone={zone} />
-        </>
+        <CatalogPageHeader
+          eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
+          title="Lineup"
+          titleId="lineup-title"
+          description="Today's lineups, live from the Schedule."
+          action={publishControl}
+        />
       }
       workspaceId={workspaceId}
       date={date}
