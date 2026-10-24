@@ -1,6 +1,7 @@
 import { ArrowLeftRight, CalendarOff, Hand } from "lucide-react";
 import type { ReactNode } from "react";
 import { timeOffDeadlineAt, timeOffZoneName } from "../employee-hub/time-off-split";
+import { StepsIn } from "../shell/StepsIn";
 import { ListCards } from "./ListCards";
 import type { RequestRow } from "../schedule/requests-list";
 import {
@@ -20,18 +21,6 @@ import {
 // icon on a rounded tile, one sentence, a short status, and Expires (when the
 // request closes on its own; red in its last 12 hours). The detail is in the
 // drawer. The phone draws the same as cards.
-
-/** Steps in (Mert, 2026-10-14 00:28): a person and an arrow coming in. */
-function StepsIn({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="9" cy="8" r="4" />
-      <path d="M2 20a7 7 0 0 1 11.5-5.4" />
-      <path d="M22 17h-7" />
-      <path d="m18 13.5-3.5 3.5 3.5 3.5" />
-    </svg>
-  );
-}
 
 export function KindIcon({ kind, size = 40 }: { kind: RowKind; size?: 28 | 40 }) {
   const icon = size === 40 ? 22 : 16;
