@@ -7,6 +7,7 @@ import {
   type NotificationFeed,
   type NotificationFilter,
   type NotificationReadInput,
+  type NotificationUnreadInput,
 } from "@newfork/shared";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { apiRequest, supabaseClient } from "../lib/supabase";
@@ -38,6 +39,12 @@ export async function getNotificationCounts(workspaceId: string) {
 export async function markNotificationsRead(workspaceId: string, read: NotificationReadInput) {
   return notificationReadResultSchema.parse(
     await notificationsApi(workspaceId, "/read", { method: "POST", body: JSON.stringify(read) }),
+  );
+}
+/** The answer is a read's: how many rows changed and the unread count now. */
+export async function markNotificationsUnread(workspaceId: string, unread: NotificationUnreadInput) {
+  return notificationReadResultSchema.parse(
+    await notificationsApi(workspaceId, "/unread", { method: "POST", body: JSON.stringify(unread) }),
   );
 }
 export async function markNotificationsSeen(workspaceId: string) {
@@ -90,6 +97,37 @@ export function useMarkNotificationsRead(workspaceId: string) {
       });
       client.setQueryData<NotificationCounts>(notificationKeys.counts(workspaceId), (counts) =>
         counts ? { ...counts, unread_count: "all" in read ? 0 : Math.max(0, counts.unread_count - newlyRead.size) } : counts,
+      );
+    },
+    onSuccess: (result) =>
+      client.setQueryData<NotificationCounts>(notificationKeys.counts(workspaceId), (counts) =>
+        counts ? { ...counts, unread_count: result.unread_count } : counts,
+      ),
+    onSettled: () => client.invalidateQueries({ queryKey: notificationKeys.all(workspaceId) }),
+  });
+}
+
+/**
+ * A read row swiped on the phone is unread again (S-251), like a read in reverse: the row shows its dot at once in
+ * the list and on employee Home, the bell and the tabs rise with it, and the refetch brings the core's own answer.
+ * It keeps seen_at, so it stays under New or Earlier where it was.
+ */
+export function useMarkNotificationsUnread(workspaceId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (unread: NotificationUnreadInput) => markNotificationsUnread(workspaceId, unread),
+    onMutate: (unread) => {
+      const isRead = (item: NotificationFeed["items"][number]) => unread.ids.includes(item.id) && Boolean(item.read_at);
+      const feeds = client.getQueriesData<CachedFeed>({ queryKey: [...notificationKeys.all(workspaceId), "feed"] });
+      const newlyUnread = new Set(feeds.flatMap(([, data]) => (data ? feedItems(data) : [])).filter(isRead).map((item) => item.id));
+      const unreadItem = (item: NotificationFeed["items"][number]) => (isRead(item) ? { ...item, read_at: null } : item);
+      client.setQueriesData<CachedFeed>({ queryKey: [...notificationKeys.all(workspaceId), "feed"] }, (data) => {
+        if (!data) return data;
+        if ("pages" in data) return { ...data, pages: data.pages.map((page) => ({ ...page, items: page.items.map(unreadItem) })) };
+        return { ...data, items: data.items.map(unreadItem) };
+      });
+      client.setQueryData<NotificationCounts>(notificationKeys.counts(workspaceId), (counts) =>
+        counts ? { ...counts, unread_count: counts.unread_count + newlyUnread.size } : counts,
       );
     },
     onSuccess: (result) =>

@@ -19,6 +19,7 @@ const {
   notificationKeys,
   useMarkNotificationsRead,
   useMarkNotificationsSeen,
+  useMarkNotificationsUnread,
   useNotificationFeed,
 } = await import("./notifications-data");
 
@@ -123,6 +124,43 @@ describe("notification hooks", () => {
     release({ updated: 1, unread_count: 3 });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(client.getQueryData<{ unread_count: number }>(notificationKeys.counts(w))?.unread_count).toBe(3);
+  });
+
+  // S-251: a read row swiped on the phone is unread again at once, in the list's pages and Home's plain page alike;
+  // the bell and the Unread tab rise by the rows that really changed, then take the core's own count.
+  it("shows a read row unread at once in every list, raises the count by the rows that changed, and takes the core's", async () => {
+    const { client, Wrapper } = wrapper();
+    const seen = "2026-10-16T16:40:00Z";
+    const read = notice({ seen_at: seen, read_at: "2026-10-16T16:41:00Z" });
+    const stillUnread = notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", seen_at: seen });
+    client.setQueryData<InfiniteData<NotificationFeed>>(notificationKeys.feed(w, "all"), {
+      pages: [feedPage([read, stillUnread])],
+      pageParams: [undefined],
+    });
+    client.setQueryData<NotificationFeed>([...notificationKeys.feed(w, "all"), "home"], feedPage([read]));
+    client.setQueryData(notificationKeys.counts(w), { unseen_count: 0, unread_count: 3, needs_action_count: 2 });
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    let release: (value: unknown) => void = () => undefined;
+    apiRequest.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+    apiRequest.mockResolvedValue({ unseen_count: 0, unread_count: 7, needs_action_count: 2 });
+    const { result } = renderHook(() => useMarkNotificationsUnread(w), { wrapper: Wrapper });
+    act(() => result.current.mutate({ ids: [read.id, stillUnread.id] }));
+    const paged = () => client.getQueryData<InfiniteData<NotificationFeed>>(notificationKeys.feed(w, "all"))?.pages[0]?.items;
+    await waitFor(() => expect(paged()?.[0]?.read_at).toBeNull());
+    expect(client.getQueryData<NotificationFeed>([...notificationKeys.feed(w, "all"), "home"])?.items[0]?.read_at).toBeNull();
+    // It stays where it was under New or Earlier.
+    expect(paged()?.[0]?.seen_at).toBe(seen);
+    expect(paged()?.[1]).toEqual(stillUnread);
+    // One row changed, though it sits in two lists.
+    expect(client.getQueryData<{ unread_count: number }>(notificationKeys.counts(w))?.unread_count).toBe(4);
+    expect(apiRequest.mock.calls[0]?.slice(1)).toEqual([
+      `${base}/unread`,
+      { method: "POST", body: JSON.stringify({ ids: [read.id, stillUnread.id] }) },
+    ]);
+    release({ updated: 1, unread_count: 6 });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(client.getQueryData<{ unread_count: number }>(notificationKeys.counts(w))?.unread_count).toBe(6);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: notificationKeys.all(w) });
   });
 
   it("marks everything up to now as seen", async () => {
