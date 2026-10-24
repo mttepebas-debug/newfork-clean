@@ -39,7 +39,7 @@ describe("a notification row", () => {
     const [dotColumn, tileColumn] = /grid-template-columns\s*:\s*(\d+)px (\d+)px/.exec(swipe)?.slice(1).map(Number) ?? [];
     const gap = Number(/gap\s*:\s*(\d+)px/.exec(swipe)?.[1]);
     expect(tileColumn).toBe(32);
-    expect(rowPadding + px(dot, "margin-left") + px(dot, "width")).toBe(rowPadding + dotColumn + gap);
+    expect(rowPadding + px(dot, "margin-left") + px(dot, "width")).toBe(rowPadding + Number(dotColumn) + gap);
     // Inside its own box: the row cuts off whatever is outside it.
     expect(ruleBody((head) => head === "button.ni-dot:focus-visible")).toMatch(/outline\s*:\s*2px solid var\(--theme-focus\)/);
     expect(ruleBody((head) => head === "button.ni-dot:focus-visible")).toMatch(/outline-offset\s*:\s*-2px/);
