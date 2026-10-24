@@ -75,7 +75,8 @@ test("a manager opens time off from the notification panel, approves it, and the
   const request = sql(`select id from public.time_off_requests
     where employee_id = tests.id('${run}:${asker.label}') and kind = 'leave';`);
 
-  // Ayse's menu counts it; the panel shows it under Needs action, and Review opens it where it is answered.
+  // Ayse's menu counts it; the panel shows it under Needs action in two short lines (S-248, S-251), and the
+  // row itself opens it where it is answered (no Review button).
   const ayse = await signedIn(browser, "ayse");
   await ayse.goto("/app/workspace");
   const menuItem = ayse.getByRole("navigation", { name: "Primary" }).getByRole("button", { name: /^Notifications, \d+ unread$/ });
@@ -83,8 +84,10 @@ test("a manager opens time off from the notification panel, approves it, and the
   const panel = await openPanel(ayse);
   await panel.getByRole("tab", { name: /^Needs action/ }).click();
   const row = panel.getByRole("listitem").filter({ hasText: `${asker.short} asks for time off` });
-  await expect(row).toContainText(note);
-  await row.getByRole("button", { name: "Review", exact: true }).click();
+  await expect(row).toContainText("Decide before it starts");
+  await expect(row.getByRole("button", { name: "Review" })).toHaveCount(0);
+  const asks = `${asker.short} asks for time off`.replace(/\./g, "\\.");
+  await row.getByRole("button", { name: new RegExp(`^(Unread: )?${asks}$`) }).click();
   await expect(ayse).toHaveURL(`/app/schedule/requests?type=time_off&request=${request}`);
   const drawer = ayse.getByRole("dialog", { name: "Review time off" });
   await drawer.getByRole("button", { name: "Approve", exact: true }).click();

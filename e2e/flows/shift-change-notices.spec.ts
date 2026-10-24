@@ -56,7 +56,8 @@ test("a release, its request and the decision each reach the people they change"
   await panel.getByRole("tab", { name: /^Needs action/ }).click();
   const offer = panel.getByRole("listitem").filter({ hasText: "Extra shift on" }).filter({ hasText: "Emre P. can't make it" });
   await expect(offer).toHaveCount(1);
-  await offer.getByRole("button", { name: /Extra shift on/ }).first().click();
+  // The row's own button opens it; the unread dot before it only reads it (S-251).
+  await offer.getByRole("button", { name: /^(Unread: )?Extra shift on/ }).click();
   await expect(teammate).toHaveURL(new RegExp(`/app/employee-hub/shift-hub\\?case=${caseId}`));
   await teammate.getByRole("button", { name: "I’ll take it" }).click();
   await expect
