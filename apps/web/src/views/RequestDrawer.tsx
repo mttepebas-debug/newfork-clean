@@ -12,7 +12,13 @@ import "./request-drawer.css";
 // bottom with a handle: pulled down by its head, or a tap on the dimmed list, it closes.
 
 export type DrawerTone = "warn" | "ok" | "red" | "grey";
-export type DrawerTab<Key extends string> = { key: Key; label: string; count?: number };
+export type DrawerTab<Key extends string> = {
+  key: Key;
+  label: string;
+  count?: number;
+  /** Opt-in: the tab's spoken name ("Files, 2 files"); the badge is then left out of it. */
+  name?: string;
+};
 export type DrawerNotice = { text: string; tone?: "warning" | "error" };
 
 export function RequestDrawer<Key extends string>({
@@ -30,6 +36,11 @@ export function RequestDrawer<Key extends string>({
   onClose,
   footer,
   footerAlert,
+  strip,
+  focusTitle = false,
+  tabsLabel = "Request sections",
+  homeEndTabs = false,
+  closeRefused = false,
   children,
 }: {
   /** The request's kind, left of the title; the sub line then sits under the title too. */
@@ -54,6 +65,19 @@ export function RequestDrawer<Key extends string>({
    * so neither moves (UI-FIELDMSG). The footer scrolls, so it sits between.
    */
   footerAlert?: ReactNode;
+  /**
+   * Opt-in (Documents, A2 Tur 6): a row above the head row, on the head's sky (Previous / Next and its own X);
+   * the head row then has no X.
+   */
+  strip?: ReactNode;
+  /** Opt-in: the title takes the drawer's first focus (CatalogDrawer) and can end in an ellipsis. */
+  focusTitle?: boolean;
+  /** The tablist's name. */
+  tabsLabel?: string;
+  /** Opt-in: Home and End move to the first and the last tab, as the arrows move to the next. */
+  homeEndTabs?: boolean;
+  /** Opt-in: a pull past the threshold puts the card back instead of closing it (the drawer is busy). */
+  closeRefused?: boolean;
   children: ReactNode;
 }) {
   const id = useId();
@@ -80,7 +104,7 @@ export function RequestDrawer<Key extends string>({
     if (!held) return;
     held.sheet.classList.remove("is-dragging");
     held.sheet.classList.add("is-settling");
-    if (held.dy > Math.min(140, held.sheet.offsetHeight / 4)) {
+    if (held.dy > Math.min(140, held.sheet.offsetHeight / 4) && !closeRefused) {
       held.sheet.style.transform = "translateY(100%)";
       window.setTimeout(onClose, 180);
     } else {
@@ -118,11 +142,12 @@ export function RequestDrawer<Key extends string>({
     <div className="rd" ref={root}>
       <header className="rd-head" {...pullHandlers}>
         <span className="rd-grab" aria-hidden />
+        {strip}
         <div className="rd-head-row">
           {icon ? <span className="rd-head-icon">{icon}</span> : null}
           <div className="rd-head-text">
-            <h2>
-              {title}
+            <h2 {...(focusTitle ? { tabIndex: -1, "data-drawer-autofocus": "" } : {})}>
+              {focusTitle ? <span className="rd-title">{title}</span> : title}
               {type ? (
                 <>
                   {" "}
@@ -134,9 +159,11 @@ export function RequestDrawer<Key extends string>({
             {kicker ? <p className="rd-kicker">{kicker}</p> : null}
             {icon ? subLine : null}
           </div>
-          <button type="button" className="rd-close" aria-label="Close details" onClick={onClose}>
-            <X size={18} aria-hidden />
-          </button>
+          {strip ? null : (
+            <button type="button" className="rd-close" aria-label="Close details" onClick={onClose}>
+              <X size={18} aria-hidden />
+            </button>
+          )}
         </div>
         {icon ? null : subLine}
         {notice ? (
@@ -150,11 +177,14 @@ export function RequestDrawer<Key extends string>({
         <div
           className="rd-tabs"
           role="tablist"
-          aria-label="Request sections"
+          aria-label={tabsLabel}
           onKeyDown={(event) => {
-            if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+            const ends = homeEndTabs && (event.key === "Home" || event.key === "End");
+            if (event.key !== "ArrowRight" && event.key !== "ArrowLeft" && !ends) return;
             const at = tabs.findIndex((item) => item.key === tab);
-            const next = tabs[(at + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]!;
+            const next = ends
+              ? tabs[event.key === "Home" ? 0 : tabs.length - 1]!
+              : tabs[(at + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]!;
             event.preventDefault();
             switchTo(next.key);
             event.currentTarget.querySelector<HTMLElement>(`[data-tab="${next.key}"]`)?.focus();
@@ -170,10 +200,15 @@ export function RequestDrawer<Key extends string>({
               aria-selected={item.key === tab}
               aria-controls={`${id}-panel`}
               tabIndex={item.key === tab ? 0 : -1}
+              aria-label={item.name}
               onClick={() => switchTo(item.key)}
             >
               {item.label}
-              {item.count ? <span className="rd-badge">{item.count}</span> : null}
+              {item.count ? (
+                <span className="rd-badge" aria-hidden={item.name ? true : undefined}>
+                  {item.count}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
