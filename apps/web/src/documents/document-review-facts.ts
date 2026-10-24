@@ -53,6 +53,28 @@ export function formatDate(date: string): string {
   }).format(new Date(`${date}T00:00:00Z`));
 }
 
+/** A calendar date with its weekday ("Wed, Oct 14"), never moved by a zone; the year only when it is not this year. */
+export function formatCalendarDay(date: string, now: Date): string {
+  const at = new Date(`${date}T00:00:00Z`);
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...(at.getUTCFullYear() === now.getUTCFullYear() ? {} : { year: "numeric" }),
+    timeZone: "UTC",
+  }).format(at);
+}
+
+/** The day of a moment in the document's zone, as a plain date ("Oct 11, 2024"). */
+export function formatDateIn(iso: string, zone: string | null): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: zoneOf(zone),
+  }).format(new Date(iso));
+}
+
 /** Whole days left before a deadline ("7 days left"), then "less than a day left", then "overdue". */
 export function timeLeft(deadline: string, now: Date): string {
   const left = Date.parse(deadline) - now.getTime();

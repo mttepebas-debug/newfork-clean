@@ -7,7 +7,9 @@ import {
   documentFacts,
   fileMeta,
   firstName,
+  formatCalendarDay,
   formatDate,
+  formatDateIn,
   formatDay,
   formatMoment,
   headSub,
@@ -83,6 +85,16 @@ describe("dates in the document's zone", () => {
   });
   it("says a calendar date as written, whatever the zone", () => {
     expect(formatDate("2029-09-30")).toBe("Sep 30, 2029");
+  });
+  // mockup tur2-a2.js (expired): "Expired on Thu, Oct 15", like every other day in the drawer.
+  it("says a calendar date with its weekday, the year only when it is another one", () => {
+    expect(formatCalendarDay("2026-10-14", now)).toBe("Wed, Oct 14");
+    expect(formatCalendarDay("2025-12-31", now)).toBe("Wed, Dec 31, 2025");
+  });
+  // mockup tur2-a2.js (Last approved): "approved Oct 11, 2024", the day in the document's zone.
+  it("says the day of a moment in the document's zone as a plain date", () => {
+    expect(formatDateIn("2024-10-12T03:00:00Z", zone)).toBe("Oct 11, 2024");
+    expect(formatDateIn("2026-10-21T23:12:00Z", zone)).toBe("Oct 21, 2026");
   });
 });
 

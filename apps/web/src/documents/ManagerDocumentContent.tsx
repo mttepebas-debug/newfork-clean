@@ -28,7 +28,9 @@ import {
 import {
   documentFacts,
   firstName,
+  formatCalendarDay,
   formatDate,
+  formatDateIn,
   formatDay,
   keptRenewal,
   shownVersion,
@@ -411,7 +413,7 @@ export function ManagerDocumentContent({
       <p className="docr-call red">
         <TriangleAlert size={18} aria-hidden />
         <span>
-          <b>{obligation.expiry_date ? `Expired on ${formatDate(obligation.expiry_date)}` : "Expired"}</b>
+          <b>{obligation.expiry_date ? `Expired on ${formatCalendarDay(obligation.expiry_date, now)}` : "Expired"}</b>
           <span>
             {obligation.deadline_at && Date.parse(obligation.deadline_at) > now.getTime()
               ? `${first} needs to send a new one by ${formatDay(obligation.deadline_at, obligation.timezone, now)}.`
@@ -558,9 +560,7 @@ export function ManagerDocumentContent({
   };
   const sent = version?.submitted_at ? `Sent ${formatDay(version.submitted_at, obligation.timezone, now)}` : null;
   const approvedOn =
-    obligation.status === "expired" && version?.reviewed_at
-      ? formatDay(version.reviewed_at, obligation.timezone, now)
-      : null;
+    obligation.status === "expired" && version?.reviewed_at ? formatDateIn(version.reviewed_at, obligation.timezone) : null;
   const fileSection = (
     <ManagerDocumentFiles
       {...shared}

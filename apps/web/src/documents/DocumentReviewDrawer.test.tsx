@@ -13,7 +13,7 @@ import {
   type DocumentObligation,
 } from "@newfork/shared";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
-import { formatDay } from "./document-review-facts";
+import { formatCalendarDay, formatDay } from "./document-review-facts";
 import { createReviewSitting, type ReviewSitting } from "./review-sitting";
 import { RequestError } from "../lib/request-error";
 import {
@@ -2035,6 +2035,11 @@ describe("manager review drawer", () => {
       expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "History"]);
       expect(within(last).getByRole("button", { name: "Open certificate.pdf" })).toBeTruthy();
       expect(screen.queryByRole("button", { name: /^1 file/ })).toBeNull();
+      // The mockup's dates: the day it expired with its weekday, the day it was approved as a plain date.
+      expect(document.querySelector(".docr-call b")?.textContent).toBe(
+        `Expired on ${formatCalendarDay("2026-10-14", new Date())}`,
+      );
+      expect(within(last).getByText("PDF · 100 B · approved Oct 11, 2024")).toBeTruthy();
     });
     // The server hands out kept files only (23 Oct rule: refused means hidden): a rejected file shows no eye.
     it("shows the eye only on files that open", async () => {
