@@ -222,10 +222,20 @@ export function ManagerDocumentContent({
     await refresh();
     setChanged(true);
   };
-  const started = () => setChanged(false);
+  // One red band, for the last command that failed: a command that starts takes it away, so a refusal never
+  // stands over a later command that went through.
+  const [failure, setFailure] = useState<{ error: unknown; download: boolean } | null>(null);
+  const started = () => {
+    setChanged(false);
+    setFailure(null);
+  };
+  const failed = (download: boolean) => async (error: unknown) => {
+    setFailure({ error, download });
+    await conflict(error);
+  };
   const review = useMutation({
     onMutate: started,
-    onError: conflict,
+    onError: failed(false),
     mutationFn: ({ command }: { command: ReturnType<typeof reviewCommand>; result: ReviewResult }) =>
       reviewDocument(audience, id, command),
     onSuccess: async (_, { command, result: done }) => {
@@ -240,13 +250,13 @@ export function ManagerDocumentContent({
   });
   const download = useMutation({
     onMutate: started,
-    onError: conflict,
+    onError: failed(true),
     mutationFn: ({ submissionId, fileId }: { submissionId: string; fileId: string }) =>
       downloadDocument(audience, id, submissionId, fileId),
   });
   const timezone = useMutation({
     onMutate: started,
-    onError: conflict,
+    onError: failed(false),
     mutationFn: () =>
       setDocumentTimezone(audience, id, {
         employee_revision: detail.timezone_settings!.employee_revision,
@@ -260,7 +270,7 @@ export function ManagerDocumentContent({
   });
   const extension = useMutation({
     onMutate: started,
-    onError: conflict,
+    onError: failed(false),
     mutationFn: ({ days, reason }: { days: number; reason: string; version: string | null }) =>
       extendDocumentDeadline(audience, id, { revision: obligation.revision, additional_days: days, reason }),
     onSuccess: async (_, { days, version }) => {
@@ -276,7 +286,7 @@ export function ManagerDocumentContent({
   // Excuse, or Ask for it again: today's exemption and its removal (K1 decisions 1 and 3).
   const exemption = useMutation({
     onMutate: started,
-    onError: conflict,
+    onError: failed(false),
     mutationFn: ({ exempt, reason }: { exempt: boolean; reason: string; version: string | null }) =>
       setDocumentExemption(audience, id, { revision: obligation.revision, exempt, reason }),
     onSuccess: async (_, { exempt, version }) => {
@@ -290,12 +300,12 @@ export function ManagerDocumentContent({
     },
   });
   const busy = extension.isPending || exemption.isPending || review.isPending || timezone.isPending;
-  const error = extension.error ?? exemption.error ?? review.error ?? download.error ?? timezone.error;
+  const error = failure?.error;
   const shownError =
     !error || changedMeanwhile(error)
       ? null
       : error instanceof RequestError && (error.status ?? 0) >= 500
-        ? error === download.error
+        ? failure.download
           ? "Couldn't open the file. Try again."
           : "Couldn't save. Try again."
         : errorText(error);

@@ -3115,6 +3115,36 @@ describe("More options", () => {
     expect(screen.queryByRole("region", { name: "More options" })).toBeNull();
   });
 
+  // K1 fix pass: one red band, for the last command; a refusal does not outlive a later command that went through.
+  it("drops an earlier refusal's band once a later command goes through", async () => {
+    const time = clock();
+    try {
+      vi.mocked(getDocument).mockResolvedValue(owed());
+      vi.mocked(setDocumentExemption).mockRejectedValue(
+        new RequestError("Not allowed", "authz.missing_permission", undefined, 403),
+      );
+      page();
+      fireEvent.click(await screen.findByRole("button", { name: /^Excuse Test/ }));
+      fireEvent.change(within(screen.getByRole("group", { name: "Excuse Test" })).getByLabelText("Reason"), {
+        target: { value: "Role exception" },
+      });
+      time.tick(450);
+      fireEvent.click(save());
+      expect((await screen.findByRole("alert")).textContent).toBe("Not allowed");
+      fireEvent.click(head(/^Extend deadline/));
+      const panel = screen.getByRole("group", { name: "Extend deadline" });
+      fireEvent.click(within(panel).getByRole("button", { name: "+3 days" }));
+      fireEvent.change(within(panel).getByLabelText("Reason"), { target: { value: "Clinic closed" } });
+      vi.mocked(getDocument).mockResolvedValue({ ...owed(2), obligation: { ...owed(2).obligation, deadline_at: later(3) } });
+      time.tick(450);
+      fireEvent.click(save());
+      await waitFor(() => expect(dockLine()).toMatch(/^Deadline extended 3 days · /));
+      expect(screen.queryByRole("alert")).toBeNull();
+    } finally {
+      time.restore();
+    }
+  });
+
   it("offers no card to excuse a policy to sign, and no options to a manager who may only read", async () => {
     const policy = owed();
     policy.obligation.kind = "acknowledgement";
