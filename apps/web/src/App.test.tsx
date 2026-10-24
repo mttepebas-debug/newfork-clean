@@ -280,7 +280,8 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-08-17T12:00:00Z"));
   appQueryClient.clear();
-  window.history.pushState({}, "", "/");
+  // "/" is the public landing page; the app tests start at the app itself.
+  window.history.pushState({}, "", "/app");
   window.localStorage.clear();
   testAuth.role = null;
   testAuth.nextRole = "owner";

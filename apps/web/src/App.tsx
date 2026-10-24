@@ -32,6 +32,12 @@ const EmployeeOnboardingPreview = import.meta.env.DEV
   ? lazy(() => import("./dev/EmployeeOnboardingPreview"))
   : () => null;
 const PublicTrustLayout = lazy(() => import("./public/PublicTrustLayout"));
+const LandingPage = lazy(() => import("./landing/LandingPage"));
+const CookiesPage = lazy(() =>
+  import("./public/PublicTrustPages").then((module) => ({
+    default: module.CookiesPage,
+  })),
+);
 const PrivacyPage = lazy(() =>
   import("./public/PublicTrustPages").then((module) => ({
     default: module.PrivacyPage,
@@ -158,11 +164,13 @@ export function App() {
             }
           >
             <Routes>
+              <Route path="/" element={<LandingPage />} />
               <Route element={<PublicTrustLayout />}>
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/accessibility" element={<AccessibilityPage />} />
                 <Route path="/contact" element={<ContactPage />} />
+                <Route path="/cookies" element={<CookiesPage />} />
                 <Route
                   path="/your-privacy-choices"
                   element={<PrivacyChoicesPage />}

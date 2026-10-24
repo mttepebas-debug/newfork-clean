@@ -13,6 +13,7 @@ describe("Phase 9 public trust pages", () => {
     ["/terms", "Terms"],
     ["/accessibility", "Accessibility"],
     ["/contact", "Contact"],
+    ["/cookies", "Cookie policy"],
     ["/your-privacy-choices", "Your privacy choices"],
   ])("opens %s without authentication", async (path, heading) => {
     window.history.pushState({}, "", path);
