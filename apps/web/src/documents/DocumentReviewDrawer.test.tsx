@@ -1710,6 +1710,62 @@ describe("manager review drawer", () => {
     );
   });
 
+  // A2 Tur 6: a move slides the person, the tabs and the body in from its side; the strip and the dock stay.
+  it.each([
+    [false, "requirement", "second", "translateX(24px)", 220],
+    [false, "second", "requirement", "translateX(-24px)", 220],
+    [true, "requirement", "second", undefined, 120],
+  ] as const)(
+    "slides a move in from its side (reduced motion %s, %s to %s)",
+    async (calm, from, to, transform, duration) => {
+      const animate = vi.fn();
+      const original = HTMLElement.prototype.animate;
+      HTMLElement.prototype.animate = animate as unknown as typeof original;
+      const matchMedia = window.matchMedia;
+      window.matchMedia = ((query: string) => ({
+        matches: calm && query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })) as unknown as typeof window.matchMedia;
+      try {
+        const { show } = page(false, { queue: [row(), sam()] });
+        show(from);
+        await screen.findByRole("dialog", { name: from === "second" ? /Sam Lee/ : /Test Employee/ });
+        animate.mockClear();
+        show(to);
+        await screen.findByRole("dialog", { name: to === "second" ? /Sam Lee/ : /Test Employee/ });
+        const moved = animate.mock.contexts.map((el) => (el as HTMLElement).className);
+        expect(moved).toEqual(["rd-head-row", "rd-tabs", "rd-body"]);
+        for (const [frames, timing] of animate.mock.calls) {
+          expect(frames[0]).toEqual(transform ? { opacity: 0.2, transform } : { opacity: 0.2 });
+          expect(timing).toEqual({ duration, easing: "ease-out" });
+        }
+      } finally {
+        HTMLElement.prototype.animate = original;
+        window.matchMedia = matchMedia;
+      }
+    },
+  );
+
+  // A2 Tur 6: the second click of the double click that opened the drawer lands on the dim; it must not close it.
+  it("ignores the dim for a moment after opening", async () => {
+    const now = vi.spyOn(performance, "now").mockReturnValue(10_000);
+    try {
+      const { onClose } = page();
+      await screen.findByRole("dialog", { name: /Safety certificate/ });
+      const dim = document.querySelector<HTMLElement>(".catalog-drawer-backdrop")!;
+      now.mockReturnValue(10_300);
+      fireEvent.pointerDown(dim);
+      expect(onClose).not.toHaveBeenCalled();
+      now.mockReturnValue(10_600);
+      fireEvent.pointerDown(dim);
+      expect(onClose).toHaveBeenCalledOnce();
+    } finally {
+      now.mockRestore();
+    }
+  });
+
   it("closes from its X or Escape at once", async () => {
     const { onClose } = page();
     const dialog = await screen.findByRole("dialog", { name: /Safety certificate/ });
