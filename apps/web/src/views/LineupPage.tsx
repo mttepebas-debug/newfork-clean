@@ -7,6 +7,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { clockIn, todayIn } from "../lib/today";
 import { usePhoneWidth } from "../lib/usePhoneWidth";
+import { useSetSearchParam } from "../lib/useSetSearchParam";
 import { useScheduleQuery, useScheduleZone } from "../schedule/hooks/useScheduleQuery";
 import { useScheduleRealtime } from "../schedule/hooks/useScheduleRealtime";
 import { lineupDay, unpublishedCount, type LineupLocation } from "../schedule/lineup";
@@ -49,7 +50,8 @@ export function LineupPage() {
   const workspaceId = context?.workspace.id ?? null;
   const zone = useScheduleZone(workspaceId);
   const today = todayIn(zone);
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
+  const setParam = useSetSearchParam();
   const requested = params.get("date") ?? "";
   const date = isoDate.test(requested) ? requested : today;
   const locationId = params.get("location") ?? "";
@@ -96,17 +98,6 @@ export function LineupPage() {
   // all (PLAN §3).
   const lineups = useMemo(() => (day.data ? lineupDay(day.data, model ?? null) : []), [day.data, model]);
 
-  function setParam(key: string, value: string) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        if (value) next.set(key, value);
-        else next.delete(key);
-        return next;
-      },
-      { replace: true },
-    );
-  }
   const goTo = (day: string) => {
     if (publishing) return;
     setPublishOpen(false);
