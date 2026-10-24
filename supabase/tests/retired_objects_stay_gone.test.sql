@@ -602,7 +602,74 @@ insert into retired (kind, name, step) values
   ('function_signature', 'app_private.owner_setup_checklist_item_ids()', 'checklist-drop'),
   ('function_signature', 'public.get_owner_setup_checklist_progress_service(uuid, uuid)', 'checklist-drop'),
   ('function_signature', 'public.mark_owner_setup_checklist_item_service(uuid, uuid, text)', 'checklist-drop'),
-  ('function_signature', 'public.set_owner_setup_checklist_closed_service(uuid, uuid, boolean)', 'checklist-drop');
+  ('function_signature', 'public.set_owner_setup_checklist_closed_service(uuid, uuid, boolean)', 'checklist-drop'),
+  -- time off rebuild D8: the old time off (votes, deadlines, voted cancellation, shortening) leaves for the
+  -- new one (time_off_requests); its rows go without a backup (Mert, KARARLAR S-239 (7), S-244).
+  ('table', 'schedule_time_off_requests', 'time-off-d8'), ('table', 'schedule_time_off_segments', 'time-off-d8'), ('table', 'schedule_time_off_events', 'time-off-d8'),
+  ('table', 'time_off_votes', 'time-off-d8'), ('table', 'time_off_required_locations', 'time-off-d8'), ('table', 'time_off_assignment_releases', 'time-off-d8'),
+  ('table', 'time_off_cancellation_links', 'time-off-d8'), ('table', 'time_off_cancellation_periods', 'time-off-d8'), ('table', 'time_off_commands', 'time-off-d8'),
+  ('private_table', 'time_off_sweep_failures', 'time-off-d8'),
+  ('type', 'time_off_request_status', 'time-off-d8'), ('type', 'time_off_segment_status', 'time-off-d8'),
+  ('cron', 'time-off-deadlines', 'time-off-d8'), ('notification', 'time_off.shortened', 'time-off-d8'),
+  ('column', 'workspace_scheduling_settings.time_off_lead_hours', 'time-off-d8'), ('action', 'time_off.revoke', 'time-off-d8'),
+  ('function', 'submit_time_off_service', 'time-off-d8'), ('function', 'decide_time_off_service', 'time-off-d8'), ('function', 'revoke_time_off_service', 'time-off-d8'),
+  ('function', 'shorten_time_off_service', 'time-off-d8'), ('function', 'request_time_off_cancellation_service', 'time-off-d8'), ('function', 'employee_request_action_service', 'time-off-d8'),
+  ('function', 'get_schedule_requests_service', 'time-off-d8'), ('function', 'get_schedule_requests_closed_service', 'time-off-d8'), ('function', 'time_off_cancellation_context', 'time-off-d8'),
+  ('function', 'time_off_cancelled_ranges', 'time-off-d8'), ('function', 'time_off_decided_ranges', 'time-off-d8'), ('function', 'time_off_effective_ranges', 'time-off-d8'),
+  ('function', 'time_off_event_is_shortening', 'time-off-d8'), ('function', 'time_off_event_released_assignments', 'time-off-d8'), ('function', 'time_off_period_span', 'time-off-d8'),
+  ('function', 'time_off_request_assignment_count', 'time-off-d8'), ('function', 'time_off_request_periods', 'time-off-d8'), ('function', 'time_off_resolve_period', 'time-off-d8'),
+  ('function', 'guard_time_off_assignment_release', 'time-off-d8'), ('function', 'guard_time_off_cancellation_history', 'time-off-d8'), ('function', 'guard_time_off_request_identity', 'time-off-d8'),
+  ('function', 'guard_time_off_requested_period', 'time-off-d8'), ('function', 'shorten_time_off', 'time-off-d8'), ('function', 'time_off_authorize', 'time-off-d8'),
+  ('function', 'time_off_days_text', 'time-off-d8'), ('function', 'time_off_decide_by', 'time-off-d8'), ('function', 'time_off_deciding_locations', 'time-off-d8'),
+  ('function', 'time_off_display_status', 'time-off-d8'), ('function', 'time_off_finalize', 'time-off-d8'), ('function', 'time_off_impact', 'time-off-d8'),
+  ('function', 'time_off_impact_seen', 'time-off-d8'), ('function', 'time_off_live_locations', 'time-off-d8'), ('function', 'time_off_location_staffed', 'time-off-d8'),
+  ('function', 'time_off_location_voters', 'time-off-d8'), ('function', 'time_off_progress', 'time-off-d8'), ('function', 'time_off_release_shifts', 'time-off-d8'),
+  ('function', 'time_off_remind', 'time-off-d8'), ('function', 'time_off_request_item', 'time-off-d8'), ('function', 'time_off_shifts_fingerprint', 'time-off-d8'),
+  ('function', 'time_off_state', 'time-off-d8'), ('function', 'time_off_sweep', 'time-off-d8'), ('function', 'time_off_tell', 'time-off-d8'),
+  ('function', 'time_off_tell_shortened', 'time-off-d8'),
+  ('function_signature', 'public.submit_time_off_service(uuid, uuid, jsonb, text, text, uuid)', 'time-off-d8'),
+  ('function_signature', 'public.decide_time_off_service(uuid, uuid, uuid, text, text, text)', 'time-off-d8'),
+  ('function_signature', 'public.revoke_time_off_service(uuid, uuid, uuid, integer, text)', 'time-off-d8'),
+  ('function_signature', 'public.shorten_time_off_service(uuid, uuid, uuid, integer, jsonb, text, uuid)', 'time-off-d8'),
+  ('function_signature', 'public.request_time_off_cancellation_service(uuid, uuid, uuid, integer, jsonb, text, uuid)', 'time-off-d8'),
+  ('function_signature', 'public.employee_request_action_service(uuid, uuid, uuid, text, text, integer)', 'time-off-d8'),
+  ('function_signature', 'public.get_schedule_requests_service(uuid, uuid, text, uuid, text, timestamp with time zone, integer)', 'time-off-d8'),
+  ('function_signature', 'public.get_schedule_requests_closed_service(uuid, uuid, text[], uuid, text, integer, integer)', 'time-off-d8'),
+  ('function_signature', 'public.time_off_cancellation_context(uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'public.time_off_cancelled_ranges(uuid)', 'time-off-d8'),
+  ('function_signature', 'public.time_off_decided_ranges(uuid)', 'time-off-d8'),
+  ('function_signature', 'public.time_off_effective_ranges(uuid)', 'time-off-d8'),
+  ('function_signature', 'public.time_off_event_is_shortening(uuid, uuid, jsonb)', 'time-off-d8'),
+  ('function_signature', 'public.time_off_event_released_assignments(uuid, uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'public.time_off_period_span(uuid)', 'time-off-d8'),
+  ('function_signature', 'public.time_off_request_assignment_count(uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'public.time_off_request_periods(uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'public.time_off_resolve_period(jsonb, text)', 'time-off-d8'),
+  ('function_signature', 'public.guard_time_off_assignment_release()', 'time-off-d8'),
+  ('function_signature', 'public.guard_time_off_cancellation_history()', 'time-off-d8'),
+  ('function_signature', 'public.guard_time_off_request_identity()', 'time-off-d8'),
+  ('function_signature', 'public.guard_time_off_requested_period()', 'time-off-d8'),
+  ('function_signature', 'app_private.shorten_time_off(uuid, uuid, uuid, tstzmultirange, text, jsonb)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_authorize(uuid, uuid, text, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_days_text(uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_decide_by(uuid, timestamp with time zone)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_deciding_locations(uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_display_status(uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_finalize(uuid, uuid, text, uuid, text, boolean, boolean)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_impact(uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_impact_seen(uuid, uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_live_locations(uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_location_staffed(uuid, uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_location_voters(uuid, uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_progress(uuid, uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_release_shifts(uuid, uuid, uuid, integer, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_remind(uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_request_item(uuid, uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_shifts_fingerprint(jsonb)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_state(uuid, uuid)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_sweep(integer)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_tell(uuid, uuid, text, uuid, text)', 'time-off-d8'),
+  ('function_signature', 'app_private.time_off_tell_shortened(uuid, uuid, uuid, uuid, tstzmultirange, text)', 'time-off-d8');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -712,9 +779,15 @@ select ok(
   ),
   'the Line Up offer request kind stays gone'
 );
-select ok(
-  not ('partially_approved' = any (enum_range(null::public.time_off_request_status)::text[])),
-  'a partly approved time-off request stays gone'
+-- D8: the status enum this line read is itself retired above; nothing may still read the old tables.
+select is(
+  array(
+    select n.nspname || '.' || p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname in ('public', 'app_private') and p.prokind in ('f', 'p')
+      and pg_get_functiondef(p.oid) ~ '(schedule_time_off_|time_off_votes|time_off_required_locations|time_off_assignment_releases|time_off_cancellation_(links|periods)|time_off_commands|[^_]time_off_sweep_failures)'
+    order by 1
+  ),
+  '{}'::text[], 'no function reads the old time off tables'
 );
 select ok(
   not exists (

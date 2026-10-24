@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(87);
+select plan(83);
 
 -- DAVET-ERISIM: a role change is an access change (the single-role service is gone). An employee role
 -- takes the employee slot and empties the management one; a management role goes beside the employee
@@ -170,13 +170,14 @@ select cmp_ok((select count(distinct name)::integer from somewhere_call), '>=', 
 -- A manager with no location, a manager missing a required document and an
 -- employee are refused with the reason; the owner passes.
 
+-- Time off rebuild D8: the old Requests reader (get_schedule_requests_service, requests.read "somewhere") went
+-- with the old time off; the new list, time_off_requests_service, asks time_off.decide of each person.
 create temporary table gate (action text primary key, statement text not null);
 insert into gate values
   ('schedule.export', $$select public.list_schedule_export_presets_service(%L, %L)$$),
   ('schedule.edit', $$select public.list_schedule_drafts_service(%L, %L, tests.week(0))$$),
   ('schedule.templates', $$select public.apply_schedule_template_service(%L, %L, gen_random_uuid(), 1, gen_random_uuid(), 'merge', array['__no_department__'])$$),
   ('schedule.templates.read', $$select public.list_schedule_templates_service(%L, %L)$$),
-  ('requests.read', $$select public.get_schedule_requests_service(%L, %L)$$),
   ('exchange.read', $$select public.shift_exchanges_read_service(%L, %L, true)$$),
   ('availability.team_read', $$select public.weekly_team_read_service(%L, %L)$$);
 
@@ -192,11 +193,11 @@ select is(pg_temp.at_gate('nur', g.action), '42501 authz.out_of_scope ' || g.act
 from gate g order by g.action;
 select is(pg_temp.at_gate('aydan', g.action), '42501 authz.document_blocked ' || g.action,
   g.action || ': a manager missing a required document is blocked')
-from gate g where g.action not in ('requests.read', 'exchange.read') order by g.action;
+from gate g where g.action <> 'exchange.read' order by g.action;
 -- ...but reads Requests and decides nothing there (EKRAN-02 K-S2).
 select is(pg_temp.at_gate('aydan', g.action), 'allowed',
   g.action || ': a manager missing a required document still reads Requests')
-from gate g where g.action in ('requests.read', 'exchange.read') order by g.action;
+from gate g where g.action = 'exchange.read' order by g.action;
 select is(pg_temp.at_gate('emre', g.action), '42501 authz.missing_permission ' || g.action,
   g.action || ': an employee does not hold the permission')
 from gate g order by g.action;

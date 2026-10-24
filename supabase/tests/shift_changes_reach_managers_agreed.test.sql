@@ -118,9 +118,12 @@ select ok(exists(select 1 from jsonb_array_elements(public.shift_exchanges_read_
   'Ayse finds the closed agreed swap by the date of the shift Veli gives');
 
 -- The closed list follows the same rule ------------------------------------------
+-- Time off rebuild D8: get_schedule_requests_closed_service (closed time off and closed shift changes in
+-- one list) went with the old time off. Requests reads closed shift changes from shift_exchanges_read_service's
+-- manager view; a closed one is a case there whose status is no longer open.
 create function pg_temp.closed(who text, target uuid) returns boolean language sql as $$
-  select exists(select 1 from jsonb_array_elements(public.get_schedule_requests_closed_service(tests.user('ag:' || who), tests.id('ag'),
-    array['cover', 'swap']) -> 'rows') r where r ->> 'id' = target::text)
+  select exists(select 1 from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('ag:' || who), tests.id('ag'), true,
+    tests.week(1), tests.week(1) + 6) -> 'cases') c where c ->> 'id' = target::text and c ->> 'status' <> 'open')
 $$;
 select ok(pg_temp.closed('ayse', tests.id('ag:case:cover')), 'Ayse''s closed list holds the cover closed after Veli asked');
 select ok(pg_temp.closed('ayse', tests.id('ag:case:swap')), 'and the swap closed after Veli accepted');

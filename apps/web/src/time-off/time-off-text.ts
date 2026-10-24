@@ -240,8 +240,6 @@ export function cancelRefusalText(reason: string | undefined): string {
       return "This time off is over.";
     case "time_off.changed":
       return "This time off changed. Check it again.";
-    case "time_off.not_found":
-      return "This time off is gone.";
     default:
       return "Couldn't send your cancellation request. Try again.";
   }
@@ -250,7 +248,6 @@ export function cancelRefusalText(reason: string | undefined): string {
 export function withdrawRefusalText(reason: string | undefined): string {
   if (reason === "time_off.not_pending") return "This request has an answer already, so it can't be withdrawn.";
   if (reason === "time_off.changed") return "This request changed. Check it again.";
-  if (reason === "time_off.not_found") return "This request is gone.";
   return "Couldn't withdraw your request. Try again.";
 }
 
@@ -313,8 +310,6 @@ export function answerRefusalText(reason: string | undefined): string {
       return "This request changed. Review it again.";
     case "time_off.not_pending":
       return "This request already has an answer.";
-    case "time_off.not_found":
-      return "This request is no longer available.";
     case "time_off.invalid":
       return "Approve or decline. A note can be up to 1000 characters.";
     case "authz.rank":
@@ -399,8 +394,6 @@ export function entryRefusalText(
       return { field: "person", text: `${first} needs a location before they can have time off.` };
     case "time_off.no_employee_access":
       return { field: "person", text: "Time off is only for people who work shifts." };
-    case "time_off.not_found":
-      return { field: "person", text: "This person is no longer in the workspace." };
     case "authz.rank":
       return { field: "person", text: "You can't add time off for yourself." };
     case "authz.document_blocked":

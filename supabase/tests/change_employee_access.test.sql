@@ -101,7 +101,8 @@ select is((select status from public.shift_exchange_cases where id = tests.id('c
 select isnt(coalesce((select c ->> 'stage' from jsonb_array_elements(public.shift_exchanges_read_service(pg_temp.who('can'), tests.id('ca'),
   true, tests.week(1), tests.week(1) + 6) -> 'cases') c where (c ->> 'id')::uuid = tests.id('ca:case:ali-4')), 'not listed'),
   'ready_for_manager', 'Can no longer has Dora''s answer to decide');
-select is((select status from public.schedule_time_off_requests where id = tests.id('ca:dora:time_off')), 'revoked',
+-- Time off rebuild D8: in the time off table, where a request waiting for an answer ends withdrawn.
+select is((select status from public.time_off_requests where id = tests.id('ca:dora:time_off')), 'withdrawn',
   'her time off is withdrawn');
 select ok(not exists (select 1 from public.employee_weekly_preferences p where p.employee_id = tests.id('ca:dora')),
   'her availability is gone');

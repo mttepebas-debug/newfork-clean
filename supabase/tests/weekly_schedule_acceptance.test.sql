@@ -68,8 +68,8 @@ select ok(not has_function_privilege('authenticated','public.prepare_weekly_sche
 select ok(not has_function_privilege('service_role','public.prepare_weekly_schedule_assignment(uuid,uuid,jsonb,jsonb)','execute'),'raw preparer is internal, not an impersonation RPC');
 select ok(not has_function_privilege('authenticated','public.assess_weekly_schedule_assignment_service(uuid,uuid,jsonb,uuid,uuid)','execute'),'employee has no raw assessment RPC');
 -- Publication reads use the same staged assessment and retained acceptance.
--- The leave is out of the way while they do: denied (a pending one is a note, FB-6.3).
-update public.schedule_time_off_requests set status='denied' where workspace_id=(select w from wp_fixture);
+-- The leave is out of the way while they do: declined (a pending one is a note, FB-6.3).
+update public.time_off_requests set status='declined',effective='{}' where workspace_id=(select w from wp_fixture);
 insert into public.schedule_drafts(id,workspace_id,week_start,name,created_by,updated_by)
  select 'ad421000-0000-4000-8000-000000000013',w,'2035-01-15','Weekly preflight',manager,manager from wp_fixture;
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
@@ -88,7 +88,8 @@ select is(jsonb_array_length(pg_temp.publication('{"findings":[{"code":"availabi
 create temp table preflight_fingerprint as select pg_temp.publication()->>'fingerprint' fp;
 update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,1,ranges}','[{"start":"19:00","end":"20:00"}]') where workspace_id=(select w from wp_fixture);
 select isnt(pg_temp.publication()->>'fingerprint',(select fp from preflight_fingerprint),'physical conflict changes invalidate publication preview');
-update public.schedule_time_off_requests set status='approved' where workspace_id=(select w from wp_fixture);
+update public.time_off_requests set status='approved',effective=tstzmultirange(tstzrange(starts_at,ends_at,'[)'))
+ where workspace_id=(select w from wp_fixture);
 select is(pg_temp.publication()->'findings'->0->>'conflict_severity','block','approved leave takes priority over the preference conflict');
 select is(pg_temp.publication()->>'status','hard_blocked','approved leave still blocks publication');
 select ok(pg_temp.publication()->'findings'->0->>'availability_state' is null,'real blocker cannot masquerade as an accepted weekly warning');
