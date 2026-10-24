@@ -2,9 +2,10 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { defaultDocumentLifecycleSettings } from "@newfork/shared";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RequestError } from "../lib/request-error";
-import { listDocuments } from "./document-data";
+import { getDocument, listDocuments } from "./document-data";
 import { EmployeeDocumentsList } from "./EmployeeDocumentsList";
 import EmployeeDocumentsPage from "./EmployeeDocumentsPage";
 
@@ -13,7 +14,12 @@ vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context: auth.context 
 vi.mock("./document-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./document-data")>()),
   listDocuments: vi.fn(),
+  getDocument: vi.fn(),
 }));
+// A drawer opened from the list waits for its document unless a test hands one over.
+beforeEach(() => {
+  vi.mocked(getDocument).mockReset().mockReturnValue(new Promise(() => {}));
+});
 
 describe("no access (FB-6.1.9)", () => {
   afterEach(() => {
@@ -126,6 +132,13 @@ describe("personal list (Account › Documents)", () => {
     expect(screen.getByRole("cell", { name: "Exempt" })).toBeTruthy();
   });
 
+  // K1 decision 4: only the manager reads a sent-back document as Missing; the person keeps Rejected.
+  it("keeps the person's own words for a document sent back", async () => {
+    vi.mocked(listDocuments).mockResolvedValue([{ ...obligation, status: "rejected" }] as never);
+    renderList(true);
+    expect(await screen.findByRole("cell", { name: "Rejected" })).toBeTruthy();
+  });
+
   it("keeps the full table everywhere else", async () => {
     vi.mocked(listDocuments).mockResolvedValue([obligation] as never);
     renderList(false);
@@ -190,9 +203,16 @@ describe("personal list (Account › Documents)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Status/ }));
     const chips = () =>
       Array.from(document.querySelectorAll("tbody .list-chip")).map((c) => c.textContent);
-    expect(chips()).toEqual(["Missing", "Expired", "Rejected"]);
+    const names = () =>
+      Array.from(document.querySelectorAll("tbody tr")).map((r) =>
+        (r.querySelector("td")?.textContent ?? "").replace("Downtown", ""),
+      );
+    // A manager reads a document sent back as Missing (K1 decision 4); the order is the status's weight.
+    expect(names()).toEqual(["Emery", "Drew", "Casey"]);
+    expect(chips()).toEqual(["Missing", "Expired", "Missing"]);
     fireEvent.click(screen.getByRole("button", { name: /Status/ }));
-    expect(chips()).toEqual(["Rejected", "Expired", "Missing"]);
+    expect(names()).toEqual(["Casey", "Drew", "Emery"]);
+    expect(chips()).toEqual(["Missing", "Expired", "Missing"]);
     fireEvent.click(screen.getByRole("button", { name: /^Completed/ }));
     expect(chips()).toEqual(["Completed", "Paused"]);
   });
@@ -384,7 +404,7 @@ describe("status tabs", () => {
   it("opens on the tab of the document a link opens", async () => {
     vi.mocked(listDocuments).mockReset().mockResolvedValue(rows as never);
     renderList(false, { initialRequirementId: "10000000-0000-4000-8000-000000000006" });
-    await screen.findByText("Gray");
+    await screen.findByRole("row", { name: /^Gray/ });
     expect(pressed()).toBe("Completed3");
   });
 
@@ -478,5 +498,194 @@ describe("a link from Home's Needs you", () => {
     // The link's location narrows the list, so the empty tab reads as a filter miss.
     await screen.findByRole("heading", { name: "No documents match these filters." });
     expect(screen.getByRole("button", { name: /^Needs review/ }).getAttribute("aria-pressed")).toBe("true");
+  });
+});
+
+// K1 (A2 Tur 6, Mert 23 Oct): the manager's list and the drawer it opens.
+describe("the manager's review drawer from the list", () => {
+  const person = (n: number) => `c3d4e5f6-a7b8-4c9d-8e0f-1a2b3c4d5e6${n}`;
+  const row = (n: number, status: string, employee_name: string, title = "Food handler card") => ({
+    ...detailOf(n).obligation,
+    status,
+    employee_name,
+    employee_id: person(n),
+    title,
+  });
+  function detailOf(n: number) {
+    return {
+      obligation: {
+        id: `20000000-0000-4000-8000-00000000000${n}`,
+        workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        employee_id: person(n),
+        employee_name: "Avery",
+        title: "Food handler card",
+        source_id: null,
+        kind: "document",
+        mode: "required",
+        status: "pending_review",
+        revision: 1,
+        requires_review: true,
+        deadline_at: null,
+        remaining_seconds: 0,
+        rejection_reason: null,
+        suspended: false,
+        submitted_id: `30000000-0000-4000-8000-00000000000${n}`,
+        approved_id: null,
+        location_ids: [],
+        location_names: [],
+        timezone: "America/Los_Angeles",
+        settings: { ...defaultDocumentLifecycleSettings, mode: "required" },
+        accepted_formats: ["pdf"],
+        tracks_expiry: false,
+      },
+      submissions: [
+        {
+          id: `30000000-0000-4000-8000-00000000000${n}`,
+          version: 1,
+          state: "pending_review",
+          submitted_at: "2026-10-21T23:12:00Z",
+          reviewed_at: null,
+          expiry_date: null,
+          metadata: {},
+          rejection_reason: null,
+          files: [
+            {
+              id: `40000000-0000-4000-8000-00000000000${n}`,
+              filename: "card.pdf",
+              media_type: "application/pdf",
+              size_bytes: 100,
+              decision: "keep",
+              note: "",
+            },
+          ],
+        },
+      ],
+      history: [],
+    };
+  }
+  const client = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const renderManager = (
+    cache: QueryClient,
+    extra: { initialRequirementId?: string; initialStatus?: "needs_review" | "to_do" | "completed" } = {},
+  ) =>
+    render(
+      <QueryClientProvider client={cache}>
+        <MemoryRouter>
+          <EmployeeDocumentsList
+            audience={{ workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", selfOnly: false }}
+            userId="d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"
+            canReview
+            {...extra}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  const strip = () => screen.getByRole("navigation", { name: "Documents in this list" });
+  const stripNames = () => within(strip()).getAllByRole("button").map((b) => b.getAttribute("aria-label"));
+
+  // K1 decision 4.
+  it("says Missing for a document sent back and Excused for an exempt one, coloured as such", async () => {
+    vi.mocked(listDocuments).mockReset().mockResolvedValue([
+      row(1, "rejected", "Avery"),
+      row(2, "exempt", "Blake"),
+    ] as never);
+    renderManager(client(), { initialStatus: "to_do" });
+    await screen.findByText("Avery");
+    const chip = () => document.querySelector("tbody .list-chip");
+    expect([chip()?.textContent, chip()?.getAttribute("data-tone")]).toEqual(["Missing", "red"]);
+    fireEvent.click(screen.getByRole("button", { name: /^Completed/ }));
+    expect([chip()?.textContent, chip()?.getAttribute("data-tone")]).toEqual(["Excused", "gray"]);
+  });
+  it("words its empty tabs in the same words", async () => {
+    vi.mocked(listDocuments).mockReset().mockResolvedValue([row(1, "pending_review", "Avery")] as never);
+    renderManager(client());
+    await screen.findByText("Avery");
+    fireEvent.click(screen.getByRole("button", { name: /^To do/ }));
+    expect(screen.getByText("Missing and expired documents show up here.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Completed/ }));
+    expect(screen.getByText("Approved and excused documents show up here.")).toBeTruthy();
+  });
+
+  // K1 decision 6: the rows the open tab showed, in their order, taken when the drawer opened.
+  it("walks the rows the open tab showed when it opened, whatever the list does after", async () => {
+    const cache = client();
+    vi.mocked(listDocuments)
+      .mockReset()
+      .mockResolvedValue([
+        row(1, "pending_review", "Avery"),
+        row(2, "pending_review", "Blake"),
+        row(3, "pending_review", "Casey"),
+      ] as never);
+    renderManager(cache);
+    fireEvent.click(await screen.findByRole("row", { name: /^Blake/ }));
+    await screen.findByRole("dialog", { name: "Blake · Food handler card" });
+    expect(stripNames()).toEqual(["Previous: Avery", "Next: Casey"]);
+    // Casey's document is decided elsewhere and leaves Needs review; the drawer still walks what it was shown.
+    vi.mocked(listDocuments).mockResolvedValue([
+      row(1, "pending_review", "Avery"),
+      row(2, "pending_review", "Blake"),
+      row(3, "completed", "Casey"),
+    ] as never);
+    await act(async () => {
+      await cache.refetchQueries({
+        queryKey: ["document-lifecycle", "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5", "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", "manager"],
+        exact: true,
+      });
+    });
+    await waitFor(() => expect(screen.queryByRole("row", { name: /^Casey/ })).toBeNull());
+    expect(stripNames()).toEqual(["Previous: Avery", "Next: Casey"]);
+    fireEvent.click(within(strip()).getByRole("button", { name: "Next: Casey" }));
+    expect(await screen.findByRole("dialog", { name: "Casey · Food handler card" })).toBeTruthy();
+    expect(stripNames()).toEqual(["Previous: Blake", "Next"]);
+  });
+  it("takes the rows after a link has switched the tab", async () => {
+    vi.mocked(listDocuments)
+      .mockReset()
+      .mockResolvedValue([
+        row(1, "pending_review", "Avery"),
+        row(2, "completed", "Blake"),
+        row(3, "completed", "Casey"),
+      ] as never);
+    renderManager(client(), { initialRequirementId: detailOf(2).obligation.id });
+    await screen.findByRole("dialog", { name: "Blake · Food handler card" });
+    expect(stripNames()).toEqual(["Previous", "Next: Casey"]);
+  });
+  it("keeps a linked row the tab does not show, at its place in the order", async () => {
+    vi.mocked(listDocuments)
+      .mockReset()
+      .mockResolvedValue([
+        row(1, "missing", "Avery"),
+        row(2, "pending_review", "Blake"),
+        row(3, "missing", "Casey"),
+      ] as never);
+    renderManager(client(), { initialRequirementId: detailOf(2).obligation.id, initialStatus: "to_do" });
+    await screen.findByRole("dialog", { name: "Blake · Food handler card" });
+    expect(stripNames()).toEqual(["Previous: Avery", "Next: Casey"]);
+  });
+  it("names the same person's other document by its title", async () => {
+    vi.mocked(listDocuments)
+      .mockReset()
+      .mockResolvedValue([
+        row(1, "pending_review", "Avery", "Food handler card"),
+        { ...row(2, "pending_review", "Avery", "I-9"), employee_id: person(1) },
+      ] as never);
+    renderManager(client());
+    fireEvent.click(await screen.findByRole("row", { name: /Food handler card/ }));
+    await screen.findByRole("dialog", { name: "Avery · Food handler card" });
+    expect(stripNames()).toEqual(["Previous", "Next: I-9"]);
+  });
+  // K1 decision 5: a draft waits with its document while the page is open.
+  it("keeps what was typed for a document when the drawer is closed and opened again", async () => {
+    vi.mocked(getDocument).mockImplementation(async () => detailOf(1) as never);
+    vi.mocked(listDocuments).mockReset().mockResolvedValue([row(1, "pending_review", "Avery")] as never);
+    renderManager(client());
+    fireEvent.click(await screen.findByRole("row", { name: /^Avery/ }));
+    fireEvent.change(await screen.findByLabelText("Rejection reason"), { target: { value: "Blurry" } });
+    fireEvent.click(screen.getByRole("button", { name: "Close details" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    fireEvent.click(screen.getByRole("row", { name: /^Avery/ }));
+    expect(
+      ((await screen.findByLabelText("Rejection reason")) as HTMLTextAreaElement).value,
+    ).toBe("Blurry");
   });
 });

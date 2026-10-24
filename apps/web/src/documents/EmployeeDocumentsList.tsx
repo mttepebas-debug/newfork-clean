@@ -21,7 +21,9 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
-import { statusLabel, statusWeight } from "./document-rules";
+import { statusLabel, statusTone, statusWeight, type StatusTone } from "./document-rules";
+import { snapshotQueue } from "./review-queue";
+import { createReviewSitting } from "./review-sitting";
 import "./documents.css";
 
 const statusLabels: Record<DocumentStatusFilter, string> = {
@@ -46,6 +48,11 @@ const emptyTab: Record<DocumentStatusFilter, { title: string; detail: string; ow
     detail: "Approved and exempt documents show up here.",
     own: "Nothing completed yet.",
   },
+};
+/** A manager's tabs speak the manager's words: a document sent back is Missing, an exempt one Excused (K1 decision 4). */
+const managerEmptyDetail: Partial<Record<DocumentStatusFilter, string>> = {
+  to_do: "Missing and expired documents show up here.",
+  completed: "Approved and excused documents show up here.",
 };
 /** One cached read for the list and the page around it, so the page can drop
  * its header when the list is refused. */
@@ -72,6 +79,9 @@ export function EmployeeDocumentsList(props: {
   personal?: boolean;
 }) {
   const personal = props.personal ?? false;
+  // A manager reviews in the A2 drawer, which walks this list (K1); the person's own drawer keeps today's Next.
+  const manager = !props.audience.selfOnly;
+  const reader = manager ? "manager" : "employee";
   const { context } = useAuth();
   const query = useEmployeeDocuments(props.audience, props.userId);
   // KARARLAR S-255: a manager opens on what waits for them, the person on what waits for them.
@@ -90,6 +100,14 @@ export function EmployeeDocumentsList(props: {
     id: string;
     ordinal: number;
   } | null>(null);
+  // K1 decision 6: the rows the drawer walks, taken from the open tab when it opens (after a link's tab switch).
+  const [queue, setQueue] = useState<DocumentObligation[] | null>(null);
+  // K1 decision 5: what a manager typed in the drawer, per document, while this page is open.
+  const [sitting] = useState(createReviewSitting);
+  const open = (id: string, ordinal: number) => {
+    setSelected({ id, ordinal });
+    setQueue(null);
+  };
   const items = useMemo(
     () =>
       (query.data ?? []).filter(
@@ -125,17 +143,25 @@ export function EmployeeDocumentsList(props: {
     `${r.employee_name} ${r.title}`
       .toLocaleLowerCase()
       .includes(search.trim().toLocaleLowerCase());
+  const compare = (a: DocumentObligation, b: DocumentObligation) => {
+    const order =
+      sort.key === "status"
+        ? statusWeight(a.status) - statusWeight(b.status)
+        : a[sort.key].localeCompare(b[sort.key]);
+    return (sort.descending ? -1 : 1) * order;
+  };
   const visible = items
     .filter(
       (r) => matchesControls(r) && documentMatchesStatus(r.status, filter),
     )
-    .sort((a, b) => {
-      const order =
-        sort.key === "status"
-          ? statusWeight(a.status) - statusWeight(b.status)
-          : a[sort.key].localeCompare(b[sort.key]);
-      return (sort.descending ? -1 : 1) * order;
-    });
+    .sort(compare);
+  // Taken on the render that opens the drawer: a link's tab switch lands in the same render, so the queue holds the
+  // linked row's tab; the opened row is in it even when the tab does not show it.
+  if (manager && selected && queue === null && query.data)
+    setQueue(snapshotQueue(visible, items.find((r) => r.id === selected.id), compare));
+  // The queue's rows with the list's latest data; one gone from the list stays as it was shown.
+  const latest = new Map(items.map((r) => [r.id, r]));
+  const walked = (queue ?? []).map((r) => latest.get(r.id) ?? r);
   const currentIndex = visible.findIndex((r) => r.id === selected?.id);
   const nextIndex =
     currentIndex >= 0 ? currentIndex + 1 : (selected?.ordinal ?? 0);
@@ -292,11 +318,11 @@ export function EmployeeDocumentsList(props: {
               <tr
                 key={r.id}
                 tabIndex={0}
-                onClick={() => setSelected({ id: r.id, ordinal })}
+                onClick={() => open(r.id, ordinal)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    setSelected({ id: r.id, ordinal });
+                    open(r.id, ordinal);
                   }
                 }}
               >
@@ -320,10 +346,10 @@ export function EmployeeDocumentsList(props: {
                 )}
                 <td>
                   {personal ? (
-                    statusLabel(r)
+                    statusLabel(r, reader)
                   ) : (
-                    <span className="list-chip" data-tone={statusTone(statusLabel(r))}>
-                      {statusLabel(r)}
+                    <span className="list-chip" data-tone={chipTones[statusTone(r)]}>
+                      {statusLabel(r, reader)}
                     </span>
                   )}
                 </td>
@@ -370,7 +396,7 @@ export function EmployeeDocumentsList(props: {
                 <FileText size={22} />
               </span>
               <h2>{emptyTab[filter].title}</h2>
-              <p>{emptyTab[filter].detail}</p>
+              <p>{(manager && managerEmptyDetail[filter]) || emptyTab[filter].detail}</p>
             </div>
           ) : (
             <div className="catalog-table-empty">
@@ -390,22 +416,29 @@ export function EmployeeDocumentsList(props: {
           userId={props.userId}
           requirementId={selected.id}
           canReview={props.canReview}
-          onClose={() => setSelected(null)}
-          {...(next
-            ? { onNext: () => setSelected({ id: next.id, ordinal: nextIndex }) }
-            : {})}
+          onClose={() => {
+            setSelected(null);
+            setQueue(null);
+          }}
+          {...(manager
+            ? {
+                queue: walked,
+                sitting,
+                onOpen: (id: string) => setSelected({ id, ordinal: 0 }),
+              }
+            : next
+              ? { onNext: () => setSelected({ id: next.id, ordinal: nextIndex }) }
+              : {})}
         />
       )}
     </div>
   );
 }
 
-/** Chip colour for a document status (KARARLAR Genel → "Durum çipi"). */
-function statusTone(label: string): "green" | "amber" | "red" | "gray" {
-  if (label === "Completed" || label === "On file") return "green";
-  if (label === "Missing" || label === "Expired" || label === "Rejected")
-    return "red";
-  if (label === "Removed" || label === "Exempt" || label === "Paused")
-    return "gray";
-  return "amber";
-}
+/** The list chip's colour names for a status's tone (KARARLAR Genel → "Durum çipi"). */
+const chipTones: Record<StatusTone, "green" | "amber" | "red" | "gray"> = {
+  ok: "green",
+  warn: "amber",
+  red: "red",
+  grey: "gray",
+};
