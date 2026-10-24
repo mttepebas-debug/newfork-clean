@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiRequest } from "../lib/supabase";
 import { LINEUP_BUSY_MS } from "../schedule/lineup";
-import { dinner, downtown, hannah, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
+import { chloe, dinner, downtown, hannah, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
 import { getEmployeeScheduleBoard } from "./employee-hub-data";
 import { EmployeeLineup } from "./EmployeeLineup";
 
@@ -54,6 +54,25 @@ function mine(overrides: Partial<MyLineups["lineups"][number]> = {}): MyLineups 
   };
 }
 
+/** A published lineup at her location that she is not on (Mert 2026-10-24): no ticket, no Acknowledge. */
+function other(overrides: Partial<MyLineups["others"][number]> = {}): MyLineups["others"][number] {
+  const { mine: _mine, acknowledged_at: _acknowledged, ...lineup } = mine().lineups[0]!;
+  return {
+    ...lineup,
+    id: "91000000-0000-4000-8000-000000000011",
+    version_id: "90000000-0000-4000-8000-000000000011",
+    team: [
+      { ...row, employee_id: hannah, name: "Hannah Lee", department_name: "Front of House", is_me: false },
+      { ...row, section_name: null, label_names: [], employee_id: chloe, name: "Chloe Davis", department_name: "Front of House", is_me: false },
+    ],
+    ...overrides,
+  };
+}
+
+function nothing(date = "2026-10-13"): MyLineups {
+  return { workspace_id: ws, date, lineups: [], others: [] };
+}
+
 let answer: MyLineups;
 const acknowledged: string[] = [];
 
@@ -67,11 +86,12 @@ function Page() {
   return <EmployeeLineup workspaceId={ws} employeeId={maria} date={date} timeFormat="12h" />;
 }
 
-function renderLineup() {
+// The day the page opens on: today without one (2026-10-13 here).
+function renderLineup(date?: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/app/employee-hub/schedule/lineup"]}>
+      <MemoryRouter initialEntries={[`/app/employee-hub/schedule/lineup${date ? `?date=${date}` : ""}`]}>
         <Page />
         <Where />
       </MemoryRouter>
@@ -96,7 +116,7 @@ beforeEach(() => {
   acknowledged.length = 0;
   api.mockReset();
   api.mockImplementation(async (_client, path) => {
-    if (path.endsWith("/my-lineups/2026-10-13")) return answer;
+    if (path.endsWith(`/my-lineups/${answer.date}`)) return answer;
     // Another day the wheel turns to: nothing published.
     const other = /\/my-lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
     if (other) return { workspace_id: ws, date: other[1], lineups: [] };
@@ -176,13 +196,13 @@ describe("EmployeeLineup", () => {
     const tabs = within(group).getAllByRole("button");
     expect(tabs.map((button) => button.getAttribute("aria-label"))).toEqual([
       "Brunch, 2 people",
-      "Lunch. You're not on a published Lunch lineup",
+      "Lunch. The Lunch lineup isn't published yet",
       "Dinner, 2 people",
     ]);
     const off = tabs[1] as HTMLButtonElement;
     expect(off.disabled).toBe(true);
     expect(off.className).toBe("is-off");
-    expect(off.title).toBe("You're not on a published Lunch lineup");
+    expect(off.title).toBe("The Lunch lineup isn't published yet");
     expect(off.querySelector("strong")).toBeNull();
     expect(tabs[0]!.getAttribute("aria-pressed")).toBe("true");
     expect(await screen.findByRole("region", { name: "Brunch lineup" })).toBeTruthy();
@@ -218,7 +238,7 @@ describe("EmployeeLineup", () => {
     answer = { workspace_id: ws, date: "2026-10-13", lineups: [], others: [] };
     board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
     renderLineup();
-    const calm = await screen.findByText("Your Dinner lineup isn't published yet");
+    const calm = await screen.findByText("The Dinner lineup isn't published yet");
     const group = screen.getByRole("group", { name: "Shifts" });
     const tabs = within(group).getAllByRole("button") as HTMLButtonElement[];
     expect(tabs.map((button) => [button.textContent, button.disabled])).toEqual([
@@ -331,19 +351,179 @@ describe("EmployeeLineup", () => {
     expect(screen.queryByRole("button", { name: "Acknowledge" })).toBeNull();
   });
 
-  it("says her lineup isn't published yet when she works that day", async () => {
-    answer = { workspace_id: ws, date: "2026-10-13", lineups: [], others: [] };
+  // Mert 2026-10-24: nothing published for the shift says so, her shift's name when she works it; no promise of a
+  // notification (only the people on a lineup are told of it).
+  it("says her shift's lineup isn't published yet when she works that day", async () => {
+    answer = nothing();
     board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
     renderLineup();
-    expect(await screen.findByText("Your Dinner lineup isn't published yet")).toBeTruthy();
-    expect(screen.getByText("You'll get a notification when it is.")).toBeTruthy();
+    expect(await screen.findByText("The Dinner lineup isn't published yet")).toBeTruthy();
+    expect(screen.getByText("It shows here once it's published.")).toBeTruthy();
+    expect(screen.queryByText(/notification/)).toBeNull();
   });
 
-  it("says she isn't on a lineup when she doesn't work that day", async () => {
-    answer = { workspace_id: ws, date: "2026-10-13", lineups: [], others: [] };
+  it("says the lineup isn't published yet when she doesn't work that day", async () => {
+    answer = nothing();
     board.mockResolvedValue(model([]));
     renderLineup();
-    expect(await screen.findByText("You're not on a lineup today")).toBeTruthy();
+    expect(await screen.findByText("The lineup isn't published yet")).toBeTruthy();
+    expect(screen.getByText("It shows here once it's published.")).toBeTruthy();
+    expect(screen.queryByText(/^You're not on/)).toBeNull();
+  });
+
+  it("says the same of a day ahead", async () => {
+    answer = nothing("2026-10-15");
+    board.mockResolvedValue(model([shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", date: "2026-10-15" })]));
+    renderLineup("2026-10-15");
+    expect(await screen.findByText("The Lunch lineup isn't published yet")).toBeTruthy();
+    expect(screen.getByText("It shows here once it's published.")).toBeTruthy();
+  });
+
+  it("says no lineup was published on a past day, with nothing under it, its tabs saying the same", async () => {
+    answer = nothing("2026-10-12");
+    board.mockResolvedValue(model([]));
+    renderLineup("2026-10-12");
+    const calm = (await screen.findByText("No lineup was published that day")).closest(".employee-lineup-calm")!;
+    expect(calm.querySelector("span")).toBeNull();
+    expect(screen.queryByText("It shows here once it's published.")).toBeNull();
+    const tabs = within(screen.getByRole("group", { name: "Shifts" })).getAllByRole("button") as HTMLButtonElement[];
+    expect(tabs.map((tab) => tab.title)).toEqual(["No Lunch lineup was published that day", "No Dinner lineup was published that day"]);
+  });
+
+  it("names her shift on a past day she worked", async () => {
+    answer = nothing("2026-10-12");
+    board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00", date: "2026-10-12" })]));
+    renderLineup("2026-10-12");
+    expect(await screen.findByText("No Dinner lineup was published that day")).toBeTruthy();
+  });
+
+  // Mert 2026-10-24: a published lineup at her location she is not on opens too: Team · Notes as usual, no ticket and
+  // no Acknowledge; in the ticket's place one quiet line, today or a day ahead; nothing on a past day.
+  it("opens a lineup she is not on: one line in the ticket's place, Team · Notes, no Acknowledge", async () => {
+    answer = { ...nothing(), others: [other()] };
+    renderLineup();
+    const view = await screen.findByRole("region", { name: "Dinner lineup" });
+    expect(within(view).getByText("You're not on the Dinner lineup today")).toBeTruthy();
+    expect(view.querySelector(".employee-lineup-ticket")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Acknowledge" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /team and notes$/ })).toBeNull();
+    const team = within(view).getByRole("list", { name: "Server" });
+    expect(within(team).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(team).getByText("Hannah Lee")).toBeTruthy();
+    expect(within(team).getByText("Chloe Davis")).toBeTruthy();
+    expect(view.querySelector(".is-me")).toBeNull();
+    fireEvent.click(within(view).getByRole("tab", { name: /^Notes/ }));
+    expect(within(view).getByRole("tabpanel").textContent).toContain("Halibut");
+    const tab = within(screen.getByRole("group", { name: "Shifts" })).getByRole("button", { name: "Dinner, 2 people" });
+    expect(tab.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText(/isn't published yet/)).toBeNull();
+  });
+
+  it("says 'that day' on a lineup she is not on a day ahead, and 'this lineup' with no shift type", async () => {
+    answer = { ...nothing("2026-10-14"), others: [other({ shift_type_id: null, shift_type_name: null, color: null })] };
+    renderLineup("2026-10-14");
+    const view = await screen.findByRole("region", { name: "Shift lineup" });
+    expect(within(view).getByText("You're not on this lineup that day")).toBeTruthy();
+  });
+
+  it("says 'that day' with the shift's name a day ahead", async () => {
+    answer = { ...nothing("2026-10-14"), others: [other()] };
+    renderLineup("2026-10-14");
+    const view = await screen.findByRole("region", { name: "Dinner lineup" });
+    expect(within(view).getByText("You're not on the Dinner lineup that day")).toBeTruthy();
+  });
+
+  it("shows a past lineup she was not on with no line over it", async () => {
+    answer = { ...nothing("2026-10-12"), others: [other()] };
+    renderLineup("2026-10-12");
+    const view = await screen.findByRole("region", { name: "Dinner lineup" });
+    expect(within(view).queryByText(/^You're not on/)).toBeNull();
+    expect(view.querySelector(".employee-lineup-note")).toBeNull();
+    expect(within(view).getByRole("list", { name: "Server" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Acknowledge" })).toBeNull();
+  });
+
+  // Mert 2026-10-24: the tab that opens first is one she is on; else her own shift's that day, published or not;
+  // else the first published one.
+  it("opens on her own lineup before one she is not on, the other still pressable", async () => {
+    answer = { ...mine(), others: [other({ shift_type_id: lunch, shift_type_name: "Lunch", color: "#1fb08a" })] };
+    renderLineup();
+    const view = await screen.findByRole("region", { name: "Dinner lineup" });
+    expect(view.querySelector(".employee-lineup-ticket")).toBeTruthy();
+    const group = screen.getByRole("group", { name: "Shifts" });
+    expect(within(group).getAllByRole("button").map((button) => [button.getAttribute("aria-label"), button.getAttribute("aria-pressed")])).toEqual([
+      ["Lunch, 2 people", "false"],
+      ["Dinner, 2 people", "true"],
+    ]);
+    fireEvent.click(within(group).getByRole("button", { name: "Lunch, 2 people" }));
+    const lunchView = await screen.findByRole("region", { name: "Lunch lineup" });
+    expect(within(lunchView).getByText("You're not on the Lunch lineup today")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Acknowledge" })).toBeNull();
+  });
+
+  it("opens on her own shift's tab when its lineup isn't published, though another is", async () => {
+    answer = { ...nothing(), others: [other({ shift_type_id: lunch, shift_type_name: "Lunch", color: "#1fb08a" })] };
+    board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
+    renderLineup();
+    expect(await screen.findByText("The Dinner lineup isn't published yet")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Lunch lineup" })).toBeNull();
+    const group = screen.getByRole("group", { name: "Shifts" });
+    const dinnerTab = within(group).getByRole("button", { name: "Dinner. The Dinner lineup isn't published yet" }) as HTMLButtonElement;
+    expect(dinnerTab.disabled).toBe(true);
+    fireEvent.click(within(group).getByRole("button", { name: "Lunch, 2 people" }));
+    expect(await screen.findByRole("region", { name: "Lunch lineup" })).toBeTruthy();
+    expect(screen.queryByText("The Dinner lineup isn't published yet")).toBeNull();
+  });
+
+  it("opens on the first published lineup when she has no shift that day", async () => {
+    answer = {
+      ...nothing(),
+      others: [
+        other(),
+        other({ id: "91000000-0000-4000-8000-000000000012", version_id: "90000000-0000-4000-8000-000000000012", shift_type_id: lunch, shift_type_name: "Lunch", color: "#1fb08a" }),
+      ],
+    };
+    renderLineup();
+    expect(await screen.findByRole("region", { name: "Lunch lineup" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Dinner lineup" })).toBeNull();
+  });
+
+  // Mert 2026-10-24: the location row lists the places of hers and of the others published.
+  it("lists the locations of the lineups she is not on too; a picked one shows its lineup or says it isn't published", async () => {
+    answer = {
+      ...mine(),
+      others: [other({ location: { id: uptown, name: "Uptown", timezone: "America/Los_Angeles" }, shift_type_id: lunch, shift_type_name: "Lunch", color: "#1fb08a" })],
+    };
+    renderLineup();
+    const select = (await screen.findByRole("combobox", { name: "Location" })) as HTMLSelectElement;
+    expect([...select.options].map((option) => option.textContent)).toEqual(["All locations", "Downtown", "Uptown"]);
+    // All locations: hers first.
+    expect(await screen.findByRole("region", { name: "Dinner lineup" })).toBeTruthy();
+    // Dinner chosen, Uptown picked: no Dinner lineup is published there.
+    fireEvent.click(within(screen.getByRole("group", { name: "Shifts" })).getByRole("button", { name: "Dinner, 2 people" }));
+    fireEvent.change(select, { target: { value: uptown } });
+    expect(await screen.findByText("The Dinner lineup isn't published yet")).toBeTruthy();
+    expect(screen.queryByText("Pick All locations to see yours.")).toBeNull();
+    fireEvent.click(within(screen.getByRole("group", { name: "Shifts" })).getByRole("button", { name: "Lunch, 2 people" }));
+    const view = await screen.findByRole("region", { name: "Lunch lineup" });
+    expect(within(view).getByText("You're not on the Lunch lineup today")).toBeTruthy();
+  });
+
+  it("shows, at a picked place, the lineup of her chosen shift she is not on there", async () => {
+    answer = {
+      ...mine(),
+      others: [other({ location: { id: uptown, name: "Uptown", timezone: "America/Los_Angeles" } })],
+    };
+    renderLineup();
+    const select = (await screen.findByRole("combobox", { name: "Location" })) as HTMLSelectElement;
+    // All locations: both Dinner lineups, hers first, the other naming its place.
+    const views = await screen.findAllByRole("region", { name: /^Dinner lineup/ });
+    expect(views.map((view) => view.getAttribute("aria-label"))).toEqual(["Dinner lineup, Downtown", "Dinner lineup, Uptown"]);
+    expect(views[1]!.querySelector(".employee-lineup-place")!.textContent).toBe("Uptown");
+    fireEvent.change(select, { target: { value: uptown } });
+    const view = await screen.findByRole("region", { name: "Dinner lineup" });
+    expect(within(view).getByText("You're not on the Dinner lineup today")).toBeTruthy();
+    expect(view.querySelector(".employee-lineup-ticket")).toBeNull();
   });
   // Mert 2026-10-17 (~8:30 AM): no heading; the shift tabs, then her ticket (location, date, in – out, position ·
   // label · section), then Team · Notes; the ticket stays over both tabs.
@@ -472,7 +652,7 @@ describe("EmployeeLineup", () => {
     expect(screen.queryByRole("separator")).toBeNull();
   });
 
-  it("says she isn't on that shift at a place she picked, and points to All locations", async () => {
+  it("says that shift's lineup isn't published at a place she picked", async () => {
     const [dinnerLineup] = mine().lineups;
     answer = {
       ...mine(),
@@ -496,8 +676,8 @@ describe("EmployeeLineup", () => {
     fireEvent.click(within(screen.getByRole("group", { name: "Shifts" })).getByRole("button", { name: "Dinner, 2 people" }));
     expect(await screen.findByRole("region", { name: "Dinner lineup" })).toBeTruthy();
     fireEvent.change(select, { target: { value: uptown } });
-    expect(await screen.findByText("You're not on a Dinner lineup at Uptown")).toBeTruthy();
-    expect(screen.getByText("Pick All locations to see yours.")).toBeTruthy();
+    expect(await screen.findByText("The Dinner lineup isn't published yet")).toBeTruthy();
+    expect(screen.getByText("It shows here once it's published.")).toBeTruthy();
     expect(screen.queryByRole("region", { name: /lineup$/ })).toBeNull();
     fireEvent.change(select, { target: { value: "" } });
     expect(await screen.findByRole("region", { name: "Dinner lineup" })).toBeTruthy();
@@ -528,7 +708,7 @@ describe("EmployeeLineup", () => {
     // One lineup at each location: that tab opens, the other type is grey.
     expect(within(screen.getByRole("group", { name: "Shifts" })).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual([
       "Lunch, 2 people",
-      "Dinner. You're not on a published Dinner lineup",
+      "Dinner. The Dinner lineup isn't published yet",
     ]);
     fireEvent.change(select, { target: { value: downtown } });
     expect(await screen.findByRole("region", { name: "Dinner lineup" })).toBeTruthy();
@@ -539,7 +719,7 @@ describe("EmployeeLineup", () => {
     answer = { workspace_id: ws, date: "2026-10-13", lineups: [], others: [] };
     board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
     renderLineup();
-    await screen.findByText("Your Dinner lineup isn't published yet");
+    await screen.findByText("The Dinner lineup isn't published yet");
     const select = screen.getByRole("combobox", { name: "Location" });
     expect([...(select as HTMLSelectElement).options].map((option) => option.textContent)).toEqual(["Downtown"]);
   });
