@@ -232,10 +232,17 @@ export const myLineupSchema = z.object({
 });
 export type MyLineup = z.infer<typeof myLineupSchema>;
 
+/** A published lineup at one of her locations that she is not on (Mert 2026-10-24): she reads it whole, with no
+ *  ticket and no Acknowledge; only the people on it are told of it and may acknowledge it. */
+export const otherLineupSchema = myLineupSchema.omit({ mine: true, acknowledged_at: true });
+export type OtherLineup = z.infer<typeof otherLineupSchema>;
+
 export const myLineupsSchema = z.object({
   workspace_id: id,
   date: day,
   lineups: z.array(myLineupSchema),
+  /** That day's published lineups at her locations without her, in the same order; an older read has none. */
+  others: z.array(otherLineupSchema).default([]),
 });
 export type MyLineups = z.infer<typeof myLineupsSchema>;
 
