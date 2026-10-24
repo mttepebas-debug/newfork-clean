@@ -370,11 +370,66 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
   });
 
   it("marks the chosen status tab with aria-pressed (L3)", async () => {
-    renderPage("/app/employees?status=invited");
+    renderPage("/app/employees?status=joining");
     expect(await inTable().findByText("Blair Patel")).toBeTruthy();
     const group = screen.getByRole("group", { name: "Employee status" });
-    expect(within(group).getByRole("button", { name: "Invited" }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(group).getByRole("button", { name: "Joining" }).getAttribute("aria-pressed")).toBe("true");
     expect(within(group).getByRole("button", { name: "All" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  // KARARLAR S-256: five tabs, in this order; the old six are gone.
+  it("offers All, Needs you, Joining, Active and Archived (S-256)", async () => {
+    renderPage();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
+    const group = screen.getByRole("group", { name: "Employee status" });
+    expect(within(group).getAllByRole("button").map((tab) => tab.textContent)).toEqual([
+      "All",
+      "Needs you",
+      "Joining",
+      "Active",
+      "Archived",
+    ]);
+  });
+
+  it("asks for Needs you and Joining by their own names (S-256)", async () => {
+    renderPage();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Needs you" }));
+    await waitFor(() => expect(listEmployees).toHaveBeenLastCalledWith(workspaceId, false, "", "needs_you"));
+    fireEvent.click(screen.getByRole("button", { name: "Joining" }));
+    await waitFor(() => expect(listEmployees).toHaveBeenLastCalledWith(workspaceId, false, "", "joining"));
+  });
+
+  // A saved link from before S-256 opens the tab its people are in now.
+  it.each([
+    ["invited", "Joining", "joining"],
+    ["onboarding", "Joining", "joining"],
+    ["needs_attention", "Needs you", "needs_you"],
+  ])("opens an old ?status=%s link on %s (S-256)", async (old, tab, asked) => {
+    renderPage(`/app/employees?status=${old}`);
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
+    const group = screen.getByRole("group", { name: "Employee status" });
+    expect(within(group).getByRole("button", { name: tab }).getAttribute("aria-pressed")).toBe("true");
+    expect(listEmployees).toHaveBeenLastCalledWith(workspaceId, false, "", asked);
+  });
+
+  // Needs review: the manager's Approve is next (red). Changes requested: the
+  // person's move, toned like Invited and Onboarding (S-256).
+  it("names Needs review and Changes requested on a row and a card (S-256)", async () => {
+    const review = { ...employees[0]!, id: "15000000-0000-4000-8000-000000000011", display_name: "Rae Review", display_status: "needs_attention" as const };
+    const changes = { ...employees[0]!, id: "15000000-0000-4000-8000-000000000012", display_name: "Cam Changes", display_status: "changes_requested" as const };
+    renderPage("/app/employees", [review, changes]);
+    const reviewRow = (await inTable().findByText("Rae Review")).closest("tr")!;
+    const reviewPill = within(reviewRow).getByText("Needs review");
+    expect(reviewPill.classList.contains("state-needs_attention")).toBe(true);
+    const changesRow = inTable().getByText("Cam Changes").closest("tr")!;
+    const changesPill = within(changesRow).getByText("Changes requested");
+    expect(changesPill.classList.contains("state-changes_requested")).toBe(true);
+    const cards = screen.getByRole("list", { name: "Employees" });
+    const reviewCard = within(cards).getByRole("button", { name: /^Rae Review, Needs review,/ });
+    expect(reviewCard.querySelector(".list-chip")?.getAttribute("data-tone")).toBe("red");
+    const changesCard = within(cards).getByRole("button", { name: /^Cam Changes, Changes requested,/ });
+    expect(changesCard.querySelector(".list-chip")?.getAttribute("data-tone")).toBe("amber");
   });
 
   it("closes the column picker with Escape and gives focus back to its button (L7)", async () => {
@@ -392,8 +447,8 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
     renderPage(`/app/employees?location=${employees[0]!.locations[0]!.id}`);
     expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     vi.mocked(listEmployees).mockResolvedValue([employees[1]!]);
-    fireEvent.click(screen.getByRole("button", { name: "Invited" }));
-    await waitFor(() => expect(listEmployees).toHaveBeenLastCalledWith(workspaceId, false, "", "invited"));
+    fireEvent.click(screen.getByRole("button", { name: "Joining" }));
+    await waitFor(() => expect(listEmployees).toHaveBeenLastCalledWith(workspaceId, false, "", "joining"));
     const select = screen.getByRole("combobox", { name: "Filter employees by location" }) as HTMLSelectElement;
     await waitFor(() => expect(select.value).toBe(employees[0]!.locations[0]!.id));
     expect(within(select).getByRole("option", { name: "Main Dining" })).toBeTruthy();
@@ -462,7 +517,7 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
   });
 
   it("says No matching employees on an empty status tab, not No employees yet (L26)", async () => {
-    renderPage("/app/employees?status=onboarding", []);
+    renderPage("/app/employees?status=joining", []);
     expect(await screen.findByText("No matching employees")).toBeTruthy();
     expect(screen.queryByText("No employees yet")).toBeNull();
   });
@@ -497,7 +552,7 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
   });
 
   it("draws no cards for an empty list, so its empty line shows (G2)", async () => {
-    renderPage("/app/employees?status=onboarding", []);
+    renderPage("/app/employees?status=joining", []);
     expect(await screen.findByText("No matching employees")).toBeTruthy();
     expect(screen.queryByRole("list", { name: "Employees" })).toBeNull();
   });

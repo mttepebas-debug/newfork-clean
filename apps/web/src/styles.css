@@ -1698,13 +1698,18 @@
   color: #176048;
 }
 .state-invited,
-.state-onboarding {
+.state-onboarding,
+.state-changes_requested {
   background: #fff0cf;
   color: #805915;
 }
 .state-needs_attention {
   background: #f8deda;
   color: #923b2d;
+}
+/* The list writes its labels as they read ("Needs review", S-256). */
+.employee-people-wrap .employee-state {
+  text-transform: none;
 }
 .state-archived {
   background: #e7e9e8;

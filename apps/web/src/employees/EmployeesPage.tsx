@@ -44,13 +44,32 @@ import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 // value is its id.
 const noLocation = "none";
 
-const statusFilters = [
-  "all",
-  "invited",
-  "onboarding",
-  "needs_attention",
-  "active",
+// The list's tabs (KARARLAR S-256): All · Needs you · Joining · Active, then
+// Archived, its own page. Needs you: they sent their onboarding in and wait for
+// the manager's Approve. Joining: everybody on the way in (not invited, an
+// invitation that ran out, invited, onboarding, asked for changes). The API
+// knows which statuses each tab holds.
+const statusTabs = [
+  { value: "all", label: "All" },
+  { value: "needs_you", label: "Needs you" },
+  { value: "joining", label: "Joining" },
+  { value: "active", label: "Active" },
 ] as const;
+type StatusTab = (typeof statusTabs)[number]["value"];
+
+// A link saved before S-256 names a status; it opens the tab that holds it now.
+const oldStatusTabs: Readonly<Record<string, StatusTab>> = {
+  not_invited: "joining",
+  invited: "joining",
+  onboarding: "joining",
+  changes_requested: "joining",
+  needs_attention: "needs_you",
+};
+
+function statusTabOf(value: string | null): StatusTab {
+  if (value === null) return "all";
+  return statusTabs.find((tab) => tab.value === value)?.value ?? oldStatusTabs[value] ?? "all";
+}
 
 type EmployeeColumnKey =
   "employee" | "status" | "location" | "job" | "access" | "start" | "email";
@@ -88,7 +107,7 @@ export default function EmployeesPage() {
   const archived = location.pathname.endsWith("/archive");
   const search = params.get("q") ?? "";
   const deferredSearch = useDeferredValue(search);
-  const status = archived ? "all" : (params.get("status") ?? "all");
+  const status = archived ? "all" : statusTabOf(params.get("status"));
   const locationFilter = params.get("location") ?? "all";
   const employeeId = params.get("employeeId");
   const creating = params.get("mode") === "create";
@@ -298,7 +317,7 @@ export default function EmployeesPage() {
             role="group"
             aria-label="Employee status"
           >
-            {statusFilters.map((value) => (
+            {statusTabs.map(({ value, label }) => (
               <button
                 type="button"
                 key={value}
@@ -318,7 +337,7 @@ export default function EmployeesPage() {
                   updateParams({ status: nextStatus });
                 }}
               >
-                {filterLabel(value)}
+                {label}
               </button>
             ))}
             <button
@@ -675,6 +694,7 @@ const employeeStatusTones: Record<EmployeeDisplayStatus, string> = {
   active: "green",
   invited: "amber",
   onboarding: "amber",
+  changes_requested: "amber",
   needs_attention: "red",
   archived: "gray",
 };
@@ -708,7 +728,7 @@ function EmployeeCards({
   return (
     <ListCards label="Employees">
       {employees.map((employee) => {
-        const status = filterLabel(employee.display_status);
+        const status = employeeStatusLabel(employee.display_status);
         const where = employeeLocationText(employee);
         const job = employeeJobText(employee);
         return (
@@ -759,7 +779,7 @@ function renderEmployeeCell(
     return (
       <td key={key}>
         <span className={`employee-state state-${employee.display_status}`}>
-          {filterLabel(employee.display_status)}
+          {employeeStatusLabel(employee.display_status)}
         </span>
       </td>
     );
@@ -822,9 +842,9 @@ function renderEmployeeCell(
 function columnWidth(key: EmployeeColumnKey): string {
   switch (key) {
     case "employee":
-      return "24%";
+      return "22%";
     case "status":
-      return "13%";
+      return "15%";
     case "location":
     case "job":
       return "17%";
@@ -852,7 +872,7 @@ function employeeSortValue(
   employee: EmployeeSummary,
   key: EmployeeColumnKey,
 ): string {
-  if (key === "status") return filterLabel(employee.display_status);
+  if (key === "status") return employeeStatusLabel(employee.display_status);
   if (key === "location") return employee.locations[0]?.name ?? "Unassigned";
   if (key === "job") return employee.primary_job_name ?? "Unassigned";
   if (key === "access") return accessLabel(employee);
@@ -903,10 +923,16 @@ function loadColumnState(): {
   }
 }
 
-function filterLabel(
-  value: EmployeeDisplayStatus | (typeof statusFilters)[number],
-): string {
-  return value
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+// Needs review: the manager's Approve is next. Changes requested: the
+// person's move (S-256). The rest in title case, as before ("Not Invited").
+const employeeStatusLabels: Readonly<Partial<Record<EmployeeDisplayStatus, string>>> = {
+  needs_attention: "Needs review",
+  changes_requested: "Changes requested",
+};
+
+function employeeStatusLabel(value: EmployeeDisplayStatus): string {
+  return (
+    employeeStatusLabels[value] ??
+    value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+  );
 }
