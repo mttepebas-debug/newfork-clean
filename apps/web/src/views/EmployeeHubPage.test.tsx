@@ -932,6 +932,8 @@ describe("EmployeeHubPage", () => {
     renderPage("/app/employee-hub/my-availability");
     const day = await screen.findByRole("radio", { name: /^Unavailable/ });
     expect(screen.getByRole("tab", { name: "Availability" }).getAttribute("aria-selected")).toBe("true");
+    // Labels only, like Shift Hub's and the list pages' tabs (Mert 2026-10-23).
+    for (const tab of screen.getAllByRole("tab")) expect(tab.querySelector("svg")).toBeNull();
     expect(screen.queryByLabelText("Start")).toBeNull();
     expect(screen.queryByLabelText("Starts on")).toBeNull();
     // Tur 2 (Mert 2026-10-16): no standing explainer box under the tabs.
