@@ -229,6 +229,23 @@ describe("WorkspacePage", () => {
     }
   });
 
+  // Only the employee's Home tells a device in another zone whose clock the pages keep; a manager's Home, on a
+  // desktop or a phone (one hero), says nothing (Mert 2026-10-23, S-257).
+  it("says nothing about the zone, though the device keeps another zone's clock", async () => {
+    const before = process.env.TZ;
+    // Kadikoy keeps Istanbul's clock; the device Los Angeles'.
+    process.env.TZ = "America/Los_Angeles";
+    try {
+      renderPage();
+      await waitFor(() => expect(document.querySelector(".dl-hero .dl-sub")).not.toBeNull());
+      expect(document.querySelector(".zone-note")).toBeNull();
+      expect(screen.queryByText(/^Times in /)).toBeNull();
+    } finally {
+      if (before === undefined) delete process.env.TZ;
+      else process.env.TZ = before;
+    }
+  });
+
   it("shows the no-access card, not the raw error, when the API refuses this workspace (FB-6.1.9)", async () => {
     vi.mocked(getWorkspaceDashboard).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderPage();

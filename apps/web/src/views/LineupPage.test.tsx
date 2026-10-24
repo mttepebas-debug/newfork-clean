@@ -2709,3 +2709,25 @@ describe("LineupPage, calling off, adding and replacing on the desktop", () => {
     });
   });
 });
+
+// Only the employee's Home tells a device in another zone whose clock the pages keep; a manager's Lineup, on a
+// desktop or a phone, says nothing (Mert 2026-10-23, S-257).
+describe("LineupPage on a device in another zone", () => {
+  const before = process.env.TZ;
+  beforeEach(() => {
+    // The locations keep Los Angeles' clock; the device Istanbul's.
+    process.env.TZ = "Europe/Istanbul";
+  });
+  afterEach(() => {
+    if (before === undefined) delete process.env.TZ;
+    else process.env.TZ = before;
+  });
+
+  it.each([["a desktop", false], ["a phone", true]])("says nothing about the zone on %s", async (_, onPhone) => {
+    phone = onPhone;
+    renderPage();
+    await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(document.querySelector(".zone-note")).toBeNull();
+    expect(screen.queryByText(/^Times in /)).toBeNull();
+  });
+});
