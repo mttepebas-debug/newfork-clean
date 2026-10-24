@@ -51,6 +51,7 @@ import {
 } from "./review-decision";
 import {
   doneNote,
+  doneSaid,
   filesNote,
   greenFor,
   greenKey,
@@ -653,6 +654,13 @@ export function ManagerDocumentContent({
   const saving = panel !== null || (!answered && (reviewing || (waiting && !timezoneRow && cards.length > 0)));
   const next = saving ? null : nextUp();
   const greenNow = greenFor({ saving, ready: panelNow ? panelNow.ready : (progress?.ready ?? false), next });
+  // Nobody else waits, here or in the list's other tabs.
+  const end = greenNow.act === "close" && !othersWait();
+  const refreshed = {
+    status: obligation.status,
+    expiry: obligation.expiry_date ? formatDate(obligation.expiry_date) : null,
+    due: obligation.deadline_at ? formatDay(obligation.deadline_at, obligation.timezone, now) : null,
+  };
   const doneLabel =
     obligation.status === "completed"
       ? "Approved"
@@ -668,17 +676,9 @@ export function ManagerDocumentContent({
         ? {
             kind: "result",
             icon: result.kind,
-            line: resultLine(result, {
-              first,
-              phone,
-              // Nobody else waits, here or in the list's other tabs.
-              end: greenNow.act === "close" && !othersWait(),
-              now: {
-                status: obligation.status,
-                expiry: obligation.expiry_date ? formatDate(obligation.expiry_date) : null,
-                due: obligation.deadline_at ? formatDay(obligation.deadline_at, obligation.timezone, now) : null,
-              },
-            }),
+            line: resultLine(result, { first, phone, end, now: refreshed }),
+            // The full word, phone or not, for what is said.
+            full: resultLine(result, { first, phone: false, end, now: refreshed }).word,
           }
         : progress
           ? { kind: "note", text: filesNote(progress, { phone, first, expires }) }
@@ -695,11 +695,14 @@ export function ManagerDocumentContent({
   useLayoutEffect(() => {
     if (!busy) guard.mean(meaning, performance.now());
   }, [busy, guard, meaning]);
-  // Done: the green takes focus, so Enter moves on.
+  // Done: the green takes focus, so Enter moves on, and the drawer's polite region says what was done and where the
+  // green goes (the dock's line is drawn already holding its words, which a screen reader can miss).
   useEffect(() => {
     if (busy || !focusGreen.current) return;
     focusGreen.current = false;
     green.current?.focus({ preventScroll: true });
+    if (line.kind === "result")
+      onSay(doneSaid(line.full, greenNow.act === "next" ? (next?.label ?? null) : null, end));
   });
   useEffect(() => {
     if (busy || !focusZone.current) return;

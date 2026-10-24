@@ -17,7 +17,7 @@ const icons = {
 
 export type DockLine =
   | { kind: "note"; text: string; live?: boolean }
-  | { kind: "result"; icon: ReviewResult["kind"]; line: ResultLine };
+  | { kind: "result"; icon: ReviewResult["kind"]; line: ResultLine; full: string };
 
 export function ManagerDocumentDock({
   noteId,

@@ -2308,6 +2308,14 @@ describe("file decisions and the dock", () => {
     }
   });
 
+  // mockup-spec 19.1: the drawer's one polite region says what a Save did and where the green goes.
+  it("says a Save's result in the drawer's polite region", async () => {
+    page(false, { queue: [row(), sam()] });
+    await approveAndSave();
+    const polite = () => document.querySelector(".document-review-drawer [aria-live='polite']")?.textContent;
+    await waitFor(() => expect(polite()).toBe("Approved. Next waiting: Sam Lee."));
+  });
+
   it("closes once nobody else waits, saying all caught up", async () => {
     const time = clock();
     try {
@@ -2321,6 +2329,11 @@ describe("file decisions and the dock", () => {
       await approveAndSave();
       await waitFor(() => expect(green().textContent).toBe("Close"));
       expect(dockLine()).toBe("Approved · Test is told. All caught up.");
+      await waitFor(() =>
+        expect(document.querySelector(".document-review-drawer [aria-live='polite']")?.textContent).toBe(
+          "Approved. All caught up.",
+        ),
+      );
       expect(chipOf("certificate.pdf")?.textContent).toBe("Approved");
       time.tick(450);
       fireEvent.click(green());

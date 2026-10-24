@@ -171,6 +171,14 @@ export function resultLine(
   return { tone: line.tone, word, text: `${text}${tail}`, title: `${line.word} · ${line.text}${tail}` };
 }
 
+/**
+ * What the drawer's polite region says once a Save went through (mockup-spec 19.1): what was done, then who waits
+ * next, or that nothing waits anywhere.
+ */
+export function doneSaid(word: string, next: string | null, end: boolean): string {
+  return `${word}.${next ? ` Next waiting: ${next}.` : end ? " All caught up." : ""}`;
+}
+
 export type Green = { act: "save"; off: boolean } | { act: "next"; id: string; label: string } | { act: "close" };
 
 /** Save while something can be saved (on once it is ready); then the next document still waiting, or Close. */

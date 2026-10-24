@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentObligationStatus } from "@newfork/shared";
-import { filesNote, greenFor, greenKey, resultLine, timezoneNote, waitingNote } from "./review-dock";
+import { doneSaid, filesNote, greenFor, greenKey, resultLine, timezoneNote, waitingNote } from "./review-dock";
 
 // The dock of the manager's review drawer: one line and one green button (A2 Tur 6, mockup-spec 15).
 const progress = (open: number, rejected: number, missingReason: number, total = 2) => ({
@@ -195,5 +195,14 @@ describe("the green button", () => {
     expect(greenKey("maria", save, "extend")).not.toBe(greenKey("maria", save));
     expect(greenKey("maria", save, "extend")).not.toBe(greenKey("maria", save, "excuse"));
     expect(greenKey("maria", save, null)).toBe(greenKey("maria", save));
+  });
+});
+
+// mockup-spec 19.1: what the drawer's polite region says once a Save went through.
+describe("what is said after a Save", () => {
+  it("says what was done, then who waits next, or that nothing waits", () => {
+    expect(doneSaid("Approved", "Ana Ruiz", true)).toBe("Approved. Next waiting: Ana Ruiz.");
+    expect(doneSaid("Sent back", null, true)).toBe("Sent back. All caught up.");
+    expect(doneSaid("Deadline extended 10 days", null, false)).toBe("Deadline extended 10 days.");
   });
 });
