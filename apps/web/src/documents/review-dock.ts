@@ -150,10 +150,19 @@ export function resultLine(
       line = { tone: "muted", word: "Excused", text: `${first} won't be asked for it.` };
       break;
     case "asked":
+      // The server asks nothing while a valid approved copy is on file, and closes a document the person no longer
+      // matches; the line follows the refreshed status.
       line = {
         tone: "muted",
         word: "Asked again",
-        text: now.due ? `${first} needs to send it by ${now.due}.` : `${first} needs to send it again.`,
+        text:
+          now.status === "completed"
+            ? "The approved copy still counts. Nothing new is asked."
+            : now.status === "removed"
+              ? `${first} no longer needs this document.`
+              : now.due
+                ? `${first} needs to send it by ${now.due}.`
+                : `${first} needs to send it again.`,
       };
       break;
   }

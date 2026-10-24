@@ -2863,6 +2863,52 @@ describe("More options", () => {
     }
   });
 
+  // K1 fix pass: with a valid approved copy on file the server asks nothing (no due date, status Completed); the
+  // line says so instead of asking the person to send it.
+  it("says nothing new is asked when the approved copy still counts", async () => {
+    const time = clock();
+    try {
+      const excused = detail();
+      excused.obligation.status = "exempt";
+      excused.obligation.approved_id = "submission";
+      excused.submissions[0]!.state = "accepted";
+      vi.mocked(getDocument).mockResolvedValue(excused);
+      page();
+      fireEvent.click(await screen.findByRole("button", { name: /^Ask for it again/ }));
+      fireEvent.change(within(screen.getByRole("group", { name: "Ask for it again" })).getByLabelText("Reason"), {
+        target: { value: "Back on the line" },
+      });
+      const kept = detail();
+      kept.obligation.revision = 2;
+      kept.obligation.status = "completed";
+      kept.obligation.approved_id = "submission";
+      kept.obligation.deadline_at = null;
+      kept.submissions[0]!.state = "accepted";
+      vi.mocked(getDocument).mockResolvedValue(kept);
+      time.tick(450);
+      fireEvent.click(save());
+      await waitFor(() => expect(green().textContent).toBe("Close"));
+      expect(dockLine()).toBe("Asked again · The approved copy still counts. Nothing new is asked. All caught up.");
+      expect(screen.getByText("Completed", { selector: ".rd-head .rd-chip" })).toBeTruthy();
+    } finally {
+      time.restore();
+    }
+  });
+
+  // K1 fix pass: a waiting row with nothing to review and no card (an overdue policy to sign: no Extend past its
+  // deadline, no Excuse for a policy) has nothing to save; the green goes on or closes, as today's drawer did.
+  it("goes on from a waiting row that has nothing to save", async () => {
+    const policy = owed();
+    policy.obligation.kind = "acknowledgement";
+    policy.obligation.deadline_at = "2026-01-05T08:00:00Z";
+    vi.mocked(getDocument).mockImplementation(async (_audience, id) => (id === "second" ? owed() : policy));
+    page(false, { queue: [row({ kind: "acknowledgement", status: "missing" }), sam()] });
+    await waitFor(() => expect(green().textContent).toBe("Next: Sam Lee"));
+    expect(green().getAttribute("aria-disabled")).toBeNull();
+    expect(dockLine()).toBe("Missing · Nothing to decide here.");
+    expect(screen.queryByRole("region", { name: "More options" })).toBeNull();
+  });
+
   it("offers no card to excuse a policy to sign, and no options to a manager who may only read", async () => {
     const policy = owed();
     policy.obligation.kind = "acknowledgement";

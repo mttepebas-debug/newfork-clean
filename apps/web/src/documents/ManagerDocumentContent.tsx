@@ -618,8 +618,9 @@ export function ManagerDocumentContent({
   // The dock (mockup-spec 15): what the green does now, and the one line over it.
   const waiting = documentWaits(obligation.status);
   const timezoneRow = obligation.status === "timezone_required";
-  // An open panel is what Save saves (mockup-spec 15.4); closed again, an answer made in this sitting stands.
-  const saving = panel !== null || (!answered && (reviewing || (waiting && !timezoneRow)));
+  // An open panel is what Save saves (mockup-spec 15.4); closed again, an answer made in this sitting stands. A
+  // waiting document with nothing to review saves only through a card: with none, there is nothing to save.
+  const saving = panel !== null || (!answered && (reviewing || (waiting && !timezoneRow && cards.length > 0)));
   const next = saving ? null : nextUp();
   const greenNow = greenFor({ saving, ready: panelNow ? panelNow.ready : (progress?.ready ?? false), next });
   const doneLabel =

@@ -151,6 +151,24 @@ describe("the result of a Save", () => {
       "Daniel needs to send it again. All caught up.",
     );
   });
+  // K1 fix pass: the server asks nothing when a valid approved copy is on file (Completed), and closes the document
+  // when the person no longer matches it (Removed); the line follows the refreshed status, as decision 11's does.
+  it("says nothing new is asked when the approved copy still counts, or the person no longer needs it", () => {
+    const asked = { kind: "asked" as const, at };
+    expect(resultLine(asked, { first: "Priya", phone: false, end: true, now: now("completed") })).toEqual({
+      tone: "muted",
+      word: "Asked again",
+      text: "The approved copy still counts. Nothing new is asked. All caught up.",
+      title: "Asked again · The approved copy still counts. Nothing new is asked. All caught up.",
+    });
+    expect(resultLine(asked, { first: "Priya", phone: false, end: false, now: now("removed") }).text).toBe(
+      "Priya no longer needs this document.",
+    );
+    for (const status of ["grace", "rejected", "expired"] as const)
+      expect(resultLine(asked, { first: "Priya", phone: false, end: false, now: now(status) }).text).toBe(
+        "Priya needs to send it again.",
+      );
+  });
 });
 
 describe("the green button", () => {
