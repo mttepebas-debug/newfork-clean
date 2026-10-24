@@ -151,10 +151,10 @@ test("desktop: a Needs you line opens what it is about: the document's drawer, t
   ]);
 
   await needs(page).getByRole("link", { name: new RegExp(`${name} is working without a required document`) }).click();
-  await expect(page).toHaveURL(`/app/employees/documents?location=${BESIKTAS}&status=missing&requirement=${requirementId}`);
+  await expect(page).toHaveURL(`/app/employees/documents?location=${BESIKTAS}&status=to_do&requirement=${requirementId}`);
   const drawer = page.getByRole("dialog", { name: title });
   await expect(drawer).toContainText(name);
-  await expect(page.getByLabel("Document status").getByRole("button", { name: /^Missing/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Document status").getByRole("button", { name: /^To do/ })).toHaveAttribute("aria-pressed", "true");
   await page.screenshot({ path: "artifacts/needs-you-deep-links/documents-drawer-1440.png" });
 
   await page.goto("/app/workspace");

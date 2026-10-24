@@ -333,10 +333,27 @@
     background: transparent;
     box-shadow: none;
   }
-  /* ...and an empty list's note is then the card. */
-  .list-page.list-page :is(.job-catalog, .employee-table-wrap) > :is(.announcement-list-empty, .catalog-table-empty) {
-    border-radius: 18px;
-    box-shadow: var(--theme-shadow-card);
+  /* ...and an empty list's note sits on the page's sky with no card, under a line 16 px below the
+     filters; a full list draws no line (KARARLAR S-250, Mert 2026-10-23). The note keeps its own
+     spacing under the line: 16 px more on top. Availability's note sits right in the page. */
+  :is(.list-page.list-page, .list-page.list-page :is(.job-catalog, .employee-table-wrap)) > :is(.announcement-list-empty, .catalog-table-empty) {
+    border-top: 1px solid var(--theme-border);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  :is(.list-page.list-page, .list-page.list-page :is(.job-catalog, .employee-table-wrap)) > .catalog-table-empty {
+    min-height: 277px;
+    padding-top: 56px;
+  }
+  :is(.list-page.list-page, .list-page.list-page :is(.job-catalog, .employee-table-wrap)) > .announcement-list-empty {
+    padding-top: 44px;
+  }
+  /* A table that stays a table on a phone (Documents) drops its heading row while it is empty, so the
+     line sits under the filters there too. */
+  .list-page.list-page .employee-table-wrap:has(> .catalog-table-empty) > table,
+  .list-page.list-page .job-catalog:has(> .catalog-table-empty) > .job-column-headings {
+    display: none;
   }
   .list-add-button .list-add-short {
     display: inline;
@@ -433,22 +450,27 @@
     min-height: 44px;
     height: 44px;
   }
-  /* A page with tabs puts its add button at the right end of the tab row,
-     8 px above the line, and keeps it in view while the tabs scroll (Mert
-     2026-10-14). On a computer it stays at the end of the filter row. */
-  .list-page.list-page .catalog-toolbar-status-row .catalog-tab-add {
-    position: sticky;
-    right: 0;
-    display: flex;
-    flex: 0 0 auto;
-    align-self: flex-start;
-    margin-left: auto;
-    padding-left: 8px;
-    background: var(--theme-page);
+  /* The add button is never in the tab row: it ends the first box row, and the boxes after the first go on
+     under them the full width (KARARLAR S-253, Mert 2026-10-23). Announcements keeps its own two rows. */
+  .list-page.list-page:not(.announcements-page) .catalog-toolbar-filter-row:has(> .list-add-button) {
+    flex-wrap: wrap;
   }
-  .list-page.list-page .catalog-tab-add .list-add-button {
-    height: 32px;
-    min-height: 32px;
+  .list-page.list-page:not(.announcements-page) .catalog-toolbar .catalog-toolbar-filter-row:has(> .list-add-button) > * {
+    order: 2;
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+  }
+  .list-page.list-page:not(.announcements-page) .catalog-toolbar .catalog-toolbar-filter-row:has(> .list-add-button) > :first-child {
+    order: 0;
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+  .list-page.list-page:not(.announcements-page) .catalog-toolbar .catalog-toolbar-filter-row > .list-add-button.list-add-button {
+    order: 1;
+    flex: 0 0 auto;
+    width: auto;
   }
 }
 

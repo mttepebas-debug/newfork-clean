@@ -31,6 +31,7 @@ import {
 
 import { ListOutline, LoadError } from "../shell/LoadState";
 import { NoAccessRoute, NoAccessState } from "../shell/NoAccessState";
+import { tabLineRef } from "../shell/useTabSwipe";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { AnswerDrawerFrame, TimeOffAnswers } from "../time-off/TimeOffAnswers";
 import { TimeOffEntry } from "../time-off/TimeOffEntry";
@@ -244,9 +245,10 @@ function ScheduleRequestsPageContent() {
   // D5: whoever may answer adds approved time off for somebody from the Time off tab's filter row (or from the one
   // list of a reader who reads only time off).
   const canAdd = can(context, "time_off.decide") && (timeOffTab || (canReadTimeOff && !tabs.length));
-  // On a phone Add sits beside the location list at the right edge, the search under them, as on
-  // Employees (Mert 2026-10-23).
+  // On a phone Add stands at the right end of the tab row (KARARLAR S-254, Requests' one exception to S-253);
+  // with no tabs, beside the location list. On a computer, at the filter row's end.
   const addButton = canAdd ? <ListAddButton label="Add time off" shortLabel="Add" onClick={() => setAddingTimeOff(true)} /> : null;
+  const tabRowAdd = phone && tabs.length > 0;
 
   return (
     <section
@@ -257,37 +259,22 @@ function ScheduleRequestsPageContent() {
 
       <div className="requests-toolbar catalog-toolbar">
         {tabs.length ? (
-        <TabRow chosen={view.type}>
-          <div
-            className="catalog-status-tabs"
-            role="group"
-            aria-label="Request type"
-            onKeyDown={(event) => {
-              // R2-48: the arrow keys move along the tabs.
-              if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
-              const buttons = [...event.currentTarget.querySelectorAll("button")];
-              const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
-              if (at < 0) return;
-              event.preventDefault();
-              buttons[(at + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length]?.focus();
-            }}
-          >
-            {tabs.map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={view.type === key ? "active" : ""}
-                aria-pressed={view.type === key}
-                onClick={() => {
-                  selectRequest("");
-                  setView({ type: key === "all" ? null : key, page: null });
-                }}
-              >
-                {requestTabLabels[key]}
-                {counts[key] ? <strong>{counts[key]}</strong> : null}
-              </button>
-            ))}
-          </div>
+        <TabRow chosen={view.type} end={tabRowAdd ? addButton : null}>
+          {tabs.map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={view.type === key ? "active" : ""}
+              aria-pressed={view.type === key}
+              onClick={() => {
+                selectRequest("");
+                setView({ type: key === "all" ? null : key, page: null });
+              }}
+            >
+              {requestTabLabels[key]}
+              {counts[key] ? <strong>{counts[key]}</strong> : null}
+            </button>
+          ))}
         </TabRow>
         ) : null}
         <div className="catalog-toolbar-filter-row">
@@ -307,7 +294,7 @@ function ScheduleRequestsPageContent() {
               </option>
             ))}
           </select>
-          {phone ? addButton : null}
+          {phone && !tabRowAdd ? addButton : null}
           <label className="requests-search toolbar-search">
             <Search size={16} aria-hidden />
             <input
@@ -457,10 +444,6 @@ function ScheduleRequestsPageContent() {
   );
 }
 
-/**
- * The type tabs' row. When it is wider than a phone the row scrolls, its edge
- * fades where more tabs wait (`data-more`), and the chosen tab is scrolled into view.
- */
 /** What stands where the table was: an icon, a heading, a sentence, maybe one button. */
 function TableEmpty({ icon, title, text, action, headingRef }: {
   readonly icon: ReactNode;
@@ -484,25 +467,59 @@ function TableEmpty({ icon, title, text, action, headingRef }: {
   );
 }
 
-function TabRow({ chosen, children }: { chosen: string; children: ReactNode }) {
-  const row = useRef<HTMLDivElement>(null);
+/**
+ * The type tabs' row. When the tabs are wider than a phone their strip scrolls, its edge fades where more
+ * tabs wait (`data-more`), and the chosen tab is scrolled into view. `end` (the phone's Add, KARARLAR S-254)
+ * stands at the row's right end, outside the strip, and never scrolls or fades.
+ */
+function TabRow({ chosen, end, children }: { chosen: string; end?: ReactNode; children: ReactNode }) {
+  const strip = useRef<HTMLDivElement | null>(null);
   const [more, setMore] = useState<"left" | "right" | "both" | null>(null);
   const measure = useCallback(() => {
-    const element = row.current;
+    const element = strip.current;
     if (!element) return;
     const left = element.scrollLeft > 1;
     const right = element.scrollLeft + element.clientWidth < element.scrollWidth - 1;
     setMore(left && right ? "both" : left ? "left" : right ? "right" : null);
   }, []);
+  // The strip is the list page's tab strip: phone-page-tabs.css draws its sliding line (tabLineRef).
+  const attach = useCallback((element: HTMLDivElement | null) => {
+    strip.current = element;
+    const stop = tabLineRef(element);
+    return () => {
+      strip.current = null;
+      stop?.();
+    };
+  }, []);
+  const hasEnd = Boolean(end);
   useEffect(() => {
-    row.current?.querySelector<HTMLElement>("button.active")?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    strip.current?.querySelector<HTMLElement>("button.active")?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [chosen, measure]);
+  }, [chosen, hasEnd, measure]);
   return (
-    <div ref={row} className="catalog-toolbar-status-row" data-more={more ?? undefined} onScroll={measure}>
-      {children}
+    <div className="catalog-toolbar-status-row">
+      <div
+        ref={attach}
+        className="catalog-status-tabs"
+        role="group"
+        aria-label="Request type"
+        data-more={more ?? undefined}
+        onScroll={measure}
+        onKeyDown={(event) => {
+          // R2-48: the arrow keys move along the tabs.
+          if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+          const buttons = [...event.currentTarget.querySelectorAll("button")];
+          const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+          if (at < 0) return;
+          event.preventDefault();
+          buttons[(at + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length]?.focus();
+        }}
+      >
+        {children}
+      </div>
+      {end}
     </div>
   );
 }

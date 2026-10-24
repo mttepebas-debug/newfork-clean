@@ -23,6 +23,12 @@ interface MiniCalendarProps {
   readonly onWeekJump?: (date: string) => void;
   // The page's today, the location's (S-226); the device's calendar when omitted.
   readonly today?: string;
+  // A range (time off): selectedDate is its first day, rangeEnd its last; the
+  // days between share a band.
+  readonly rangeEnd?: string | null;
+  // Days before it cannot be picked.
+  readonly minDate?: string;
+  readonly onDayHover?: (date: string | null) => void;
 }
 
 const monthNames = [
@@ -152,6 +158,9 @@ export function MiniCalendar({
   onDayPick,
   onWeekJump,
   today,
+  rangeEnd = null,
+  minDate,
+  onDayHover,
 }: MiniCalendarProps) {
   const todayUtc = fromIso(today ?? todayIn());
   const initialIso = selectedDate ?? weekStartDate ?? toIso(todayUtc);
@@ -229,6 +238,7 @@ export function MiniCalendar({
   };
 
   const handleDayClick = (date: Date): void => {
+    if (minDate && toIso(date) < minDate) return;
     setFocusedDate(date);
     if (!sameMonth(date, viewMonth)) {
       setViewMonth(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1, 12)));
@@ -385,6 +395,7 @@ export function MiniCalendar({
           className={`calendar-grid${onWeekJump ? "" : " days-only"}`}
           role="grid"
           aria-label={`${monthNames[viewMonth.getUTCMonth()]} ${viewMonth.getUTCFullYear()}`}
+          onMouseLeave={onDayHover ? () => onDayHover(null) : undefined}
         >
           {onWeekJump ? <span aria-hidden="true" /> : null}
           {weekdayLabels.map((label, index) => (
@@ -413,7 +424,11 @@ export function MiniCalendar({
                   const iso = toIso(date);
                   const marker = markerMap.get(iso);
                   const outside = date.getUTCMonth() !== viewMonth.getUTCMonth();
-                  const selected = selectedDate === iso;
+                  const selected = selectedDate === iso || rangeEnd === iso;
+                  const inRange =
+                    Boolean(selectedDate && rangeEnd) &&
+                    selectedDate! < iso &&
+                    iso < rangeEnd!;
                   const current = toIso(todayUtc) === iso;
                   const focused = toIso(focusedDate) === iso;
                   const inWeek =
@@ -423,12 +438,14 @@ export function MiniCalendar({
                       type="button"
                       role="gridcell"
                       tabIndex={focused ? 0 : -1}
-                      className={`calendar-day${outside ? " outside" : ""}${inWeek ? " in-week" : ""}${selected ? " selected" : ""}`}
+                      className={`calendar-day${outside ? " outside" : ""}${inWeek ? " in-week" : ""}${inRange ? " in-range" : ""}${selected ? " selected" : ""}`}
                       key={iso}
+                      disabled={minDate ? iso < minDate : undefined}
                       aria-label={`${monthNames[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}${marker ? `, ${marker.title}` : ""}`}
                       aria-selected={selected}
                       aria-current={current ? "date" : undefined}
                       onFocus={() => setFocusedDate(date)}
+                      onMouseEnter={onDayHover ? () => onDayHover(iso) : undefined}
                       onClick={() => handleDayClick(date)}
                     >
                       <span>{date.getUTCDate()}</span>

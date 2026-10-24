@@ -3,7 +3,6 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Clock3, Search, Tags } from "lucide-re
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { ListAddButton } from "../views/CatalogPageHeader";
 import { ShiftCatalogToolbar } from "./ShiftCatalogTabs";
-import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { nextCatalogSort } from "../views/CatalogSortButton";
 
 type Entry = {
@@ -57,7 +56,6 @@ export function ShiftCatalogList<T extends Entry>({
   reorderPending: boolean;
   archivePending: boolean;
 }) {
-  const phone = useListPhoneWidth();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{
     key: SortKey;
@@ -122,7 +120,6 @@ export function ShiftCatalogList<T extends Entry>({
     <>
       <ShiftCatalogToolbar
         disabled={tabsDisabled}
-        add={phone ? addButton : null}
       >
         <div className="catalog-toolbar-filter-row">
           <label className="job-search toolbar-search">
@@ -134,7 +131,7 @@ export function ShiftCatalogList<T extends Entry>({
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
-          {phone ? null : addButton}
+          {addButton}
         </div>
       </ShiftCatalogToolbar>
       {notice}

@@ -4,6 +4,7 @@ import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
 import { roundLabel, roundWeek } from "../fixtures/world";
 import { psql } from "../global-setup";
+import { pickDays } from "../fixtures/time-off";
 
 // Time off rebuild D5 (KARARLAR S-239 (1), (6)): Ayse, Kadikoy's manager, adds
 // approved time off for a fresh employee at Kadikoy from Requests → Time off → Add time off, from today to
@@ -63,8 +64,7 @@ test("a manager adds time off for an employee from today; the shift goes to open
   const drawer = manager.getByRole("dialog", { name: "Add time off" });
   await drawer.getByRole("combobox", { name: "Employee" }).selectOption({ label: name });
   await drawer.getByRole("radio", { name: /Sick/ }).check();
-  await drawer.getByLabel("First day").fill(today);
-  await drawer.getByLabel("Last day").fill(tomorrow);
+  await pickDays(drawer, "First day", today, tomorrow);
   await drawer.getByRole("textbox", { name: new RegExp(`Note for ${first}`) }).fill("Doctor said rest.");
   await expect(drawer.getByText("1 shift goes to open shifts")).toBeVisible();
   await drawer.getByRole("button", { name: "Add time off", exact: true }).click();

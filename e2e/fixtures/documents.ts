@@ -135,9 +135,11 @@ export const card = {
  * Account address still leads there, in the person's own interface
  * (MY-DOCUMENTS). Returns once the drawer has nothing left to send.
  */
-export async function sendOwnDocument(page: Page, title: string) {
+export async function sendOwnDocument(page: Page, title: string, tab?: "Completed") {
   await page.goto("/account/documents");
   await expect(page).toHaveURL(/\/app\/(employee-hub\/documents|my-documents)/);
+  // The person's own list opens on To do; an excused card sits under Completed (KARARLAR S-255).
+  if (tab) await page.getByLabel("Document status").getByRole("button", { name: new RegExp(`^${tab}`) }).click();
   await page
     .getByRole("table", { name: "Employee documents" })
     .getByRole("row", { name: new RegExp(title) })

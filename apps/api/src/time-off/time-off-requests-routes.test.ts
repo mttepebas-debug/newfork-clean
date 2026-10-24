@@ -191,6 +191,28 @@ describe("time off requests routes", () => {
     await app.close();
   });
 
+  // Live, 23 Oct 2026: every Requests → Time off read on www.tepebash.com was refused with 400 before reaching the
+  // database, while the same call passed here. The host's rewrite (vercel.json: /v1/:path* → /api?__path=…) hands
+  // the API one more query key than the browser sent, and these three reads' strict queries refused it. A read takes
+  // the keys it knows and leaves the rest, as every other read in the API does; who and where still come from the
+  // token and the address.
+  it("reads past a query key it does not know, as the host's rewrite may add one", async () => {
+    const service = serviceMock();
+    const app = buildApp({ timeOffRequestsService: service, contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
+    const added = `path=v1%2Fworkspaces%2F${workspaceId}%2Ftime-off-requests&actor_user_id=${spoofed}`;
+    const list = await app.inject({ method: "GET", url: `${base}?view=all&sort=needs_decision&page_size=100&page=1&${added}`, headers: auth });
+    const shifts = await app.inject({ method: "GET", url: `${base}/my-shifts?start=2026-10-30&end=2026-10-30&${added}`, headers: auth });
+    const impact = await app.inject({
+      method: "GET", url: `${base}/entries/impact?employee_id=${mariaId}&start=2026-10-22&end=2026-10-23&${added}`, headers: auth,
+    });
+    expect([list.statusCode, shifts.statusCode, impact.statusCode]).toEqual([200, 200, 200]);
+    const actor = { actorUserId: userId, workspaceId };
+    expect(service.list).toHaveBeenCalledExactlyOnceWith({ ...actor, query: { view: "all", sort: "needs_decision", page: 1, page_size: 100, search: "" } });
+    expect(service.myShifts).toHaveBeenCalledExactlyOnceWith({ ...actor, query: { start: "2026-10-30", end: "2026-10-30" } });
+    expect(service.entryImpact).toHaveBeenCalledExactlyOnceWith({ ...actor, query: { employee_id: mariaId, start: "2026-10-22", end: "2026-10-23" } });
+    await app.close();
+  });
+
   it("asks for a session before anything else", async () => {
     const app = buildApp({ timeOffRequestsService: serviceMock(), contextResolver: { resolve: async () => contextWith(authzActionKeys) } });
     expect((await app.inject({ method: "GET", url: `${base}/mine` })).statusCode).toBe(401);

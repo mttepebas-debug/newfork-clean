@@ -3,37 +3,47 @@
    border-subtle, #c2352a → danger). */
 .ems { padding-bottom: 24px; color: var(--theme-text); font-size: 15px; line-height: 1.4; letter-spacing: -.006em; font-variant-numeric: tabular-nums; }
 .ems :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; letter-spacing: inherit; }
-/* The week switch with an arrow on each side (QA 60): the arrows are the switch's height and its well. */
+/* The week switch with an arrow on each side (QA 60): the arrows are the switch's height. Both are outlines
+   on the page's sky, not grey wells (KARARLAR S-252); the white pill marks the week. */
 .ems-nav { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 8px; margin-bottom: 14px; }
-.ems-step { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 13px; color: var(--theme-muted); background: var(--theme-surface-muted); box-shadow: inset 0 0 0 1px var(--theme-border-subtle); transition: color .2s; }
+.ems-step { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 13px; color: var(--theme-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--theme-border-control); transition: color .2s; }
 .ems-step:hover { color: var(--theme-text); }
 .ems-step:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
-.ems-seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 13px; background: var(--theme-surface-muted); box-shadow: inset 0 0 0 1px var(--theme-border-subtle); }
+.ems-seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 13px; background: transparent; box-shadow: inset 0 0 0 1px var(--theme-border-control); }
 .ems-seg button { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; height: 36px; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--theme-muted); text-align: center; transition: color .2s; }
 .ems-seg button[aria-selected="true"] { color: var(--theme-text); }
 .ems-seg button:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
 .ems-seg-i { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 10px; background: var(--theme-surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); transform: translateX(calc(var(--pos, 0) * 100%)); transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
-/* The week moves only from the switch: the two weeks are one track that slides under a transform, never a
-   scroll (a scrolled pager pushed the app's scroll area sideways on a phone); touch-action pan-y leaves a
-   sideways swipe to the page tabs. The pill slides with it, as in the lab page. Clip, not hidden: a hidden box
-   is still a scroll box, and the page's scroll to a #shift- address slid it under the transform (the list showed
-   empty). The 6px each side is room for a tapped shift's halo. */
+/* A label that changes slides out the way the week went (--dir: 1 on, -1 back) while the new one comes in from
+   the other side, inside its button (week switch variant A, Mert 2026-10-23). */
+.ems-seg button { overflow: hidden; }
+.ems-lbl { display: inline-grid; }
+.ems-lbl > span { grid-area: 1 / 1; white-space: nowrap; }
+.ems-lbl-out { animation: ems-lbl-out .3s cubic-bezier(.2, .8, .2, 1) forwards; }
+.ems-lbl-in { animation: ems-lbl-in .3s cubic-bezier(.2, .8, .2, 1); }
+@keyframes ems-lbl-out { 55%, 100% { transform: translateX(calc(var(--dir, 1) * -45%)); opacity: 0; } }
+@keyframes ems-lbl-in { 0% { transform: translateX(calc(var(--dir, 1) * 45%)); opacity: 0; } 30% { transform: translateX(calc(var(--dir, 1) * 30%)); opacity: 0; } }
+/* The week moves only from the switch and its arrows: the week on screen slides in from the side you went to while
+   the one before leaves the other way, a page turned (variant A), under a transform, never a scroll (a scrolled
+   pager pushed the app's scroll area sideways on a phone); touch-action pan-y leaves a sideways swipe to the page
+   tabs. Clip, not hidden: a hidden box is still a scroll box, and the page's scroll to a #shift- address slid it
+   under the transform (the list showed empty). The 6px each side is room for a tapped shift's halo. The leaving
+   week is out of the flow, so the list is only as tall as the week on screen. */
 .ems-pager { overflow-x: clip; margin: 0 -6px; touch-action: pan-y; }
-.ems-track { display: grid; grid-template-columns: 1fr 1fr; align-items: start; width: 200%; transform: translateX(calc(var(--pos, 0) * -50%)); transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
+.ems-track { position: relative; }
+.ems-week-out { position: absolute; top: 0; left: 0; right: 0; pointer-events: none; animation: ems-week-out .32s cubic-bezier(.2, .8, .2, 1) forwards; }
+.ems-week-in { animation: ems-week-in .32s cubic-bezier(.2, .8, .2, 1); }
+@keyframes ems-week-out { to { transform: translateX(calc(var(--dir, 1) * (-100% - 12px))); } }
+@keyframes ems-week-in { from { transform: translateX(calc(var(--dir, 1) * (100% + 12px))); } }
 /* A phone's frame (views/list-page-frozen.css, Mert 2026-10-19 ~06:30 AM, CALISAN-SCROLL): it scrolls only as far as
    the open week's days, so a week that fits never moves. The frame reaches 6 px past each side for the halo; the
-   pager clips both ways (a clipped box is no scroll box, so neither the hidden week nor its slide can widen or
-   lengthen the frame) and keeps 6 px above and below for the halo too; the week out of view leaves the flow and
-   sits in its own column. */
+   pager clips both ways (a clipped box is no scroll box, so neither the leaving week nor the slide can widen or
+   lengthen the frame) and keeps 6 px above and below for the halo too. */
 @media (max-width: 720px) and (min-height: 560px) {
   .ems-frame { margin: 0 -6px; padding: 0 6px; }
   /* A shift reached by its #shift- address lands with its day's 10 px and halo's 6 px above it, under the switch. */
   .ems-shift { scroll-margin-top: 16px; }
   .ems-pager { overflow: clip; margin: -6px -6px; padding: 6px 0; }
-  .ems-track { position: relative; }
-  .ems-week[inert] { position: absolute; top: 0; grid-row: 1; width: 100%; }
-  .ems-week:first-child { grid-column: 1; }
-  .ems-week:last-child { grid-column: 2; }
 }
 .ems-week { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 0 6px; }
 .ems-day { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px; border-radius: 16px; background: var(--theme-surface); box-shadow: inset 0 0 0 1px var(--theme-border-subtle); }
@@ -62,4 +72,9 @@
     margin-left: clamp(0px, 50vw - var(--app-sidebar-width) - var(--app-page-gutter-start) - 350px, 100% - 700px);
   }
 }
-@media (prefers-reduced-motion: reduce) { .ems-seg-i, .ems-seg button, .ems-track { transition: none; } .ems-day { animation: none !important; } }
+/* Without motion the week and its labels change at once; 1 ms, not none, so the leaving ones still end and go. */
+@media (prefers-reduced-motion: reduce) {
+  .ems-seg-i, .ems-seg button { transition: none; }
+  .ems-day { animation: none !important; }
+  .ems-lbl-out, .ems-lbl-in, .ems-week-out, .ems-week-in { animation-duration: 1ms; }
+}

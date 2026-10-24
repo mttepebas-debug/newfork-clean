@@ -1258,16 +1258,16 @@ describe("Important Dates (EKRAN-08)", () => {
     expect(screen.queryByRole("button", { name: "New" })).toBeNull();
   });
 
-  // Mert 2026-10-14: on a phone "+ Add" sits at the right end of the tab row.
-  it("puts New at the right end of the tab row on a phone, short label Add", async () => {
+  // KARARLAR S-253 (Mert 2026-10-23): on a phone "+ Add" sits beside the first box, never in the tab row.
+  it("puts New beside the search on a phone, short label Add", async () => {
     stubPhoneWidth();
     vi.mocked(getImportantDates).mockResolvedValue({ workspace_id: workspaceId, time_format: "12h", can_write: true, dates: [] });
     const path = "/app/announcements/important-dates";
     renderAt(path, <ImportantDatesPage />, [path]);
     const add = await screen.findByRole("button", { name: "New" });
     const search = screen.getByLabelText("Search important dates");
-    expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
-    expect(search.closest("label")?.nextElementSibling).toBeNull();
+    expect(add.closest(".catalog-toolbar-status-row")).toBeNull();
+    expect(search.closest("label")?.nextElementSibling).toBe(add);
     expect(add.querySelector(".list-add-short")?.textContent).toBe("Add");
   });
   afterEach(() => vi.unstubAllGlobals());

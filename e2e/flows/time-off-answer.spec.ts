@@ -4,6 +4,7 @@ import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
 import { roundLabel, roundWeek } from "../fixtures/world";
 import { psql } from "../global-setup";
+import { pickDays } from "../fixtures/time-off";
 
 // Time off rebuild D3 (KARARLAR S-239): an employee asks for time off in
 // Employee Hub → My Availability → Time off; Ayse, Kadikoy's manager, answers it in Requests → Time off.
@@ -45,8 +46,7 @@ async function askForDays(page: Page, first: string, lastDay: string) {
   await panel.getByRole("button", { name: "Request time off" }).click();
   const form = page.getByRole("dialog", { name: "Request time off" });
   await form.getByRole("radio", { name: /Vacation/ }).check();
-  await form.getByLabel("First day").fill(first);
-  await form.getByLabel("Last day").fill(lastDay);
+  await pickDays(form, "First day", first, lastDay);
   await form.getByRole("button", { name: "Send request" }).click();
   await expect(form).toBeHidden();
   return panel;
