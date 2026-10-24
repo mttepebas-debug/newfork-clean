@@ -615,6 +615,18 @@
 .catalog-drawer.document-review-drawer .rd-body fieldset > .nf-button {
   justify-self: start;
 }
+/* The document time zone (K1 decision 12): its choice drawn as the drawer's other fields. */
+.catalog-drawer.document-review-drawer .docr-zone select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 14px;
+}
 .catalog-drawer.document-review-drawer .docr-policy {
   max-height: 280px;
   overflow: auto;
