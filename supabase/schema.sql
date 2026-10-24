@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 586, last: 20261024113847_employee_hub_week_strip.sql
--- fingerprint: sha256:ae38d21059311b5728c4d515633ce04177cca09c07e803b7daa46a6019fc07b8
+-- migrations: 587, last: 20261024173519_employees_changes_requested_status.sql
+-- fingerprint: sha256:4fb5475ee08f6b3a66740b09c576ab139cd3e8c7661fa5606a9a1d27adc28d40
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -19144,7 +19144,8 @@ begin
       case
         when employee.archived_at is not null then 'archived'
         when membership.status = 'active' then 'active'
-        when onboarding.status in ('submitted', 'changes_requested') then 'needs_attention'
+        when onboarding.status = 'submitted' then 'needs_attention'
+        when onboarding.status = 'changes_requested' then 'changes_requested'
         when membership.status = 'pending_activation' then 'onboarding'
         when invitation.status = 'pending' and invitation.expires_at > now() then 'invited'
         else 'not_invited'
