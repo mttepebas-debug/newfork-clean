@@ -4,10 +4,12 @@ import {
   acceptsUpload,
   fileDecisionLabel,
   formatsLabel,
+  initials,
   isObligationClosed,
   isOnFile,
   sameSignerName,
   statusLabel,
+  statusTone,
   versionStateLabel,
 } from "./document-rules";
 
@@ -58,6 +60,47 @@ describe("statusLabel", () => {
     expect(
       statusLabel({ ...row, status: "exempt", exemption_locked: true, approved_id: "copy" }),
     ).toBe("On file");
+  });
+});
+
+// K1 decision 4: the manager reads a sent-back document as Missing and an exempt one as Excused;
+// the person keeps today's words.
+describe("statusLabel by reader", () => {
+  const row = { status: "rejected", exemption_locked: false, approved_id: null } as const;
+  it("says Missing and Excused to a manager", () => {
+    expect(statusLabel(row, "manager")).toBe("Missing");
+    expect(statusLabel({ ...row, status: "exempt" }, "manager")).toBe("Excused");
+    expect(statusLabel({ ...row, status: "pending_review" }, "manager")).toBe("Needs review");
+    expect(statusLabel({ ...row, status: "missing" }, "manager")).toBe("Missing");
+  });
+  it("keeps Rejected and Exempt for the person, and On file for both", () => {
+    expect(statusLabel(row)).toBe("Rejected");
+    expect(statusLabel(row, "employee")).toBe("Rejected");
+    expect(statusLabel({ ...row, status: "exempt" }, "employee")).toBe("Exempt");
+    const onFile = { status: "exempt", exemption_locked: true, approved_id: "copy" } as const;
+    expect(statusLabel(onFile, "manager")).toBe("On file");
+    expect(statusLabel(onFile, "employee")).toBe("On file");
+  });
+});
+
+describe("statusTone", () => {
+  const row = { status: "completed", exemption_locked: false, approved_id: null } as const;
+  it("colours done green, owed red, closed grey and the rest amber", () => {
+    expect(statusTone(row)).toBe("ok");
+    expect(statusTone({ ...row, status: "exempt", exemption_locked: true, approved_id: "copy" })).toBe("ok");
+    for (const status of ["missing", "expired", "rejected"] as const) expect(statusTone({ ...row, status })).toBe("red");
+    for (const status of ["exempt", "paused", "removed"] as const) expect(statusTone({ ...row, status })).toBe("grey");
+    for (const status of ["pending_review", "grace", "timezone_required"] as const)
+      expect(statusTone({ ...row, status })).toBe("warn");
+  });
+});
+
+describe("initials", () => {
+  it("takes the first letter of the first two words", () => {
+    expect(initials("Maria Lopez")).toBe("ML");
+    expect(initials("  ana  maría ruiz ")).toBe("AM");
+    expect(initials("Cher")).toBe("C");
+    expect(initials("Élodie Ünal")).toBe("ÉÜ");
   });
 });
 

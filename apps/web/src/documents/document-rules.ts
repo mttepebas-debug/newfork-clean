@@ -65,11 +65,44 @@ export function statusWeight(status: DocumentObligationStatus): number {
   return statusWeights[status];
 }
 
-/** The status as a person reads it, in the list and the drawer alike. */
+/** Who reads a status: the person it is asked of, or a manager reviewing it. */
+export type StatusReader = "employee" | "manager";
+
+// K1 decision 4 (Mert 23 Oct, A2 Tur 5): a manager reads a document sent back as Missing (it waits on the person
+// again) and an exempt one as Excused. The person keeps today's words.
+const managerLabels: Partial<Record<DocumentObligationStatus, string>> = {
+  rejected: "Missing",
+  exempt: "Excused",
+};
+
+/** The status as its reader reads it, in the list and the drawer alike. */
 export function statusLabel(
   obligation: Excusable & Pick<DocumentObligation, "approved_id">,
+  reader: StatusReader = "employee",
 ): string {
-  return isOnFile(obligation) ? "On file" : statusLabels[obligation.status];
+  if (isOnFile(obligation)) return "On file";
+  return (reader === "manager" ? managerLabels[obligation.status] : undefined) ?? statusLabels[obligation.status];
+}
+
+export type StatusTone = "ok" | "warn" | "red" | "grey";
+
+/** A status chip's colour (KARARLAR Genel → "Durum çipi"): done green, owed red, closed grey, the rest amber. */
+export function statusTone(obligation: Excusable & Pick<DocumentObligation, "approved_id">): StatusTone {
+  if (isOnFile(obligation) || obligation.status === "completed") return "ok";
+  if (["missing", "expired", "rejected"].includes(obligation.status)) return "red";
+  if (["removed", "exempt", "paused"].includes(obligation.status)) return "grey";
+  return "warn";
+}
+
+/** A person's initials for their tile: the first letter of the first two words of the name. */
+export function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => Array.from(word)[0] ?? "")
+    .join("")
+    .toLocaleUpperCase();
 }
 
 /** Typed-name match for a policy acknowledgement: trimmed, inner whitespace collapsed, case folded. */
