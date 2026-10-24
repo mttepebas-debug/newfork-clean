@@ -151,6 +151,33 @@ export async function sendOwnDocument(page: Page, title: string, tab?: "Complete
 }
 
 /**
+ * The person sends `names` (PDFs) as one version of their document, waiting for review, past the screens: the same
+ * two services the API calls, as the person. No file is in storage, so a test never opens one of these files.
+ */
+export function sentWithFiles(documentId: string, email: string, names: readonly string[]): void {
+  const requirement = `select q.* into r from public.employee_onboarding_requirements q
+        join auth.users u on u.id = q.lifecycle_user_id
+        where q.source_id = '${documentId}' and u.email = '${email}';`;
+  sql(`
+    do $$
+    declare r public.employee_onboarding_requirements%rowtype; draft uuid; n text;
+    begin
+      foreach n in array array[${names.map((name) => `'${name}'`).join(", ")}]::text[] loop
+        ${requirement}
+        perform public.save_employee_document_draft_file_service(r.lifecycle_user_id, r.id, r.lifecycle_revision,
+          r.workspace_id || '/' || r.employee_id || '/' || r.id || '/' || gen_random_uuid() || '.pdf',
+          n, 'application/pdf', 100);
+      end loop;
+      ${requirement}
+      select s.id into draft from public.employee_document_submissions s
+        where s.requirement_id = r.id and s.state = 'draft';
+      perform public.submit_employee_document_lifecycle_service(r.lifecycle_user_id, r.id, r.lifecycle_revision,
+        draft, null, '{}'::jsonb);
+    end $$;
+    select tests.settle();`);
+}
+
+/**
  * Employees > Documents, the manager's drawer (A2 Tur 6): each file of the open document approved, then Save. The
  * green turns into "Next: <who>" or "Close", so Save is gone once the decision is in.
  */
