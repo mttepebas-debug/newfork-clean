@@ -20,6 +20,11 @@
 }
 
 .employee-lineup { max-width: 560px; padding-bottom: 24px; }
+/* On a desktop everything under My shifts · Team schedule · Lineup stands in the middle of the page, as on the
+   manager's Lineup; the page tabs stay where they are (Mert 2026-10-23). */
+@media (min-width: 721px) {
+  .employee-lineup-page > :is(.employee-lineup-day, .employee-lineup) { margin-inline: auto; }
+}
 /* Her shift tabs 14 px under the wheel, as on the manager's page (one rhythm, Mert 2026-10-17 ~8:10 AM). */
 .employee-lineup > .lineup-shift-tabs { margin-top: 14px; }
 /* The ticket 16 px under the shift tabs (Mert 2026-10-17 ~8:30 AM; no heading over it any more). */
