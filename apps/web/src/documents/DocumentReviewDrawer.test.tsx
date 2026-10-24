@@ -494,6 +494,8 @@ it("keeps paused document evidence readable while upload and review controls are
  await screen.findByText("certificate.pdf");
  expect(screen.queryByRole("button",{name:"Approve"})).toBeNull();
  expect(screen.queryByRole("button",{name:"Reject"})).toBeNull();
+ expect(screen.queryByRole("group",{name:/^Approve or reject/})).toBeNull();
+ expect(screen.queryByRole("button",{name:"Save"})).toBeNull();
  expect(screen.queryByLabelText("Upload document")).toBeNull();
  expect(screen.queryByRole("button",{name:"Submit document"})).toBeNull();
  expect(reviewDocument).not.toHaveBeenCalled();
@@ -1038,7 +1040,8 @@ describe("a row whose unreviewed upload is hidden", () => {
     vi.mocked(getDocument).mockResolvedValue(doc);
     page();
     expect(await screen.findByText("Missing")).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: /^Version/ })).toBeNull();
+    expect(within(screen.getByRole("region", { name: "Files" })).getByText("Nothing sent yet")).toBeTruthy();
+    expect(screen.queryByText(/^Version \d/)).toBeNull();
     expect(screen.queryByRole("note")).toBeNull();
     expect(document.body.textContent).not.toMatch(/null|undefined/);
   });
@@ -1440,15 +1443,38 @@ describe("download, document time zone and deadline extension", () => {
       time.restore();
     }
   });
-  it.each<[string, (doc: DocumentDetail) => void, boolean]>([
+  // K1 decision 1: Extend only where today's drawer offers it. Each case keeps a deadline ahead, so only the named
+  // condition hides it; Excuse stays wherever the document is not excused already.
+  it.each<[string, (doc: DocumentDetail) => void, boolean, boolean]>([
     ["the deadline has passed", (doc) => {
       doc.obligation.deadline_at = "2020-01-01T00:00:00Z";
-    }, false],
+    }, false, true],
+    ["there is no deadline", (doc) => {
+      doc.obligation.deadline_at = null;
+    }, false, true],
     ["the document is waiting for review", (doc) => {
       doc.obligation.status = "pending_review";
-    }, false],
-    ["the viewer is the employee", () => undefined, true],
-  ])("offers no deadline extension when %s", async (_, change, selfOnly) => {
+    }, false, true],
+    ["the document is optional", (doc) => {
+      doc.obligation.mode = "optional";
+    }, false, true],
+    ["the person is suspended", (doc) => {
+      doc.obligation.suspended = true;
+    }, false, true],
+    ["the document is completed", (doc) => {
+      doc.obligation.status = "completed";
+    }, false, true],
+    ["the document is excused", (doc) => {
+      doc.obligation.status = "exempt";
+    }, false, false],
+    ["the document's changes are paused", (doc) => {
+      doc.obligation.status = "paused";
+    }, false, true],
+    ["the document is no longer asked", (doc) => {
+      doc.obligation.status = "removed";
+    }, false, true],
+    ["the viewer is the employee", () => undefined, true, false],
+  ])("offers no deadline extension when %s", async (_, change, selfOnly, excuse) => {
     const doc = missing();
     doc.obligation.deadline_at = new Date(Date.now() + 86_400_000).toISOString();
     change(doc);
@@ -1457,7 +1483,14 @@ describe("download, document time zone and deadline extension", () => {
     await screen.findByRole("dialog", { name: /Safety certificate/ });
     await screen.findByText(selfOnly ? "Upload a new version" : "Name");
     expect(screen.queryByRole("button", { name: /^Extend deadline/ })).toBeNull();
-    if (!selfOnly) expect(screen.getByRole("button", { name: /^Excuse Test/ })).toBeTruthy();
+    if (!selfOnly) expect(screen.queryByRole("button", { name: /^Excuse Test/ }) !== null).toBe(excuse);
+  });
+  it("offers a deadline extension on an owed document with a deadline ahead", async () => {
+    const doc = missing();
+    doc.obligation.deadline_at = new Date(Date.now() + 86_400_000).toISOString();
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    expect(await screen.findByRole("button", { name: /^Extend deadline/ })).toBeTruthy();
   });
 });
 
@@ -1916,7 +1949,8 @@ describe("manager review drawer", () => {
     expect(screen.getByRole("button", { name: "Next: Sam Lee" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
-    expect(screen.queryByLabelText("Rejection reason")).toBeNull();
+    expect(screen.queryByRole("group", { name: /^Approve or reject/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(screen.queryByRole("region", { name: "More options" })).toBeNull();
   });
 
@@ -1955,6 +1989,25 @@ describe("manager review drawer", () => {
     );
     expect(screen.getByRole("button", { name: "Next: Sam Lee" })).toHaveProperty("disabled", true);
   });
+  // Nothing closes the drawer while a decision is being saved: not Escape, not the dim.
+  it("refuses Escape and the dim while a decision is being saved", async () => {
+    const time = clock();
+    try {
+      vi.mocked(reviewDocument).mockReturnValue(new Promise(() => {}));
+      const { onClose } = page(false, { queue: [row(), sam()] });
+      const dialog = await screen.findByRole("dialog", { name: /Safety certificate/ });
+      await approveAndSave();
+      await waitFor(() => expect(green().getAttribute("aria-busy")).toBe("true"));
+      fireEvent.keyDown(dialog, { key: "Escape" });
+      time.tick(600);
+      const dim = document.querySelector<HTMLElement>(".catalog-drawer-backdrop")!;
+      fireEvent.pointerDown(dim);
+      fireEvent.click(dim);
+      expect(onClose).not.toHaveBeenCalled();
+    } finally {
+      time.restore();
+    }
+  });
 
   it("has Details and History on a desktop, the files a section of Details", async () => {
     const doc = detail();
@@ -1981,6 +2034,17 @@ describe("manager review drawer", () => {
     expect(screen.getByRole("tab", { name: "History" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("region", { name: "Files" })).toBeNull();
     expect(screen.getByText("Version 1 sent")).toBeTruthy();
+  });
+
+  // K1 decisions 16 and 17: a file opens as today's signed download (no inline preview), and the drawer never takes
+  // the Requests page's class, whose CSS loads only with that page.
+  it("draws no file preview and no Requests page class", async () => {
+    const doc = detail();
+    doc.submissions[0]!.files.push({ ...doc.submissions[0]!.files[0]!, id: "photo", filename: "front.jpg", media_type: "image/jpeg" });
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    await screen.findByRole("region", { name: "Files" });
+    expect(document.querySelector(".requests-catalog-page, .rd img, .rd iframe, .rd object, .rd embed")).toBeNull();
   });
 
   it("keeps the restriction note of a suspended person in Details", async () => {
@@ -2019,6 +2083,23 @@ describe("manager review drawer", () => {
       expect(files.getAttribute("aria-selected")).toBe("true");
       expect(document.activeElement).toBe(files);
       expect(screen.getByRole("button", { name: "Open certificate.pdf" })).toBeTruthy();
+    });
+    // A pull on the card's head while a decision is being saved puts the card back instead of closing it.
+    it("puts the card back when it is pulled while a decision is being saved", async () => {
+      vi.mocked(reviewDocument).mockReturnValue(new Promise(() => {}));
+      const { onClose } = page();
+      fireEvent.click(await screen.findByRole("tab", { name: "Files, 1 file" }));
+      await approveAndSave();
+      await waitFor(() => expect(green().getAttribute("aria-busy")).toBe("true"));
+      const head = document.querySelector(".rd-head")!;
+      const at = (type: string, y: number) =>
+        head.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientY: y }));
+      at("pointerdown", 100);
+      at("pointermove", 300);
+      at("pointerup", 300);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      expect(onClose).not.toHaveBeenCalled();
+      expect(document.querySelector<HTMLElement>(".requests-review-drawer")!.style.transform).toBe("");
     });
     // K1 fix pass (mockup tur2-a2.js:294-296): an expired document has no Files tab; its last approved copy is in
     // Details, each file opening from its row.
@@ -3020,6 +3101,8 @@ describe("More options", () => {
   });
 
   it("turns the file controls off while a panel is open, saying so, with its own Cancel", async () => {
+    // A deadline ahead: only waiting for review keeps Extend away (K1 decision 1).
+    vi.mocked(getDocument).mockResolvedValue({ ...detail(), obligation: { ...detail().obligation, deadline_at: deadline } });
     page();
     await screen.findByRole("region", { name: "More options" });
     // K1 decision 1: no extension on a document waiting for review; it can still be excused.

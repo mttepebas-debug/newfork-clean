@@ -14,7 +14,8 @@ import {
 // excused document Ask for it again (K1 decisions 1 and 3). Today's rules decide which cards there are.
 
 describe("the cards", () => {
-  it("shows Extend only where today's drawer does, Excuse on any document not excused, Ask again on an excused one", () => {
+  // Which cards the rules allow is ManagerDocumentContent's (pinned in DocumentReviewDrawer.test.tsx); this is their order.
+  it("lists the allowed cards in one order: Extend, Excuse, Ask for it again", () => {
     expect(optionCards({ extend: true, excuse: true, again: false })).toEqual(["extend", "excuse"]);
     expect(optionCards({ extend: false, excuse: true, again: false })).toEqual(["excuse"]);
     expect(optionCards({ extend: false, excuse: false, again: true })).toEqual(["again"]);

@@ -443,6 +443,20 @@ describe("status tabs", () => {
     expect(screen.getByRole("heading", { name: "No documents yet" })).toBeTruthy();
   });
 
+  // K1 decision 4: only a manager's tabs speak the manager's words; the person's keep today's.
+  it("words the person's empty tabs in today's words", async () => {
+    vi.mocked(listDocuments).mockReset().mockResolvedValue([rows[0]] as never);
+    renderList(true);
+    fireEvent.click(await screen.findByRole("button", { name: /^Needs review/ }));
+    await screen.findByText("Avery");
+    fireEvent.click(screen.getByRole("button", { name: /^To do/ }));
+    expect(screen.getByText("Missing, rejected and expired documents show up here.")).toBeTruthy();
+    expect(screen.queryByText("Missing and expired documents show up here.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Completed/ }));
+    expect(screen.getByText("Approved and exempt documents show up here.")).toBeTruthy();
+    expect(screen.queryByText("Approved and excused documents show up here.")).toBeNull();
+  });
+
   it("says the person's own tab is clear in one line", async () => {
     vi.mocked(listDocuments).mockReset().mockResolvedValue([rows[6]] as never);
     renderList(true, { personal: true });
