@@ -23,7 +23,7 @@ import { NoAccessState } from "../shell/NoAccessState";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
 import { statusLabel, statusTone, statusWeight, type StatusTone } from "./document-rules";
 import { greenWaits, snapshotQueue } from "./review-queue";
-import { createReviewSitting } from "./review-sitting";
+import { createReviewSitting, type ReviewSitting } from "./review-sitting";
 import "./documents.css";
 
 const statusLabels: Record<DocumentStatusFilter, string> = {
@@ -77,6 +77,8 @@ export function EmployeeDocumentsList(props: {
   /** Account's own list: one person, so no employee column, location filter
    * or employee search. Everyone else keeps the full table. */
   personal?: boolean;
+  /** The review drawer's drafts and answers, when the page around the list outlives it (the Employee drawer). */
+  sitting?: ReviewSitting;
 }) {
   const personal = props.personal ?? false;
   // A manager reviews in the A2 drawer, which walks this list (K1); the person's own drawer keeps today's Next.
@@ -103,7 +105,8 @@ export function EmployeeDocumentsList(props: {
   // K1 decision 6: the rows the drawer walks, taken from the open tab when it opens (after a link's tab switch).
   const [queue, setQueue] = useState<DocumentObligation[] | null>(null);
   // K1 decision 5: what a manager typed in the drawer, per document, while this page is open.
-  const [sitting] = useState(createReviewSitting);
+  const [ownSitting] = useState(createReviewSitting);
+  const sitting = props.sitting ?? ownSitting;
   const open = (id: string, ordinal: number) => {
     setSelected({ id, ordinal });
     setQueue(null);

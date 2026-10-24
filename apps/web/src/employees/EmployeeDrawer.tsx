@@ -3,6 +3,7 @@ import {
   useEmployeeDocumentAssignmentPreview,
 } from "../documents/EmployeeAssignmentDocumentPreview";
 import { EmployeeDocumentPanel } from "../documents/EmployeeDocumentPanel";
+import { createReviewSitting, type ReviewSitting } from "../documents/review-sitting";
 import {
   displayUsPhone,
   emergencyIsOwnPhoneMessage,
@@ -192,6 +193,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       can(context, "employee.read"),
     ),
   });
+  // K1 decision 5: the Documents section's review drafts live while this drawer is open, not only while the
+  // section is shown.
+  const [documentSitting] = useState(createReviewSitting);
   const [draft, setDraft] = useState<EmployeeInput>(emptyDraft);
   const [error, setError] = useState<string | null>(null);
   const [developmentUrl, setDevelopmentUrl] = useState<string | null>(null);
@@ -1469,6 +1473,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                         managerRecord,
                       },
                       props.creating,
+                      documentSitting,
                     )
                   : null}
                 {needsDocumentPreview && (
@@ -2146,6 +2151,7 @@ function renderSection(
   canDecideLegalName: boolean,
   locationActions: EmployeeLocationActions,
   creating = false,
+  documentSitting?: ReviewSitting,
 ) {
   if (section === "profile")
     return (
@@ -2193,7 +2199,7 @@ function renderSection(
     );
   if (section === "documents")
     return detail ? (
-      <EmployeeDocumentPanel employeeId={detail.id} />
+      <EmployeeDocumentPanel employeeId={detail.id} sitting={documentSitting} />
     ) : (
       <p>Save the employee before reviewing documents.</p>
     );

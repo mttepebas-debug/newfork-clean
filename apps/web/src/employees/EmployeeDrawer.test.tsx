@@ -28,12 +28,14 @@ import {
   getDocument,
   listDocuments,
   previewEmployeeDocumentAssignments,
+  reviewDocument,
 } from "../documents/document-data";
 vi.mock("../documents/document-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../documents/document-data")>()),
   getDocument: vi.fn(),
   previewEmployeeDocumentAssignments: vi.fn(),
   listDocuments: vi.fn().mockResolvedValue([]),
+  reviewDocument: vi.fn(),
 }));
 import { RequestError } from "../lib/request-error";
 import { EmployeeDrawer } from "./EmployeeDrawer";
@@ -2303,6 +2305,103 @@ describe("EmployeeDrawer", () => {
       obligation.id,
     );
     expect(reviewEmployeeOnboarding).not.toHaveBeenCalled();
+  });
+
+  // The Documents section's drawer, nested in this one, on a document sent for review with one file.
+  describe("a document reviewed from the Documents section", () => {
+    const pending = () => ({
+      obligation: {
+        id: "ab000000-0000-4000-8000-000000000003",
+        workspace_id: workspaceId,
+        employee_id: employeeId,
+        employee_name: "Alex Kim",
+        title: "Food handler card",
+        source_id: null,
+        kind: "document" as const,
+        mode: "required" as const,
+        status: "pending_review" as const,
+        revision: 1,
+        requires_review: true,
+        deadline_at: null,
+        remaining_seconds: null,
+        rejection_reason: null,
+        suspended: false,
+        submitted_id: "ac000000-0000-4000-8000-000000000003",
+        approved_id: null,
+        location_ids: [],
+        location_names: [],
+        timezone: "America/Los_Angeles",
+        settings: { ...defaultDocumentLifecycleSettings, mode: "required" as const },
+        accepted_formats: ["pdf" as const],
+        tracks_expiry: false,
+      },
+      submissions: [
+        {
+          id: "ac000000-0000-4000-8000-000000000003",
+          version: 1,
+          state: "pending_review" as const,
+          submitted_at: "2026-10-21T23:12:00Z",
+          reviewed_at: null,
+          expiry_date: null,
+          metadata: {},
+          rejection_reason: null,
+          files: [
+            {
+              id: "ad000000-0000-4000-8000-000000000003",
+              filename: "card.pdf",
+              media_type: "application/pdf",
+              size_bytes: 100,
+              decision: "keep" as const,
+              note: "",
+            },
+          ],
+        },
+      ],
+      history: [],
+    });
+    // A manager who reviews documents.
+    beforeEach(() => {
+      currentContext = { ...context, actions: [...context.actions, "documents.review"] };
+    });
+    async function openReview() {
+      vi.mocked(listDocuments).mockResolvedValue([pending().obligation]);
+      vi.mocked(getDocument).mockResolvedValue(pending());
+      vi.mocked(reviewDocument).mockResolvedValue({});
+      fireEvent.click(await screen.findByRole("row", { name: "Alex Kim Food handler card Needs review" }));
+      return screen.findByRole("dialog", { name: "Alex Kim · Food handler card" });
+    }
+    // K1 decision 14: the Employee drawer's onboarding card reloads after a decision in the nested drawer.
+    it("reloads the onboarding card after a decision", async () => {
+      renderDrawer("documents", detail);
+      const review = await openReview();
+      const reads = vi.mocked(getEmployeeOnboardingReview).mock.calls.length;
+      const pair = await within(review).findByRole("group", { name: "Approve or reject card.pdf" });
+      fireEvent.click(within(pair).getByRole("button", { name: "Approve" }));
+      fireEvent.click(within(review).getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(reviewDocument).toHaveBeenCalledOnce());
+      await waitFor(() => expect(vi.mocked(getEmployeeOnboardingReview).mock.calls.length).toBeGreaterThan(reads));
+    });
+    // K1 decision 5: a draft stays with its document while the page is open, across this drawer's sections too.
+    it("keeps a reason typed in the nested drawer across a change of section", async () => {
+      renderDrawer("documents", detail);
+      const review = await openReview();
+      const pair = await within(review).findByRole("group", { name: "Approve or reject card.pdf" });
+      fireEvent.click(within(pair).getByRole("button", { name: "Reject" }));
+      fireEvent.change(within(review).getByLabelText("Why reject card.pdf? Alex sees this"), {
+        target: { value: "Blurry" },
+      });
+      fireEvent.click(within(review).getByRole("button", { name: "Close details" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Alex Kim · Food handler card" })).toBeNull());
+      const links = () => document.querySelector<HTMLElement>(".employee-section-links")!;
+      fireEvent.click(within(links()).getByRole("button", { name: "Profile" }));
+      await screen.findByRole("heading", { level: 2, name: "Profile" });
+      fireEvent.click(within(links()).getByRole("button", { name: "Documents" }));
+      const again = await openReview();
+      expect(
+        ((await within(again).findByLabelText("Why reject card.pdf? Alex sees this")) as HTMLInputElement).value,
+      ).toBe("Blurry");
+      expect(reviewDocument).not.toHaveBeenCalled();
+    });
   });
 
   it("requires termination details and submits a worksite-local effective time", async () => {
