@@ -61,7 +61,8 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
   const [said, setSaid] = useState("");
   const strip = useRef<HTMLDivElement>(null);
   // A2 Tur 6 (mockup-spec 17): repeated presses never answer what was just drawn under them; kept across documents.
-  const [guard] = useState(createReviewGuard);
+  // Opening counts as a click, so the second click of the double click that opened the drawer answers nothing.
+  const [guard] = useState(() => createReviewGuard(performance.now()));
   // Escape closes an open More options panel first, then the drawer (mockup-spec 21).
   const escape = useRef<(() => boolean) | null>(null);
   // Each document opens on Details; a tab chosen for one is not carried to the next.
@@ -156,8 +157,11 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
       });
       if (drop) stop(event);
     };
+    // Anywhere in the drawer (the second press of a double click on a button that just got narrower lands beside
+    // it), except in a text field, where a double click selects a word.
     const onMouseDown = (event: MouseEvent) => {
-      if (button(event) && guard.repeatPress(performance.now(), event.detail)) event.preventDefault();
+      const field = (event.target as HTMLElement | null)?.closest?.("input, textarea, select, [contenteditable]");
+      if (!field && guard.repeatPress(performance.now(), event.detail)) event.preventDefault();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Enter" && event.key !== " ") return;

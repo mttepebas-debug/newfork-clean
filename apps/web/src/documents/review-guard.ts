@@ -5,7 +5,9 @@
 //   the click before them, counted or dropped; a deliberate second click later than that counts;
 // - on touch, a guarded tap within 40 px of the tap before it and less than 400 ms later is dropped;
 // - for 400 ms after the green's meaning changes inside an open drawer, every press on it is dropped;
-// - a key press on the green less than 400 ms after the one before is dropped.
+// - a key press on the green less than 400 ms after the one before is dropped;
+// - the click that opened the drawer counts as the click before, so the second click of that double click, landing
+//   on the card just drawn under it, is dropped too.
 // Times come from the caller (performance.now()), so the rules are pure.
 
 const quiet = 400;
@@ -13,11 +15,12 @@ const near = 40;
 
 export type ReviewGuard = ReturnType<typeof createReviewGuard>;
 
-export function createReviewGuard() {
+/** `openedAt`: when the drawer opened, from the click that opened it. */
+export function createReviewGuard(openedAt = -Infinity) {
   let meaning: string | null = null;
   let heldUntil = -Infinity;
   let lastGreenKey = -Infinity;
-  let lastClick = -Infinity;
+  let lastClick = openedAt;
   let lastTap: { now: number; x: number; y: number } | null = null;
   return {
     /** The green's meaning now; a change after the first holds the green. */

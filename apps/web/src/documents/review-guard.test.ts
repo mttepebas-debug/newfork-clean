@@ -24,6 +24,19 @@ describe("the green's hold", () => {
   });
 });
 
+describe("the double click that opened the drawer", () => {
+  it("counts the opening as the click before, so its second click is dropped", () => {
+    const guard = createReviewGuard(1_000);
+    expect(guard.repeatPress(1_150, 2)).toBe(true);
+    expect(guard.click({ now: 1_160, detail: 2, touch: false, x: 0, y: 0, guarded: false })).toBe(true);
+    expect(guard.click({ now: 1_700, detail: 2, touch: false, x: 0, y: 0, guarded: false })).toBe(false);
+  });
+  it("drops nothing for a guard made without an opening time", () => {
+    const guard = createReviewGuard();
+    expect(guard.repeatPress(1_150, 2)).toBe(false);
+  });
+});
+
 describe("repeated clicks and taps", () => {
   const click = (now: number, detail = 1, extra: Partial<{ touch: boolean; x: number; y: number; guarded: boolean }> = {}) => ({
     now,

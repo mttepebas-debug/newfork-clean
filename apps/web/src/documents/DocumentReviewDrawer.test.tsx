@@ -2246,6 +2246,52 @@ describe("file decisions and the dock", () => {
     }
   });
 
+  // K1 fix pass (mockup-spec 17.2): the row's click opened the drawer; the second click of that double click lands on
+  // the card drawn under it and must neither press a file's Approve nor move focus off the name.
+  it("drops the second click of the double click that opened it", async () => {
+    const time = clock();
+    try {
+      page();
+      const pair = await screen.findByRole("group", { name: "Approve or reject certificate.pdf" });
+      const approve = within(pair).getByRole("button", { name: "Approve" });
+      time.tick(150);
+      const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true, detail: 2 });
+      approve.dispatchEvent(press);
+      expect(press.defaultPrevented).toBe(true);
+      fireEvent.click(approve, { detail: 2 });
+      expect(approve.getAttribute("aria-pressed")).toBe("false");
+      time.tick(450);
+      fireEvent.click(approve, { detail: 1 });
+      expect(approve.getAttribute("aria-pressed")).toBe("true");
+    } finally {
+      time.restore();
+    }
+  });
+
+  // A double click on the strip's Next moves once; its second press, beside the narrower button, keeps focus put.
+  it("keeps focus where it is on the second press of a double click, on a button or not", async () => {
+    const time = clock();
+    try {
+      page();
+      await screen.findByRole("group", { name: "Approve or reject certificate.pdf" });
+      time.tick(600);
+      fireEvent.click(screen.getByRole("button", { name: "Approve" }), { detail: 1 });
+      time.tick(120);
+      const line = document.querySelector<HTMLElement>(".rd-foot .docr-note")!;
+      const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true, detail: 2 });
+      line.dispatchEvent(press);
+      expect(press.defaultPrevented).toBe(true);
+      // A double click in a text field still selects a word.
+      fireEvent.click(screen.getByRole("button", { name: "Reject" }), { detail: 1 });
+      time.tick(120);
+      const word = new MouseEvent("mousedown", { bubbles: true, cancelable: true, detail: 2 });
+      why("certificate.pdf").dispatchEvent(word);
+      expect(word.defaultPrevented).toBe(false);
+    } finally {
+      time.restore();
+    }
+  });
+
   it("never clicks again on a held key, and drops a second key press on the green that comes too soon", async () => {
     const time = clock();
     try {
