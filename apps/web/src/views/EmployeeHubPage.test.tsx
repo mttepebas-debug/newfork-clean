@@ -655,6 +655,19 @@ describe("EmployeeHubPage", () => {
     expect(rowNames()).toContain("Alex Kim");
   });
 
+  // Mert 2026-10-23: no "Loading your schedule…" sentence top left while the board loads, the grey outline.
+  it("shows the team board's grey outline while it loads, with no visible sentence", async () => {
+    vi.mocked(getEmployeeScheduleBoard).mockReturnValue(new Promise(() => {}));
+    renderPage("/app/employee-hub/schedule/team?date=2026-08-24");
+
+    // The hub itself has loaded (its header is there); only the board is on its way.
+    await screen.findByRole("heading", { name: "Team schedule" });
+    const outline = document.querySelector<HTMLElement>(".nf-loading");
+    expect(outline?.querySelector(".sr-only")?.textContent).toBe("Loading your schedule");
+    expect(outline?.querySelectorAll(".nf-skeleton").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Loading your schedule…")).toBeNull();
+  });
+
   it("peels board layers in order: filters, then day view", async () => {
     vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
     renderPage(

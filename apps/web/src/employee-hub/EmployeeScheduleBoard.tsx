@@ -30,6 +30,7 @@ import {
 import { getEmployeeScheduleBoard } from "./employee-hub-data";
 import "./employee-schedule-board.css";
 import { employeeAnnouncementsPath } from "../shell/view-address";
+import { ListOutline } from "../shell/LoadState";
 
 // The employee board is read-only by construction: no edit session, no drag,
 // no mutation handlers. The API returns published rows only.
@@ -118,12 +119,8 @@ export function EmployeeScheduleBoard({
     });
   }
 
-  if (query.isLoading)
-    return (
-      <p className="muted" role="status">
-        Loading your schedule…
-      </p>
-    );
+  // The manager's Schedule outline (B look, Mert 2026-10-14), never a sentence top left.
+  if (query.isLoading) return <ListOutline label="Loading your schedule" rows={8} columns={8} />;
   if (!query.data)
     return (
       <div className="empty-state">
