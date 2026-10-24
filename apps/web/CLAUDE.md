@@ -20,6 +20,7 @@ Ekran, veri katmanı ve görsel kontrol için bu klasöre özgü olgular; `packa
 - Schedule penceresi Escape'i `src/schedule/lib/useCloseOnEscape.ts` ile alır; yoksa sayfanın dinleyicisi haftayı bugüne atlatır.
 - Özgüllük: `.request-detail-inner p` ve `.app-confirm p` her `p`'yi griler; telefonda `jobs-settings.css`'teki `.job-column-headings` her Settings başlığına ızgara dayatır (üç sınıfla ez).
 - Liste sayfası ortak iskelete bölümüne `list-page` sınıfı vererek girer (`views/list-page.css`; `CatalogPageHeader` ve `ListPagination` yükler, `EmployeesPage.test.tsx` sınıfı bekler).
+- Onay kutulu açılır listede "All" (S-265): "All" seçiliyken her kutu işaretli görünür; oradan bir öğeye basmak yalnız onu bırakır; son işaret kalkınca ya da hepsi elle işaretlenince yine "All" olur; boş seçim yoktur.
 
 ## Metin
 - Metin değişince `e2e/`'de ikizini ara (`toContainText`, `getByText`, `getByRole(…, { name })`); onu main'deki CI koşar; akış değiştiyse etkilenen e2e'yi `node scripts/lock.mjs run db --e2e -- …` ile sen de koş. `toContainText` gizli çocukları da sayar: `aria-describedby` hedefi `not.toContainText`'i kırar.
