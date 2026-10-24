@@ -95,7 +95,8 @@ end $$;
 create temp table new_system(name text);
 insert into new_system values
   ('get_notification_feed_service'), ('get_notification_preferences_service'), ('get_notification_workspace_settings_service'),
-  ('mark_notifications_read_service'), ('mark_notifications_seen_service'), ('notification_resolve'), ('notification_route'),
+  ('mark_notifications_read_service'), ('mark_notifications_seen_service'), ('mark_notifications_unread_service'),
+  ('notification_resolve'), ('notification_route'),
   ('notify'), ('purge_expired_notifications'), ('save_notification_preferences_service'),
   ('save_notification_workspace_settings_service'),
   -- The producers' own helpers (BILDIRIM-U1 on).
