@@ -148,6 +148,7 @@ supabase/tests/scheduled_export_partial_delivery.test.sql
 supabase/tests/scheduled_export_sends_only_live_locations.test.sql
 supabase/tests/account_checks_count_in_the_database.test.sql
 supabase/tests/employee_hub.test.sql
+supabase/tests/employee_hub_week_strip.test.sql
 supabase/tests/refusals_say_why.test.sql
 supabase/tests/employees_on_the_core.test.sql
 supabase/tests/invitations_on_the_core.test.sql
