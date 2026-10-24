@@ -170,6 +170,29 @@ describe("the timeline", () => {
     expect(events[2]!.tone).toBe("ok");
     expect(events[0]!.waiting || events[3]!.waiting).toBe(false);
   });
+  // Today's drawer could approve with a file discarded (its Keep / Discard choice): the approval says so per file.
+  it("says a file an approval discarded was rejected, with its note", () => {
+    const detail = doc();
+    detail.history = [
+      {
+        id: "a2",
+        action: "document.approve",
+        occurred_at: "2026-10-22T16:00:00Z",
+        metadata: {
+          submission_id: "v2",
+          files: [
+            { id: "front", decision: "keep", note: "" },
+            { id: "back", decision: "discard", note: "Selfie, not the card" },
+          ],
+        },
+      },
+    ];
+    const [approved] = documentTimeline(detail, now).filter((event) => event.icon === "approved");
+    expect(approved!.files.map((file) => [file.name, file.chip, file.note])).toEqual([
+      ["front.jpg", { label: "Approved", tone: "ok" }, ""],
+      ["back.jpg", { label: "Rejected", tone: "red" }, "Selfie, not the card"],
+    ]);
+  });
   it("gives the time that was left, or none, to a version sent back", () => {
     const detail = doc();
     detail.submissions = detail.submissions.slice(1);

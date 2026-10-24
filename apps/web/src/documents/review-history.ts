@@ -160,17 +160,27 @@ export function documentTimeline(detail: DocumentDetail, now: Date): TimelineEve
       case "document.submitted":
         events.push(sent(item, version, meta.state));
         break;
-      case "document.approve":
+      case "document.approve": {
+        // Today's drawer could approve with a file discarded: each file reads what the approval decided on it.
+        const decided = decisions(meta);
         events.push(
           event(item, {
             icon: "approved",
             tone: "ok",
             title: version ? `Version ${version.version} approved` : "Approved",
-            files: files(version, () => ({ label: "Approved", tone: "ok" })),
+            files: files(
+              version,
+              (file) =>
+                (decided.get(file.id)?.decision ?? file.decision) === "discard"
+                  ? { label: "Rejected", tone: "red" }
+                  : { label: "Approved", tone: "ok" },
+              decided,
+            ),
             entered: version?.expiry_date ? [["Expires", formatDate(version.expiry_date)]] : [],
           }),
         );
         break;
+      }
       case "document.reject": {
         const decided = decisions(meta);
         const due = day(meta.new_deadline);
