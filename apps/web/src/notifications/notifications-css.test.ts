@@ -9,6 +9,8 @@ const ruleBody = (head: (selector: string) => boolean, sheet = css) =>
     .map(([, , body]) => body)
     .join(";");
 const reducedMotion = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+/** A length in a rule's body, in px. */
+const px = (body: string, property: string) => Number(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*(-?\\d+)px`).exec(body)?.[1]);
 
 describe("a notification row", () => {
   it("is the same height every time: 64 px, and 68 px on the phone", () => {
@@ -28,11 +30,41 @@ describe("a notification row", () => {
 
   it("has a dot to read it that is a 44 px target on the phone, with a visible focus", () => {
     expect(ruleBody((head) => head === ".ni-sheet .ni-dot")).toMatch(/width\s*:\s*44px[\s\S]*height\s*:\s*44px|height\s*:\s*44px[\s\S]*width\s*:\s*44px/);
+    // Inside its own box: the row cuts off whatever is outside it.
     expect(ruleBody((head) => head === "button.ni-dot:focus-visible")).toMatch(/outline\s*:\s*2px solid var\(--theme-focus\)/);
+    expect(ruleBody((head) => head === "button.ni-dot:focus-visible")).toMatch(/outline-offset\s*:\s*-2px/);
   });
 
-  it("slides sideways on the phone while the list still scrolls, and without motion when motion is reduced", () => {
-    expect(ruleBody((head) => head === ".ni-sheet .ni-row")).toMatch(/touch-action\s*:\s*pan-y/);
+  // The phone's row starts at the screen's edge and cuts what is outside it: a dot box that starts left of it
+  // was a 35 px target.
+  it("keeps the phone's 44 px dot whole inside the row, with the dot itself where variant A draws it", () => {
+    const rowPadding = Number(/padding\s*:\s*0 14px 0 (\d+)px/.exec(ruleBody((head) => head === ".ni-swipe"))?.[1]);
+    const dot = ruleBody((head) => head === ".ni-sheet .ni-dot");
+    const start = rowPadding + px(dot, "margin-left");
+    expect(start).toBe(0);
+    // The 8 px dot's middle, 13 px from the row's edge.
+    expect(dot).toMatch(/justify-items\s*:\s*start/);
+    expect(start + px(dot, "padding-left") + 4).toBe(13);
+  });
+
+  // Only the dot's button sits above the row's own button: a read row's empty dot space opens the notice like the rest.
+  it("lets a click on a read row's empty dot space open the notice", () => {
+    for (const head of [".ni-dot", ".ni-sheet .ni-dot"]) expect(ruleBody((selector) => selector === head)).not.toMatch(/position|z-index/);
+    expect(ruleBody((head) => head === "button.ni-dot")).toMatch(/position\s*:\s*relative/);
+    expect(ruleBody((head) => head === "button.ni-dot")).toMatch(/z-index\s*:\s*1/);
+  });
+
+  // The row's surface is opaque and lies over the row: a ring drawn on the row itself does not show.
+  it("draws the keyboard focus ring on its surface, not under it", () => {
+    expect(ruleBody((head) => head === ".ni-row:has(.ni-row-title:focus-visible) .ni-swipe")).toMatch(/outline\s*:\s*2px solid var\(--theme-focus\)/);
+    expect(ruleBody((head) => head === ".ni-row:has(.ni-row-title:focus-visible) .ni-swipe")).toMatch(/outline-offset\s*:\s*-2px/);
+    expect(ruleBody((head) => head === ".ni-row:has(.ni-row-title:focus-visible)")).not.toMatch(/outline/);
+  });
+
+  it("slides sideways on the phone while the list still scrolls and zooms, and without motion when motion is reduced", () => {
+    // pan-y alone also stops a pinch that touches a row; the plain pan-y stays for a browser that knows no pinch-zoom.
+    expect(ruleBody((head) => head === ".ni-sheet .ni-row")).toMatch(/touch-action\s*:\s*pan-y\s*;/);
+    expect(ruleBody((head) => head === ".ni-sheet .ni-row")).toMatch(/touch-action\s*:\s*pan-y pinch-zoom/);
     expect(ruleBody((head) => head === ".ni-swipe")).toMatch(/transition\s*:\s*transform/);
     expect(ruleBody((head) => head === ".ni-swipe", reducedMotion)).toMatch(/transition\s*:\s*none/);
   });
