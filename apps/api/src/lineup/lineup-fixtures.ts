@@ -81,6 +81,24 @@ export const myLineups = {
     acknowledged_at: "2026-10-17T09:34:24.639422+00:00",
     shift_type_name: "Dinner",
   }],
+  // Kadikoy's Brunch, published without her (Mert 2026-10-24): read whole, no ticket, no acknowledgement.
+  others: [{
+    id: "a79bdb66-e0fd-47ab-b357-eefea6c1292b",
+    team: [{
+      name: "Noa Person", is_me: false, art_key: "081-salad-prep-ill", end_time: "12:00", job_name: "Cook",
+      job_color: "#D39A36", called_off: false, start_time: "09:00", employee_id: "7eb98cc5-8b7c-4e0e-81bc-9a7b19bc0919",
+      label_names: [], section_name: null, department_name: "Kitchen", crosses_midnight: false,
+    }],
+    color: "#D39A36",
+    notes: { n86: "", specials: "Shakshuka", shift_notes: "" },
+    ask_ack: false,
+    version: 1,
+    location: { id: "b340777a-a901-40c5-a3c8-4727ceeb55c7", name: "Kadikoy", timezone: "Europe/Istanbul" },
+    shared_at: "2026-10-24T07:24:41.038285+00:00",
+    version_id: "02f7803f-af66-469f-93a3-bf74deaa6744",
+    shift_type_id: "d348d43d-cb33-435e-af7d-ef091da9bf47",
+    shift_type_name: "Brunch",
+  }],
   workspace_id: "bd582081-5bae-4793-ab87-43bb7de21e53",
 };
 
