@@ -389,6 +389,42 @@ describe("a row", () => {
     expect(screen.getByTestId("where").textContent).toBe("/app/workspace");
   });
 
+  // The dot leaves the row once the notice is read: the focus on it stays in the list, so Tab goes on from there
+  // and Escape still closes the panel.
+  it("keeps the focus on the row once its dot reads it", async () => {
+    list([notice()]);
+    const row = await rowOf(tom);
+    const dot = within(row).getByRole("button", { name: "Mark as read: Time off request from Tom Becker" });
+    dot.focus();
+    fireEvent.click(dot);
+    // From here the core answers the row read.
+    answer({ all: feedPage([notice({ read_at: "2026-10-16T16:44:00Z" })]) });
+    await waitFor(() => expect(row.querySelector("button.ni-dot")).toBeNull());
+    expect(document.activeElement).toBe(row.querySelector(".ni-row-title"));
+  });
+
+  it("moves the focus on to the next row when the row read opens nothing", async () => {
+    const cooler = notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", title: "Walk-in cooler repair on Tuesday" });
+    list([notice({ url: null }), cooler]);
+    const row = await rowOf(tom);
+    const dot = within(row).getByRole("button", { name: "Mark as read: Time off request from Tom Becker" });
+    dot.focus();
+    fireEvent.click(dot);
+    answer({ all: feedPage([notice({ url: null, read_at: "2026-10-16T16:44:00Z" }), cooler]) });
+    await waitFor(() => expect(row.querySelector("button.ni-dot")).toBeNull());
+    expect(row.querySelector<HTMLButtonElement>(".ni-row-title")!.disabled).toBe(true);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Mark as read: Walk-in cooler repair on Tuesday" }));
+  });
+
+  it("moves the focus on to the next row under Unread, which the row read leaves", async () => {
+    answer({ unread: feedPage([notice(), notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", title: "Walk-in cooler repair on Tuesday" })]) });
+    mount(<NotificationList workspaceId={w} viewerId={me} filter="unread" panelId="list" now={at} />);
+    const dot = await screen.findByRole("button", { name: "Mark as read: Time off request from Tom Becker" });
+    dot.focus();
+    fireEvent.click(dot);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Mark as read: Walk-in cooler repair on Tuesday" }));
+  });
+
   it("keeps an empty second line when the notice has no body", async () => {
     list([notice({ body: null })]);
     const row = await rowOf(tom);
@@ -472,9 +508,23 @@ describe("on the phone, a row", () => {
     expect(slid(row)).toBe("translateX(96px)");
     const read = within(row).getByRole("button", { name: "Read" });
     expect(read.tabIndex).toBe(0);
+    read.focus();
     fireEvent.click(read);
     await waitFor(() => expect(calls("/read")).toHaveLength(1));
     expect(JSON.parse(String((calls("/read")[0]![2] as RequestInit).body))).toEqual({ ids: [notice().id] });
+    // Read leaves with the row closed; its focus stays on the row.
+    expect(within(row).queryByRole("button", { name: "Read" })).toBeNull();
+    expect(document.activeElement).toBe(row.querySelector(".ni-row-title"));
+  });
+
+  it("closes once its dot reads it while it is open", async () => {
+    sheet([notice()]);
+    const row = await rowOf(tom);
+    drag(within(row).getByRole("button", { name: tom }), 80);
+    fireEvent.click(within(row).getByRole("button", { name: "Mark as read: Time off request from Tom Becker" }));
+    await waitFor(() => expect(calls("/read")).toHaveLength(1));
+    expect(slid(row)).toBe("");
+    expect(within(row).queryByRole("button", { name: "Read" })).toBeNull();
   });
 
   it("opens the other way the same", async () => {

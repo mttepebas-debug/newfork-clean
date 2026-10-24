@@ -248,7 +248,8 @@ export function NotificationList({
       ]
     : [{ key: "earlier", heading: null, rows: earlier }];
   return (
-    <div id={panelId} role="tabpanel" aria-labelledby={labelledBy}>
+    // Focusable for the focus a row's dot leaves behind when nothing else in the list can take it.
+    <div id={panelId} role="tabpanel" aria-labelledby={labelledBy} tabIndex={-1}>
       {refreshFailed}
       <ul className="ni-list" aria-label="Notifications">
         {sections.map((section) =>
@@ -266,6 +267,7 @@ export function NotificationList({
                   viewerId={viewerId}
                   wide={wide}
                   swipe={swipe}
+                  readLeaves={filter === "unread"}
                   slid={slid?.id === item.id ? slid.side : null}
                   onSlide={(side) => setSlid(side ? { id: item.id, side } : null)}
                   now={now}
@@ -298,6 +300,21 @@ export function NotificationList({
 const isCut = (line: HTMLElement | null) => Boolean(line && line.scrollWidth > line.clientWidth);
 
 /**
+ * The dot and Read leave the row once its notice is read: the focus on them goes to the row's title when it `stays`
+ * (it still opens something, and the list keeps the row), else on to the next row that has a button, else to the list.
+ */
+function keepFocus(row: HTMLElement, stays: boolean) {
+  const rows = [...(row.parentElement?.children ?? [])].filter((other): other is HTMLElement => other.classList.contains("ni-row"));
+  const at = rows.indexOf(row);
+  const next = stays
+    ? row.querySelector<HTMLElement>(".ni-row-title")
+    : [...rows.slice(at + 1), ...rows.slice(0, at).reverse()]
+        .map((other) => other.querySelector<HTMLElement>("button.ni-dot, .ni-row-title:not(:disabled)"))
+        .find(Boolean);
+  (next ?? row.closest<HTMLElement>('[role="tabpanel"]'))?.focus();
+}
+
+/**
  * One notice in exactly two one-line lines (S-251, variant A): the title, then the body or how the card
  * closed, with the short arrival time at its right. Both lines stay whole for a screen reader (the second
  * describes the row's button) and on hover when one is cut.
@@ -307,6 +324,7 @@ function NotificationRow({
   viewerId,
   wide,
   swipe,
+  readLeaves,
   slid,
   onSlide,
   now,
@@ -318,6 +336,8 @@ function NotificationRow({
   readonly viewerId: string | undefined;
   readonly wide: boolean;
   readonly swipe: boolean;
+  /** The list drops the row once it is read (Unread). */
+  readonly readLeaves: boolean;
   readonly slid: SwipeSide | null;
   readonly onSlide: (side: SwipeSide | null) => void;
   readonly now: Date;
@@ -336,6 +356,12 @@ function NotificationRow({
   const slide = useRowSwipe({ enabled: swipe && unread, open: slid, onOpen: onSlide, onRead });
   const openRow = (event: MouseEvent) => {
     if (!slide.endsDrag(event)) onOpen();
+  };
+  /** The dot and Read: the row closes, and the focus they had stays in the list. */
+  const readHere = (event: MouseEvent<HTMLButtonElement>) => {
+    if (event.currentTarget === document.activeElement && slide.row.current) keepFocus(slide.row.current, Boolean(item.url) && !readLeaves);
+    if (slid) onSlide(null);
+    onRead();
   };
   const classes = [
     "ni-row",
@@ -360,10 +386,7 @@ function NotificationRow({
           className={`ni-under is-${slide.side}`}
           tabIndex={slide.open ? 0 : -1}
           aria-hidden={slide.open ? undefined : true}
-          onClick={() => {
-            onSlide(null);
-            onRead();
-          }}
+          onClick={readHere}
         >
           <Check size={16} aria-hidden />
           <span>Read</span>
@@ -371,7 +394,7 @@ function NotificationRow({
       ) : null}
       <div className="ni-swipe" style={slide.style}>
         {unread ? (
-          <button type="button" className="ni-dot" onClick={onRead} aria-label={`Mark as read: ${item.title}`} title="Mark as read" />
+          <button type="button" className="ni-dot" onClick={readHere} aria-label={`Mark as read: ${item.title}`} title="Mark as read" />
         ) : (
           <span className="ni-dot" aria-hidden />
         )}
