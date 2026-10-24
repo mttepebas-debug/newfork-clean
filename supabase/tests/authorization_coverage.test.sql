@@ -144,6 +144,8 @@ insert into service_class values
   ('mark_owner_onboarding_invitation_intent_dispatched_service', 'workspace.setup'),
   ('mark_notifications_read_service', 'notifications.read_own'),
   ('mark_notifications_seen_service', 'notifications.read_own'),
+  -- A read row of one's own turns unread again (S-251).
+  ('mark_notifications_unread_service', 'notifications.read_own'),
   ('mark_workspace_retention_purge_completed_service', 'exempt:worker'),
   ('mutate_schedule_edit_shift_service', 'schedule.edit'),
   ('onboarding_phone_in_use_service', 'onboarding.self'),

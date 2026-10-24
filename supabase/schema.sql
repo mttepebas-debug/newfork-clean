@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 589, last: 20261023125000_notice_schedule.sql
--- fingerprint: sha256:f79f918ac19940a3e17e88f9610c019eb3955419b28c4fdf5d1d1f11ee64bd5d
+-- migrations: 590, last: 20261024063000_notifications_unread.sql
+-- fingerprint: sha256:578b12ed8e38bfa3b4f517a5e5927b724e8a2819b9f9b37320ad0793b3e2304e
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -22041,6 +22041,39 @@ $$;
 ALTER FUNCTION "public"."mark_notifications_seen_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."mark_notifications_unread_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_ids" "uuid"[]) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  -- person_notifications has an actor_user_id column of its own.
+  viewer uuid := actor_user_id;
+  updated integer;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
+  if coalesce(cardinality(target_ids), 0) = 0 then
+    raise exception 'notifications to mark unread required' using errcode = '22023', hint = 'notifications.ids_required';
+  end if;
+  update public.person_notifications n set read_at = null
+  where n.user_id = viewer and (n.workspace_id = target_workspace_id or n.workspace_id is null)
+    and n.read_at is not null and n.id = any(target_ids);
+  get diagnostics updated = row_count;
+  -- S-247: the person's other tabs and phones refresh; the signal says nothing about the notices.
+  if updated > 0 then
+    perform realtime.send(jsonb_build_object('workspace_id', target_workspace_id), 'changed', 'notifications:' || viewer::text, true);
+  end if;
+  return jsonb_build_object('updated', updated, 'unread_count', (
+    select count(*) from public.person_notifications n
+    where n.user_id = viewer and (n.workspace_id = target_workspace_id or n.workspace_id is null) and n.read_at is null
+      -- As the list counts: a card a newer reminder replaced is not counted.
+      and (n.resolution is null or n.resolution not in ('superseded', 'reminded_again'))));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."mark_notifications_unread_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_ids" "uuid"[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."mark_owner_onboarding_invitation_intent_dispatched_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "dispatch_failure_message" "text" DEFAULT NULL::"text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -42204,6 +42237,11 @@ GRANT ALL ON FUNCTION "public"."mark_notifications_read_service"("actor_user_id"
 
 REVOKE ALL ON FUNCTION "public"."mark_notifications_seen_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."mark_notifications_seen_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."mark_notifications_unread_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_ids" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."mark_notifications_unread_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_ids" "uuid"[]) TO "service_role";
 
 
 

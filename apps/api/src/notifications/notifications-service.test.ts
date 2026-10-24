@@ -55,6 +55,26 @@ describe("notifications service", () => {
     expect(rpc.rpc.mock.calls[1]?.[1]).toMatchObject({ target_ids: null });
   });
 
+  it("marks rows unread again by id (S-251)", async () => {
+    const rpc = client({ updated: 1, unread_count: 3 });
+    const result = await notificationsService(rpc).markUnread({ ...actor, unread: { ids: ["13253395-6150-43b9-bb13-364014baae15"] } });
+    expect(result).toEqual({ updated: 1, unread_count: 3 });
+    expect(rpc.rpc).toHaveBeenCalledWith("mark_notifications_unread_service", {
+      actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId, target_ids: ["13253395-6150-43b9-bb13-364014baae15"],
+    });
+  });
+
+  it("answers the core's 'no rows named' with 400", async () => {
+    const refusing = { rpc: vi.fn(async () => ({ data: null, error: { message: "notifications to mark unread required", code: "22023", hint: "notifications.ids_required" } })) };
+    await expect(notificationsService(refusing).markUnread({ ...actor, unread: { ids: ["13253395-6150-43b9-bb13-364014baae15"] } }))
+      .rejects.toMatchObject({ statusCode: 400, reason: "notifications.ids_required" });
+  });
+
+  it("refuses an unread answer that is not the core's shape", async () => {
+    await expect(notificationsService(client({ updated: -1 })).markUnread({ ...actor, unread: { ids: ["13253395-6150-43b9-bb13-364014baae15"] } }))
+      .rejects.toThrow();
+  });
+
   it("marks the list seen", async () => {
     const rpc = client({ unseen_count: 0 });
     expect(await notificationsService(rpc).markSeen(actor)).toEqual({ unseen_count: 0 });
@@ -67,5 +87,8 @@ describe("notifications service", () => {
     const refusing = (hint: string) => ({ rpc: vi.fn(async () => ({ data: null, error: { message: "Not allowed", code: "42501", hint } })) });
     await expect(notificationsService(refusing("authz.not_member")).counts(actor)).rejects.toMatchObject({ statusCode: 404 });
     await expect(notificationsService(refusing("authz.out_of_scope")).markSeen(actor)).rejects.toMatchObject({ statusCode: 403, reason: "authz.out_of_scope" });
+    const unread = { ...actor, unread: { ids: ["13253395-6150-43b9-bb13-364014baae15"] } };
+    await expect(notificationsService(refusing("authz.not_member")).markUnread(unread)).rejects.toMatchObject({ statusCode: 404, reason: "authz.not_member" });
+    await expect(notificationsService(refusing("authz.not_active")).markUnread(unread)).rejects.toMatchObject({ statusCode: 403, reason: "authz.not_active" });
   });
 });

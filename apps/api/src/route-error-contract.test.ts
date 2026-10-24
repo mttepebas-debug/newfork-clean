@@ -165,6 +165,41 @@ describe("invitation access route", () => {
   });
 });
 
+// S-251: marking read rows unread again carries a body too.
+describe("notifications unread route", () => {
+  const send = (error: unknown) =>
+    appFailingWith(error).inject({
+      method: "POST",
+      url: `${w}/notifications/unread`,
+      headers: { authorization: "Bearer token" },
+      payload: { ids: [id] },
+    });
+
+  it("answers a non-member with 404 and authz.not_member", async () => {
+    const response = await send(rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.not_member" }));
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ reason: "authz.not_member", requestId: expect.any(String) });
+  });
+
+  it("keeps the reason and detail of a 403", async () => {
+    const response = await send(
+      rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.not_active", details: "notifications.read_own" }),
+    );
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ error: "Not allowed", reason: "authz.not_active", detail: "notifications.read_own" });
+  });
+
+  it("takes the status from the error, not from its wording", async () => {
+    expect((await send(new HttpError("Access denied while not found", 409))).statusCode).toBe(409);
+  });
+
+  it("keeps an untyped failure's message off the screen", async () => {
+    const response = await send(new Error("permission denied for table person_notifications"));
+    expect(response.statusCode).toBe(500);
+    expect(response.payload).not.toContain("person_notifications");
+  });
+});
+
 // BILDIRIM-14: the email channel's two doors with no signed-in person answer a failure the same way:
 // a 500 with the request id, and nothing of what failed.
 describe("notification email routes", () => {

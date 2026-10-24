@@ -10,6 +10,7 @@ import {
   type NotificationReadInput,
   type NotificationReadResult,
   type NotificationSeenResult,
+  type NotificationUnreadInput,
 } from "@newfork/shared";
 import { rpcFailure } from "../http-error";
 import { encodeNotificationCursor, type NotificationCursor } from "./notifications-cursor";
@@ -31,6 +32,7 @@ export interface NotificationsService {
   counts(input: Actor): Promise<NotificationCounts>;
   markSeen(input: Actor): Promise<NotificationSeenResult>;
   markRead(input: Actor & { readonly read: NotificationReadInput }): Promise<NotificationReadResult>;
+  markUnread(input: Actor & { readonly unread: NotificationUnreadInput }): Promise<NotificationReadResult>;
 }
 
 type RpcError = { message: string; code?: string; hint?: string | null; details?: string | null };
@@ -92,6 +94,12 @@ export function notificationsService(client: RpcClient): NotificationsService {
       return notificationReadResultSchema.parse(await rpc("mark_notifications_read_service", {
         actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId,
         target_ids: "ids" in read ? read.ids : null,
+      }));
+    },
+    // S-251: only rows named by id; the core refuses none (22023) rather than reading it as all.
+    async markUnread({ unread, ...actor }) {
+      return notificationReadResultSchema.parse(await rpc("mark_notifications_unread_service", {
+        actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId, target_ids: unread.ids,
       }));
     },
   };

@@ -4,6 +4,7 @@ import {
   notificationFeedQuerySchema,
   notificationItemSchema,
   notificationReadInputSchema,
+  notificationUnreadInputSchema,
 } from "./notifications";
 
 // The core's own answer (get_notification_feed_service, rolled-back local run,
@@ -59,6 +60,20 @@ describe("notificationReadInputSchema", () => {
     expect(notificationReadInputSchema.safeParse({}).success).toBe(false);
     expect(notificationReadInputSchema.safeParse({ ids: [] }).success).toBe(false);
     expect(notificationReadInputSchema.safeParse({ all: false }).success).toBe(false);
+  });
+});
+
+describe("notificationUnreadInputSchema", () => {
+  // S-251: a read row turns unread again by its id; there is no "mark all as unread".
+  it("takes 1 to 100 ids and nothing else", () => {
+    expect(notificationUnreadInputSchema.parse({ ids: [fromCore.id] })).toEqual({ ids: [fromCore.id] });
+    expect(notificationUnreadInputSchema.safeParse({ ids: Array.from({ length: 100 }, () => fromCore.id) }).success).toBe(true);
+    expect(notificationUnreadInputSchema.safeParse({ ids: Array.from({ length: 101 }, () => fromCore.id) }).success).toBe(false);
+    expect(notificationUnreadInputSchema.safeParse({ ids: [] }).success).toBe(false);
+    expect(notificationUnreadInputSchema.safeParse({ ids: ["not-a-uuid"] }).success).toBe(false);
+    expect(notificationUnreadInputSchema.safeParse({}).success).toBe(false);
+    expect(notificationUnreadInputSchema.safeParse({ all: true }).success).toBe(false);
+    expect(notificationUnreadInputSchema.safeParse({ ids: [fromCore.id], all: true }).success).toBe(false);
   });
 });
 
