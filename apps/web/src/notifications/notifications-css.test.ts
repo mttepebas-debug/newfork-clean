@@ -28,8 +28,18 @@ describe("a notification row", () => {
     }
   });
 
-  it("has a dot to read it that is a 44 px target on the phone, with a visible focus", () => {
-    expect(ruleBody((head) => head === ".ni-sheet .ni-dot")).toMatch(/width\s*:\s*44px[\s\S]*height\s*:\s*44px|height\s*:\s*44px[\s\S]*width\s*:\s*44px/);
+  // A 44 px square from the screen's edge would cover the tile's left side (it starts at 28 px), and a tap meant to
+  // open the notice would read it; the box stops where the tile starts: 28 x 44, above WCAG 2.5.8's 24 px.
+  it("has a dot to read it that is a 28 x 44 px target on the phone, ending where the tile starts, with a visible focus", () => {
+    const dot = ruleBody((head) => head === ".ni-sheet .ni-dot");
+    expect(dot).toMatch(/width\s*:\s*28px/);
+    expect(dot).toMatch(/height\s*:\s*44px/);
+    const swipe = ruleBody((head) => head === ".ni-swipe");
+    const rowPadding = Number(/padding\s*:\s*0 14px 0 (\d+)px/.exec(swipe)?.[1]);
+    const [dotColumn, tileColumn] = /grid-template-columns\s*:\s*(\d+)px (\d+)px/.exec(swipe)?.slice(1).map(Number) ?? [];
+    const gap = Number(/gap\s*:\s*(\d+)px/.exec(swipe)?.[1]);
+    expect(tileColumn).toBe(32);
+    expect(rowPadding + px(dot, "margin-left") + px(dot, "width")).toBe(rowPadding + dotColumn + gap);
     // Inside its own box: the row cuts off whatever is outside it.
     expect(ruleBody((head) => head === "button.ni-dot:focus-visible")).toMatch(/outline\s*:\s*2px solid var\(--theme-focus\)/);
     expect(ruleBody((head) => head === "button.ni-dot:focus-visible")).toMatch(/outline-offset\s*:\s*-2px/);
@@ -37,7 +47,7 @@ describe("a notification row", () => {
 
   // The phone's row starts at the screen's edge and cuts what is outside it: a dot box that starts left of it
   // was a 35 px target.
-  it("keeps the phone's 44 px dot whole inside the row, with the dot itself where variant A draws it", () => {
+  it("keeps the phone's dot target whole inside the row, with the dot itself where variant A draws it", () => {
     const rowPadding = Number(/padding\s*:\s*0 14px 0 (\d+)px/.exec(ruleBody((head) => head === ".ni-swipe"))?.[1]);
     const dot = ruleBody((head) => head === ".ni-sheet .ni-dot");
     const start = rowPadding + px(dot, "margin-left");
