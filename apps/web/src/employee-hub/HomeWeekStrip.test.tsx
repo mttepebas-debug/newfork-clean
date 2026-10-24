@@ -14,6 +14,7 @@ const week: HomeDay[] = ["10", "11", "12", "13", "14", "15", "16"].map((day, ind
   hours: 0,
   timeOff: false,
   open: 0,
+  posted: true,
 }));
 
 // jsdom has no PointerEvent or Touch: a mouse event under the pointer's name, and a cancelable touchmove
@@ -63,5 +64,44 @@ describe("HomeWeekStrip on a touch screen", () => {
 
     pointer(strip.children[1]!, "pointerdown", 60);
     expect(touchMove(strip, 62, 80).defaultPrevented).toBe(false);
+  });
+});
+
+describe("HomeWeekStrip's days", () => {
+  const shift = (id: string, start: string, end: string, color: string | null) => ({
+    id,
+    location_id: "20000000-0000-4000-8000-000000000001",
+    location_name: "Main Dining",
+    job_name: "Server",
+    note: "",
+    employee_id: null,
+    scheduled_date: "2026-10-13",
+    start_time: start,
+    end_time: end,
+    shift_type_color: color,
+  });
+
+  // Mert 2026-10-24: no hours in the box; a line per shift in its type's colour, as long as the shift, earliest
+  // on top; a day off says Off, a day not posted yet shows a dashed line.
+  it("draws a line per shift, earliest on top, and tells a day off from one not posted", () => {
+    const days = week.map((day) => ({ ...day }));
+    days[3] = { ...days[3]!, shifts: [shift("a", "11:00", "15:00", "#3b82f6"), shift("b", "17:00", "23:00", null)] };
+    days[4] = { ...days[4]!, posted: false };
+    const { container } = render(
+      <MemoryRouter>
+        <HomeWeekStrip model={model} week={days} today="2026-10-10" />
+      </MemoryRouter>,
+    );
+    const boxes = container.querySelectorAll(".dl-wk-d");
+    const lines = boxes[3]!.querySelectorAll<HTMLElement>(".dl-wk-line");
+    expect(lines).toHaveLength(2);
+    expect(lines[0]!.style.getPropertyValue("--c")).toBe("#3b82f6");
+    expect(lines[1]!.style.getPropertyValue("--c")).toBe("");
+    expect(Number(lines[0]!.style.getPropertyValue("--w"))).toBeLessThan(Number(lines[1]!.style.getPropertyValue("--w")));
+    expect(boxes[3]!.textContent).toBe("Tue13");
+    expect(boxes[1]!.textContent).toBe("Sun11Off");
+    expect(boxes[4]!.querySelector(".dl-wk-line.is-unposted")).not.toBeNull();
+    expect(boxes[4]!.textContent).toBe("Wed14");
+    expect(boxes[4]!.getAttribute("aria-label")).toMatch(/schedule not posted yet/);
   });
 });

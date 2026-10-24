@@ -2,7 +2,7 @@ import type { EmployeeHubReadModel } from "@newfork/shared";
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router";
 import { formatTime } from "../schedule/lib/scheduleDateTime";
-import type { HomeDay } from "./home-model";
+import { shiftMinutes, type HomeDay } from "./home-model";
 import { shiftDate } from "./dashboard-model";
 
 const base = "/app/employee-hub";
@@ -121,13 +121,14 @@ export function HomeWeekStrip({ model, week, today }: { model: EmployeeHubReadMo
           type="button"
           key={item.date}
           className={`dl-wk-d${item.date === today ? " is-today" : ""}${item.shifts.length ? " has" : ""}${item.timeOff ? " is-to" : ""}${preview?.index === index ? " is-scrub" : ""}`}
-          style={{ "--h": Math.min(1, item.hours / 8).toFixed(3) } as CSSProperties}
           aria-label={`${shiftDate(item.date, true)}: ${
             item.shifts.length
               ? item.shifts.map((shift) => `${formatTime(shift.start_time, format, "long")} to ${formatTime(shift.end_time, format, "long")}`).join(", ")
               : item.timeOff
                 ? "time off, approved"
-                : "no shift"
+                : item.posted
+                  ? "day off"
+                  : "schedule not posted yet"
           }`}
           onClick={() => {
             if (performance.now() < quietUntil.current) return;
@@ -137,8 +138,28 @@ export function HomeWeekStrip({ model, week, today }: { model: EmployeeHubReadMo
         >
           <span className="dl-wk-n">{item.weekday}</span>
           <span className="dl-wk-num">{item.day}</span>
-          <span className="dl-wk-bar" aria-hidden />
-          <span className="dl-wk-s">{item.shifts.length ? formatTime(item.shifts[0]!.start_time, format) : item.timeOff ? "Off" : "–"}</span>
+          {/* No hours here: a line per shift, earliest on top, in its type's colour and as long as it runs (a
+              10-hour shift fills the box); a day off says Off; a day not posted yet a dashed line (Mert 2026-10-24). */}
+          <span className="dl-wk-lines" aria-hidden>
+            {item.shifts.length ? (
+              item.shifts.map((shift) => (
+                <i
+                  key={shift.id}
+                  className="dl-wk-line"
+                  style={
+                    {
+                      "--w": Math.min(1, Math.max(0.2, (shiftMinutes(shift) ?? 240) / 600)).toFixed(3),
+                      ...(shift.shift_type_color ? { "--c": shift.shift_type_color } : {}),
+                    } as CSSProperties
+                  }
+                />
+              ))
+            ) : item.timeOff || item.posted ? (
+              <span className="dl-wk-s">Off</span>
+            ) : (
+              <i className="dl-wk-line is-unposted" />
+            )}
+          </span>
         </button>
       ))}
       <div className="dl-wk-tip" aria-hidden style={{ "--tx": `${preview?.left ?? 0}px` } as CSSProperties}>
@@ -161,9 +182,11 @@ export function HomeWeekStrip({ model, week, today }: { model: EmployeeHubReadMo
               <span className="dl-wk-tip-w">
                 {day.timeOff
                   ? "Time off · Approved"
-                  : day.open
-                    ? `Day off · ${day.open} open shift${day.open > 1 ? "s" : ""} you can pick up`
-                    : "Day off"}
+                  : !day.posted
+                    ? "Schedule not posted yet"
+                    : day.open
+                      ? `Day off · ${day.open} open shift${day.open > 1 ? "s" : ""} you can pick up`
+                      : "Day off"}
               </span>
             )}
           </>
