@@ -164,6 +164,8 @@ export function EmployeeMyShifts({ workspaceId, zone }: { readonly workspaceId: 
   });
   const start = board.data ? currentWeekStart(today, board.data.week_start_day) : null;
   const shiftId = search.get("shift");
+  // "Open in my schedule" marks the shift without opening its sheet (?focus=).
+  const marked = shiftId ?? search.get("focus");
   // The week on screen is the week of ?date= (the switch, the arrows, a notification, a shift's "Open in my
   // schedule"); This week without one.
   const target = search.get("date");
@@ -207,6 +209,7 @@ export function EmployeeMyShifts({ workspaceId, zone }: { readonly workspaceId: 
     if (week === start) params.delete("date");
     else params.set("date", week);
     params.delete("shift");
+    params.delete("focus");
     setSearch(params, { replace: true });
   };
   const go = (i: 0 | 1) => {
@@ -306,7 +309,7 @@ export function EmployeeMyShifts({ workspaceId, zone }: { readonly workspaceId: 
                   if (event.target === event.currentTarget) setSlide((now) => ({ ...now, from: null }));
                 }}
               >
-                {fromModel ? <DayCards days={weekDays(fromModel, slide.from, openDates)} today={today} shiftId={shiftId} timeFormat={timeFormat} /> : <WeekSkeleton />}
+                {fromModel ? <DayCards days={weekDays(fromModel, slide.from, openDates)} today={today} shiftId={marked} timeFormat={timeFormat} /> : <WeekSkeleton />}
               </div>
             ) : null}
             <div
@@ -318,7 +321,7 @@ export function EmployeeMyShifts({ workspaceId, zone }: { readonly workspaceId: 
               aria-busy={openPart.data ? undefined : true}
             >
               {openPart.data ? (
-                <DayCards days={weekDays(model, openWeek, openDates)} today={today} shiftId={shiftId} timeFormat={timeFormat} />
+                <DayCards days={weekDays(model, openWeek, openDates)} today={today} shiftId={marked} timeFormat={timeFormat} />
               ) : openPart.isError ? (
                 <LoadError
                   title="We couldn't load these shifts"
@@ -334,7 +337,13 @@ export function EmployeeMyShifts({ workspaceId, zone }: { readonly workspaceId: 
         </div>
       </div>
       {selected ? (
-        <ShiftSheet shift={selected} model={model} clash={ownAvailabilityClash(pattern, selected, timeFormat)} onClose={closeDetail} />
+        <ShiftSheet
+          shift={selected}
+          model={model}
+          clash={ownAvailabilityClash(pattern, selected, timeFormat)}
+          scheduleLink={false}
+          onClose={closeDetail}
+        />
       ) : shiftId && !hub.isFetching ? (
         <ShiftUnavailable onClose={closeDetail} />
       ) : null}

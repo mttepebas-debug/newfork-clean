@@ -367,22 +367,61 @@
   background: #17292360;
   backdrop-filter: blur(3px);
 }
-.eh-sheet-heading {
+/* The top row: the grip (phone), a heading where the sheet has one, and the close button. Pulling from here
+   always closes the sheet, so a touch here never scrolls. */
+.eh-sheet {
+  overscroll-behavior: contain;
+}
+.eh-sheet.is-still,
+.eh-sheet-top {
+  touch-action: none;
+}
+.eh-sheet-top {
+  position: relative;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 22px;
+  margin: -10px -10px 0 0;
 }
-.eh-sheet-heading h2 {
+.eh-sheet-top h2 {
   margin: 0;
   font-size: 20px;
 }
+.eh-sheet-top > button {
+  margin-left: auto;
+}
+/* Without a heading the close button sits beside the day, not on a row of its own. */
+.eh-sheet-top.is-bare {
+  margin-bottom: -38px;
+}
+.eh-sheet-top.is-bare + .eh-sheet-date {
+  padding-right: 48px;
+}
+.eh-sheet-grip {
+  display: none;
+}
+/* The day and the hours as Home's card writes them (home-daylight.css .dl-when b, .dl-time; Mert 2026-10-24). */
+.eh-sheet-date {
+  color: var(--theme-text);
+  font-size: 15px;
+  font-weight: 700;
+}
 .eh-sheet-time {
-  font-size: 34px;
-  margin: 16px 0;
-  font-weight: 500;
-  letter-spacing: -1px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  margin: 8px 0 14px;
+  color: var(--theme-text);
+  font-size: 31px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.eh-sheet-dash {
+  color: var(--theme-muted);
+  font-weight: 400;
 }
 .eh-sheet-location {
   display: flex;
@@ -586,10 +625,19 @@
     max-height: calc(100dvh - 24px);
     margin: auto 0 0;
     border-radius: 22px 22px 0 0;
-    padding: 24px 22px max(24px, env(safe-area-inset-bottom));
+    padding: 20px 22px max(24px, env(safe-area-inset-bottom));
   }
-  .eh-sheet-time {
-    font-size: 30px;
+  /* A bottom sheet shows its grip, centred on its top edge. */
+  .eh-sheet-grip {
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    display: block;
+    width: 40px;
+    height: 5px;
+    border-radius: 99px;
+    background: var(--theme-border-strong);
+    transform: translateX(calc(-50% + 5px));
   }
   .employee-hub-page .hub-panel input,
   .employee-hub-page .hub-panel select,
