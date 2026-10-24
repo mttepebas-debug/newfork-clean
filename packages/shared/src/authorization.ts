@@ -83,7 +83,6 @@ export const authzActionKeys = [
   "time_off.decide",
   "time_off.decide_alone",
   "time_off.request_own",
-  "time_off.revoke",
   "workspace.accept_ownership",
   "workspace.close",
   "workspace.create",

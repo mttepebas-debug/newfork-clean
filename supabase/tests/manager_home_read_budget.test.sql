@@ -87,28 +87,31 @@ where c.employee_id in (select tests.id('hb:p' || n) from generate_series(1, 96)
 
 -- Thirty people ask for a day off in the weeks ahead. Days count from each location's
 -- own today, not the server's: in Istanbul tomorrow starts at 21:00 UTC.
-select public.submit_time_off_service(tests.user('hb:p' || n), tests.id('hb'),
-  jsonb_build_array(jsonb_build_object('segment_date', (now() at time zone loc.timezone)::date + 10 + n % 14)), 'Probe', loc.timezone, gen_random_uuid())
+-- (Time off rebuild D8: asked and answered in the time off table.)
+select public.ask_time_off_service(tests.user('hb:p' || n), tests.id('hb'), 'vacation',
+  (now() at time zone loc.timezone)::date + 10 + n % 14, (now() at time zone loc.timezone)::date + 10 + n % 14, true, null, null,
+  'Probe', loc.timezone, gen_random_uuid())
 from generate_series(1, 30) n
 join public.employee_location_assignments a on a.employee_id = tests.id('hb:p' || n) and a.ended_at is null and a.is_primary
 join public.locations loc on loc.id = a.location_id;
 -- S-225: thirty more were off in the next two weeks, approved today: Updates and Coming up each read them.
 create temp table hb_off as
-select (public.submit_time_off_service(tests.user('hb:p' || n), tests.id('hb'),
-  jsonb_build_array(jsonb_build_object('segment_date', (now() at time zone loc.timezone)::date + 1 + n % 13)), 'Probe', loc.timezone, gen_random_uuid()) ->> 'request_id')::uuid as id
+select (public.ask_time_off_service(tests.user('hb:p' || n), tests.id('hb'), 'vacation',
+  (now() at time zone loc.timezone)::date + 1 + n % 13, (now() at time zone loc.timezone)::date + 1 + n % 13, true, null, null,
+  'Probe', loc.timezone, gen_random_uuid()) ->> 'id')::uuid as id
 from generate_series(31, 60) n
 join public.employee_location_assignments a on a.employee_id = tests.id('hb:p' || n) and a.ended_at is null and a.is_primary
 join public.locations loc on loc.id = a.location_id;
-select public.decide_time_off_service(tests.user('hb:owner'), tests.id('hb'), hb_off.id, 'approve', '',
-  app_private.time_off_impact(tests.id('hb'), hb_off.id) ->> 'fingerprint')
-from hb_off;
+select public.answer_time_off_service(tests.user('hb:owner'), tests.id('hb'), r.id, 'approve', null, r.revision,
+  app_private.time_off_shifts_print(app_private.time_off_shifts_at_stake(r)))
+from hb_off join public.time_off_requests r on r.id = hb_off.id;
 select tests.settle();
 
 -- The world is what the budget is about.
 select is((select count(*)::integer from public.employee_profiles e where e.workspace_id = tests.id('hb') and e.archived_at is null),
   101, 'a hundred people and the owner');
-select is((select count(*)::integer from public.schedule_time_off_requests r
-  where r.workspace_id = tests.id('hb') and r.status = 'pending' and r.request_type = 'time_off'), 30,
+select is((select count(*)::integer from public.time_off_requests r
+  where r.workspace_id = tests.id('hb') and r.status = 'pending' and r.kind = 'leave'), 30,
   'thirty requests for time off wait on an answer');
 select cmp_ok((select count(*)::integer from public.schedule_published_shifts s where s.workspace_id = tests.id('hb')), '>=', 550,
   'a published week of shifts at four locations');

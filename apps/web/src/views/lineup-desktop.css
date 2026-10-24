@@ -14,14 +14,12 @@
   padding: 30px 0 0;
 }
 
-/* Centred on the whole screen, as if the menu weren't there, at the same width (Mert 2026-10-21). Where the screen
-   is too narrow for that, it stops at the usual 32 px from the menu rather than go under it. */
+/* Centred on the room right of the open menu, at the same width (Mert 2026-10-23, A; before: the whole screen's
+   middle, 2026-10-21). The page is held, so folding the menu moves nothing; where the page fills the room, it keeps
+   the usual 32 px from the menu, as every page does. */
 @media (min-width: 721px) {
   .app-shell[data-content-held="true"] > .app-main > .lineup-page.lineup-desk-page {
-    margin-left: max(
-      var(--app-page-gutter-start),
-      calc(50vw - var(--app-sidebar-width) - min(100% - var(--app-page-gutter-start) - var(--app-page-gutter-end), 1320px) / 2)
-    );
+    margin-left: auto;
   }
 }
 

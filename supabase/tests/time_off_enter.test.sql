@@ -178,7 +178,8 @@ select is(pg_temp.refusal($$select pg_temp.enter('owner', 'ali', tests.week(0) +
   '42501 authz.not_member', 'another workspace''s owner may not');
 select is(pg_temp.refusal($$select public.enter_time_off_service(tests.user('te:ad'), tests.id('te'), gen_random_uuid(), 'vacation',
     tests.week(0) + 1, tests.week(0) + 1, true, null, null, null, 'Europe/Istanbul', 'x', gen_random_uuid())$$),
-  'P0002 time_off.not_found', 'a person who is not there');
+  -- D8 (BL-354): as somebody out of reach, so an id does not tell whether it is a person.
+  '42501 authz.out_of_scope', 'a person who is not there answers as somebody out of reach');
 
 -- 4. When: from the location's today, at most 31 days, in the person's zone, on the shifts read.
 select is(pg_temp.refusal($$select pg_temp.enter('mk', 'maria', pg_temp.today() - 1, pg_temp.today(), print => 'x')$$),

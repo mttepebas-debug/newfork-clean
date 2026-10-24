@@ -382,14 +382,16 @@ select is(pg_temp.item(17, 'p:bea:shift') #>> '{payload,body}',
   '(g) a body the product writes itself is shown');
 select is(pg_temp.item(17, 'p:bea:closed') #>> '{payload,body}', (select w.name from public.workspaces w where w.id = tests.id('np')),
   '(g) the same type from a closed day''s announcement: its words stay off the lock screen');
+-- Time off rebuild D8: the old request's subject ('time_off_request') went with the old time off; the reminder is
+-- about the new request ('time_off').
 select is(
   array(select t.key || ' ' || x.subject from public.notification_types t
-        cross join unnest(array['announcement', 'onboarding_case', 'schedule_publication', 'shift_exchange', 'time_off_request',
+        cross join unnest(array['announcement', 'onboarding_case', 'schedule_publication', 'shift_exchange', 'time_off',
                                 'document', 'employee', 'lineup', 'invitation', 'workspace']) x(subject)
         where app_private.push_shows_body(t.key, x.subject) order by 1),
   array['people.onboarding_completed onboarding_case', 'schedule.published schedule_publication',
         'schedule.shift_added schedule_publication', 'schedule.shift_changed schedule_publication',
-        'schedule.shift_removed schedule_publication', 'time_off.decision_reminder time_off_request'],
+        'schedule.shift_removed schedule_publication', 'time_off.decision_reminder time_off'],
   '(g) whose body may show: each of these producers writes it from dates, hours and counts');
 select pg_temp.notice('schedule.shift_changed', 'bea', 'p:bea:long', repeat('x', 300), subject => 'schedule_publication');
 update public.person_notifications set title = repeat('T', 200) where event_key = 'p:bea:long';

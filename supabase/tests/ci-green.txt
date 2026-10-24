@@ -79,7 +79,6 @@ supabase/tests/organization_basics_rls.test.sql
 supabase/tests/organization_settings_stay_with_owner_and_admin.test.sql
 supabase/tests/own_employment_record.test.sql
 supabase/tests/owner_employee_record.test.sql
-supabase/tests/time_off_opens_shifts.test.sql
 supabase/tests/owner_legal_name.test.sql
 supabase/tests/preferred_name_approval.test.sql
 supabase/tests/public_roles_reach_no_table_directly.test.sql
@@ -102,8 +101,6 @@ supabase/tests/schedule_publish_carries_labels.test.sql
 supabase/tests/schedule_read_model_rls.test.sql
 supabase/tests/schedule_reads_weekly_availability.test.sql
 supabase/tests/schedule_realtime_channels.test.sql
-supabase/tests/schedule_requests.test.sql
-supabase/tests/schedule_requests_paging.test.sql
 supabase/tests/schedule_resume_lease.test.sql
 supabase/tests/schedule_scope_settings_read_safely.test.sql
 supabase/tests/schedule_templates_autofill_export.test.sql
@@ -125,11 +122,6 @@ supabase/tests/template_replace_stays_in_its_lane.test.sql
 supabase/tests/tenant_owned_composite_foreign_keys.test.sql
 supabase/tests/test_world.test.sql
 supabase/tests/the_schedule_uses_the_preferred_name.test.sql
-supabase/tests/time_off_cancellation_requests.test.sql
-supabase/tests/time_off_decisions_go_one_rank_up.test.sql
-supabase/tests/time_off_doors_close_with_the_workspace.test.sql
-supabase/tests/time_off_physical_request_counts.test.sql
-supabase/tests/time_off_requested_periods.test.sql
 supabase/tests/timezone_names.test.sql
 supabase/tests/eligibility_matrix.test.sql
 supabase/tests/weekly_availability_preferences.test.sql
@@ -150,7 +142,6 @@ supabase/tests/management_owner_job.test.sql
 supabase/tests/excluded_person_leaves_new_drafts.test.sql
 supabase/tests/employee_references_ask_the_core.test.sql
 supabase/tests/approved_exchange_survives_unpublish.test.sql
-supabase/tests/owner_time_off_needs_no_documents.test.sql
 supabase/tests/ownership_transfer_hands_over_the_owner_record.test.sql
 supabase/tests/invitation_acceptance_needs_a_confirmed_email.test.sql
 supabase/tests/shift_note_reaches_only_its_owner.test.sql
@@ -161,7 +152,6 @@ supabase/tests/the_account_phone_is_the_only_phone.test.sql
 supabase/tests/scheduled_export_partial_delivery.test.sql
 supabase/tests/scheduled_export_sends_only_live_locations.test.sql
 supabase/tests/account_checks_count_in_the_database.test.sql
-supabase/tests/time_off_blocks_a_shift.test.sql
 supabase/tests/employee_hub.test.sql
 supabase/tests/refusals_say_why.test.sql
 supabase/tests/employees_on_the_core.test.sql
@@ -176,11 +166,6 @@ supabase/tests/name_settings_and_own_contact_ask_the_core.test.sql
 supabase/tests/archived_location_counts_nowhere.test.sql
 supabase/tests/catalog_sorted_by_name.test.sql
 supabase/tests/archived_names_reach_the_schedule.test.sql
-supabase/tests/time_off_voting.test.sql
-supabase/tests/time_off_deadlines.test.sql
-supabase/tests/time_off_pending_publish_note.test.sql
-supabase/tests/employee_hub_time_off_form.test.sql
-supabase/tests/time_off_seen_by_who_decides.test.sql
 supabase/tests/announcements_and_dates_follow_k1_k6.test.sql
 supabase/tests/announcements_and_dates_edge_cases.test.sql
 supabase/tests/closed_days_reach_the_shifts.test.sql
@@ -193,8 +178,6 @@ supabase/tests/documents_on_the_core.test.sql
 supabase/tests/weekly_exchange_changed_terms.test.sql
 supabase/tests/approved_cover_and_pickup_survive_a_stale_draft.test.sql
 supabase/tests/shift_exchange_decided_one_rank_up.test.sql
-supabase/tests/time_off_rules_and_reads.test.sql
-supabase/tests/requests_closed_unified_read.test.sql
 supabase/tests/shift_exchange_rejection_reason_stays_with_the_applicant.test.sql
 supabase/tests/swap_review_preview_measures.test.sql
 supabase/tests/workspace_box_shows_live_announcements.test.sql
@@ -209,7 +192,6 @@ supabase/tests/document_and_availability_refusal_reasons.test.sql
 supabase/tests/role_and_notification_refusal_reasons.test.sql
 supabase/tests/schedule_refusal_reasons.test.sql
 supabase/tests/announcement_refusal_reasons.test.sql
-supabase/tests/time_off_refusal_reasons.test.sql
 supabase/tests/employee_and_catalog_refusal_reasons.test.sql
 supabase/tests/onboarding_refusal_reasons.test.sql
 supabase/tests/schedule_week_follows_the_location_clock.test.sql
@@ -226,7 +208,6 @@ supabase/tests/old_notifications_are_dropped.test.sql
 supabase/tests/notice_timeoff.test.sql
 supabase/tests/notification_core.test.sql
 supabase/tests/notify_account.test.sql
-supabase/tests/notify_time_off.test.sql
 supabase/tests/notify_schedule.test.sql
 supabase/tests/notification_topics_by_right.test.sql
 supabase/tests/notification_feed_pages.test.sql
@@ -257,3 +238,4 @@ supabase/tests/time_off_pending_schedule.test.sql
 supabase/tests/time_off_cancel_and_take_back.test.sql
 supabase/tests/time_off_enter.test.sql
 supabase/tests/time_off_requests_sweep.test.sql
+supabase/tests/time_off_doors_close_with_the_workspace.test.sql

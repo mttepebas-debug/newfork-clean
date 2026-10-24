@@ -7,9 +7,11 @@ import { signIn, type Person } from "../fixtures/world";
 
 // BL-995 (KARARLAR §1.1, Mert 2026-10-09): Ali is on approved time off on
 // Wednesday, and Emre looks for cover for his Wednesday shift. Shift Hub shows
-// Ali the shift as not open to him and where to ask for those hours back; once
-// his cancellation of those hours is approved, the shift is open to him like
-// any other, and taking it shortens nothing.
+// Ali the shift as not open to him and where to ask to cancel; once his
+// cancellation is approved, the shift is open to him like any other, and taking
+// it changes his time off no further. Time off rebuild D8: asked, answered and
+// cancelled with the time off services (ask_time_off_service and the rest), not
+// the old ones, so this runs before and after the old tables go.
 
 const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
 
@@ -37,11 +39,14 @@ test.beforeAll(() => {
     select tests.publish_week('${run}', 6, '[
       {"label": "emre-wed6", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "10:00", "end": "14:00"}
     ]');
-    select tests.leave('${run}', 'ali', 6);
-    -- An admin decides alone (FB-6.3 rule 6), against the impact it reads now.
-    select public.decide_time_off_service(tests.user('${run}:zeynep'), tests.id('${run}'),
-      tests.id('${run}:ali:time_off'), 'approve', '',
-      app_private.time_off_impact(tests.id('${run}'), tests.id('${run}:ali:time_off')) ->> 'fingerprint');
+    -- Ali asks for Wednesday off; Zeynep, an admin, approves it (one answer is enough, KARARLAR S-239). Ali has
+    -- no shift that day, so no shift opens.
+    select tests.remember('${run}:ali:time_off', (public.ask_time_off_service(tests.user('${run}:ali'), tests.id('${run}'),
+      'vacation', tests.week(6) + 2, tests.week(6) + 2, true, null, null, 'e2e',
+      app_private.time_off_timezone(tests.id('${run}'), tests.id('${run}:ali')), gen_random_uuid()) ->> 'id')::uuid);
+    select public.answer_time_off_service(tests.user('${run}:zeynep'), tests.id('${run}'), r.id, 'approve', null, r.revision,
+      app_private.time_off_shifts_print(app_private.time_off_shifts_at_stake(r)))
+    from public.time_off_requests r where r.id = tests.id('${run}:ali:time_off');
     select public.shift_exchanges_command_service(tests.user('${run}:emre'), tests.id('${run}'),
       jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('${run}:shift:emre-wed6')),
       gen_random_uuid()) ->> 'case_id';`).split(/\r?\n/).at(-1)!;
@@ -58,19 +63,14 @@ test("approved time off keeps a shift from the employee until they get those hou
   await ali.getByRole("link", { name: /Ask to cancel time off/ }).click();
   await expect(ali).toHaveURL(/\/app\/employee-hub\/my-availability/);
 
-  // Ali's cancellation of those hours, approved by Zeynep, who approved the leave.
+  // Ali asks to cancel his time off, and Zeynep, who approved it, approves the cancellation.
   sql(`
-    select tests.remember('${run}:ali:cancel', (public.request_time_off_cancellation_service(tests.user('${run}:ali'), tests.id('${run}'),
-      tests.id('${run}:ali:time_off'),
-      (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('${run}:ali:time_off')),
-      (select jsonb_build_array(jsonb_build_object('segment_id', s.id, 'starts_at', x ->> 'starts_at', 'ends_at', x ->> 'ends_at'))
-       from public.schedule_time_off_segments s
-       cross join (select public.shift_exchange_shift(tests.id('${run}'), tests.id('${run}:shift:emre-wed6')) x) q
-       where s.request_id = tests.id('${run}:ali:time_off') and s.segment_date = tests.week(6) + 2),
-      'Taking Emre''s shift', gen_random_uuid()) ->> 'request_id')::uuid);
-    select public.decide_time_off_service(tests.user('${run}:zeynep'), tests.id('${run}'),
-      tests.id('${run}:ali:cancel'), 'approve', '',
-      app_private.time_off_impact(tests.id('${run}'), tests.id('${run}:ali:cancel')) ->> 'fingerprint');`);
+    select tests.remember('${run}:ali:cancel', (public.ask_time_off_cancellation_service(tests.user('${run}:ali'), tests.id('${run}'),
+      tests.id('${run}:ali:time_off'), 'Taking Emre''s shift',
+      (select r.revision from public.time_off_requests r where r.id = tests.id('${run}:ali:time_off')),
+      gen_random_uuid()) -> 'cancellation' ->> 'id')::uuid);
+    select public.answer_time_off_service(tests.user('${run}:zeynep'), tests.id('${run}'), r.id, 'approve', null, r.revision, null)
+    from public.time_off_requests r where r.id = tests.id('${run}:ali:cancel');`);
 
   await ali.goto(hub);
   await expect(ali.getByText("On time off")).toHaveCount(0);
@@ -89,7 +89,7 @@ test("approved time off keeps a shift from the employee until they get those hou
     .poll(() => sql(`select p.first_name from public.schedule_published_shifts s join public.employee_profiles p on p.id = s.employee_id
       where s.id = tests.id('${run}:shift:emre-wed6');`), { timeout: 30_000 })
     .toBe("Ali");
-  // Taking it shortens nothing: Ali's own cancellation is the only hours his time off gave back.
-  expect(sql(`select count(*) from public.time_off_cancellation_links l
-    where l.parent_request_id = tests.id('${run}:ali:time_off');`)).toBe("1");
+  // Taking it changes his time off no further: cancelled by his own request, the one cancellation there is.
+  expect(sql(`select r.status || ' ' || (select count(*) from public.time_off_requests c where c.cancels_id = r.id)
+    from public.time_off_requests r where r.id = tests.id('${run}:ali:time_off');`)).toBe("cancelled 1");
 });

@@ -550,7 +550,7 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('time_off.impact', 'time_off', 'schedule.time_off_requests.manage', false, false,
    $$select public.time_off_impact_service($1, $2, $3) is not null$$),
   -- taking approved time off back
-  ('time_off.revoke', 'leave', 'schedule.time_off_requests.manage', false, false,
+  ('time_off.take_back', 'leave', 'schedule.time_off_requests.manage', false, false,
    $$select public.take_back_time_off_service($1, $2, $3, 'matrix probe',
        (select r.revision from public.time_off_requests r where r.id = $3)) is not null$$),
   -- seeing time off comes with deciding it: no "View" level of its own (EKRAN-02 K-S3). Requests → Time off
@@ -792,7 +792,7 @@ insert into core_action (key, core_key, blank) values
   ('time_off.decide', 'time_off.decide', 'null'),
   ('time_off.decide_cancellation', 'time_off.decide', 'null'),
   ('time_off.impact', 'time_off.decide', 'null'),
-  ('time_off.revoke', 'time_off.decide', 'null'),
+  ('time_off.take_back', 'time_off.decide', 'null'),
   ('requests.read', 'requests.read', 'null'),
   ('time_off.entry_people', 'time_off.decide', 'null'),
   ('time_off.enter_impact', 'time_off.decide', 'null'),
@@ -1065,7 +1065,7 @@ begin
     -- Its layout is one's own and goes with opening it (KK-36).
     return 'allow';
 
-  when 'time_off.decide', 'time_off.decide_cancellation', 'time_off.impact', 'requests.read', 'time_off.revoke',
+  when 'time_off.decide', 'time_off.decide_cancellation', 'time_off.impact', 'requests.read', 'time_off.take_back',
        'time_off.entry_people', 'time_off.enter_impact', 'time_off.enter' then
     -- Who may answer (KARARLAR S-239, time off rebuild D3): one answer is enough, from any manager of one
     -- of the person's locations whose role decides time off, an admin, or the owner, whatever the

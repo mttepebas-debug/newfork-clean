@@ -10,7 +10,7 @@
 
 /* The day: the manager's date row and wheel (schedule/lineup-wheel.css), as wide as the lineup under it; on a
    phone the wheel runs edge to edge like the manager's (the hub page's side padding is 16 px there). */
-.employee-lineup-day { display: grid; gap: 14px; max-width: 560px; }
+.employee-lineup-day { display: grid; gap: 14px; max-width: 700px; }
 .employee-lineup-day .lineup-wheel { margin: 0; }
 @media (max-width: 720px) {
   .employee-lineup-day { max-width: none; }
@@ -19,15 +19,18 @@
   .employee-lineup-day .lineup-wheel { margin: 0 calc(-1 * var(--eh-gutter, 16px)); }
 }
 
-.employee-lineup { max-width: 560px; padding-bottom: 24px; }
+/* The day, the lineup and its calm card are as wide as My shifts' week, 700 px, so their edges meet too (Mert
+   2026-10-23, "1- olsun"). */
+.employee-lineup { max-width: 700px; padding-bottom: 24px; }
 /* On a desktop everything under My shifts · Team schedule · Lineup stands in the middle of the page, as on the
    manager's Lineup; the page tabs stay where they are (Mert 2026-10-23). Where the menu holds the page, the middle is
-   the whole screen's, as on My shifts (employee-my-shifts.css), so going from one to the other the page doesn't move
-   sideways (Mert 2026-10-23, "evet"); where the screen is too narrow, the column keeps inside the page box. */
+   the room right of the open menu's, as on My shifts (employee-my-shifts.css), so going from one to the other the page
+   doesn't move sideways, and folding the menu moves nothing (Mert 2026-10-23, A); where the screen is too narrow, the
+   column keeps inside the page box. */
 @media (min-width: 721px) {
   .employee-lineup-page > :is(.employee-lineup-day, .employee-lineup) { margin-inline: auto; }
   .app-shell[data-content-held="true"] > .app-main > .employee-hub-page > .employee-lineup-page > :is(.employee-lineup-day, .employee-lineup) {
-    margin-left: clamp(0px, 50vw - var(--app-sidebar-width) - var(--app-page-gutter-start) - 280px, 100% - 560px);
+    margin-left: clamp(0px, 50vw - var(--app-sidebar-width) / 2 - var(--app-page-gutter-start) - 350px, 100% - 700px);
   }
 }
 /* Her shift tabs 14 px under the wheel, as on the manager's page (one rhythm, Mert 2026-10-17 ~8:10 AM). */
@@ -144,7 +147,7 @@
 .employee-lineup-sep { height: 0; margin: 28px -4px 24px; border: 0; border-top: 1px solid var(--theme-border-strong); }
 .employee-lineup-sep + .employee-lineup-view > .employee-lineup-head > .employee-lineup-ticket { margin-top: 0; }
 
-.employee-lineup-calm { display: grid; justify-items: center; gap: 6px; max-width: 560px; margin-top: 16px; padding: 26px 18px; border-radius: 22px; background: var(--theme-surface); box-shadow: var(--theme-shadow-card); text-align: center; }
+.employee-lineup-calm { display: grid; justify-items: center; gap: 6px; max-width: 700px; margin-top: 16px; padding: 26px 18px; border-radius: 22px; background: var(--theme-surface); box-shadow: var(--theme-shadow-card); text-align: center; }
 .employee-lineup-calm svg { margin-bottom: 4px; color: var(--theme-accent-deep); }
 .employee-lineup-calm b { color: var(--theme-text); font-size: 16px; }
 .employee-lineup-calm span { color: var(--theme-muted); font-size: 14px; line-height: 1.45; }

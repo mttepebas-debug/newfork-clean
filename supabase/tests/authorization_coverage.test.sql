@@ -56,7 +56,6 @@ insert into service_class values
   ('create_schedule_template_service', 'schedule.templates'),
   ('create_workspace_todo_service', 'workspace.todos'),
   ('decide_employee_preferred_name_service', 'employee.decide_preferred_name'),
-  ('decide_time_off_service', 'time_off.decide'),
   ('decline_employee_invitation_service', 'account.self'),
   ('defer_initial_employee_document_service', 'documents.self'),
   -- asks settings.locations.write for a location, settings.jobs.write for the rest (BL-133)
@@ -73,7 +72,6 @@ insert into service_class values
   ('employee_has_hard_document_schedule_conflict_service', 'exempt:predicate'),
   ('employee_hub_actor_service', 'employee_hub.read'),
   ('employee_personal_tasks_service', 'employee_hub.self'),
-  ('employee_request_action_service', 'employee_hub.self'),
   ('extend_employee_document_deadline_service', 'documents.review'),
   ('finalize_account_deletion_service', 'exempt:worker'),
   ('finalize_claimed_account_deletion_service', 'exempt:worker'),
@@ -106,9 +104,6 @@ insert into service_class values
   ('get_schedule_publication_history_service', 'schedule.read'),
   ('get_schedule_publication_status_service', 'schedule.read'),
   ('get_schedule_read_model_service', 'schedule.read'),
-  -- also exchange.read for its shift-change rows (EKRAN-02 A4)
-  ('get_schedule_requests_closed_service', 'requests.read'),
-  ('get_schedule_requests_service', 'requests.read'),
   ('get_schedule_template_service', 'schedule.templates.read'),
   ('get_workspace_dashboard_service', 'workspace.read'),
   ('heartbeat_schedule_edit_session_service', 'schedule.edit'),
@@ -236,13 +231,11 @@ insert into service_class values
   ('shift_exchanges_command_service', 'exchange.command'),
   ('shift_exchanges_maintain_service', 'exempt:worker'),
   ('shift_exchanges_read_service', 'exchange.read'),
-  ('request_time_off_cancellation_service', 'time_off.request_own'),
-  ('revoke_time_off_service', 'time_off.revoke'),
-  ('shorten_time_off_service', 'time_off.revoke'),
   ('store_employee_invitation_delivery_secret_service', 'employee.invite'),
   ('submit_employee_document_lifecycle_service', 'documents.self'),
   ('submit_employee_onboarding_service', 'onboarding.self'),
-  ('submit_time_off_service', 'time_off.request_own'),
+  -- Time off rebuild D8: submit, decide, revoke, shorten and the voted cancellation, the employee's request action
+  -- and the two old Requests readers went with the old time off.
   -- Time off rebuild D2: the employee's own doors to the new table.
   ('ask_time_off_service', 'time_off.request_own'),
   ('withdraw_time_off_service', 'time_off.request_own'),

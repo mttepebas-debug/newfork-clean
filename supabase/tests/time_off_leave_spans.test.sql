@@ -8,13 +8,16 @@ select plan(17);
 -- Lineup's Add Staff list read the requested days straight from the table and kept calling a revoked or
 -- shortened time off "Time off"; it reads leave_spans now. Home's Coming up drew a shortened time off at
 -- its first length; it reads what is left.
+-- Time off rebuild D8: leave_spans reads public.time_off_requests only; the old tables and shortening are
+-- gone. What is left is `effective`, which app_private.time_off_cut takes hours out of (a take-back and a
+-- cancellation cut through it).
 --
 -- Kadikoy (Istanbul, UTC+3 all year). The Monday of tests.week(0):
 --   Fay  - a whole day off, approved.
---   Gil  - a whole day off, approved, then the Lunch hours (9 AM - 3 PM) given back.
---   Ray  - a whole day off, approved, then revoked before it began.
+--   Gil  - a whole day off, approved, then the Lunch hours (9 AM - 3 PM) cut out of it.
+--   Ray  - a whole day off, approved, then taken back before it began.
 --   Pia  - the Wednesday asked for, waiting for a decision.
---   Hal  - three days off from three days from now, the last one given back (Coming up).
+--   Hal  - three days off from three days from now, the last one cut out (Coming up).
 
 select tests.world('ls');
 select tests.person('ls', 'fay', 'employee', array['K'], array['cook']);
@@ -35,18 +38,13 @@ language plpgsql
 as $$
 declare
   rid uuid := gen_random_uuid();
-  d date;
-  resolved jsonb;
+  starts timestamptz := first_day::timestamp at time zone 'Europe/Istanbul';
+  ends timestamptz := (first_day + days)::timestamp at time zone 'Europe/Istanbul';
 begin
-  insert into public.schedule_time_off_requests (id, workspace_id, employee_id, created_by)
-  values (rid, tests.id('ls'), tests.id('ls:' || person), tests.user('ls:owner'));
-  for d in select first_day + i from generate_series(0, days - 1) i loop
-    resolved := public.time_off_resolve_period(jsonb_build_object('segment_date', d), 'Europe/Istanbul');
-    insert into public.schedule_time_off_segments (workspace_id, request_id, segment_date, time_timezone, starts_at, ends_at)
-    values (tests.id('ls'), rid, d, 'Europe/Istanbul', (resolved ->> 'starts_at')::timestamptz, (resolved ->> 'ends_at')::timestamptz);
-  end loop;
-  update public.schedule_time_off_segments set status = 'approved' where request_id = rid;
-  update public.schedule_time_off_requests set status = 'approved', revision = revision + 1 where id = rid;
+  insert into public.time_off_requests (id, workspace_id, employee_id, starts_at, ends_at, all_day, time_timezone,
+    kind_of_leave, status, effective, decided_by, decided_at, created_by, client_key)
+  values (rid, tests.id('ls'), tests.id('ls:' || person), starts, ends, true, 'Europe/Istanbul', 'vacation', 'approved',
+    tstzmultirange(tstzrange(starts, ends, '[)')), tests.user('ls:owner'), now(), tests.user('ls:owner'), gen_random_uuid());
   return rid;
 end;
 $$;
@@ -83,13 +81,13 @@ insert into fixture values
   ('pia', tests.leave('ls', 'pia', 0, 1)),
   ('hal', pg_temp.days_off('hal', current_date + 3, 3));
 
-select app_private.shorten_time_off(tests.user('ls:owner'), tests.id('ls'), tests.id('ls:gil'),
-  tstzmultirange(tstzrange(pg_temp.at(tests.week(0), '09:00'), pg_temp.at(tests.week(0), '15:00'), '[)')), 'Lunch back', '{}'::jsonb);
-select public.revoke_time_off_service(tests.user('ls:owner'), tests.id('ls'), (select value from fixture where key = 'ray'),
-  (select r.revision from public.schedule_time_off_requests r where r.id = (select value from fixture where key = 'ray')), 'Plans changed');
-select app_private.shorten_time_off(tests.user('ls:owner'), tests.id('ls'), tests.id('ls:hal'),
-  tstzmultirange(tstzrange((current_date + 5)::timestamp at time zone 'Europe/Istanbul',
-    (current_date + 6)::timestamp at time zone 'Europe/Istanbul', '[)')), 'Back a day early', '{}'::jsonb);
+select app_private.time_off_cut((select value from fixture where key = 'gil'),
+  tstzrange(pg_temp.at(tests.week(0), '09:00'), pg_temp.at(tests.week(0), '15:00'), '[)'));
+select public.take_back_time_off_service(tests.user('ls:owner'), tests.id('ls'), (select value from fixture where key = 'ray'),
+  'Plans changed', (select r.revision from public.time_off_requests r where r.id = (select value from fixture where key = 'ray')));
+select app_private.time_off_cut((select value from fixture where key = 'hal'),
+  tstzrange((current_date + 5)::timestamp at time zone 'Europe/Istanbul',
+    (current_date + 6)::timestamp at time zone 'Europe/Istanbul', '[)'));
 
 create temporary table week_window as
 select tstzrange(pg_temp.at(tests.week(0), '00:00'), pg_temp.at(tests.week(0) + 7, '00:00'), '[)') as win;
@@ -99,8 +97,8 @@ select is(pg_temp.spans('fay', (select win from week_window)), 'Mon 00:00-Tue 00
 select is((select l.request_id from app_private.leave_spans(tests.id('ls'), array[tests.id('ls:fay')], (select win from week_window)) l),
   (select value from fixture where key = 'fay'), 'and names its request');
 select is(pg_temp.spans('gil', (select win from week_window)), 'Mon 00:00-Mon 09:00, Mon 15:00-Tue 00:00',
-  'shortened time off reads as what is left of it');
-select is(pg_temp.spans('ray', (select win from week_window)), 'none', 'revoked time off reads as nothing');
+  'time off with hours cut out reads as what is left of it');
+select is(pg_temp.spans('ray', (select win from week_window)), 'none', 'time off taken back before it began reads as nothing');
 select is(pg_temp.spans('pia', (select win from week_window)), 'Wed 00:00-Thu 00:00 pending', 'a request waiting for a decision reads as the hours asked, pending');
 select is(pg_temp.spans('fay', tstzrange(pg_temp.at(tests.week(0) + 1, '00:00'), pg_temp.at(tests.week(0) + 7, '00:00'), '[)')), 'none',
   'time off outside the window is not read');
@@ -118,7 +116,7 @@ select is((select count(*)::integer from app_private.leave_spans(tests.world('lx
 
 -- 2. Lineup's Add Staff list: only time off that is still there is "Time off".
 select is(pg_temp.lunch_why(tests.week(0), 'fay'), '{"reason": "time_off"}'::jsonb, 'Lineup: approved time off is time off');
-select isnt(pg_temp.lunch_why(tests.week(0), 'ray'), '{"reason": "time_off"}'::jsonb, 'Lineup: revoked time off is not time off');
+select isnt(pg_temp.lunch_why(tests.week(0), 'ray'), '{"reason": "time_off"}'::jsonb, 'Lineup: time off taken back is not time off');
 select isnt(pg_temp.lunch_why(tests.week(0), 'gil'), '{"reason": "time_off"}'::jsonb,
   'Lineup: time off given back for these hours is not time off');
 select isnt(pg_temp.lunch_why(tests.week(0) + 2, 'pia'), '{"reason": "time_off"}'::jsonb,
@@ -128,7 +126,7 @@ select isnt(pg_temp.lunch_why(tests.week(0) + 2, 'pia'), '{"reason": "time_off"}
 select is((select c ->> 'first_date' || ' - ' || (c ->> 'last_date') from jsonb_array_elements(
     public.get_manager_home_service(tests.user('ls:owner'), tests.id('ls')) -> 'coming_up') c
   where c ->> 'kind' = 'time_off' and c ->> 'id' = (select value from fixture where key = 'hal')::text),
-  (current_date + 3) || ' - ' || (current_date + 4), 'Home: a shortened time off comes up with the days left');
+  (current_date + 3) || ' - ' || (current_date + 4), 'Home: time off with its last day cut out comes up with the days left');
 select is((select count(*)::integer from jsonb_array_elements(
     public.get_manager_home_service(tests.user('ls:owner'), tests.id('ls')) -> 'coming_up') c
   where c ->> 'kind' = 'time_off'), 1, 'Home: only Hal''s time off is in the next fourteen days');

@@ -131,7 +131,9 @@ select ok((pg_temp.candidate()->'reasons'->>0) like 'Approved time off%','leave 
 select ok(pg_temp.has(pg_temp.candidate(),'blockers','approved_time_off'),'the blocker is approved_time_off');
 select is(pg_temp.candidate(consent=>'true')->>'status','ineligible','the person''s own agreement no longer sets the leave aside');
 select ok(not (pg_temp.candidate(consent=>'true') ? 'shortens_time_off'),'and nothing says the leave would shorten');
-update public.schedule_time_off_requests set status='pending' where id in ('ad426000-0000-4000-8000-000000000016','ad426000-0000-4000-8000-000000000017');
+-- Waiting for an answer: no `effective` hours yet (time off rebuild D8).
+update public.time_off_requests set status='pending',effective='{}',decided_by=null,decided_at=null
+ where id in ('ad426000-0000-4000-8000-000000000016','ad426000-0000-4000-8000-000000000017');
 select is(pg_temp.candidate()->>'status','eligible','pending leave does not become approved leave');
 
 -- 5. The manager's reminder note never decides eligibility (M12).

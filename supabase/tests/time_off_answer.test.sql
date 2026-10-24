@@ -165,7 +165,8 @@ select is(
 select is(pg_temp.refusal($$select public.time_off_impact_service(tests.user('tq:bea'), tests.id('tq'), (select value from fixture where key = 'ali'))$$),
   '42501 authz.missing_permission', 'an employee does not read it');
 select is(pg_temp.refusal($$select public.time_off_impact_service(tests.user('tq:ad'), tests.id('tq'), gen_random_uuid())$$),
-  'P0002 time_off.not_found', 'a request that is not there');
+  -- D8 (BL-354): as one out of reach, so an id does not tell whether it is a request.
+  '42501 authz.out_of_scope', 'a request that is not there answers as one out of reach');
 
 -- 4. Who may not answer.
 select is(pg_temp.refusal($$select pg_temp.answer('bea', 'ali', 'approve')$$), '42501 authz.missing_permission',

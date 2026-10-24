@@ -195,11 +195,15 @@ select pg_temp.command('leo', jsonb_build_object('action', 'apply', 'shift_id', 
   'case_id', tests.id('rl:case:maria-tue2')));
 select pg_temp.command('maria', jsonb_build_object('action', 'close', 'case_id', tests.id('rl:case:maria-tue2'),
   'expected_revision', pg_temp.revision(tests.id('rl:case:maria-tue2'))));
-select ok(not exists(select 1 from jsonb_array_elements(public.get_schedule_requests_closed_service(tests.user('rl:mira'), tests.id('rl'),
-  array['cover'], null, '', 1, 100) -> 'rows') r where r ->> 'id' = tests.id('rl:case:maria-tue2')::text),
+-- Time off rebuild D8: get_schedule_requests_closed_service went with the old time off; Requests reads closed
+-- shift changes from shift_exchanges_read_service's manager view.
+create function pg_temp.closed(who text, target uuid) returns boolean language sql as $$
+  select exists(select 1 from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('rl:' || who), tests.id('rl'), true,
+    tests.week(2), tests.week(2) + 6) -> 'cases') c where c ->> 'id' = target::text and c ->> 'status' <> 'open')
+$$;
+select ok(not pg_temp.closed('mira', tests.id('rl:case:maria-tue2')),
   'Mira, who manages Besiktas, does not find the Kadikoy release she passed on in Requests -> Closed');
-select ok(exists(select 1 from jsonb_array_elements(public.get_schedule_requests_closed_service(tests.user('rl:rachel'), tests.id('rl'),
-  array['cover'], null, '', 1, 100) -> 'rows') r where r ->> 'id' = tests.id('rl:case:maria-tue2')::text),
+select ok(pg_temp.closed('rachel', tests.id('rl:case:maria-tue2')),
   'Rachel, who manages Kadikoy, does');
 
 -- A manager's preview names the 4-hour mark, not a start (review, low).

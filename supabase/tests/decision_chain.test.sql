@@ -140,10 +140,7 @@ select is(public.shift_exchanges_command_service(pg_temp.who('dc', 'can'), tests
 -- requests_hide_own_rows: Dora's own requests are not in her Requests (design §4.6).
 select ok(not (tests.id('dc:case:dora-k') = any (pg_temp.manager_rows('dc', 'dora'))), 'Dora''s open cover is not in her Requests');
 select ok(tests.id('dc:case:dora-k') = any (pg_temp.manager_rows('dc', 'can')), 'it is in Can''s');
-select ok(not exists (select 1 from jsonb_array_elements(public.get_schedule_requests_closed_service(pg_temp.who('dc', 'dora'), tests.id('dc')) -> 'rows') r
-  where (r ->> 'id')::uuid = tests.id('dc:case:dora-k2')), 'nor is her closed one in her closed Requests');
-select ok(exists (select 1 from jsonb_array_elements(public.get_schedule_requests_closed_service(pg_temp.who('dc', 'can'), tests.id('dc')) -> 'rows') r
-  where (r ->> 'id')::uuid = tests.id('dc:case:dora-k2')), 'it is in Can''s');
+-- time off rebuild D8: the closed Requests list (get_schedule_requests_closed_service) went with the old time off.
 select ok(tests.id('dc:case:dora-k') = any (
   select (c ->> 'id')::uuid from jsonb_array_elements(public.shift_exchanges_read_service(pg_temp.who('dc', 'dora'), tests.id('dc'), false,
     tests.week(1), tests.week(1) + 6) -> 'cases') c), 'Dora follows her cover in the employee view');
@@ -176,14 +173,20 @@ select is(pg_temp.tier('do', 'owner', 'K'), 'admin', 'with an admin the owner''s
 select is(pg_temp.reason('do', 'owner', 'owner-k2'), 'rank', 'and the owner may not decide their own');
 select ok(not (tests.id('do:case:owner-k2') = any (pg_temp.manager_rows('do', 'owner'))), 'nor is it in the owner''s Requests');
 
--- time_off_same_chain: the same chain and the same exception for time off.
-create function pg_temp.vote(w text, actor text, holder text, verb text default 'approve') returns text language sql as $$
-  select pg_temp.said(format('select public.decide_time_off_service(%L, %L, %L, %L, %L, %L)',
-    pg_temp.who(w, actor), tests.id(w), r.id, verb, '', app_private.time_off_impact(tests.id(w), r.id) ->> 'fingerprint'))
-  from public.schedule_time_off_requests r where r.id = tests.id(w || ':' || holder || ':time_off')
+-- time_off_same_chain: the same chain for time off.
+-- Time off rebuild D8: one answer decides (answer_time_off_service); votes by location went with the old time off.
+create function pg_temp.answer(w text, actor text, holder text, verb text default 'approve') returns text language sql as $$
+  select pg_temp.said(format('select public.answer_time_off_service(%L, %L, %L, %L, null, %s, %L)',
+    pg_temp.who(w, actor), tests.id(w), r.id, verb, r.revision,
+    app_private.time_off_shifts_print(app_private.time_off_shifts_at_stake(r))))
+  from public.time_off_requests r where r.id = tests.id(w || ':' || holder || ':time_off')
 $$;
 create function pg_temp.time_off_status(w text, holder text) returns text language sql as $$
-  select r.status::text from public.schedule_time_off_requests r where r.id = tests.id(w || ':' || holder || ':time_off')
+  select r.status from public.time_off_requests r where r.id = tests.id(w || ':' || holder || ':time_off')
+$$;
+create function pg_temp.time_off_rows(w text, actor text) returns uuid[] language sql as $$
+  select coalesce(array_agg((r ->> 'id')::uuid), '{}')
+  from jsonb_array_elements(public.time_off_requests_service(pg_temp.who(w, actor), tests.id(w)) -> 'requests') r
 $$;
 create function pg_temp.told(w text, holder text) returns text[] language sql as $$
   select coalesce(array_agg(n.user_id::text order by n.user_id), '{}') from public.person_notifications n
@@ -199,15 +202,14 @@ select tests.leave('dn', 'dina');
 select is(pg_temp.told('dc', 'dora'), pg_temp.users('dc', 'can'), 'Dora''s time off is told to Can');
 select is(pg_temp.told('dc', 'bea'), pg_temp.users('dc', 'ada'), 'Bea''s to the admin, not the owner');
 select is(pg_temp.told('dn', 'dina'), pg_temp.users('dn', 'owner'), 'Dina''s to the owner');
-select is(pg_temp.vote('dc', 'dora', 'dora'), '42501 authz.rank', 'Dora may not decide her own time off');
-select ok(not exists (select 1 from jsonb_array_elements(public.get_schedule_requests_service(pg_temp.who('dc', 'dora'), tests.id('dc')) -> 'time_off_requests') r
-  where (r ->> 'id')::uuid = tests.id('dc:dora:time_off')), 'nor is it in her Requests');
-select is(pg_temp.vote('dc', 'can', 'dora'), 'ok', 'Can votes for Kadikoy');
+select is(pg_temp.answer('dc', 'dora', 'dora'), '42501 authz.rank', 'Dora may not decide her own time off');
+select ok(not (tests.id('dc:dora:time_off') = any (pg_temp.time_off_rows('dc', 'dora'))), 'nor is it in her Requests');
+select is(pg_temp.answer('dc', 'can', 'dora'), 'ok', 'Can answers for Kadikoy');
 select is(pg_temp.time_off_status('dc', 'dora'), 'approved', 'and Dora''s time off is approved');
-select is(pg_temp.vote('dc', 'can', 'bea'), '42501 authz.out_of_scope', 'Can does not decide at Besiktas');
-select is(pg_temp.vote('dc', 'ada', 'bea'), 'ok', 'Ada decides Bea''s time off');
+select is(pg_temp.answer('dc', 'can', 'bea'), '42501 authz.out_of_scope', 'Can does not decide at Besiktas');
+select is(pg_temp.answer('dc', 'ada', 'bea'), 'ok', 'Ada decides Bea''s time off');
 select is(pg_temp.time_off_status('dc', 'bea'), 'approved', 'it is approved');
-select is(pg_temp.vote('dn', 'owner', 'dina'), 'ok', 'the owner decides Dina''s');
+select is(pg_temp.answer('dn', 'owner', 'dina'), 'ok', 'the owner decides Dina''s');
 -- Rank is not counted on the employee side: Kadikoy's manager decides the owner's own time off.
 insert into public.employee_location_assignments (workspace_id, employee_id, location_id, is_primary, created_by)
 select tests.id('dc'), tests.id('dc:owner'), tests.id('dc:K'), false, tests.user('dc:owner')
@@ -215,12 +217,13 @@ where not exists (select 1 from public.employee_location_assignments a
   where a.employee_id = tests.id('dc:owner') and a.location_id = tests.id('dc:K') and a.ended_at is null);
 select tests.leave('dc', 'owner', 2);
 select is(pg_temp.told('dc', 'owner'), pg_temp.users('dc', 'bea', 'can', 'dora'), 'the owner''s time off is told to the managers of the owner''s locations');
-select is(pg_temp.vote('dc', 'owner', 'owner'), '42501 authz.rank', 'the owner may not decide their own here');
-select is(pg_temp.vote('dc', 'dora', 'owner'), 'ok', 'Dora, a manager, votes for Kadikoy');
-select is(pg_temp.vote('dc', 'bea', 'owner'), 'ok', 'Bea, a manager, votes for Besiktas');
+select is(pg_temp.answer('dc', 'owner', 'owner'), '42501 authz.rank', 'the owner may not decide their own here');
+select is(app_private.time_off_decider_reason(pg_temp.who('dc', 'bea'), tests.id('dc'), tests.id('dc:owner')), null,
+  'Bea, a manager, may answer it for Besiktas');
+select is(pg_temp.answer('dc', 'dora', 'owner'), 'ok', 'Dora, a manager, answers it for Kadikoy');
 select is(pg_temp.time_off_status('dc', 'owner'), 'approved', 'and the owner''s time off is approved');
 
--- The owner's own time off follows the chain: it waits, and the owner alone decides it.
+-- The owner's own time off follows the chain: it waits.
 select tests.world('dt');
 select tests.employee_slot('dt', 'owner');
 insert into public.employee_job_assignments (workspace_id, employee_id, job_id, is_primary, created_by)
@@ -232,16 +235,14 @@ where not exists (select 1 from public.employee_location_assignments a
   where a.employee_id = tests.id('dt:owner') and a.location_id = tests.id('dt:K') and a.ended_at is null);
 select tests.leave('dt', 'owner');
 select is(pg_temp.time_off_status('dt', 'owner'), 'pending', 'the owner''s time off waits like anyone''s');
-select ok(exists (select 1 from jsonb_array_elements(public.get_schedule_requests_service(pg_temp.who('dt', 'owner'), tests.id('dt')) -> 'time_off_requests') r
-  where (r ->> 'id')::uuid = tests.id('dt:owner:time_off')), 'it is in the owner''s Requests');
-select is(pg_temp.vote('dt', 'owner', 'owner'), 'ok', 'nobody else can, so the owner decides it');
-select is(pg_temp.time_off_status('dt', 'owner'), 'approved', 'and it is approved');
+-- time off rebuild D8: the lone owner deciding their own time off (in Requests) went with the old time off:
+-- nobody answers their own, the owner neither (KARARLAR S-239; time_off_answer shows the lone owner's waits).
 
 select tests.person('dt', 'ada', 'admin', array['B'], array['cook']);
 select tests.leave('dt', 'owner', 1);
-select is(pg_temp.vote('dt', 'owner', 'owner'), '42501 authz.rank', 'with an admin, the owner may not decide their own');
+select is(pg_temp.answer('dt', 'owner', 'owner'), '42501 authz.rank', 'with an admin, the owner may not decide their own');
 select is(pg_temp.told('dt', 'owner'), pg_temp.users('dt', 'ada'), 'it is told to the admin');
-select is(pg_temp.vote('dt', 'ada', 'owner'), 'ok', 'the admin decides it');
+select is(pg_temp.answer('dt', 'ada', 'owner'), 'ok', 'the admin decides it');
 
 select * from finish();
 rollback;

@@ -277,7 +277,6 @@ describe("Requests → Time off (new)", () => {
     ["authz.rank", "You can't answer your own time off request."],
     ["authz.document_blocked", "Add your missing documents before you answer requests."],
     ["time_off.not_pending", "This request already has an answer."],
-    ["time_off.not_found", "This request is no longer available."],
     [undefined, "Couldn't save your answer. Try again."],
   ] as const)("says why an answer with %s did not go through", async (reason, text) => {
     answerWith({
