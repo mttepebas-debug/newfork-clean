@@ -1817,9 +1817,30 @@ describe("manager review drawer", () => {
       const dim = document.querySelector<HTMLElement>(".catalog-drawer-backdrop")!;
       now.mockReturnValue(10_300);
       fireEvent.pointerDown(dim);
+      fireEvent.click(dim);
       expect(onClose).not.toHaveBeenCalled();
       now.mockReturnValue(10_600);
       fireEvent.pointerDown(dim);
+      fireEvent.click(dim);
+      expect(onClose).toHaveBeenCalledOnce();
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  // K1 fix pass: on a phone the bottom card leaves only the top bar under the dim. Closed on the press, the dim is gone
+  // before the tap's click, which then presses the workspace switcher (or an outer drawer's X) under it; the press
+  // only arms the dim, and its click closes the drawer.
+  it("closes on the dim's click, never on its press", async () => {
+    const now = vi.spyOn(performance, "now").mockReturnValue(10_000);
+    try {
+      const { onClose } = page();
+      await screen.findByRole("dialog", { name: /Safety certificate/ });
+      const dim = document.querySelector<HTMLElement>(".catalog-drawer-backdrop")!;
+      now.mockReturnValue(10_600);
+      fireEvent.pointerDown(dim);
+      expect(onClose).not.toHaveBeenCalled();
+      fireEvent.click(dim);
       expect(onClose).toHaveBeenCalledOnce();
     } finally {
       now.mockRestore();

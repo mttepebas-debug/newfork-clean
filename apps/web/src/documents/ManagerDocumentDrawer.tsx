@@ -212,6 +212,7 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
       className="requests-review-drawer document-review-drawer"
       busy={busy}
       backdropGrace={500}
+      closeOnDimClick
       onClose={props.onClose}
       onEscape={() => {
         if (!escape.current?.()) props.onClose();

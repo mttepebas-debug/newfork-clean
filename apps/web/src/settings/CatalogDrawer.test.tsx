@@ -183,3 +183,72 @@ describe("CatalogDrawer backdrop grace", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+// Documents (K1 fix pass): closed on its press, the dim is gone before a touch tap fires its click, which then
+// lands on whatever lay under the dim (the top bar's workspace switcher, the Employee drawer's X). Opted in, the dim
+// closes on its own click instead: the press only arms it, so the tap's click still meets the dim.
+describe("CatalogDrawer closing on the dim's click", () => {
+  function dim() {
+    return document.querySelector<HTMLElement>(".catalog-drawer-backdrop")!;
+  }
+  function renderDrawer(extra: { busy?: boolean; backdropGrace?: number } = {}) {
+    const onClose = vi.fn();
+    render(
+      <CatalogDrawer label="Maria Lopez · Food Handler Card" onClose={onClose} closeOnDimClick {...extra}>
+        <button type="button">Save</button>
+      </CatalogDrawer>,
+    );
+    return onClose;
+  }
+  it("stays open through the press and closes on the click", () => {
+    const onClose = renderDrawer();
+    const press = new MouseEvent("pointerdown", { bubbles: true, cancelable: true });
+    dim().dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(true);
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(dim());
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+  it("never closes on a click that was not pressed on the dim (a drag out of the drawer)", () => {
+    const onClose = renderDrawer();
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(dim());
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(dim());
+    expect(onClose).not.toHaveBeenCalled();
+  });
+  it("keeps the grace and the busy refusal on the click", () => {
+    const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+    try {
+      const onClose = renderDrawer({ backdropGrace: 500 });
+      now.mockReturnValue(1200);
+      fireEvent.pointerDown(dim());
+      fireEvent.click(dim());
+      expect(onClose).not.toHaveBeenCalled();
+      now.mockReturnValue(1500);
+      fireEvent.pointerDown(dim());
+      fireEvent.click(dim());
+      expect(onClose).toHaveBeenCalledOnce();
+    } finally {
+      now.mockRestore();
+    }
+  });
+  it("refuses while busy", () => {
+    const onClose = renderDrawer({ busy: true });
+    fireEvent.pointerDown(dim());
+    fireEvent.click(dim());
+    expect(onClose).not.toHaveBeenCalled();
+  });
+  it("leaves other drawers closing on the press", () => {
+    const onClose = vi.fn();
+    render(
+      <CatalogDrawer label="Review time off" onClose={onClose}>
+        <button type="button">Approve</button>
+      </CatalogDrawer>,
+    );
+    fireEvent.pointerDown(dim());
+    expect(onClose).toHaveBeenCalledOnce();
+    fireEvent.click(dim());
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+});

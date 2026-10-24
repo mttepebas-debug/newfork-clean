@@ -13,6 +13,7 @@ export function CatalogDrawer({
   busy = false,
   className = "",
   backdropGrace = 0,
+  closeOnDimClick = false,
 }: {
   label: string;
   children: ReactNode;
@@ -25,9 +26,16 @@ export function CatalogDrawer({
    * the drawer, so the second click of the double click that opened it never closes it again.
    */
   backdropGrace?: number;
+  /**
+   * Opt-in (Documents, K1): the dim closes on its click, which a press on the dim arms, instead of on the press.
+   * Closed on the press, the dim is gone before a touch tap fires its click, so that click lands on what lay under
+   * the dim (the app's top bar on a phone, where the bottom card leaves only a strip of dim; an outer drawer's X).
+   */
+  closeOnDimClick?: boolean;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
   const openedAt = useRef(0);
+  const dimPressed = useRef(false);
 
   useLayoutEffect(() => {
     const root = dialog.current;
@@ -68,11 +76,24 @@ export function CatalogDrawer({
     <div
       className="catalog-drawer-backdrop"
       onPointerDown={(event) => {
+        dimPressed.current = event.target === event.currentTarget;
         if (event.target === event.currentTarget) {
           event.preventDefault();
+          if (closeOnDimClick) return;
           if (!busy && performance.now() - openedAt.current >= backdropGrace) onClose();
         }
       }}
+      onClick={
+        closeOnDimClick
+          ? (event) => {
+              // Only a click pressed on the dim: a drag from inside the drawer that ends on the dim is not one.
+              const pressed = dimPressed.current;
+              dimPressed.current = false;
+              if (event.target !== event.currentTarget || !pressed) return;
+              if (!busy && performance.now() - openedAt.current >= backdropGrace) onClose();
+            }
+          : undefined
+      }
     >
       <div
         ref={dialog}
