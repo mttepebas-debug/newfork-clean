@@ -532,25 +532,38 @@ a.dl-shift:active {
   font-weight: 680;
   line-height: 1;
 }
-.dl-wk-bar {
+/* The box's third row, as tall as the bar, the gap and the 11 px start time it replaces, so the box keeps its
+   size: up to three shift lines, earliest on top, centred (Mert 2026-10-24). */
+.dl-wk-lines {
+  display: flex;
+  width: calc(100% - 14px);
+  height: calc(9px + 1lh);
+  font-size: 11px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+.dl-wk-line {
   display: block;
-  width: calc(8px + var(--h) * 16px);
+  width: calc(var(--w, 1) * 100%);
   height: 4px;
+  flex: none;
   border-radius: 99px;
-  background: var(--dl-ln);
+  background: var(--c, var(--dl-ac));
+}
+.dl-wk-line.is-unposted {
+  width: 70%;
+  height: 0;
+  border-top: 2px dashed var(--dl-ln);
+  border-radius: 0;
+  background: none;
 }
 .dl-wk-s {
   color: var(--dl-tx2);
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
-}
-.dl-wk-d.has .dl-wk-bar {
-  background: var(--dl-ac);
-}
-.dl-wk-d.is-to .dl-wk-bar {
-  width: 12px;
-  background: var(--dl-off);
 }
 .dl-wk-d.is-to .dl-wk-s {
   color: var(--dl-off);
@@ -565,8 +578,14 @@ a.dl-shift:active {
 .dl-wk-d.is-today .dl-wk-n {
   opacity: 0.8;
 }
-.dl-wk-d.is-today .dl-wk-bar {
-  background: color-mix(in srgb, var(--theme-on-accent) 60%, transparent);
+/* On today's green a line keeps its colour inside a light edge; one without a type is light. */
+.dl-wk-d.is-today .dl-wk-line {
+  background: var(--c, color-mix(in srgb, var(--theme-on-accent) 70%, transparent));
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--theme-on-accent) 70%, transparent);
+}
+.dl-wk-d.is-today .dl-wk-line.is-unposted {
+  border-top-color: color-mix(in srgb, var(--theme-on-accent) 60%, transparent);
+  box-shadow: none;
 }
 .dl-wk-d.is-scrub {
   box-shadow: inset 0 0 0 2px var(--dl-ac), 0 10px 22px -12px rgb(0 0 0 / 35%);

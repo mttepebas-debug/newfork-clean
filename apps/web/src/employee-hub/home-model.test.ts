@@ -8,6 +8,7 @@ import {
   daySlot,
   homeWeek,
   minutesOf,
+  shiftMinutes,
 } from "./home-model";
 
 const zone = "America/Los_Angeles";
@@ -107,6 +108,21 @@ describe("home model", () => {
     expect(week[2]!.open).toBe(1);
     expect(week[3]!.timeOff).toBe(true);
     expect(week[0]!.weekday).toBe("Fri");
+  });
+
+  // Next 7 days tells a day off from a day whose schedule is not posted yet (Mert 2026-10-24).
+  it("marks the days whose schedule is posted, and every day where the read does not say", () => {
+    const week = homeWeek(model({ posted_days: ["2026-10-16", "2026-10-17"] }), "2026-10-16");
+    expect(week.map((day) => day.posted)).toEqual([true, true, false, false, false, false, false]);
+    expect(homeWeek(model(), "2026-10-16").every((day) => day.posted)).toBe(true);
+  });
+
+  // A shift's line is as long as the shift: its own hours, or its type's when it has none.
+  it("measures a shift by its own hours, then its type's", () => {
+    expect(shiftMinutes(base)).toBe(420);
+    expect(shiftMinutes({ ...base, start_time: "22:00", end_time: "02:00" })).toBe(240);
+    expect(shiftMinutes({ ...base, start_time: "", end_time: "", shift_type_start_time: "11:30", shift_type_end_time: "15:30" })).toBe(240);
+    expect(shiftMinutes({ ...base, start_time: "", end_time: "" })).toBeNull();
   });
 
   it("marks time off from the server's leave days (time off rebuild D3)", () => {

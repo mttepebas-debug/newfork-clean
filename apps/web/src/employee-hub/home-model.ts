@@ -71,6 +71,8 @@ export type HomeDay = {
   hours: number;
   timeOff: boolean;
   open: number;
+  /** Its schedule is posted: an empty day is a day off, not one not posted yet (Mert 2026-10-24). */
+  posted: boolean;
 };
 const shiftHours = (shift: EmployeeHubShift) => {
   const start = minutesOf(shift.start_time);
@@ -78,10 +80,26 @@ const shiftHours = (shift: EmployeeHubShift) => {
   if (end <= start) end += 1440;
   return (end - start) / 60;
 };
+/**
+ * How long a shift runs, in minutes: its own hours, or its type's when it has none; null with neither. The week
+ * strip draws it as a line that long (Mert 2026-10-24).
+ */
+export function shiftMinutes(shift: EmployeeHubShift): number | null {
+  const own = shift.start_time && shift.end_time;
+  const start = own ? shift.start_time : shift.shift_type_start_time;
+  const end = own ? shift.end_time : shift.shift_type_end_time;
+  if (!start || !end) return null;
+  const from = minutesOf(start);
+  let to = minutesOf(end);
+  if (to <= from) to += 1440;
+  return to - from;
+}
 /** Seven days from today: the person's own shifts, approved time off and open shifts. */
 export function homeWeek(model: EmployeeHubReadModel, today: string, openDates: readonly string[] = []): HomeDay[] {
   // The read's days with time off, old and new alike (time off rebuild D3, D7).
   const offDays = new Set(model.leave_days);
+  // A read without posted days (before the database says) takes every day as posted.
+  const posted = model.posted_days ? new Set(model.posted_days) : null;
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDays(today, i);
     const shifts = model.shifts
@@ -96,6 +114,7 @@ export function homeWeek(model: EmployeeHubReadModel, today: string, openDates: 
       timeOff: offDays.has(date),
       // Released shifts in the pool, not unassigned ones (QA 38, S-151 (3)).
       open: openDates.filter((day) => day === date).length,
+      posted: !posted || posted.has(date),
     };
   });
 }
