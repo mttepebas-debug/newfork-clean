@@ -130,8 +130,11 @@
   line-height: 1;
   letter-spacing: 0.02em;
 }
+/* As wide as the name and its chip (Mert, 24 Oct), so a keyboard's ring hugs them; a long name still ends in "…". */
 .catalog-drawer.document-review-drawer .rd-head h2 {
   flex-wrap: nowrap;
+  width: fit-content;
+  max-width: 100%;
   min-width: 0;
   gap: 10px;
   font-size: 20px;
@@ -416,6 +419,10 @@
 }
 .catalog-drawer.document-review-drawer .docr-chips button {
   position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   min-height: 28px;
   padding: 0 8px;
   border: 1px solid var(--theme-border-control);
@@ -429,10 +436,21 @@
   white-space: nowrap;
   cursor: pointer;
 }
+/* Pressed reads by more than its colour (Mert, 24 Oct): bold, with a 2 px edge, as the drawer's other chosen buttons.
+   The bold word's width is held by a hidden copy, so pressing never moves the chips. */
+.catalog-drawer.document-review-drawer .docr-chips button::after {
+  content: attr(data-label);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 750;
+}
 .catalog-drawer.document-review-drawer .docr-chips button[aria-pressed="true"] {
   border-color: var(--theme-accent);
   background: var(--theme-accent-soft);
   color: var(--theme-accent-deep);
+  box-shadow: inset 0 0 0 1px var(--theme-accent);
+  font-weight: 750;
 }
 .catalog-drawer.document-review-drawer .docr-why input {
   width: 100%;

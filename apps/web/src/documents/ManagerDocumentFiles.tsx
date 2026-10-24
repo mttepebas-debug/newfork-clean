@@ -189,6 +189,7 @@ function ReasonBox({
             type="button"
             aria-pressed={hasReason(text, reason)}
             aria-disabled={review.off ? "true" : undefined}
+            data-label={reason}
             data-guard=""
             disabled={shared.busy}
             onClick={() => {
