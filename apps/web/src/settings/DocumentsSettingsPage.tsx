@@ -1,3 +1,4 @@
+import { tabLineRef } from "../shell/useTabSwipe";
 import { CatalogDrawer } from "./CatalogDrawer";
 import { SettingsListHeader } from "./SettingsListHeader";
 import {
@@ -16,9 +17,7 @@ import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText } from "./GeneralSettingsPage";
 import {
   ListAddButton,
-  TabRowAdd,
 } from "../views/CatalogPageHeader";
-import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import {
   listDocumentTypes,
   previewDocumentPublication,
@@ -73,7 +72,6 @@ function editableDocument(document: DocumentType): DocumentTypeInput {
 export default function DocumentsSettingsPage() {
   const { context } = useAuth();
   const queryClient = useQueryClient();
-  const phone = useListPhoneWidth();
   const workspaceId = context?.workspace.id ?? "";
   const canReadSettings = can(context, "settings.documents.read");
   const canManage = can(context, "settings.documents.write");
@@ -267,6 +265,7 @@ export default function DocumentsSettingsPage() {
             <div className="catalog-toolbar-status-row">
               <div
                 className="catalog-status-tabs"
+                ref={tabLineRef}
                 role="tablist"
                 onKeyDown={onTabListKeyDown}
                 aria-label="Document status"
@@ -287,7 +286,6 @@ export default function DocumentsSettingsPage() {
                   ),
                 )}
               </div>
-              {phone && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}
             </div>
             <div className="catalog-toolbar-filter-row">
               <select
@@ -312,7 +310,7 @@ export default function DocumentsSettingsPage() {
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
-              {phone ? null : addButton}
+              {addButton}
             </div>
           </div>
 

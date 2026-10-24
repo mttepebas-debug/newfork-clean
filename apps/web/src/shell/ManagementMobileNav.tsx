@@ -2,7 +2,7 @@ import { CurrentUserAvatar } from "../account/AccountAvatar";
 import { PhoneNav, type PhoneNavLink } from "./PhoneNav";
 import "./management-mobile-nav.css";
 
-// The first pages sit in the bar; the rest, Account and Sign out open under More.
+// The first pages sit in the bar; the rest, the view switch, Account and Sign out open under More.
 const barSlots = 4;
 
 /**
@@ -13,11 +13,14 @@ const barSlots = 4;
 export function ManagementMobileNav({
   links,
   ownDocuments,
+  viewSwitch,
   onSignOut,
 }: {
   readonly links: readonly PhoneNavLink[];
   /** My documents, only when the workspace asks the person for any (MY-DOCUMENTS). */
   readonly ownDocuments?: PhoneNavLink | null;
+  /** Employee view, for somebody who also works shifts; right above Account (Mert 2026-10-23). */
+  readonly viewSwitch?: PhoneNavLink | null;
   readonly onSignOut: () => void;
 }) {
   return (
@@ -27,6 +30,7 @@ export function ManagementMobileNav({
       more={[
         ...links.slice(barSlots),
         ...(ownDocuments ? [ownDocuments] : []),
+        ...(viewSwitch ? [viewSwitch] : []),
         { to: "/account/profile", label: "Account", icon: CurrentUserAvatar },
       ]}
       onSignOut={onSignOut}

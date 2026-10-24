@@ -2226,6 +2226,13 @@
   border-bottom: 1px solid var(--theme-border-subtle);
   background: var(--theme-surface-soft);
 }
+/* On a phone the list's frame steps back to the sky (list-page.css), and a department's heading row with it:
+   a grey band was a patch on the sky (KARARLAR S-252). */
+@media (max-width: 720px) {
+  .jobs-catalog-page .jobs-group-row {
+    background: transparent;
+  }
+}
 .jobs-catalog-page .jobs-archived-group {
   grid-template-columns: minmax(0, 1fr);
 }

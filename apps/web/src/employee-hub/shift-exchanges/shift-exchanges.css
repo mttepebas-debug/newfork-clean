@@ -105,12 +105,13 @@ main.app-main:has(.sx-root)::-webkit-scrollbar {
   margin-bottom: 8px;
 }
 /* Tabs: underlined, on a 1 px line, like the list pages' tabs
-   (views/list-page.css). */
+   (views/list-page.css). The row does not scroll: its three tabs fit, and as
+   they stand 1 px over its line a scrolling row showed a scroll bar at its
+   right end (Mert 2026-10-23). A phone's strip is phone-page-tabs.css. */
 .sx-tabs {
   display: flex;
   gap: 6px;
   flex-wrap: nowrap;
-  overflow-x: auto;
   border-bottom: 1px solid var(--theme-border);
 }
 .sx-root .sx-tabs button,
@@ -181,6 +182,65 @@ main.app-main:has(.sx-root)::-webkit-scrollbar {
   padding: 10px 12px;
   width: 100%;
   min-width: 0;
+}
+/* The filters wear the list pages' frame (list-page.css; Requests, Employees, Important Dates):
+   36 high, 44 on a phone, the control edge, a 6 px corner, 13 px text; the search's icon sits
+   inside its box (Mert 2026-10-23, requests-add-top). */
+.sx-root .sx-filters {
+  gap: 10px;
+}
+.sx-root .sx-filters select {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background-color: var(--theme-surface);
+  color: var(--theme-text);
+  font-size: 13px;
+}
+.sx-root .sx-filters .sx-filter-search {
+  display: flex;
+  height: 36px;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+.sx-root .sx-filters .sx-filter-search input {
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--theme-text);
+  font-size: 13px;
+}
+/* The box shows focus, not the field inside it (BL-880's edge). */
+.sx-root .sx-filters .sx-filter-search input:focus-visible {
+  outline: 0;
+}
+.sx-root .sx-filters .sx-filter-search:focus-within {
+  border-color: var(--theme-focus);
+  box-shadow: 0 0 0 1px var(--theme-focus);
+}
+.sx-root .sx-filters select:focus-visible {
+  outline: 0;
+  border-color: var(--theme-focus);
+  box-shadow: 0 0 0 1px var(--theme-focus);
+}
+@media (max-width: 720px) {
+  .sx-root .sx-filters select,
+  .sx-root .sx-filters .sx-filter-search {
+    height: 44px;
+    min-height: 44px;
+  }
 }
 .sx-root textarea {
   resize: vertical;

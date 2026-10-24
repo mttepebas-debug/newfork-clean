@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
 import { psql } from "../global-setup";
+import { pickDays } from "../fixtures/time-off";
 import { round, roundWeek, signIn, type Person } from "../fixtures/world";
 
 // BILDIRIM-10 (KARARLAR S-123, variant A): somebody at Kadikoy asks for a day
@@ -67,8 +68,7 @@ test("a manager opens time off from the notification panel, approves it, and the
   await mineList.getByRole("button", { name: "Request time off" }).click();
   const form = employee.getByRole("dialog", { name: "Request time off" });
   await form.getByRole("radio", { name: /Personal/ }).check();
-  await form.getByLabel("First day").fill(asker.day);
-  await form.getByLabel("Last day").fill(asker.day);
+  await pickDays(form, "First day", asker.day, asker.day);
   await form.getByLabel(/Note/).fill(note);
   await form.getByRole("button", { name: "Send request" }).click();
   await expect(form).toBeHidden();

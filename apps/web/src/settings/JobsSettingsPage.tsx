@@ -1,3 +1,4 @@
+import { tabLineRef } from "../shell/useTabSwipe";
 import { useDeferredValue, useState, type ReactNode } from "react";
 import { SettingsListHeader } from "./SettingsListHeader";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,9 +13,8 @@ import { loadJobCounts } from "./jobs-management-data";
 import { JobCatalogEditor, type CatalogEditor } from "./JobCatalogEditor";
 import { JobAssignmentsDrawer } from "./JobAssignmentsDrawer";
 import { CatalogArchiveButton, CatalogRowMenu as RowMenu } from "./CatalogRowMenu";
-import { ListAddButton, TabRowAdd } from "../views/CatalogPageHeader";
+import { ListAddButton } from "../views/CatalogPageHeader";
 import { CatalogSortButton, nextCatalogSort } from "../views/CatalogSortButton";
-import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
@@ -47,7 +47,6 @@ export default function JobsSettingsPage() {
   const readEmployees = Boolean(context?.permissions.includes("employees.read"));
   const workspaceId = context?.workspace.id ?? "";
   const queryClient = useQueryClient();
-  const phone = useListPhoneWidth();
   const [params, setParams] = useSearchParams();
   const tab: Tab = params.get("tab") === "departments" ? "departments" : params.get("tab") === "archived" ? "archived" : "jobs";
   const search = params.get("q") ?? "";
@@ -504,7 +503,7 @@ export default function JobsSettingsPage() {
       />
       <div className="job-catalog-toolbar catalog-toolbar">
         <div className="catalog-toolbar-status-row">
-          <div className="catalog-status-tabs" role="tablist" onKeyDown={onTabListKeyDown} aria-label="Jobs and departments">
+          <div className="catalog-status-tabs" ref={tabLineRef} role="tablist" onKeyDown={onTabListKeyDown} aria-label="Jobs and departments">
             {tabs.map(([value, label]) => (
               <button
                 key={value}
@@ -520,7 +519,6 @@ export default function JobsSettingsPage() {
             ))}
           </div>
           {/* Phone: the add button sits in the tab row, right of Archived (Jobs decision 10). */}
-          {phone && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}
         </div>
         <div className="catalog-toolbar-filter-row">
           {tab === "jobs" && (
@@ -552,7 +550,7 @@ export default function JobsSettingsPage() {
               </button>
             )}
           </label>
-          {phone ? null : addButton}
+          {addButton}
         </div>
       </div>
       {editor?.type === "jobs" && !editor.item && !editor.departmentId ? (

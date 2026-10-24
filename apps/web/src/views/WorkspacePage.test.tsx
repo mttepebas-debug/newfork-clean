@@ -229,6 +229,23 @@ describe("WorkspacePage", () => {
     }
   });
 
+  // Only the employee's Home tells a device in another zone whose clock the pages keep; a manager's Home, on a
+  // desktop or a phone (one hero), says nothing (Mert 2026-10-23, S-257).
+  it("says nothing about the zone, though the device keeps another zone's clock", async () => {
+    const before = process.env.TZ;
+    // Kadikoy keeps Istanbul's clock; the device Los Angeles'.
+    process.env.TZ = "America/Los_Angeles";
+    try {
+      renderPage();
+      await waitFor(() => expect(document.querySelector(".dl-hero .dl-sub")).not.toBeNull());
+      expect(document.querySelector(".zone-note")).toBeNull();
+      expect(screen.queryByText(/^Times in /)).toBeNull();
+    } finally {
+      if (before === undefined) delete process.env.TZ;
+      else process.env.TZ = before;
+    }
+  });
+
   it("shows the no-access card, not the raw error, when the API refuses this workspace (FB-6.1.9)", async () => {
     vi.mocked(getWorkspaceDashboard).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderPage();
@@ -581,7 +598,7 @@ describe("WorkspacePage", () => {
       ]);
       // Each opens what it is about: Sam's permit, Emre's request (Mert 2026-10-22).
       expect(within(needs()).getAllByRole("link").map((row) => row.getAttribute("href"))).toEqual([
-        `/app/employees/documents?location=${besiktas.id}&status=expired&requirement=ab000000-0000-4000-8000-000000000001`,
+        `/app/employees/documents?location=${besiktas.id}&status=to_do&requirement=ab000000-0000-4000-8000-000000000001`,
         "/app/schedule/requests?type=time_off&request=ab000000-0000-4000-8000-000000000001",
       ]);
       expect(needs().querySelector(".dl-cnt")?.className).toContain("is-warn");

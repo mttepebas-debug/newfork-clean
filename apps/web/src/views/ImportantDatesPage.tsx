@@ -19,8 +19,8 @@ import {
 import { getAnnouncements, getImportantDates } from "../communications/communications-data";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
-import { CatalogPageHeader, ListAddButton, TabRowAdd } from "./CatalogPageHeader";
-import { useListPhoneWidth } from "../lib/usePhoneWidth";
+import { CatalogPageHeader, ListAddButton } from "./CatalogPageHeader";
+import { tabLineRef } from "../shell/useTabSwipe";
 import { ListCard, ListCards } from "./ListCards";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
@@ -36,7 +36,6 @@ export function ImportantDatesPage() {
   const { context } = useAuth();
   const { announcementId } = useParams();
   const navigate = useNavigate();
-  const phone = useListPhoneWidth();
   const workspaceId = context?.workspace.id ?? "";
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [adding, setAdding] = useState(false);
@@ -87,7 +86,7 @@ export function ImportantDatesPage() {
       />
       <div className="job-catalog-toolbar catalog-toolbar">
         <div className="announcement-toolbar-controls catalog-toolbar-status-row">
-          <div className="catalog-status-tabs" role="tablist" aria-label="Important dates">
+          <div className="catalog-status-tabs" ref={tabLineRef} role="tablist" aria-label="Important dates">
             {(
               [
                 ["upcoming", "Upcoming"],
@@ -106,7 +105,6 @@ export function ImportantDatesPage() {
               </button>
             ))}
           </div>
-          {phone && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}
         </div>
         <div className="catalog-toolbar-filter-row">
           <label className="job-search toolbar-search">
@@ -118,7 +116,7 @@ export function ImportantDatesPage() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          {phone ? null : addButton}
+          {addButton}
         </div>
       </div>
       {dates.isLoading && <ListOutline label="Loading important dates" rows={5} columns={5} />}

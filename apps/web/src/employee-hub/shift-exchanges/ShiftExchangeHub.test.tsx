@@ -533,6 +533,15 @@ describe("Shift Hub outcome contracts", () => {
     expect(tabs[0]!.getAttribute("aria-current")).toBeNull();
   });
 
+  // Mert 2026-10-23 (requests-add-top): the filters read like the other list pages'.
+  it("filters like the other list pages: All locations, a framed search with its icon", async () => {
+    mount("/app/employee-hub/shift-hub");
+    const location = (await screen.findByRole("combobox", { name: "Location" })) as HTMLSelectElement;
+    expect(location.options[0]!.text).toBe("All locations");
+    const search = screen.getByRole("searchbox", { name: "Search shifts" });
+    expect(search.closest("label")!.querySelector("svg")).toBeTruthy();
+  });
+
   it("counts the requests waiting for my answer on the My requests tab", async () => {
     model.employee_id = "blake";
     model.cases[0]!.is_owner = false;

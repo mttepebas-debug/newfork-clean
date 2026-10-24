@@ -1,3 +1,4 @@
+import { tabLineRef } from "../shell/useTabSwipe";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@newfork/ui";
 import { ChevronRight, Copy, EyeOff, StickyNote, Trash2 } from "lucide-react";
@@ -90,6 +91,7 @@ function Tabs({ model, onSave, onReload, short = false }: Props) {
         role="tablist"
         aria-label="Availability"
         className="avm-tabs"
+        ref={tabLineRef}
         onKeyDown={(event) => {
           if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
           event.preventDefault();

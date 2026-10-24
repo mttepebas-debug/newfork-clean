@@ -275,13 +275,14 @@ it("keeps New document in the filter row on a computer", async () => {
     screen.getByRole("button", { name: "New document" }).closest(".catalog-toolbar-filter-row"),
   ).toBeTruthy();
 });
-it("puts New document at the right end of the tab row on a phone", async () => {
+it("keeps New document beside the first box on a phone", async () => {
   stubPhoneWidth();
   mount();
   await screen.findByTitle("Safety certificate");
   const add = screen.getByRole("button", { name: "New document" });
-  expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
-  expect(add.closest(".catalog-toolbar-filter-row")).toBeNull();
+  // KARARLAR S-253 (Mert 2026-10-23): never in the tab row; beside the first box.
+  expect(add.closest(".catalog-toolbar-filter-row")).toBeTruthy();
+  expect(add.closest(".catalog-toolbar-status-row")).toBeNull();
 });
 afterEach(() => vi.unstubAllGlobals());
 it("outlines document types while they load", () => {

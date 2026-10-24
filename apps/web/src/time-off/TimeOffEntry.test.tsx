@@ -4,6 +4,7 @@ import { configure, fireEvent, render, screen, waitFor, within } from "@testing-
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RequestError } from "../lib/request-error";
 import { TimeOffEntry } from "./TimeOffEntry";
+import { dayName, pickDays } from "./pick-days.test-util";
 
 // Time off rebuild D5: Requests → Time off → Add time off. Whoever may answer enters approved time off for
 // somebody: the person first, then the kind, the days and the note; the shifts it opens are listed, and
@@ -71,10 +72,10 @@ const entered: TimeOffDeciderView = {
   shifts_opened: 2,
 };
 
-type Routes = { impact?: (path: string) => unknown; enter?: (body: unknown) => unknown };
+type Routes = { people?: TimeOffEntryPeople; impact?: (path: string) => unknown; enter?: (body: unknown) => unknown };
 function answerWith(routes: Routes = {}) {
   api.apiRequest.mockImplementation(async (_client: unknown, path: string, init?: RequestInit) => {
-    if (path.endsWith("/entries/people")) return people;
+    if (path.endsWith("/entries/people")) return routes.people ?? people;
     if (path.includes("/entries/impact")) return (routes.impact ?? (() => impact))(path);
     if (path.endsWith("/entries") && init?.method === "POST") return (routes.enter ?? (() => entered))(JSON.parse(String(init.body)));
     throw new Error(`unexpected ${path}`);
@@ -154,7 +155,7 @@ describe("Add time off", () => {
     answerWith({ impact: () => ({ ...impact, shift_count: 0, hidden_shift_count: 0, locations: [] }) });
     const { onAdded } = renderIt();
     const dialog = await chooseMariaTomorrow();
-    fireEvent.change(within(dialog).getByLabelText("First day"), { target: { value: "2035-01-10" } });
+    pickDays(dialog, "First day", "2035-01-10", "2035-01-11");
     expect(await within(dialog).findByText("No shift goes to open shifts.")).toBeTruthy();
     expect(within(dialog).queryByText(/has passed/)).toBeNull();
     fireEvent.click(within(dialog).getByRole("button", { name: "Add time off" }));
@@ -163,14 +164,65 @@ describe("Add time off", () => {
     expect(JSON.parse(String((posts()[0]![2] as RequestInit).body)).start_date).toBe("2035-01-10");
   });
 
+  // The calendar offers no day before the person's today; a day picked for somebody whose today is earlier
+  // can still fall behind when the person changes.
   it("refuses a day before the person's today before it sends", async () => {
-    answerWith();
+    const [alex, mariaLopez] = people.people;
+    answerWith({ people: { people: [alex!, { ...mariaLopez!, time_zone: "Pacific/Auckland", today: "2035-01-11" }] } });
     renderIt();
-    const dialog = await chooseMariaTomorrow();
-    fireEvent.change(within(dialog).getByLabelText("First day"), { target: { value: "2035-01-09" } });
+    const dialog = await screen.findByRole("dialog", { name: "Add time off" });
+    const person = await within(dialog).findByRole("combobox", { name: "Employee" });
+    await within(person).findByRole("option", { name: "Alex Kim" });
+    fireEvent.change(person, { target: { value: alex!.employee_id } });
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Sick/ }));
+    pickDays(dialog, "First day", "2035-01-10", "2035-01-10");
+    fireEvent.change(person, { target: { value: maria } });
     expect(await within(dialog).findByText("That day has passed. Time off can start today at the earliest.")).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Add time off" }));
     expect(posts()).toHaveLength(0);
+  });
+
+  // Mert 2026-10-23: one calendar picks both days. The first click is the first day and the calendar stays
+  // open for the last; the days between are banded as the pointer moves, and the second click closes it.
+  it("picks the first and the last day in one calendar, the days between banded", async () => {
+    answerWith();
+    renderIt();
+    const dialog = await chooseMariaTomorrow();
+    const banded = () =>
+      within(dialog).getAllByRole("gridcell").filter((cell) => cell.className.includes("in-range")).map((cell) => cell.getAttribute("aria-label"));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^First day/ }));
+    const first = within(dialog).getByRole("dialog", { name: "Pick the first day" });
+    expect((within(first).getByRole("gridcell", { name: dayName("2035-01-09") }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(within(first).getByRole("gridcell", { name: dayName("2035-01-12") }));
+
+    const last = within(dialog).getByRole("dialog", { name: "Pick the last day" });
+    expect(within(dialog).getByRole("button", { name: "First day Fri, Jan 12" }).getAttribute("aria-expanded")).toBe("false");
+    expect(within(dialog).getByRole("button", { name: /^Last day/ }).getAttribute("aria-expanded")).toBe("true");
+    fireEvent.mouseEnter(within(last).getByRole("gridcell", { name: dayName("2035-01-15") }));
+    expect(banded()).toEqual([dayName("2035-01-13"), dayName("2035-01-14")]);
+    fireEvent.click(within(last).getByRole("gridcell", { name: dayName("2035-01-15") }));
+
+    expect(within(dialog).queryByRole("dialog", { name: /^Pick the/ })).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Last day Mon, Jan 15" })).toBeTruthy();
+    await waitFor(() =>
+      expect(new URL(impactAsks().at(-1)!, "http://x").searchParams.toString()).toBe(`employee_id=${maria}&start=2035-01-12&end=2035-01-15`),
+    );
+  });
+
+  it("starts over from a day before the first day, and the last day alone changes from Last day", async () => {
+    answerWith();
+    renderIt();
+    const dialog = await chooseMariaTomorrow();
+    pickDays(dialog, "First day", "2035-01-12", "2035-01-11");
+    expect(within(dialog).getByRole("dialog", { name: "Pick the last day" })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "First day Thu, Jan 11" })).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("gridcell", { name: dayName("2035-01-13") }));
+    expect(within(dialog).getByRole("button", { name: "Last day Sat, Jan 13" })).toBeTruthy();
+
+    pickDays(dialog, "Last day", "2035-01-16");
+    expect(within(dialog).queryByRole("dialog", { name: /^Pick the/ })).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "First day Thu, Jan 11" })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Last day Tue, Jan 16" })).toBeTruthy();
   });
 
   it("says to answer a request waiting for those days first, and does not send", async () => {

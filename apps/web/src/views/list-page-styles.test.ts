@@ -46,6 +46,18 @@ describe("list pages on a phone", () => {
     expect(body(`${wrap} > .employee-table`)).toMatch(/display\s*:\s*none/);
   });
 
+  // The empty note took the desktop table's soft ground as a card, a grey box over the page's sky
+  // (Mert 2026-10-23). It sits on the sky under a line, which a full list does not draw (KARARLAR S-250).
+  it("sets an empty list's note on the sky under a line, with no card", () => {
+    const note = body(":is(.list-page.list-page, .list-page.list-page :is(.job-catalog, .employee-table-wrap)) > :is(.announcement-list-empty, .catalog-table-empty)");
+    expect(note).toMatch(/background\s*:\s*transparent/);
+    expect(note).toMatch(/box-shadow\s*:\s*none/);
+    expect(note).toMatch(/border-radius\s*:\s*0/);
+    expect(note).toMatch(/border-top\s*:\s*1px solid var\(--theme-border\)/);
+    // A table kept on a phone hides its heading row while empty, so no grey bar sits over the sky.
+    expect(body(".list-page.list-page .employee-table-wrap:has(> .catalog-table-empty) > table,\n  .list-page.list-page .job-catalog:has(> .catalog-table-empty) > .job-column-headings")).toMatch(/display\s*:\s*none/);
+  });
+
   it("runs Employees to both edges and swaps in the short add label", () => {
     expect(body(".employees-page.list-page.list-page")).toMatch(/padding-inline\s*:\s*16px/);
     expect(body(".employees-page.list-page.list-page")).toMatch(/margin-inline\s*:\s*0/);
@@ -61,5 +73,34 @@ describe("Employees location cell", () => {
     const rule = (selector: string) => new RegExp(`(^|\\})\\s*${selector.replace(/\./g, "\\.")}\\s*\\{([^}]*)\\}`).exec(css)?.[2] ?? "";
     expect(rule(".employee-location-cell")).toMatch(/flex-wrap\s*:\s*nowrap/);
     expect(rule(".employee-location-name")).toMatch(/white-space\s*:\s*nowrap/);
+  });
+});
+
+// Mert 2026-10-23 (requests-add-top): every list page's search box and location list wear one frame.
+describe("one filter frame on every list page", () => {
+  const rules = (path: string) =>
+    [...readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(
+      ([, head, body]) => [head!.trim().replace(/\s+/g, " "), body!] as const,
+    );
+
+  // Requests drew its own box, thinner on a phone (36 px, 12 px text) than Important Dates' (44 px).
+  it("lets Requests' search box take the shared frame", () => {
+    const own = rules("src/views/requests-catalog.css")
+      .filter(([head]) => /toolbar-search|requests-search/.test(head) && !/ input$/.test(head))
+      .map(([head]) => head);
+    expect(own).toEqual([]);
+  });
+
+  it("frames Shift Hub's location list and search like the list pages", () => {
+    const all = rules("src/employee-hub/shift-exchanges/shift-exchanges.css");
+    const body = (selector: string) => all.filter(([head]) => head === selector).map(([, rule]) => rule).join(";");
+    for (const box of [".sx-root .sx-filters select", ".sx-root .sx-filters .sx-filter-search"]) {
+      expect(body(box)).toMatch(/height\s*:\s*36px/);
+      expect(body(box)).toMatch(/border\s*:\s*1px solid var\(--theme-border-control\)/);
+      expect(body(box)).toMatch(/border-radius\s*:\s*6px/);
+      expect(body(box)).toMatch(/font-size\s*:\s*13px/);
+    }
+    expect(body(".sx-root .sx-filters .sx-filter-search input")).toMatch(/border\s*:\s*0/);
+    expect(body(".sx-root .sx-filters select, .sx-root .sx-filters .sx-filter-search")).toMatch(/height\s*:\s*44px/);
   });
 });

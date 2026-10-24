@@ -29,11 +29,12 @@ export function EmployeeMobileNav({
   readonly onSignOut: () => void;
 }) {
   const more: PhoneNavLink[] = [
-    ...(managementHome ? [{ to: managementHome, label: "Management view", icon: LayoutDashboard }] : []),
     { to: "/app/employee-hub/my-availability", label: "My availability", icon: CalendarDays },
     ...(announcements ? [{ to: employeeAnnouncementsPath, label: "Announcements", icon: Megaphone }] : []),
     // Her documents, a page of their own (MY-DOCUMENTS, Mert 2026-10-19), no longer inside My account.
     { to: employeeDocumentsPath, label: "Documents", icon: FileText, count: documentsWaiting },
+    // The way back sits right above My account (Mert 2026-10-23).
+    ...(managementHome ? [{ to: managementHome, label: "Management view", icon: LayoutDashboard }] : []),
     { to: "/account/profile", label: "My account", icon: CurrentUserAvatar },
     { to: "/account/workspaces", label: "Switch workspace", icon: ArrowLeftRight },
   ];

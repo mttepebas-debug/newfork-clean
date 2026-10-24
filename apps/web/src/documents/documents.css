@@ -83,10 +83,34 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+/* Nothing asked of the person: the icon and the words on the page's sky under the tab row's line, no card
+   (KARARLAR S-250, S-252). */
 .employee-documents-none {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
   margin: 0;
-  color: var(--theme-muted);
+  padding: 40px 16px;
+  color: var(--theme-text-secondary);
   font-size: 13px;
+  text-align: center;
+}
+.employee-documents-none p {
+  margin: 0;
+}
+.employee-documents-none-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent);
+}
+/* One's own status switch is an outline on the sky, not a grey well (KARARLAR S-252). */
+.my-documents-page .catalog-status-tabs {
+  border-color: var(--theme-border-control);
+  background: transparent;
 }
 .employee-documents-empty strong {
   color: var(--theme-text);

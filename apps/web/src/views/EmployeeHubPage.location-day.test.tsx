@@ -121,16 +121,26 @@ describe("Employee Hub's today on a device in another zone (S-226)", () => {
     expect(getEmployeeScheduleBoard).not.toHaveBeenCalledWith(workspaceId, "2026-08-25");
     await waitFor(() => expect(exchangesFrom()).toContain("2026-08-26"));
     expect(exchangesFrom()).not.toContain("2026-08-25");
-    // The device is told once, under the title, whose clock the page keeps.
-    expect(screen.getByText(/^Times in (Türkiye|Turkey)( Standard)? Time$/).className).toBe("zone-note");
     view.unmount();
   });
 
-  it("says nothing about the zone on a device that keeps the location's clock", async () => {
+  // Only Home tells a device in another zone whose clock the pages keep; the pages under it say nothing
+  // (Mert 2026-10-23, narrowing S-226 (3)).
+  it.each(["schedule", "schedule/team", "schedule/lineup", "shift-hub", "my-availability"])(
+    "says nothing about the zone on %s, though the device keeps another zone's clock",
+    async (path) => {
+      renderAt(`/app/employee-hub/${path}`);
+      await waitFor(() => expect(document.getElementById("employee-hub-title")).not.toBeNull());
+      expect(document.querySelector(".zone-note")).toBeNull();
+      expect(screen.queryByText(/^Times in /)).toBeNull();
+    },
+  );
+
+  it("says nothing about the zone on Home on a device that keeps the location's clock", async () => {
     vi.mocked(getEmployeeHub).mockResolvedValue({ ...hub, time_off_timezone: "America/Los_Angeles",
       locations: [{ ...hub.locations[0]!, timezone: "America/Los_Angeles" }] });
-    renderAt("/app/employee-hub/schedule");
-    await screen.findByRole("tabpanel", { name: "This week" });
+    renderAt("/app/employee-hub");
+    await waitFor(() => expect(document.querySelector(".dl-hero")).not.toBeNull());
     expect(document.querySelector(".zone-note")).toBeNull();
   });
 

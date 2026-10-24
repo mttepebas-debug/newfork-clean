@@ -47,13 +47,11 @@ test("an employee asks for time off, sees it pending and withdraws it with two c
   const form = page.getByRole("dialog", { name: "Request time off" });
   await form.getByRole("radio", { name: /Vacation/ }).check();
   await form.getByRole("button", { name: "Next week" }).click();
-  await form.getByLabel("Last day").fill(
-    await form.getByLabel("First day").inputValue().then((monday) => {
-      const d = new Date(`${monday}T00:00:00Z`);
-      d.setUTCDate(d.getUTCDate() + 2);
-      return d.toISOString().slice(0, 10);
-    }),
-  );
+  // Next week runs Monday to Sunday; Last day opens the calendar on it and its Wednesday ends it.
+  await form.getByRole("button", { name: /^Last day/ }).click();
+  const days = form.getByRole("dialog", { name: "Pick the last day" }).getByRole("gridcell");
+  const selected = await days.evaluateAll((cells) => cells.map((cell) => cell.getAttribute("aria-selected")));
+  await days.nth(selected.indexOf("true") + 2).click();
   await form.getByRole("textbox", { name: /Note for your manager/ }).fill("Family visit");
   await form.getByRole("button", { name: "Send request" }).click();
   await expect(form).toBeHidden();

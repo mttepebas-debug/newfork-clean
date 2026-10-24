@@ -1,5 +1,7 @@
+import { tabLineRef } from "../shell/useTabSwipe";
 import {
   documentMatchesStatus,
+  documentStatusFilterOf,
   documentStatusFilters,
   type DocumentObligation,
   type DocumentStatusFilter,
@@ -22,12 +24,28 @@ import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
 import { statusLabel, statusWeight } from "./document-rules";
 import "./documents.css";
 
-const statusLabels = {
-  all: "All",
-  pending_review: "Needs review",
-  missing: "Missing",
-  expired: "Expired",
+const statusLabels: Record<DocumentStatusFilter, string> = {
+  needs_review: "Needs review",
+  to_do: "To do",
   completed: "Completed",
+};
+/** What an empty tab says when nothing else narrows the list. */
+const emptyTab: Record<DocumentStatusFilter, { title: string; detail: string; own: string }> = {
+  needs_review: {
+    title: "Nothing to review",
+    detail: "Documents sent for review show up here.",
+    own: "Nothing waiting for review.",
+  },
+  to_do: {
+    title: "Nothing to do",
+    detail: "Missing, rejected and expired documents show up here.",
+    own: "Nothing to do.",
+  },
+  completed: {
+    title: "Nothing completed yet",
+    detail: "Approved and exempt documents show up here.",
+    own: "Nothing completed yet.",
+  },
 };
 /** One cached read for the list and the page around it, so the page can drop
  * its header when the list is refused. */
@@ -56,7 +74,10 @@ export function EmployeeDocumentsList(props: {
   const personal = props.personal ?? false;
   const { context } = useAuth();
   const query = useEmployeeDocuments(props.audience, props.userId);
-  const [filter, setFilter] = useState<DocumentStatusFilter>(props.initialStatus ?? "all");
+  // KARARLAR S-255: a manager opens on what waits for them, the person on what waits for them.
+  const [filter, setFilter] = useState<DocumentStatusFilter>(
+    props.initialStatus ?? (props.audience.selfOnly ? "to_do" : "needs_review"),
+  );
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState(props.initialLocationId ?? "");
   const [type, setType] = useState("");
@@ -81,10 +102,15 @@ export function EmployeeDocumentsList(props: {
   useEffect(() => {
     if (!openedInitial && query.data) {
       setOpenedInitial(true);
-      if (items.some((item) => item.id === props.initialRequirementId))
-        setSelected({ id: props.initialRequirementId!, ordinal: 0 });
+      const opened = items.find((item) => item.id === props.initialRequirementId);
+      if (opened) {
+        setSelected({ id: opened.id, ordinal: 0 });
+        // A link that names no tab (a notification) shows its row behind the drawer.
+        const tab = documentStatusFilterOf(opened.status);
+        if (!props.initialStatus && tab) setFilter(tab);
+      }
     }
-  }, [openedInitial, query.data, items, props.initialRequirementId]);
+  }, [openedInitial, query.data, items, props.initialRequirementId, props.initialStatus]);
   const blockers = (query.data ?? []).filter((item) => item.suspended);
   const locations = new Map<string, string>();
   items.forEach((r) =>
@@ -104,14 +130,6 @@ export function EmployeeDocumentsList(props: {
       (r) => matchesControls(r) && documentMatchesStatus(r.status, filter),
     )
     .sort((a, b) => {
-      if (props.audience.selfOnly && filter === "all") {
-        const actionable = (r: DocumentObligation) =>
-          ["missing", "grace", "rejected", "expired"].includes(r.status)
-            ? 0
-            : 1;
-        const order = actionable(a) - actionable(b);
-        if (order) return order;
-      }
       const order =
         sort.key === "status"
           ? statusWeight(a.status) - statusWeight(b.status)
@@ -126,9 +144,9 @@ export function EmployeeDocumentsList(props: {
   // A failed refresh keeps the last answer, so it doesn't turn this into a table.
   const nothingAsked =
     personal && Boolean(query.data) && !isNoAccess(query.error) && items.length === 0;
-  // BL-834: nothing here at all is not a filter miss.
-  const noneYet =
-    items.length === 0 && filter === "all" && !search.trim() && !location && !type;
+  // BL-834: nothing here at all is not a filter miss; on any tab (S-255).
+  const narrowed = Boolean(search.trim() || location || type);
+  const noneYet = items.length === 0 && !narrowed;
   // Refused: only the no-access card, no header, filters or empty table.
   // Employees → Documents answers before this (EmployeeDocumentsPage); the
   // employee drawer and Account › Documents land here.
@@ -158,14 +176,17 @@ export function EmployeeDocumentsList(props: {
         />
       ) : null}
       {nothingAsked ? (
-        <p className="employee-documents-none">
-          Nothing has been asked of you here.
-        </p>
+        <div className="employee-documents-none">
+          <span className="employee-documents-none-icon" aria-hidden>
+            <FileText size={22} />
+          </span>
+          <p>Nothing has been asked of you here.</p>
+        </div>
       ) : null}
       {nothingAsked ? null : <>
       <div className="catalog-toolbar">
         <div className="catalog-toolbar-status-row">
-          <div className="catalog-status-tabs" aria-label="Document status">
+          <div className="catalog-status-tabs" ref={tabLineRef} aria-label="Document status">
             {documentStatusFilters.map((status) =>
               (() => {
                 const count = items.filter(
@@ -339,7 +360,17 @@ export function EmployeeDocumentsList(props: {
             </div>
           ) : personal ? (
             <div className="employee-documents-empty is-compact">
-              <strong>No documents match these filters.</strong>
+              <strong>
+                {narrowed ? "No documents match these filters." : emptyTab[filter].own}
+              </strong>
+            </div>
+          ) : !narrowed ? (
+            <div className="catalog-table-empty">
+              <span className="catalog-table-empty-icon" aria-hidden>
+                <FileText size={22} />
+              </span>
+              <h2>{emptyTab[filter].title}</h2>
+              <p>{emptyTab[filter].detail}</p>
             </div>
           ) : (
             <div className="catalog-table-empty">

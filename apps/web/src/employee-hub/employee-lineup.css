@@ -20,6 +20,16 @@
 }
 
 .employee-lineup { max-width: 560px; padding-bottom: 24px; }
+/* On a desktop everything under My shifts · Team schedule · Lineup stands in the middle of the page, as on the
+   manager's Lineup; the page tabs stay where they are (Mert 2026-10-23). Where the menu holds the page, the middle is
+   the whole screen's, as on My shifts (employee-my-shifts.css), so going from one to the other the page doesn't move
+   sideways (Mert 2026-10-23, "evet"); where the screen is too narrow, the column keeps inside the page box. */
+@media (min-width: 721px) {
+  .employee-lineup-page > :is(.employee-lineup-day, .employee-lineup) { margin-inline: auto; }
+  .app-shell[data-content-held="true"] > .app-main > .employee-hub-page > .employee-lineup-page > :is(.employee-lineup-day, .employee-lineup) {
+    margin-left: clamp(0px, 50vw - var(--app-sidebar-width) - var(--app-page-gutter-start) - 280px, 100% - 560px);
+  }
+}
 /* Her shift tabs 14 px under the wheel, as on the manager's page (one rhythm, Mert 2026-10-17 ~8:10 AM). */
 .employee-lineup > .lineup-shift-tabs { margin-top: 14px; }
 /* The ticket 16 px under the shift tabs (Mert 2026-10-17 ~8:30 AM; no heading over it any more). */

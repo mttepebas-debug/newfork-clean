@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RequestError } from "../lib/request-error";
 import { TimeOffRequests } from "./TimeOffRequests";
+import { pickDays } from "./pick-days.test-util";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const api = vi.hoisted(() => ({ apiRequest: vi.fn() }));
@@ -181,7 +182,7 @@ describe("Time off (new)", () => {
     renderIt();
     fireEvent.click(await screen.findByRole("button", { name: "Request time off" }));
     const dialog = screen.getByRole("dialog", { name: "Request time off" });
-    fireEvent.change(within(dialog).getByLabelText("First day"), { target: { value: "2026-10-22" } });
+    pickDays(dialog, "First day", "2026-10-22");
     expect(within(dialog).getByText("Today has already started. Turn off All day to ask for the rest of today.")).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Send request" }));
     expect(within(dialog).getByText("Choose a type.")).toBeTruthy();
@@ -198,12 +199,12 @@ describe("Time off (new)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Request time off" }));
     const dialog = screen.getByRole("dialog", { name: "Request time off" });
     fireEvent.click(within(dialog).getByRole("radio", { name: /Sick/ }));
-    fireEvent.change(within(dialog).getByLabelText("First day"), { target: { value: "2026-11-14" } });
+    pickDays(dialog, "First day", "2026-11-14", "2026-11-14");
     fireEvent.click(within(dialog).getByRole("button", { name: "Send request" }));
     expect(await within(dialog).findByText("You already have time off or a request in these hours. Withdraw that request first.")).toBeTruthy();
     expect(screen.getByRole("dialog", { name: "Request time off" })).toBeTruthy();
     expect((within(dialog).getByRole("radio", { name: /Sick/ }) as HTMLInputElement).checked).toBe(true);
-    expect((within(dialog).getByLabelText("First day") as HTMLInputElement).value).toBe("2026-11-14");
+    expect(within(dialog).getByRole("button", { name: "First day Sat, Nov 14" })).toBeTruthy();
   });
 
   it("withdraws a waiting request with two clicks in its drawer", async () => {
