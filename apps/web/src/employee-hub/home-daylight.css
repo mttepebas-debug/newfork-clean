@@ -597,10 +597,31 @@ a.dl-shift:active {
 .dl-wk.is-scrubbing .dl-wk-tip {
   opacity: 1;
 }
-.dl-wk-tip b {
+/* Date, then hours, then place: one line each, never wrapping (Mert 2026-10-24). */
+.dl-wk-tip > *,
+.dl-wk-tip-s > * {
   display: block;
-  margin-bottom: 1px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dl-wk-tip-d {
+  font-size: 12px;
+  font-weight: 650;
+  opacity: 0.75;
+}
+.dl-wk-tip-s + .dl-wk-tip-s {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--theme-on-accent) 20%, transparent);
+}
+.dl-wk-tip-t {
+  font-size: 14px;
   font-weight: 700;
+}
+.dl-wk-tip-w {
+  opacity: 0.85;
 }
 
 /* Notes under the week for shifts on hours the employee marked unavailable. */
