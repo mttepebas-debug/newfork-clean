@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 584, last: 20261023140000_time_off_old_system_dropped.sql
--- fingerprint: sha256:0738b3215ec39e365a09cffb568eac077437e90fefb5c09eaaf317d1d2d5e0cd
+-- migrations: 585, last: 20261024071919_my_lineups_others.sql
+-- fingerprint: sha256:f03d273509008a674ebbb0f9b7ed46ee5d6dfbb7909567e6f17affd9284bbe15
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -16804,8 +16804,10 @@ CREATE OR REPLACE FUNCTION "public"."get_my_lineups_service"("actor_user_id" "uu
     AS $$
 declare
   me uuid;
+  assigned uuid[];
   places uuid[];
-  result jsonb;
+  mine_result jsonb;
+  others_result jsonb;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee_hub.read');
   if target_date is null then
@@ -16813,16 +16815,51 @@ begin
   end if;
   select e.id into me from public.employee_profiles e
   where e.workspace_id = target_workspace_id and e.user_id = actor_user_id and e.archived_at is null;
-  -- Only the locations with a published lineup that day: the read stays small.
+  -- Where she works now: the others come from these locations only.
+  assigned := array(
+    select a.location_id from public.employee_location_assignments a
+    where a.workspace_id = target_workspace_id and a.employee_id = me and a.ended_at is null);
+  -- Only the locations with a published lineup that day where she works or has a shift or a lineup row: the
+  -- read stays small. A wider set is harmless; the rows below decide.
   places := array(
     select distinct d.location_id from public.daily_lineups d
     where d.workspace_id = target_workspace_id and d.service_date = target_date
-      and d.latest_version > 0 and not d.editing);
+      and d.latest_version > 0 and not d.editing
+      and (d.location_id = any (assigned)
+        or exists (select 1 from public.schedule_published_shifts s
+                   where s.workspace_id = target_workspace_id and s.employee_id = me
+                     and s.scheduled_date = target_date and s.location_id = d.location_id)
+        or exists (select 1 from public.daily_lineup_rows r
+                   where r.workspace_id = target_workspace_id and r.employee_id = me
+                     and r.service_date = target_date and r.location_id = d.location_id)));
   if me is null or cardinality(places) = 0 then
-    return jsonb_build_object('workspace_id', target_workspace_id, 'date', target_date, 'lineups', '[]'::jsonb);
+    return jsonb_build_object('workspace_id', target_workspace_id, 'date', target_date,
+      'lineups', '[]'::jsonb, 'others', '[]'::jsonb);
   end if;
 
-  select coalesce(jsonb_agg(jsonb_build_object(
+  select
+    coalesce(jsonb_agg(base || jsonb_build_object(
+        'acknowledged_at', (select to_jsonb(a.acknowledged_at) from public.daily_lineup_acknowledgements a
+                            where a.version_id = (x ->> 'version_id')::uuid and a.employee_id = me),
+        'mine', (select jsonb_agg(mine_rows.v) from (
+                   select jsonb_build_object('start_time', r -> 'start_time', 'end_time', r -> 'end_time',
+                     'crosses_midnight', r -> 'crosses_midnight', 'job_name', r -> 'job_name', 'job_color', r -> 'job_color',
+                     'section_name', r -> 'section_name', 'label_names', r -> 'label_names',
+                     'art_key', r -> 'art_key',
+                     'called_off', r ->> 'called_off_at' is not null,
+                     -- LINEUP-EDIT L2a: someone took her place (S-178 "Replaced").
+                     'replaced', r ->> 'replaced_by_row_id' is not null) v
+                   from jsonb_array_elements(x -> 'rows') r where (r ->> 'employee_id')::uuid = me) mine_rows))
+      order by l ->> 'name', x ->> 'shift_type_name') filter (where on_it), '[]'::jsonb),
+    -- Another lineup at her location: read whole, with no ticket and no acknowledgement of hers.
+    coalesce(jsonb_agg(base order by l ->> 'name', x ->> 'shift_type_name')
+      filter (where not on_it and (l ->> 'id')::uuid = any (assigned)), '[]'::jsonb)
+  into mine_result, others_result
+  from jsonb_array_elements(app_private.lineup_day(target_workspace_id, target_date, places) -> 'locations') l,
+    jsonb_array_elements(l -> 'lineups') x,
+    lateral (select exists (select 1 from jsonb_array_elements(x -> 'rows') r
+                            where (r ->> 'employee_id')::uuid = me) as on_it) mine_check,
+    lateral (select jsonb_build_object(
       'id', x -> 'id',
       'version_id', x -> 'version_id',
       'version', x -> 'version',
@@ -16832,18 +16869,7 @@ begin
       'color', x -> 'color',
       'shared_at', x -> 'shared_at',
       'ask_ack', x -> 'ask_ack',
-      'acknowledged_at', (select to_jsonb(a.acknowledged_at) from public.daily_lineup_acknowledgements a
-                          where a.version_id = (x ->> 'version_id')::uuid and a.employee_id = me),
       'notes', x -> 'notes',
-      'mine', (select jsonb_agg(mine_rows.v) from (
-                 select jsonb_build_object('start_time', r -> 'start_time', 'end_time', r -> 'end_time',
-                   'crosses_midnight', r -> 'crosses_midnight', 'job_name', r -> 'job_name', 'job_color', r -> 'job_color',
-                   'section_name', r -> 'section_name', 'label_names', r -> 'label_names',
-                   'art_key', r -> 'art_key',
-                   'called_off', r ->> 'called_off_at' is not null,
-                   -- LINEUP-EDIT L2a: someone took her place (S-178 "Replaced").
-                   'replaced', r ->> 'replaced_by_row_id' is not null) v
-                 from jsonb_array_elements(x -> 'rows') r where (r ->> 'employee_id')::uuid = me) mine_rows),
       -- The team as the lineup orders it: people only (an open shift is nobody's), no manager detail.
       'team', coalesce((select jsonb_agg(jsonb_build_object('employee_id', r -> 'employee_id', 'name', r -> 'name',
                    'job_name', r -> 'job_name', 'job_color', r -> 'job_color',
@@ -16856,14 +16882,11 @@ begin
                  from jsonb_array_elements(x -> 'rows') with ordinality t(r, o)
                  -- A replaced person is not on the team; the one in her place is.
                  where r ->> 'employee_id' is not null and r ->> 'replaced_by_row_id' is null), '[]'::jsonb)
-    ) order by l ->> 'name', x ->> 'shift_type_name'), '[]'::jsonb)
-  into result
-  from jsonb_array_elements(app_private.lineup_day(target_workspace_id, target_date, places) -> 'locations') l,
-    jsonb_array_elements(l -> 'lineups') x
-  where (x -> 'published')::boolean
-    and exists (select 1 from jsonb_array_elements(x -> 'rows') r where (r ->> 'employee_id')::uuid = me);
+    ) as base) built
+  where (x -> 'published')::boolean;
 
-  return jsonb_build_object('workspace_id', target_workspace_id, 'date', target_date, 'lineups', result);
+  return jsonb_build_object('workspace_id', target_workspace_id, 'date', target_date,
+    'lineups', mine_result, 'others', others_result);
 end;
 $$;
 
