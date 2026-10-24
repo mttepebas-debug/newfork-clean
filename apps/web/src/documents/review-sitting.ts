@@ -1,5 +1,6 @@
 import type { FileChoices, FileReasons, Period } from "./review-decision";
 import type { ReviewResult } from "./review-dock";
+import type { ExtendPick, OptionPanel } from "./review-options";
 
 // K1 decision 5 (Mert 23 Oct): what a manager typed or picked in the review drawer stays with its document while
 // the page is open: across Previous / Next, a new revision, and closing and opening it again. Nothing is sent until
@@ -15,8 +16,14 @@ export type ManagerTypedValues = {
   period: Period;
   /** An approved version opened for review again (K1 decision 2). */
   reviewAgain: boolean;
-  extensionDays: number;
+  /** The More options card open, with what was picked and typed in it (A2 Tur 6, mockup-spec 23). */
+  panel: OptionPanel | null;
+  extendPick: ExtendPick | null;
+  /** Other's days, as typed. */
+  extendOther: string;
   extensionReason: string;
+  excuseReason: string;
+  againReason: string;
   timezone: string;
 };
 export type ManagerDraft = {

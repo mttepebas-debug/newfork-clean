@@ -62,6 +62,8 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
   const strip = useRef<HTMLDivElement>(null);
   // A2 Tur 6 (mockup-spec 17): repeated presses never answer what was just drawn under them; kept across documents.
   const [guard] = useState(createReviewGuard);
+  // Escape closes an open More options panel first, then the drawer (mockup-spec 21).
+  const escape = useRef<(() => boolean) | null>(null);
   // Each document opens on Details; a tab chosen for one is not carried to the next.
   const [chosen, setChosen] = useState<{ id: string; tab: ManagerTab }>({ id: requirementId, tab: "details" });
   const files = detail ? (shownVersion(detail)?.files.length ?? 0) : 0;
@@ -211,6 +213,9 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
       busy={busy}
       backdropGrace={500}
       onClose={props.onClose}
+      onEscape={() => {
+        if (!escape.current?.()) props.onClose();
+      }}
     >
       <RequestDrawer<ManagerTab>
         strip={
@@ -273,6 +278,7 @@ export function ManagerDocumentDrawer(props: ManagerDrawerProps) {
             }}
             onClose={props.onClose}
             onSay={say}
+            escape={escape}
           />
         ) : !query.error ? (
           <LinesOutline label="Loading document" lines={5} />

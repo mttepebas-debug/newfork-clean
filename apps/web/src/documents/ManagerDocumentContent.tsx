@@ -16,11 +16,11 @@ import { RequestError } from "../lib/request-error";
 import { errorText } from "../settings/GeneralSettingsPage";
 import { TimezoneSelect } from "../settings/TimezoneSelect";
 import { DrawerSection } from "../views/RequestDrawer";
-import { DocumentExemptionAction } from "./DocumentExemptionAction";
 import {
   downloadDocument,
   extendDocumentDeadline,
   reviewDocument,
+  setDocumentExemption,
   setDocumentTimezone,
   type DocumentAudience,
 } from "./document-data";
@@ -34,6 +34,7 @@ import {
 import { isObligationClosed, statusLabel } from "./document-rules";
 import { EarlierVersions, ManagerDocumentFiles, type FileReview } from "./ManagerDocumentFiles";
 import { ManagerDocumentDock, type DockLine } from "./ManagerDocumentDock";
+import { ManagerDocumentOptions } from "./ManagerDocumentOptions";
 import {
   daysLeftLabel,
   periodChoices,
@@ -54,6 +55,15 @@ import {
   type ReviewResult,
 } from "./review-dock";
 import type { ReviewGuard } from "./review-guard";
+import {
+  extendState,
+  optionCards,
+  otherDays,
+  panelName,
+  panelNote,
+  reasonState,
+  type OptionPanel,
+} from "./review-options";
 import { documentWaits } from "./review-queue";
 import type { ManagerDraft, ManagerTypedValues, ReviewSitting } from "./review-sitting";
 
@@ -100,6 +110,7 @@ export function ManagerDocumentContent({
   onNext,
   onClose,
   onSay,
+  escape,
 }: {
   audience: DocumentAudience;
   userId: string;
@@ -123,6 +134,8 @@ export function ManagerDocumentContent({
   onClose: () => void;
   /** Said by the drawer's polite live region. */
   onSay: (text: string) => void;
+  /** Escape asks this first: an open panel closes before the drawer does (mockup-spec 21). */
+  escape: { current: (() => boolean) | null };
 }) {
   const cache = useQueryClient();
   const obligation = detail.obligation;
@@ -133,16 +146,18 @@ export function ManagerDocumentContent({
   const current = detail.submissions.find((s) => s.id === obligation.submitted_id);
   // A typed value counts while what it was typed for is still here (BL-467); typed for another version under
   // review, it gives way to the saved value. A new change on a document answered in this sitting opens it again.
+  // More options' own values leave an answer standing: a panel opened and cancelled after a Save keeps its result.
   function typedField<K extends keyof ManagerTypedValues>(
     key: K,
     typedFor: string | undefined,
     saved: ManagerTypedValues[K],
+    reopens = true,
   ) {
     const entry = typed[key];
     const value = typedFor !== undefined && entry?.for === typedFor ? entry.value : saved;
     const set = (next: ManagerTypedValues[K]) => {
       sitting.setDraft(id, (all) => ({ ...all, [key]: { for: typedFor!, value: next } }) as ManagerDraft);
-      sitting.reopen(id);
+      if (reopens) sitting.reopen(id);
     };
     return [value, set] as const;
   }
@@ -157,8 +172,13 @@ export function ManagerDocumentContent({
   const [reasons, setReasons] = typedField("reasons", current?.id, noReasons);
   const [period, setPeriod] = typedField("period", current?.id, "full");
   const [reviewAgain, setReviewAgain] = typedField("reviewAgain", current?.id, false);
-  const [extensionDays, setExtensionDays] = typedField("extensionDays", id, 1);
-  const [extensionReason, setExtensionReason] = typedField("extensionReason", id, "");
+  // More options (mockup-spec 8-10): the card open and what was picked and typed in it, kept with the document.
+  const [openPanel, setPanel] = typedField("panel", id, null, false);
+  const [extendPick, setExtendPick] = typedField("extendPick", id, null, false);
+  const [extendOther, setExtendOther] = typedField("extendOther", id, "", false);
+  const [extensionReason, setExtensionReason] = typedField("extensionReason", id, "", false);
+  const [excuseReason, setExcuseReason] = typedField("excuseReason", id, "", false);
+  const [againReason, setAgainReason] = typedField("againReason", id, "", false);
   const [referenceTimezone, setReferenceTimezone] = typedField(
     "timezone",
     id,
@@ -166,7 +186,6 @@ export function ManagerDocumentContent({
   );
   // BL-828: someone changed this document or the person first; said until the next command.
   const [changed, setChanged] = useState(false);
-  const [exemptionLocked, setExemptionLocked] = useState(false);
   const green = useRef<HTMLButtonElement>(null);
   const focusGreen = useRef(false);
   const sending = useRef(false);
@@ -232,21 +251,36 @@ export function ManagerDocumentContent({
   const extension = useMutation({
     onMutate: started,
     onError: conflict,
-    mutationFn: () =>
-      extendDocumentDeadline(audience, id, {
-        revision: obligation.revision,
-        additional_days: extensionDays,
-        reason: extensionReason,
-      }),
-    onSuccess: async () => {
-      sitting.answer(id, { kind: "extended", at: new Date().toISOString(), days: extensionDays });
+    mutationFn: ({ days, reason }: { days: number; reason: string }) =>
+      extendDocumentDeadline(audience, id, { revision: obligation.revision, additional_days: days, reason }),
+    onSuccess: async (_, { days }) => {
+      sitting.answer(id, { kind: "extended", at: new Date().toISOString(), days });
       focusGreen.current = true;
       await refresh();
-      forget("extensionDays", "extensionReason");
+      forget("panel", "extendPick", "extendOther", "extensionReason");
+    },
+    onSettled: () => {
+      sending.current = false;
     },
   });
-  const busy = extension.isPending || review.isPending || timezone.isPending || exemptionLocked;
-  const error = extension.error ?? review.error ?? download.error ?? timezone.error;
+  // Excuse, or Ask for it again: today's exemption and its removal (K1 decisions 1 and 3).
+  const exemption = useMutation({
+    onMutate: started,
+    onError: conflict,
+    mutationFn: ({ exempt, reason }: { exempt: boolean; reason: string }) =>
+      setDocumentExemption(audience, id, { revision: obligation.revision, exempt, reason }),
+    onSuccess: async (_, { exempt }) => {
+      sitting.answer(id, { kind: exempt ? "excused" : "asked", at: new Date().toISOString() });
+      focusGreen.current = true;
+      await refresh();
+      forget("panel", exempt ? "excuseReason" : "againReason");
+    },
+    onSettled: () => {
+      sending.current = false;
+    },
+  });
+  const busy = extension.isPending || exemption.isPending || review.isPending || timezone.isPending;
+  const error = extension.error ?? exemption.error ?? review.error ?? download.error ?? timezone.error;
   const shownError =
     !error || changedMeanwhile(error)
       ? null
@@ -265,7 +299,6 @@ export function ManagerDocumentContent({
   }, [shownError, onAlert]);
   useEffect(() => () => onAlert(null), [onAlert]);
 
-  const dirty = extensionReason !== "" || referenceTimezone !== (detail.timezone_settings?.configured_value ?? "");
   // The server reviews the version sent while it waits for review, and an approved one again (K1 decision 2).
   const canDecide =
     canReview &&
@@ -285,6 +318,65 @@ export function ManagerDocumentContent({
   const progress = reviewing && current ? reviewProgress(current.files, choices, reasons) : null;
   const expires = current?.expiry_date ? formatDate(current.expiry_date) : null;
 
+  // More options (K1 decisions 1 and 3): Extend only where today's drawer offers it (the server refuses the rest),
+  // Excuse on a document not excused, Ask for it again on an excused one; never for the owner, whose excuse stands.
+  const canExtend =
+    canReview &&
+    obligation.mode !== "optional" &&
+    !obligation.suspended &&
+    obligation.deadline_at !== null &&
+    Date.parse(obligation.deadline_at) > Date.now() &&
+    !["pending_review", "completed", "removed", "exempt", "paused"].includes(obligation.status);
+  const excusable = canReview && obligation.kind === "document" && !obligation.exemption_locked;
+  const canExcuse = excusable && obligation.status !== "exempt";
+  const cards = optionCards({ extend: canExtend, excuse: canExcuse, again: excusable && obligation.status === "exempt" });
+  // A card no longer offered (the document changed meanwhile) has no panel open.
+  const panel: OptionPanel | null = openPanel && cards.includes(openPanel) ? openPanel : null;
+  const extendNow =
+    panel === "extend" && obligation.deadline_at
+      ? extendState({ pick: extendPick, other: extendOther, reason: extensionReason }, obligation.deadline_at)
+      : null;
+  const panelNow =
+    panel === "extend"
+      ? extendNow
+      : panel === "excuse"
+        ? reasonState(excuseReason)
+        : panel === "again"
+          ? reasonState(againReason)
+          : null;
+  const dueDay = obligation.deadline_at ? formatDay(obligation.deadline_at, obligation.timezone, now) : null;
+  const newDueDay = extendNow?.due ? formatDay(extendNow.due, obligation.timezone, now) : null;
+  // Cancel or Escape closes the panel and gives focus back to its card's head (on the phone's Files tab, where the
+  // card is not, to the first file's Approve).
+  const focusAfter = useRef<OptionPanel | null>(null);
+  const closePanel = () => {
+    if (!panel) return;
+    focusAfter.current = panel;
+    setPanel(null);
+  };
+  useLayoutEffect(() => {
+    const key = focusAfter.current;
+    if (!key) return;
+    focusAfter.current = null;
+    const drawer = document.querySelector<HTMLElement>(".document-review-drawer");
+    (
+      drawer?.querySelector<HTMLElement>(`[data-option="${key}"]`) ?? drawer?.querySelector<HTMLElement>(".docr-db-ok")
+    )?.focus({ preventScroll: true });
+  });
+  useLayoutEffect(() => {
+    escape.current = () => {
+      if (!panel || busy) return false;
+      closePanel();
+      return true;
+    };
+  });
+  useLayoutEffect(
+    () => () => {
+      escape.current = null;
+    },
+    [escape],
+  );
+
   // Details: what the document is and where it stands (mockup-spec 4.3), then what today's drawer also says.
   const expired =
     obligation.status === "expired" ? (
@@ -301,9 +393,11 @@ export function ManagerDocumentContent({
       </p>
     ) : null;
   // A decision made in this sitting takes the due date's place, so the files under the facts never jump.
+  // A new due date (an extension, or asked again) stays the Due row's own.
+  const decidedLabel = { approved: "Approved", sent_back: "Sent back", excused: "Excused" } as const;
   const decided =
-    result && result.kind !== "extended"
-      ? { label: result.kind === "approved" ? "Approved" : "Sent back", at: result.at }
+    result && result.kind in decidedLabel
+      ? { label: decidedLabel[result.kind as keyof typeof decidedLabel], at: result.at }
       : undefined;
   const facts = (
     <DrawerSection>
@@ -422,6 +516,8 @@ export function ManagerDocumentContent({
           onPeriod: setPeriod,
         }
       : null;
+  // While a panel is open the files wait (one change per Save), and say how to get them back.
+  const off = panel ? { name: panelName(panel, first), onCancel: closePanel } : null;
   const openFile = (submissionId: string, fileId: string) => download.mutate({ submissionId, fileId });
   const shared = {
     phone,
@@ -443,6 +539,7 @@ export function ManagerDocumentContent({
       version={version}
       review={fileReview}
       again={canReviewAgain ? { open: reviewAgain, onToggle: () => setReviewAgain(!reviewAgain) } : null}
+      off={off}
       sent={sent}
       approvedOn={approvedOn}
     />
@@ -477,72 +574,38 @@ export function ManagerDocumentContent({
       fileSection
     );
 
-  // More options. Stage 3 slot: today's exemption and deadline extension until the A2 cards replace them.
-  const canExtend =
-    canReview &&
-    obligation.mode !== "optional" &&
-    !obligation.suspended &&
-    obligation.deadline_at !== null &&
-    Date.parse(obligation.deadline_at) > Date.now() &&
-    !["pending_review", "completed", "removed", "exempt", "paused"].includes(obligation.status);
-  const canExcuse =
-    canReview && obligation.kind === "document" && !obligation.exemption_locked && obligation.status !== "exempt";
   const moreOptions =
-    (canReview && obligation.kind === "document") || canExtend ? (
-      <DrawerSection title="More options">
-        {canReview && obligation.kind === "document" ? (
-          obligation.exemption_locked ? (
-            <p className="document-exemption-note">
-              Owners aren't required to submit documents. Uploading is optional.
-            </p>
-          ) : (
-            <DocumentExemptionAction
-              obligation={obligation}
-              audience={audience}
-              userId={userId}
-              disabled={busy || dirty}
-              onLockChange={setExemptionLocked}
-            />
-          )
+    cards.length || (canReview && obligation.kind === "document" && obligation.exemption_locked) ? (
+      <>
+        {cards.length ? (
+          <ManagerDocumentOptions
+            cards={cards}
+            panel={panel}
+            first={first}
+            phone={phone}
+            busy={busy}
+            due={dueDay}
+            newDue={newDueDay}
+            otherBad={extendPick === "other" && extendOther.trim() !== "" && otherDays(extendOther) === null}
+            typed={{ pick: extendPick, other: extendOther, extendReason: extensionReason, excuseReason, againReason }}
+            onToggle={(key) => setPanel(panel === key ? null : key)}
+            onPick={setExtendPick}
+            onOther={setExtendOther}
+            onReason={(key, text) => {
+              if (key === "extendReason") setExtensionReason(text);
+              else if (key === "excuseReason") setExcuseReason(text);
+              else setAgainReason(text);
+            }}
+            onCancel={closePanel}
+          />
         ) : null}
-        {canExtend ? (
-          <fieldset disabled={busy}>
-            <legend>Extend delivery deadline</legend>
-            <label className="job-field">
-              <span>Additional days</span>
-              <input
-                type="number"
-                min={1}
-                max={3650}
-                value={extensionDays}
-                onChange={(e) => setExtensionDays(Number(e.target.value))}
-              />
-            </label>
-            <label className="job-field">
-              <span>Extension reason</span>
-              <textarea
-                maxLength={500}
-                value={extensionReason}
-                onChange={(e) => setExtensionReason(e.target.value)}
-              />
-            </label>
-            <Button
-              type="button"
-              className="secondary-button"
-              disabled={
-                busy ||
-                !extensionReason.trim() ||
-                !Number.isInteger(extensionDays) ||
-                extensionDays < 1 ||
-                extensionDays > 3650
-              }
-              onClick={() => extension.mutate()}
-            >
-              Extend deadline
-            </Button>
-          </fieldset>
+        {/* The owner asked for the documents in the first place; their excuse is never lifted (BL-834). */}
+        {obligation.exemption_locked && canReview && obligation.kind === "document" ? (
+          <DrawerSection title={cards.length ? undefined : "More options"}>
+            <p className="docr-owner-note">Owners aren't required to submit documents. Uploading is optional.</p>
+          </DrawerSection>
         ) : null}
-      </DrawerSection>
+      </>
     ) : null;
 
   // History. Stage 3 slot: today's lines until the A2 timeline replaces them; the earlier versions stay readable.
@@ -573,9 +636,10 @@ export function ManagerDocumentContent({
   // The dock (mockup-spec 15): what the green does now, and the one line over it.
   const waiting = documentWaits(obligation.status);
   const timezoneRow = obligation.status === "timezone_required";
-  const saving = !answered && (reviewing || (waiting && !timezoneRow));
+  // An open panel is what Save saves (mockup-spec 15.4); closed again, an answer made in this sitting stands.
+  const saving = panel !== null || (!answered && (reviewing || (waiting && !timezoneRow)));
   const next = saving ? null : nextUp();
-  const greenNow = greenFor({ saving, ready: progress?.ready ?? false, next });
+  const greenNow = greenFor({ saving, ready: panelNow ? panelNow.ready : (progress?.ready ?? false), next });
   const doneLabel =
     obligation.status === "completed"
       ? "Approved"
@@ -585,9 +649,12 @@ export function ManagerDocumentContent({
   const line: DockLine =
     changed && !result
       ? { kind: "note", text: "This document changed. You're seeing the latest version.", live: true }
+      : panel && panelNow
+        ? { kind: "note", text: panelNote(panel, panelNow, { first, due: newDueDay }) }
       : result
         ? {
             kind: "result",
+            icon: result.kind,
             line: resultLine(result, {
               first,
               phone,
@@ -609,7 +676,7 @@ export function ManagerDocumentContent({
                   text: waitingNote({ phone, first, label: doneLabel, extend: canExtend, excuse: canExcuse }),
                 }
               : { kind: "note", text: doneNote(doneLabel) };
-  const meaning = greenKey(id, greenNow);
+  const meaning = greenKey(id, greenNow, panel);
   // A new meaning holds the green for a moment, from when it can be pressed (after the refresh).
   useLayoutEffect(() => {
     if (!busy) guard.mean(meaning, performance.now());
@@ -627,7 +694,15 @@ export function ManagerDocumentContent({
     if (on && !wasOn.current && line.kind === "note") onSay(`Ready · ${line.text}`);
     wasOn.current = on;
   });
+  // One change per Save: the open panel's, or else the files'.
+  const savePanel = () => {
+    if (!panel || !panelNow?.ready || busy || sending.current) return;
+    sending.current = true;
+    if (panel === "extend") extension.mutate({ days: extendNow!.days!, reason: extensionReason.trim() });
+    else exemption.mutate({ exempt: panel === "excuse", reason: (panel === "excuse" ? excuseReason : againReason).trim() });
+  };
   const save = () => {
+    if (panel) return savePanel();
     if (!reviewing || !current || !progress?.ready || busy || sending.current) return;
     const chosen: Period = period === "remaining" && periods.remaining.open ? "remaining" : "full";
     const command = reviewCommand({

@@ -1,19 +1,23 @@
-import { BadgeCheck, CalendarClock, ChevronRight, RotateCcw, ShieldCheck } from "lucide-react";
+import { BadgeCheck, BellRing, CalendarClock, ChevronRight, RotateCcw, ShieldCheck } from "lucide-react";
 import type { Ref } from "react";
-import type { Green, ResultLine } from "./review-dock";
+import type { Green, ResultLine, ReviewResult } from "./review-dock";
 
 // The dock of the manager's review drawer (A2 Tur 6, mockup-spec 15): one line, then the one green button, far
 // right (full width on a phone). Nothing else lives here: no Reject, no secondary button. The line is a note (what
 // is missing, what Save will do), a refresh line, or the result of a Save, said politely.
 
+// Each result by what was done; its tone colours it.
 const icons = {
-  ok: BadgeCheck,
-  red: RotateCcw,
-  warn: CalendarClock,
-  muted: ShieldCheck,
+  approved: BadgeCheck,
+  sent_back: RotateCcw,
+  extended: CalendarClock,
+  excused: ShieldCheck,
+  asked: BellRing,
 } as const;
 
-export type DockLine = { kind: "note"; text: string; live?: boolean } | { kind: "result"; line: ResultLine };
+export type DockLine =
+  | { kind: "note"; text: string; live?: boolean }
+  | { kind: "result"; icon: ReviewResult["kind"]; line: ResultLine };
 
 export function ManagerDocumentDock({
   noteId,
@@ -34,7 +38,7 @@ export function ManagerDocumentDock({
   const off = busy || (green.act === "save" && green.off);
   let note;
   if (line.kind === "result") {
-    const Icon = icons[line.line.tone];
+    const Icon = icons[line.icon];
     note = (
       <p
         className={`rd-foot-note docr-note docr-result ${line.line.tone}`}

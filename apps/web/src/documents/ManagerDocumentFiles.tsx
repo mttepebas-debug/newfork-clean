@@ -1,5 +1,5 @@
 import type { DocumentDetail } from "@newfork/shared";
-import { Check, Eye, FileClock, FileText, Image, X } from "lucide-react";
+import { Check, Eye, FileClock, FileText, Image, Info, X } from "lucide-react";
 import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { DrawerSection } from "../views/RequestDrawer";
 import { fileMeta } from "./document-review-facts";
@@ -26,6 +26,8 @@ export type FileReview = {
   onChoose: (fileId: string, choice: FileChoice) => void;
   onReason: (fileId: string, reason: string) => void;
   onPeriod: (period: Period) => void;
+  /** A More options panel is open: the file controls wait (one change per Save). */
+  off?: boolean;
 };
 
 type Shared = {
@@ -134,9 +136,12 @@ function DecisionPair({ file, review, busy }: { file: File; review: FileReview; 
       type="button"
       className={`docr-db docr-db-${value === "approve" ? "ok" : "no"}`}
       aria-pressed={choice === value}
+      aria-disabled={review.off ? "true" : undefined}
       data-guard=""
       disabled={busy}
-      onClick={() => review.onChoose(file.id, value)}
+      onClick={() => {
+        if (!review.off) review.onChoose(file.id, value);
+      }}
     >
       {value === "approve" ? (
         <Check size={16} aria-hidden className="docr-db-icon" />
@@ -174,9 +179,12 @@ function ReasonBox({
             key={reason}
             type="button"
             aria-pressed={hasReason(text, reason)}
+            aria-disabled={review.off ? "true" : undefined}
             data-guard=""
             disabled={shared.busy}
-            onClick={() => review.onReason(file.id, toggleReason(text, reason))}
+            onClick={() => {
+              if (!review.off) review.onReason(file.id, toggleReason(text, reason));
+            }}
           >
             {reason}
           </button>
@@ -192,7 +200,8 @@ function ReasonBox({
         aria-required="true"
         aria-describedby={shared.describedBy}
         value={text}
-        disabled={shared.busy}
+        className={review.off ? "is-off" : undefined}
+        disabled={shared.busy || review.off}
         onChange={(event) => review.onReason(file.id, event.target.value)}
       />
     </div>
@@ -212,22 +221,25 @@ function PeriodRow({ review, busy }: { review: FileReview; busy: boolean }) {
         <button
           type="button"
           aria-pressed={period === "full"}
+          aria-disabled={review.off ? "true" : undefined}
           data-label={full}
           data-guard=""
           disabled={busy}
-          onClick={() => review.onPeriod("full")}
+          onClick={() => {
+            if (!review.off) review.onPeriod("full");
+          }}
         >
           {full}
         </button>
         <button
           type="button"
           aria-pressed={period === "remaining"}
-          aria-disabled={remaining.open ? undefined : "true"}
+          aria-disabled={remaining.open && !review.off ? undefined : "true"}
           data-label={remaining.label}
           data-guard=""
           disabled={busy}
           onClick={() => {
-            if (remaining.open) review.onPeriod("remaining");
+            if (remaining.open && !review.off) review.onPeriod("remaining");
           }}
         >
           {remaining.label}
@@ -310,6 +322,7 @@ export function ManagerDocumentFiles({
   version,
   review,
   again,
+  off,
   sent,
   approvedOn,
   ...shared
@@ -319,6 +332,8 @@ export function ManagerDocumentFiles({
   review: FileReview | null;
   /** An approved version can be reviewed again (K1 decision 2). */
   again: { open: boolean; onToggle: () => void } | null;
+  /** A More options panel is open, by its name, with its own way out (mockup-spec 8.5). */
+  off: { name: string; onCancel: () => void } | null;
   /** "Sent Wed, Oct 21", for the phone's head. */
   sent: string | null;
   /** The day the approved copy was approved, for an expired document. */
@@ -350,18 +365,37 @@ export function ManagerDocumentFiles({
         </div>
       </DrawerSection>
     );
-  const rejected = review ? version.files.some((file) => review.choices[file.id] === "reject") : false;
+  const live = review && off ? { ...review, off: true } : review;
+  const rejected = live ? version.files.some((file) => live.choices[file.id] === "reject") : false;
   const aside = shared.phone ? sent : `Version ${version.version}`;
   return (
     <DrawerSection
       title={shared.phone ? `Version ${version.version}` : "Files"}
       aside={aside ? <span>{aside}</span> : undefined}
     >
-      <VersionFiles version={version} shared={shared} review={review} exempt={obligation.status === "exempt"} />
-      {review && rejected ? <PeriodRow review={review} busy={shared.busy} /> : null}
+      <VersionFiles version={version} shared={shared} review={live} exempt={obligation.status === "exempt"} />
+      {live && rejected ? <PeriodRow review={live} busy={shared.busy} /> : null}
+      {off && (live || again) ? (
+        <p className="rd-foot-note docr-offnote">
+          <Info size={14} aria-hidden className="docr-offnote-icon" />
+          <span className="docr-offnote-text">Save or cancel {off.name} first</span>
+          <button type="button" className="docr-textbtn" data-guard="" disabled={shared.busy} onClick={off.onCancel}>
+            Cancel
+          </button>
+        </p>
+      ) : null}
       {again ? (
         <div className="docr-files-foot">
-          <button type="button" className="docr-textbtn" data-guard="" disabled={shared.busy} onClick={again.onToggle}>
+          <button
+            type="button"
+            className="docr-textbtn"
+            aria-disabled={off ? "true" : undefined}
+            data-guard=""
+            disabled={shared.busy}
+            onClick={() => {
+              if (!off) again.onToggle();
+            }}
+          >
             {again.open ? "Cancel review" : "Review again"}
           </button>
         </div>

@@ -13,6 +13,7 @@ import {
   type DocumentObligation,
 } from "@newfork/shared";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
+import { formatDay } from "./document-review-facts";
 import { createReviewSitting, type ReviewSitting } from "./review-sitting";
 import { RequestError } from "../lib/request-error";
 import {
@@ -390,48 +391,46 @@ describe("shared document review", () => {
       time.restore();
     }
   });
-  it("requires an exemption reason and locks parent navigation while the action is being confirmed", async () => {
-    const { onClose } = page(false, {
-      queue: [row(), row({ id: "second", employee_id: "other", employee_name: "Sam Lee" })],
-    });
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Exempt from this document" }),
-    );
-    expect(screen.getByRole("button", { name: "Next: Sam Lee" })).toHaveProperty(
-      "disabled",
-      true,
-    );
-    expect(screen.getByRole("button", { name: "Close details" })).toHaveProperty(
-      "disabled",
-      true,
-    );
-    const group = screen.getByRole("group", {
-      name: "Exempt from this document",
-    });
-    expect(
-      within(group).getByRole("button", { name: "Exempt from this document" }),
-    ).toHaveProperty("disabled", true);
-    fireEvent.change(within(group).getByLabelText("Reason"), {
-      target: { value: "Role exception" },
-    });
-    const after = detail();
-    after.obligation.revision = 2;
-    after.obligation.status = "exempt";
-    vi.mocked(getDocument).mockResolvedValue(after);
-    fireEvent.click(
-      within(group).getByRole("button", { name: "Exempt from this document" }),
-    );
-    await waitFor(() =>
-      expect(setDocumentExemption).toHaveBeenCalledWith(
-        expect.anything(),
-        "requirement",
-        { revision: 1, exempt: true, reason: "Role exception" },
-      ),
-    );
-    expect(
-      await screen.findByRole("button", { name: "Remove exemption" }),
-    ).toBeTruthy();
-    expect(onClose).not.toHaveBeenCalled();
+  // K1 decision 5: what is typed stays with its document, so nothing is locked while the Excuse panel is open; K1
+  // decision 3: an excused document then offers today's Remove exemption as Ask for it again.
+  it("requires a reason to excuse, keeps the strip and the X live meanwhile, and then offers to ask again", async () => {
+    const time = clock();
+    try {
+      const { onClose, onOpen } = page(false, {
+        queue: [row(), row({ id: "second", employee_id: "other", employee_name: "Sam Lee" })],
+      });
+      fireEvent.click(await screen.findByRole("button", { name: /^Excuse Test/ }));
+      expect(screen.getByRole("button", { name: "Next: Sam Lee" })).toHaveProperty("disabled", false);
+      expect(screen.getByRole("button", { name: "Close details" })).toHaveProperty("disabled", false);
+      const group = screen.getByRole("group", { name: "Excuse Test" });
+      time.tick(450);
+      expect(save().getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(save());
+      expect(setDocumentExemption).not.toHaveBeenCalled();
+      fireEvent.change(within(group).getByLabelText("Reason"), {
+        target: { value: "Role exception" },
+      });
+      const after = detail();
+      after.obligation.revision = 2;
+      after.obligation.status = "exempt";
+      vi.mocked(getDocument).mockResolvedValue(after);
+      fireEvent.click(save());
+      await waitFor(() =>
+        expect(setDocumentExemption).toHaveBeenCalledWith(
+          expect.anything(),
+          "requirement",
+          { revision: 1, exempt: true, reason: "Role exception" },
+        ),
+      );
+      expect(
+        await screen.findByRole("button", { name: /^Ask for it again/ }),
+      ).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /^Excuse Test/ })).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(onOpen).not.toHaveBeenCalled();
+    } finally {
+      time.restore();
+    }
   });
   // The owner asked for the document in the first place. Taking their excuse
   // away is refused by the service, so the button is not offered.
@@ -449,8 +448,9 @@ describe("shared document review", () => {
       ),
     ).toBeTruthy();
     expect(
-      screen.queryByRole("button", { name: "Remove exemption" }),
+      screen.queryByRole("button", { name: /^Ask for it again/ }),
     ).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Excuse/ })).toBeNull();
   });
 
   it("names the status the way the list does", async () => {
@@ -1345,28 +1345,34 @@ describe("download, document time zone and deadline extension", () => {
     doc.obligation.deadline_at = new Date(Date.now() + 86_400_000).toISOString();
     vi.mocked(getDocument).mockResolvedValue(doc);
     vi.mocked(extendDocumentDeadline).mockResolvedValue({});
-    const { invalidate } = page();
-    const extend = await screen.findByRole("button", {
-      name: "Extend deadline",
-    });
-    // A reason is required; the days default to one.
-    expect(extend).toHaveProperty("disabled", true);
-    fireEvent.change(screen.getByLabelText("Additional days"), {
-      target: { value: "5" },
-    });
-    fireEvent.change(screen.getByLabelText("Extension reason"), {
-      target: { value: "Clinic closed this week" },
-    });
-    expect(extend).toHaveProperty("disabled", false);
-    fireEvent.click(extend);
-    await waitFor(() =>
-      expect(extendDocumentDeadline).toHaveBeenCalledWith(
-        manager,
-        "requirement",
-        { revision: 1, additional_days: 5, reason: "Clinic closed this week" },
-      ),
-    );
-    await waitFor(() => expectRefreshed(invalidate));
+    const time = clock();
+    try {
+      const { invalidate } = page();
+      fireEvent.click(await screen.findByRole("button", { name: /^Extend deadline/ }));
+      time.tick(450);
+      // The days and a reason are required; nothing is picked at first.
+      expect(save().getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(screen.getByRole("button", { name: "Other" }));
+      fireEvent.change(screen.getByLabelText("Days to add"), {
+        target: { value: "5" },
+      });
+      expect(save().getAttribute("aria-disabled")).toBe("true");
+      fireEvent.change(screen.getByLabelText("Reason"), {
+        target: { value: "Clinic closed this week" },
+      });
+      expect(save().getAttribute("aria-disabled")).toBeNull();
+      fireEvent.click(save());
+      await waitFor(() =>
+        expect(extendDocumentDeadline).toHaveBeenCalledWith(
+          manager,
+          "requirement",
+          { revision: 1, additional_days: 5, reason: "Clinic closed this week" },
+        ),
+      );
+      await waitFor(() => expectRefreshed(invalidate));
+    } finally {
+      time.restore();
+    }
   });
   it.each<[string, (doc: DocumentDetail) => void, boolean]>([
     ["the deadline has passed", (doc) => {
@@ -1384,7 +1390,8 @@ describe("download, document time zone and deadline extension", () => {
     page(selfOnly);
     await screen.findByRole("dialog", { name: /Safety certificate/ });
     await screen.findByText(selfOnly ? "Upload a new version" : "Name");
-    expect(screen.queryByRole("button", { name: "Extend deadline" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Extend deadline/ })).toBeNull();
+    if (!selfOnly) expect(screen.getByRole("button", { name: /^Excuse Test/ })).toBeTruthy();
   });
 });
 
@@ -1515,41 +1522,50 @@ describe("typed fields beyond the draft", () => {
     vi.mocked(getDocument).mockResolvedValue(base());
     vi.mocked(setDocumentTimezone).mockResolvedValue({});
     vi.mocked(extendDocumentDeadline).mockResolvedValue({});
-    const { cache, onClose } = page();
-    await screen.findByRole("button", { name: "Extend deadline" });
-    fireEvent.change(screen.getByLabelText("Additional days"), {
-      target: { value: "5" },
-    });
-    fireEvent.change(screen.getByLabelText("Extension reason"), {
-      target: { value: "Clinic closed this week" },
-    });
-    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), {
-      target: { value: "America/Denver" },
-    });
-    // The time zone is its own command; the extension waits on screen.
-    fireEvent.click(
-      screen.getByRole("button", { name: "Save document time zone" }),
-    );
-    await waitFor(() => expect(setDocumentTimezone).toHaveBeenCalled());
-    await bump(cache, (doc) => {
-      doc.timezone_settings!.configured_value = "America/Denver";
-      doc.timezone_settings!.employee_revision = 5;
-    });
-    await waitFor(() => expect(value("Additional days")).toBe("5"));
-    expect(value("Extension reason")).toBe("Clinic closed this week");
-    fireEvent.click(screen.getByRole("button", { name: "Extend deadline" }));
-    await waitFor(() =>
-      expect(extendDocumentDeadline).toHaveBeenCalledWith(
-        manager,
-        "requirement",
-        { revision: 2, additional_days: 5, reason: "Clinic closed this week" },
-      ),
-    );
-    // Used up: the form is back to its start and nothing is left to discard.
-    await waitFor(() => expect(value("Extension reason")).toBe(""));
-    expect(value("Additional days")).toBe("1");
-    close();
-    expect(onClose).toHaveBeenCalledOnce();
+    const time = clock();
+    try {
+      const { cache, onClose } = page();
+      fireEvent.click(await screen.findByRole("button", { name: /^Extend deadline/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Other" }));
+      fireEvent.change(screen.getByLabelText("Days to add"), {
+        target: { value: "5" },
+      });
+      fireEvent.change(screen.getByLabelText("Reason"), {
+        target: { value: "Clinic closed this week" },
+      });
+      fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), {
+        target: { value: "America/Denver" },
+      });
+      // The time zone is its own command; the extension waits on screen.
+      fireEvent.click(
+        screen.getByRole("button", { name: "Save document time zone" }),
+      );
+      await waitFor(() => expect(setDocumentTimezone).toHaveBeenCalled());
+      await bump(cache, (doc) => {
+        doc.timezone_settings!.configured_value = "America/Denver";
+        doc.timezone_settings!.employee_revision = 5;
+      });
+      await waitFor(() => expect(value("Days to add")).toBe("5"));
+      expect(value("Reason")).toBe("Clinic closed this week");
+      time.tick(450);
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() =>
+        expect(extendDocumentDeadline).toHaveBeenCalledWith(
+          manager,
+          "requirement",
+          { revision: 2, additional_days: 5, reason: "Clinic closed this week" },
+        ),
+      );
+      // Used up: the panel closes, and opened again it starts afresh.
+      await waitFor(() => expect(screen.queryByLabelText("Reason")).toBeNull());
+      fireEvent.click(screen.getByRole("button", { name: /^Extend deadline/ }));
+      expect(screen.getByRole("button", { name: "Other" }).getAttribute("aria-pressed")).toBe("false");
+      expect(value("Reason")).toBe("");
+      close();
+      expect(onClose).toHaveBeenCalledOnce();
+    } finally {
+      time.restore();
+    }
   });
   it("keeps a chosen document time zone through a new revision", async () => {
     base = () => {
@@ -1939,14 +1955,22 @@ it("refreshes the Employee drawer's onboarding review after a deadline extension
   doc.obligation.deadline_at = new Date(Date.now() + 86_400_000).toISOString();
   vi.mocked(getDocument).mockResolvedValue(doc);
   vi.mocked(extendDocumentDeadline).mockResolvedValue({});
-  const { invalidate } = page();
-  fireEvent.change(await screen.findByLabelText("Extension reason"), { target: { value: "Clinic closed" } });
-  fireEvent.click(screen.getByRole("button", { name: "Extend deadline" }));
-  await waitFor(() =>
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ["employee-onboarding-review", "workspace"],
-    }),
-  );
+  const time = clock();
+  try {
+    const { invalidate } = page();
+    fireEvent.click(await screen.findByRole("button", { name: /^Extend deadline/ }));
+    fireEvent.click(screen.getByRole("button", { name: "+3 days" }));
+    fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Clinic closed" } });
+    time.tick(450);
+    fireEvent.click(save());
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ["employee-onboarding-review", "workspace"],
+      }),
+    );
+  } finally {
+    time.restore();
+  }
 });
 
 // A2 Tur 6, file buttons design a (K1 stage 2): each file of the version under review is approved or rejected on its
@@ -2464,5 +2488,318 @@ describe("file decisions and the dock", () => {
       );
       expect(screen.getByRole("button", { name: "Open certificate.pdf · Rejected" })).toBeTruthy();
     });
+  });
+});
+
+// A2 Tur 6 (K1 stage 3): More options at the end of Details, selectable cards, one open at a time, one change per
+// Save. Today's rules decide the cards (K1 decisions 1 and 3); Save then goes on to the next one waiting (decision 1).
+describe("More options", () => {
+  const manager = { workspaceId: "workspace", selfOnly: false };
+  const sam = () =>
+    row({ id: "second", employee_id: "other", employee_name: "Sam Lee", title: "Food handler card" });
+  function second(): DocumentDetail {
+    const doc = detail();
+    doc.obligation = { ...doc.obligation, ...sam(), submitted_id: "second-submission" };
+    doc.submissions[0]!.id = "second-submission";
+    return doc;
+  }
+  const deadline = new Date(Date.now() + 7 * 86_400_000).toISOString();
+  const later = (days: number) => new Date(Date.parse(deadline) + days * 86_400_000).toISOString();
+  const day = (iso: string) => formatDay(iso, "America/Los_Angeles", new Date());
+  // Nothing sent yet, due in a week.
+  function owed(revision = 1): DocumentDetail {
+    const doc = detail();
+    doc.obligation.status = "missing";
+    doc.obligation.revision = revision;
+    doc.obligation.submitted_id = null;
+    doc.obligation.deadline_at = deadline;
+    doc.submissions = [];
+    return doc;
+  }
+  const options = () => screen.getByRole("region", { name: "More options" });
+  const head = (name: RegExp) => within(options()).getByRole("button", { name });
+  // Each card's head: one disclosure button, its label then what it says on the right.
+  const heads = () =>
+    within(options())
+      .getAllByRole("button")
+      .filter((button) => button.hasAttribute("aria-expanded"))
+      .map((button) => button.textContent);
+  beforeEach(() => {
+    vi.mocked(extendDocumentDeadline).mockResolvedValue({});
+  });
+
+  it("offers Extend deadline and Excuse as cards, one open at a time; a click on the open head closes it", async () => {
+    vi.mocked(getDocument).mockResolvedValue(owed());
+    page();
+    await screen.findByRole("region", { name: "More options" });
+    expect(heads()).toEqual([`Extend deadline Due ${day(deadline)}`, "Excuse Test Stop asking for this document"]);
+    const extend = head(/^Extend deadline/);
+    const excuse = head(/^Excuse Test/);
+    expect([extend.getAttribute("aria-expanded"), extend.getAttribute("aria-controls")]).toEqual(["false", null]);
+    extend.focus();
+    fireEvent.click(extend);
+    const panel = screen.getByRole("group", { name: "Extend deadline" });
+    expect([extend.getAttribute("aria-expanded"), extend.getAttribute("aria-controls")]).toEqual(["true", panel.id]);
+    expect(extend.closest(".docr-card")?.className).toBe("docr-card is-open");
+    expect(document.activeElement).toBe(extend);
+    fireEvent.click(excuse);
+    expect(extend.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("group", { name: "Extend deadline" })).toBeNull();
+    expect(screen.getByRole("group", { name: "Excuse Test" })).toBeTruthy();
+    fireEvent.click(excuse);
+    expect(excuse.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("group", { name: "Excuse Test" })).toBeNull();
+    expect(excuse.closest(".docr-card")?.className).toBe("docr-card");
+  });
+
+  it("extends by a pick or Other's days with a reason, says the new due date, and tells nobody", async () => {
+    const time = clock();
+    try {
+      vi.mocked(getDocument).mockResolvedValue(owed());
+      const { onOpen } = page(false, { queue: [row(), sam()] });
+      await screen.findByRole("region", { name: "More options" });
+      expect(dockLine()).toBe("Nothing to review · Extend the deadline or excuse Test below");
+      fireEvent.click(head(/^Extend deadline/));
+      const panel = screen.getByRole("group", { name: "Extend deadline" });
+      const add = within(panel).getByRole("group", { name: "Add time" });
+      expect(
+        within(add)
+          .getAllByRole("button")
+          .map((pick) => [pick.textContent, pick.getAttribute("aria-pressed")]),
+      ).toEqual([
+        ["+3 days", "false"],
+        ["+7 days", "false"],
+        ["+14 days", "false"],
+        ["Other", "false"],
+      ]);
+      expect(panel.querySelector(".docr-due")?.textContent).toBe(`Due now: ${day(deadline)}`);
+      expect(dockLine()).toBe("Choose how much time to add");
+      expect(save().getAttribute("aria-disabled")).toBe("true");
+      const seven = within(add).getByRole("button", { name: "+7 days" });
+      fireEvent.click(seven);
+      expect(seven.getAttribute("aria-pressed")).toBe("true");
+      expect(panel.querySelector(".docr-due")?.textContent).toBe(`New due date: ${day(later(7))}`);
+      expect(dockLine()).toBe("Add a reason Test will see");
+      // The chosen one pressed again takes it back.
+      fireEvent.click(seven);
+      expect(seven.getAttribute("aria-pressed")).toBe("false");
+      expect(dockLine()).toBe("Choose how much time to add");
+      fireEvent.click(within(add).getByRole("button", { name: "Other" }));
+      const other = within(panel).getByLabelText("Days to add") as HTMLInputElement;
+      expect(document.activeElement).toBe(other);
+      expect([other.inputMode, other.maxLength]).toEqual(["numeric", 4]);
+      const hint = document.getElementById(other.getAttribute("aria-describedby")!)!;
+      expect([hint.textContent, hint.className]).toEqual(["1 to 3,650", "docr-hint"]);
+      fireEvent.change(other, { target: { value: "0" } });
+      expect(dockLine()).toBe("Enter 1 to 3,650 days");
+      expect(hint.className).toBe("docr-hint is-bad");
+      fireEvent.change(other, { target: { value: "5" } });
+      const reason = within(panel).getByLabelText("Reason") as HTMLTextAreaElement;
+      expect([reason.maxLength, reason.placeholder, reason.getAttribute("aria-required")]).toEqual([
+        500,
+        "Why Test needs more time",
+        "true",
+      ]);
+      fireEvent.change(reason, { target: { value: "Clinic closed this week" } });
+      expect(dockLine()).toBe(`Save moves the due date to ${day(later(5))}`);
+      const after = owed(2);
+      after.obligation.deadline_at = later(5);
+      vi.mocked(getDocument).mockResolvedValue(after);
+      time.tick(450);
+      fireEvent.click(save());
+      await waitFor(() =>
+        expect(extendDocumentDeadline).toHaveBeenCalledWith(manager, "requirement", {
+          revision: 1,
+          additional_days: 5,
+          reason: "Clinic closed this week",
+        }),
+      );
+      await waitFor(() => expect(green().textContent).toBe("Next: Sam Lee"));
+      // K1 decision 15: an extension sends no notice.
+      expect(dockLine()).toBe(`Deadline extended 5 days · New due date ${day(later(5))}.`);
+      expect(document.activeElement).toBe(green());
+      expect(screen.queryByRole("group", { name: "Extend deadline" })).toBeNull();
+      expect(head(/^Extend deadline/).textContent).toBe(`Extend deadline Due ${day(later(5))}`);
+      time.tick(450);
+      fireEvent.click(green());
+      expect(onOpen).toHaveBeenCalledExactlyOnceWith("second");
+    } finally {
+      time.restore();
+    }
+  });
+
+  it("turns the file controls off while a panel is open, saying so, with its own Cancel", async () => {
+    page();
+    await screen.findByRole("region", { name: "More options" });
+    // K1 decision 1: no extension on a document waiting for review; it can still be excused.
+    expect(within(options()).queryByRole("button", { name: /^Extend deadline/ })).toBeNull();
+    fireEvent.click(head(/^Excuse Test/));
+    const pair = screen.getByRole("group", { name: "Approve or reject certificate.pdf" });
+    const approve = within(pair).getByRole("button", { name: "Approve" });
+    expect(approve.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(approve);
+    expect(approve.getAttribute("aria-pressed")).toBe("false");
+    const off = screen.getByText("Save or cancel Excuse Test first").closest("p")!;
+    expect(within(off).getAllByRole("button").map((button) => button.textContent)).toEqual(["Cancel"]);
+    fireEvent.click(within(off).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("group", { name: "Excuse Test" })).toBeNull();
+    expect(screen.queryByText("Save or cancel Excuse Test first")).toBeNull();
+    expect(document.activeElement).toBe(head(/^Excuse Test/));
+    expect(approve.getAttribute("aria-disabled")).toBeNull();
+    fireEvent.click(approve);
+    expect(approve.getAttribute("aria-pressed")).toBe("true");
+    expect(dockLine()).toBe("Save approves it");
+  });
+
+  it("excuses the person with a reason; the green then goes on, and the person's onboarding card is refreshed", async () => {
+    const time = clock();
+    try {
+      const { invalidate, onOpen } = page(false, { queue: [row(), sam()] });
+      fireEvent.click(await screen.findByRole("button", { name: /^Excuse Test/ }));
+      const panel = screen.getByRole("group", { name: "Excuse Test" });
+      expect(panel.querySelector(".docr-info")?.textContent).toBe(
+        "What happens: Test won't be asked for this document. You can ask again later.",
+      );
+      expect(dockLine()).toBe("Add a reason to excuse Test");
+      expect(save().getAttribute("aria-disabled")).toBe("true");
+      const reason = within(panel).getByLabelText("Reason") as HTMLTextAreaElement;
+      expect([reason.placeholder, reason.maxLength, reason.getAttribute("aria-required")]).toEqual([
+        "Why Test doesn't need it",
+        500,
+        "true",
+      ]);
+      expect(document.getElementById(reason.getAttribute("aria-describedby")!)?.textContent).toBe(
+        "Kept in the history",
+      );
+      fireEvent.change(reason, { target: { value: "  Role exception " } });
+      expect(dockLine()).toBe("Save excuses Test from this document");
+      const after = detail();
+      after.obligation.revision = 2;
+      after.obligation.status = "exempt";
+      vi.mocked(getDocument).mockResolvedValue(after);
+      time.tick(450);
+      fireEvent.click(save());
+      await waitFor(() =>
+        expect(setDocumentExemption).toHaveBeenCalledWith(manager, "requirement", {
+          revision: 1,
+          exempt: true,
+          reason: "Role exception",
+        }),
+      );
+      await waitFor(() => expect(green().textContent).toBe("Next: Sam Lee"));
+      expect(dockLine()).toBe("Excused · Test won't be asked for it.");
+      expect(screen.getByText("Excused", { selector: ".rd-head .rd-chip" })).toBeTruthy();
+      expect(screen.getByText("Excused", { selector: "dt" }).nextElementSibling?.textContent).toMatch(/ · You$/);
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ["employee-onboarding-review", "workspace"] });
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ["employees", "workspace"] });
+      // Excused now: its one card asks for it again.
+      expect(heads()).toEqual(["Ask for it again Start asking for this document"]);
+      time.tick(450);
+      fireEvent.click(green());
+      expect(onOpen).toHaveBeenCalledExactlyOnceWith("second");
+    } finally {
+      time.restore();
+    }
+  });
+
+  // K1 decision 3: today's Remove exemption, as the excused document's one card.
+  it("asks again for an excused document with a reason, and says by when", async () => {
+    const time = clock();
+    try {
+      const excused = detail();
+      excused.obligation.status = "exempt";
+      vi.mocked(getDocument).mockResolvedValue(excused);
+      page();
+      await screen.findByRole("region", { name: "More options" });
+      expect(heads()).toEqual(["Ask for it again Start asking for this document"]);
+      fireEvent.click(head(/^Ask for it again/));
+      const panel = screen.getByRole("group", { name: "Ask for it again" });
+      expect(panel.querySelector(".docr-info")?.textContent).toBe(
+        "What happens: Test is asked for this document again. If they still need it, the full time to send it starts again. A valid approved copy stays on file.",
+      );
+      expect(dockLine()).toBe("Add a reason to ask Test again");
+      fireEvent.change(within(panel).getByLabelText("Reason"), { target: { value: "Back on the line" } });
+      expect(dockLine()).toBe("Save asks Test for this document again");
+      vi.mocked(getDocument).mockResolvedValue(owed(2));
+      time.tick(450);
+      fireEvent.click(save());
+      await waitFor(() =>
+        expect(setDocumentExemption).toHaveBeenCalledWith(manager, "requirement", {
+          revision: 1,
+          exempt: false,
+          reason: "Back on the line",
+        }),
+      );
+      await waitFor(() => expect(green().textContent).toBe("Close"));
+      expect(dockLine()).toBe(`Asked again · Test needs to send it by ${day(deadline)}. All caught up.`);
+      expect(screen.getByText("Missing", { selector: ".rd-head .rd-chip" })).toBeTruthy();
+    } finally {
+      time.restore();
+    }
+  });
+
+  it("offers no card to excuse a policy to sign, and no options to a manager who may only read", async () => {
+    const policy = owed();
+    policy.obligation.kind = "acknowledgement";
+    policy.policy = {
+      content_text: "Be kind.",
+      content_digest: "a".repeat(64),
+      intent_statement: "I have read it",
+      can_withdraw: false,
+      history: [],
+      evidence: null,
+    };
+    vi.mocked(getDocument).mockResolvedValue(policy);
+    const { reopen } = page();
+    await screen.findByText("Be kind.");
+    expect(heads()).toEqual([`Extend deadline Due ${day(deadline)}`]);
+    vi.mocked(getDocument).mockResolvedValue(owed());
+    reopen().unmount();
+    page(false, { canReview: false });
+    await screen.findByText("Nothing sent yet");
+    expect(screen.queryByRole("region", { name: "More options" })).toBeNull();
+  });
+
+  it("closes an open panel on Escape, then the drawer", async () => {
+    vi.mocked(getDocument).mockResolvedValue(owed());
+    const { onClose } = page();
+    const dialog = await screen.findByRole("dialog", { name: /Safety certificate/ });
+    fireEvent.click(await screen.findByRole("button", { name: /^Extend deadline/ }));
+    const panel = screen.getByRole("group", { name: "Extend deadline" });
+    fireEvent.keyDown(within(panel).getByRole("button", { name: "+3 days" }), { key: "Escape" });
+    expect(screen.queryByRole("group", { name: "Extend deadline" })).toBeNull();
+    expect(document.activeElement).toBe(head(/^Extend deadline/));
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  // K1 decision 5: what was typed in a panel stays with its document while the page is open.
+  it("keeps the open panel, its pick, Other's days and its reason with the document across a move and a close", async () => {
+    vi.mocked(getDocument).mockImplementation(async (_audience, id) => (id === "second" ? second() : owed()));
+    const { show, reopen, onClose } = page(false, { queue: [row(), sam()], sitting: createReviewSitting() });
+    fireEvent.click(await screen.findByRole("button", { name: /^Extend deadline/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Other" }));
+    fireEvent.change(screen.getByLabelText("Days to add"), { target: { value: "9" } });
+    fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Clinic closed" } });
+    const typed = () => ({
+      open: head(/^Extend deadline/).getAttribute("aria-expanded"),
+      other: screen.getByRole("button", { name: "Other" }).getAttribute("aria-pressed"),
+      days: (screen.getByLabelText("Days to add") as HTMLInputElement).value,
+      reason: (screen.getByLabelText("Reason") as HTMLTextAreaElement).value,
+    });
+    const kept = { open: "true", other: "true", days: "9", reason: "Clinic closed" };
+    expect(typed()).toEqual(kept);
+    show("second");
+    await screen.findByRole("dialog", { name: "Sam Lee · Food handler card" });
+    await waitFor(() => expect(screen.queryByLabelText("Days to add")).toBeNull());
+    expect(screen.getByRole("button", { name: /^Excuse Sam/ }).getAttribute("aria-expanded")).toBe("false");
+    show("requirement");
+    await waitFor(() => expect(typed()).toEqual(kept));
+    fireEvent.click(screen.getByRole("button", { name: "Close details" }));
+    expect(onClose).toHaveBeenCalledOnce();
+    reopen();
+    await waitFor(() => expect(typed()).toEqual(kept));
+    expect(extendDocumentDeadline).not.toHaveBeenCalled();
   });
 });

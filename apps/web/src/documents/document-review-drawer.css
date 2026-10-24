@@ -534,6 +534,234 @@
   background: var(--theme-surface-muted);
 }
 
+/* While a More options panel is open the file controls wait (one change per Save): dimmed, with a line under the
+   files saying why and its own Cancel at the right end (mockup-spec 8.5). */
+.catalog-drawer.document-review-drawer :is(.docr-db, .docr-chips button, .docr-seg button, .docr-textbtn)[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.catalog-drawer.document-review-drawer .docr-why input.is-off {
+  opacity: 0.5;
+}
+.catalog-drawer.document-review-drawer .docr-offnote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: var(--theme-muted-strong);
+}
+.catalog-drawer.document-review-drawer .docr-offnote-icon {
+  flex: none;
+}
+.catalog-drawer.document-review-drawer .docr-offnote-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalog-drawer.document-review-drawer .docr-offnote .docr-textbtn {
+  flex: none;
+  margin-left: auto;
+}
+
+/* More options (mockup-spec 8): two cards 8 px apart, each with the control edge (3:1) and its own 44 px head: a
+   radio-like ring, the icon, the label, what it says on the right, the chevron. The open card is plainly selected: a
+   2 px accent edge all round (its 1 px edge in the accent plus a 1 px outline just inside it, so nothing moves), the
+   head on the accent's soft tone, the ring filled (a dot), the label bold, the chevron up; its panel opens inside. */
+.catalog-drawer.document-review-drawer .docr-cards {
+  display: grid;
+  gap: 8px;
+}
+.catalog-drawer.document-review-drawer .docr-card {
+  scroll-margin-block: 12px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 10px;
+  background: var(--theme-surface);
+}
+.catalog-drawer.document-review-drawer .docr-card.is-open {
+  border-color: var(--theme-accent);
+  outline: 1px solid var(--theme-accent);
+  outline-offset: -2px;
+}
+/* 8 px on the right: the chevron's stroke sits 4 px inside its 16 px box, so it ends 12 px in, as the ring starts. */
+.catalog-drawer.document-review-drawer .docr-card-head {
+  display: grid;
+  grid-template-columns: 18px 18px auto minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 8px 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+.catalog-drawer.document-review-drawer .docr-card-head:focus-visible {
+  outline-offset: -2px;
+}
+.catalog-drawer.document-review-drawer .docr-card.is-open > .docr-card-head {
+  border-radius: 9px 9px 0 0;
+  background: var(--theme-accent-soft);
+  font-weight: 750;
+}
+@media (hover: hover) {
+  .catalog-drawer.document-review-drawer .docr-card:not(.is-open) > .docr-card-head:not(:disabled):hover {
+    background: var(--theme-surface-soft);
+  }
+  .catalog-drawer.document-review-drawer .docr-card.is-open > .docr-card-head:not(:disabled):hover {
+    background: color-mix(in srgb, var(--theme-accent) 9%, var(--theme-accent-soft));
+  }
+}
+.catalog-drawer.document-review-drawer .docr-card-head:disabled {
+  cursor: default;
+}
+.catalog-drawer.document-review-drawer .docr-radio {
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--theme-border-control);
+  border-radius: 50%;
+  background: var(--theme-surface);
+}
+.catalog-drawer.document-review-drawer .docr-card.is-open .docr-radio {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  box-shadow: inset 0 0 0 3px var(--theme-surface);
+}
+.catalog-drawer.document-review-drawer :is(.docr-card-icon, .docr-card-chevron) {
+  display: flex;
+  color: var(--theme-muted-strong);
+}
+.catalog-drawer.document-review-drawer .docr-card.is-open :is(.docr-card-icon, .docr-card-chevron) {
+  color: var(--theme-accent-deep);
+}
+.catalog-drawer.document-review-drawer .docr-card-label {
+  white-space: nowrap;
+}
+.catalog-drawer.document-review-drawer .docr-card-aside {
+  justify-self: end;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.catalog-drawer.document-review-drawer .docr-card.is-open .docr-card-aside {
+  color: var(--theme-text-secondary);
+}
+.catalog-drawer.document-review-drawer .docr-card-chevron {
+  transition: transform 150ms ease-out;
+}
+.catalog-drawer.document-review-drawer .docr-card-head[aria-expanded="true"] .docr-card-chevron {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalog-drawer.document-review-drawer .docr-card-chevron {
+    transition: none;
+  }
+}
+/* A panel: Add time, the date it gives, the reason and Cancel; or what happens, the reason and Cancel. */
+.catalog-drawer.document-review-drawer .docr-panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  scroll-margin-bottom: 12px;
+}
+.catalog-drawer.document-review-drawer .docr-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.catalog-drawer.document-review-drawer .docr-field > span:first-child {
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 18px;
+}
+.catalog-drawer.document-review-drawer .docr-hint {
+  color: var(--theme-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.catalog-drawer.document-review-drawer .docr-hint.is-bad {
+  color: var(--theme-warning-text);
+  font-weight: 650;
+}
+.catalog-drawer.document-review-drawer .docr-field :is(input, textarea) {
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 14px;
+}
+.catalog-drawer.document-review-drawer .docr-field textarea {
+  min-height: 60px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.catalog-drawer.document-review-drawer .docr-field :is(input, textarea)::placeholder {
+  color: var(--theme-muted);
+}
+.catalog-drawer.document-review-drawer .docr-seg-fill {
+  display: flex;
+  width: 100%;
+}
+.catalog-drawer.document-review-drawer .docr-seg-fill button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.catalog-drawer.document-review-drawer .docr-due {
+  margin: 0;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+  line-height: 20px;
+}
+.catalog-drawer.document-review-drawer .docr-due b {
+  color: var(--theme-text);
+  font-weight: 650;
+}
+.catalog-drawer.document-review-drawer .docr-info {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-body);
+  font-size: 13px;
+  line-height: 20px;
+}
+.catalog-drawer.document-review-drawer .docr-info b {
+  color: var(--theme-text);
+  font-weight: 650;
+}
+.catalog-drawer.document-review-drawer .docr-panel-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+}
+/* The owner's standing excuse, said instead of a card (BL-834). */
+.catalog-drawer.document-review-drawer .docr-owner-note {
+  margin: 0;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+  line-height: 20px;
+}
+
 /* History keeps the earlier versions, each with its files as decided. */
 .catalog-drawer.document-review-drawer .docr-older {
   display: grid;
@@ -884,6 +1112,20 @@
     position: absolute;
     inset: -6px 0;
   }
+  /* More options: 48 px heads; the fields at 44 px and 16 px (no zoom); Add time's four share the width. */
+  .catalog-drawer.document-review-drawer .docr-card-head {
+    min-height: 48px;
+  }
+  .catalog-drawer.document-review-drawer .docr-field :is(input, textarea) {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .catalog-drawer.document-review-drawer .docr-seg-fill button {
+    padding: 0 4px;
+  }
+  .catalog-drawer.document-review-drawer .docr-info {
+    padding: 12px;
+  }
   /* The document time zone kept from today's drawer (K1 decision 12): its choice and its button at 44 px. */
   .catalog-drawer.document-review-drawer .docr-zone :is(select, .nf-button) {
     min-height: 44px;
@@ -909,6 +1151,9 @@
 /* Touch has no hover: a control drawn under the finger after a tap must not look pressed. */
 @media (hover: none) {
   .catalog-drawer.document-review-drawer :is(.docr-strip-btn, .docr-strip .rd-close, .docr-textbtn):hover {
+    background: none;
+  }
+  .catalog-drawer.document-review-drawer .docr-card:not(.is-open) > .docr-card-head:hover {
     background: none;
   }
   .catalog-drawer.document-review-drawer .rd .rd-foot .nf-button.docr-green:hover {
