@@ -72,11 +72,24 @@ function kindIcon(item: Pick<NotificationItem, "type" | "area" | "data">): TileI
   return areaLooks[item.area].icon;
 }
 
-/** A row's tile: what it is about, or how a decision went; a request waiting for this person's answer is amber. */
+/**
+ * The requests that wait on the reader outside Approvals (variant A, frame.js fmtReq): amber like the rest, as in
+ * Needs you (S-258). An extra shift on offer to the pool is news, not a request: it keeps its area's green.
+ */
+const waitsOnReader = new Set([
+  "shift_changes.cover_asked",
+  "shift_changes.swap_offered",
+  "people.ownership_transfer_requested",
+  "people.no_location",
+  "schedule.shifts_unassigned",
+  "schedule.week_not_published",
+]);
+
+/** A row's tile: what it is about, or how a decision went; a request waiting on this person is amber. */
 export function rowLook(item: Pick<NotificationItem, "type" | "area" | "topic" | "data">): { icon: TileIcon; tone: Tone } {
   const outcome = item.data.outcome;
   if (item.type.endsWith(".decided") && typeof outcome === "string" && Object.hasOwn(outcomeLooks, outcome)) return outcomeLooks[outcome]!;
-  return { icon: kindIcon(item), tone: item.topic === "approvals" ? "amber" : areaLooks[item.area].tone };
+  return { icon: kindIcon(item), tone: item.topic === "approvals" || waitsOnReader.has(item.type) ? "amber" : areaLooks[item.area].tone };
 }
 
 function startOfDay(at: Date) {

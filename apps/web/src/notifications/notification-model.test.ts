@@ -47,7 +47,8 @@ describe("isNewNotice", () => {
 });
 
 // S-251, S-258, S-261: a row's tile is the kind of thing it is about, the same icons Requests uses; a
-// decision shows its outcome. A request waiting for the reader's decision is amber.
+// decision shows its outcome. A request waiting on the reader is amber, in Approvals or not (variant A, frame.js
+// fmtReq): the same colour as in Needs you.
 describe("rowLook", () => {
   const look = (type: string, area: NotificationArea, topic: string, data: Record<string, unknown> = {}) =>
     rowLook(notice({ type, area, topic, data }));
@@ -63,14 +64,15 @@ describe("rowLook", () => {
     expect(look("shift_changes.approval_needed", "shift_changes", "approvals", { kind: "swap", audience: "direct" })).toEqual({ icon: "swap", tone: "amber" });
     expect(look("shift_changes.approval_needed", "shift_changes", "approvals", { kind: "cover", audience: "eligible_pool" })).toEqual({ icon: "pickup", tone: "amber" });
     expect(look("shift_changes.approval_reminder", "shift_changes", "approvals", { kind: "cover", audience: "direct" })).toEqual({ icon: "cover", tone: "amber" });
-    expect(look("shift_changes.swap_offered", "shift_changes", "shift_changes", { kind: "swap", audience: "direct" }).icon).toBe("swap");
+    expect(look("shift_changes.swap_offered", "shift_changes", "shift_changes", { kind: "swap", audience: "direct" })).toEqual({ icon: "swap", tone: "amber" });
+    // An extra shift on offer is news, not a request to answer: it stays green.
     expect(look("shift_changes.open_shift_available", "shift_changes", "open_shifts", { kind: "cover", audience: "eligible_pool" })).toEqual({ icon: "pickup", tone: "green" });
     expect(look("shift_changes.open_shift_available", "shift_changes", "open_shifts").icon).toBe("pickup");
   });
 
   // S-261 (Mert 2026-10-24, "Soru işareti olarak 3. Seçeneği kullan"): a shift someone asks YOU to take.
-  it("draws a cover asked of the reader as a question", () => {
-    expect(look("shift_changes.cover_asked", "shift_changes", "shift_changes", { kind: "cover", audience: "direct" }).icon).toBe("asked");
+  it("draws a cover asked of the reader as a question, amber while it waits on them", () => {
+    expect(look("shift_changes.cover_asked", "shift_changes", "shift_changes", { kind: "cover", audience: "direct" })).toEqual({ icon: "asked", tone: "amber" });
   });
 
   it("draws a decision by how it went", () => {
@@ -88,13 +90,15 @@ describe("rowLook", () => {
     expect(look("people.joined", "people", "team")).toEqual({ icon: "joined", tone: "blue" });
     expect(look("people.onboarding_review_needed", "people", "approvals")).toEqual({ icon: "joined", tone: "amber" });
     expect(look("people.preferred_name_requested", "people", "approvals")).toEqual({ icon: "name", tone: "amber" });
-    expect(look("people.no_location", "people", "needs_attention").icon).toBe("no-location");
-    expect(look("people.ownership_transfer_requested", "people", "workspace").icon).toBe("owner");
-    expect(look("people.ownership_transfer_answered", "people", "workspace", { outcome: "declined" }).icon).toBe("owner");
+    expect(look("people.no_location", "people", "needs_attention")).toEqual({ icon: "no-location", tone: "amber" });
+    expect(look("people.ownership_transfer_requested", "people", "workspace")).toEqual({ icon: "owner", tone: "amber" });
+    expect(look("people.ownership_transfer_answered", "people", "workspace", { outcome: "declined" })).toEqual({ icon: "owner", tone: "blue" });
     expect(look("documents.review_needed", "documents", "approvals")).toEqual({ icon: "file", tone: "amber" });
     expect(look("documents.expiring", "documents", "documents")).toEqual({ icon: "file", tone: "blue" });
     expect(look("schedule.published", "schedule", "my_schedule")).toEqual({ icon: "published", tone: "green" });
-    expect(look("schedule.shifts_unassigned", "schedule", "needs_attention")).toEqual({ icon: "calendar", tone: "green" });
+    expect(look("schedule.shifts_unassigned", "schedule", "needs_attention")).toEqual({ icon: "calendar", tone: "amber" });
+    expect(look("schedule.week_not_published", "schedule", "needs_attention")).toEqual({ icon: "calendar", tone: "amber" });
+    expect(look("schedule.shift_changed", "schedule", "my_schedule")).toEqual({ icon: "calendar", tone: "green" });
   });
 
   it("keeps the area's icon for everything else", () => {

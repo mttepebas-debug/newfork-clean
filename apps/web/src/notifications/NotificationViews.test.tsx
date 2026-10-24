@@ -430,6 +430,8 @@ describe("a row", () => {
     expect((await tile(tom)).className).toContain("ni-amber");
     expect((await tile(tom)).querySelector("svg")!.getAttribute("class")).toContain("lucide-calendar-x");
     expect((await tile(/^(Unread: )?Ali P\. asks you to take a shift$/)).querySelector("svg")!.getAttribute("class")).toContain("lucide-circle-help");
+    // Waiting on the reader outside Approvals, amber all the same.
+    expect((await tile(/^(Unread: )?Ali P\. asks you to take a shift$/)).className).toContain("ni-amber");
     expect((await tile(/^(Unread: )?Can K\. wants to cover for Ali P\.$/)).querySelector("svg")!.getAttribute("class")).toContain("steps-in");
   });
 });
