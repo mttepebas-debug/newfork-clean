@@ -476,6 +476,62 @@ describe("employee directory routes", () => {
     await app.close();
   });
 
+  // KARARLAR S-256: the list's tabs are All · Needs you · Joining · Active.
+  // Needs you is who sent their onboarding in (needs_attention); Joining is
+  // everybody on the way in: not invited (an invitation that ran out too),
+  // invited, onboarding, and asked for changes. A database from before the
+  // changes_requested status says needs_attention for them; nothing breaks.
+  describe("the list's tabs (S-256)", () => {
+    const person = (index: number, display_status: string) => ({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      workspace_id: workspaceId, employee_code: `E-${String(1000 + index)}`,
+      first_name: "Person", last_name: `No ${index}`, preferred_name: "", display_name: `Person No ${index}`,
+      invitation_email: null, start_date: null, locations: [], primary_job_id: null, primary_job_name: null, job_count: 0,
+      management_access: false, employee_access: false, display_status, archived_at: null, revision: 1,
+    });
+    const everybody = ["active", "needs_attention", "changes_requested", "onboarding", "invited", "not_invited"].map(
+      (status, index) => person(index, status),
+    );
+    const listed = async (tab: string) => {
+      const rpc = vi.fn(async (_name: string, args: { status_filter: string; page_offset: number }) => ({
+        data: args.page_offset > 0 ? []
+          : everybody.filter((row) => args.status_filter === "all" || row.display_status === args.status_filter),
+        error: null,
+      }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => context },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({
+        method: "GET",
+        url: `/v1/workspaces/${workspaceId}/employees?status=${tab}`,
+        headers: { authorization: "Bearer valid-token" },
+      });
+      await app.close();
+      expect(response.statusCode, response.body).toBe(200);
+      return {
+        statuses: response.json().map((row: { display_status: string }) => row.display_status),
+        filters: [...new Set(rpc.mock.calls.map(([, args]) => args.status_filter))],
+      };
+    };
+
+    it("Needs you asks the database for who sent their onboarding in", async () => {
+      expect(await listed("needs_you")).toEqual({ statuses: ["needs_attention"], filters: ["needs_attention"] });
+    });
+
+    it("Joining lists everybody on the way in, in one read of the list", async () => {
+      expect(await listed("joining")).toEqual({
+        statuses: ["changes_requested", "onboarding", "invited", "not_invited"],
+        filters: ["all"],
+      });
+    });
+
+    it("keeps one status as it was asked for (Active, an old link's Invited)", async () => {
+      expect(await listed("active")).toEqual({ statuses: ["active"], filters: ["active"] });
+      expect(await listed("invited")).toEqual({ statuses: ["invited"], filters: ["invited"] });
+    });
+  });
+
   it("hands a save with no primary job to the database, which decides (BL-218 .3b)", async () => {
     const save = vi.fn(async () => employeeId);
     const app = buildApp({

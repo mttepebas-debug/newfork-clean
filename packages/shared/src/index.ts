@@ -2481,10 +2481,17 @@ export const employeeSectionSchema = z.enum([
 ]);
 export type EmployeeSection = z.infer<typeof employeeSectionSchema>;
 
+/**
+ * A row's status on the Employees list. `needs_attention`: they sent their
+ * onboarding in and wait for the manager's Approve (Needs you, KARARLAR
+ * S-256). `changes_requested`: the manager asked them for changes; their
+ * move (Joining). A database from before S-256 says `needs_attention` for both.
+ */
 export const employeeDisplayStatusSchema = z.enum([
   "not_invited",
   "invited",
   "onboarding",
+  "changes_requested",
   "needs_attention",
   "active",
   "archived",

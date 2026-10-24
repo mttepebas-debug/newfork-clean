@@ -18,6 +18,7 @@ import {
   pendingPreferredNameFromRow,
   preferredNameOutcomeSchema,
   type EmployeeDetail,
+  type EmployeeDisplayStatus,
   type EmployeeInput,
   type EmployeeLocationRemoval,
   type EmployeeSummary,
@@ -187,6 +188,19 @@ const terminationResultSchema = z
     idempotentReplay: row.idempotent_replay,
   }));
 
+// The list's tabs (KARARLAR S-256) that are not one status of their own.
+// Needs you is who sent their onboarding in. Joining is everybody on the way
+// in: one read of the whole list, kept to those statuses here, rather than a
+// read per status; the database orders it by name already. Any other value
+// (Active, an old link's Invited) is one status, as the database matches it.
+const listTabs: Record<string, { readonly filter: string; readonly keeps?: ReadonlySet<EmployeeDisplayStatus> }> = {
+  needs_you: { filter: "needs_attention" },
+  joining: {
+    filter: "all",
+    keeps: new Set<EmployeeDisplayStatus>(["not_invited", "invited", "onboarding", "changes_requested"]),
+  },
+};
+
 export function createEmployeeDirectoryService(options: {
   url: string;
   serviceRoleKey: string;
@@ -220,6 +234,8 @@ export function createEmployeeDirectoryServiceWithClient(
     // until an empty one; one call used to stop at 100 without a word. The
     // offset follows what came back, so a smaller database cap loses nobody.
     async list(input) {
+      const tab = input.archived ? undefined : listTabs[input.status];
+      const statusFilter = input.archived ? "all" : tab ? tab.filter : input.status;
       const people: EmployeeSummary[] = [];
       for (;;) {
         const page = employeeSummarySchema.array().parse(
@@ -228,14 +244,16 @@ export function createEmployeeDirectoryServiceWithClient(
             target_workspace_id: input.workspaceId,
             include_archived: input.archived,
             search_text: input.search,
-            status_filter: input.archived ? "all" : input.status,
+            status_filter: statusFilter,
             page_limit: 200,
             page_offset: people.length,
           }),
         );
-        if (page.length === 0) return people;
+        if (page.length === 0) break;
         people.push(...page);
       }
+      const keeps = tab?.keeps;
+      return keeps ? people.filter((person) => keeps.has(person.display_status)) : people;
     },
     async get(input) {
       return employeeDetailSchema.parse(
