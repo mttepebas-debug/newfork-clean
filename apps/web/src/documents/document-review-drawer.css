@@ -1278,6 +1278,16 @@
   .catalog-drawer.document-review-drawer .docr-info {
     padding: 12px;
   }
+  /* History: every file row 44 px, and a kept file's whole row opens it (a 44 px tap). */
+  .catalog-drawer.document-review-drawer .docr-ev-file {
+    position: relative;
+    min-height: 44px;
+  }
+  .catalog-drawer.document-review-drawer button.docr-ev-fname::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
   /* The document time zone kept from today's drawer (K1 decision 12): its choice and its button at 44 px. */
   .catalog-drawer.document-review-drawer .docr-zone :is(select, .nf-button) {
     min-height: 44px;
