@@ -181,9 +181,12 @@ export function NotificationList({
   const labelledBy = `${panelId}-tab-${filter}`;
   // What this opening of the list showed as new; it stays New after the core marks it seen.
   const [fresh] = useState(() => new Set<string>());
-  // The one row left open on Read or Unread (the phone).
-  const [slid, setSlid] = useState<{ readonly id: string; readonly side: SwipeSide } | null>(null);
+  // The one row left open on Read or Unread (the phone), and whether it was unread when it opened.
+  const [slid, setSlid] = useState<{ readonly id: string; readonly side: SwipeSide; readonly unread: boolean } | null>(null);
   const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
+  // It closes once it turns read or unread (a tap that opens it, another device) or leaves the list: the action under
+  // it would be the other one.
+  if (slid && !items.some((item) => item.id === slid.id && !item.read_at === slid.unread)) setSlid(null);
   const unseen = items
     .filter((item) => !item.seen_at && !fresh.has(item.id))
     .map((item) => item.id)
@@ -278,7 +281,7 @@ export function NotificationList({
                   swipe={swipe}
                   readLeaves={filter === "unread"}
                   slid={slid?.id === item.id ? slid.side : null}
-                  onSlide={(side) => setSlid(side ? { id: item.id, side } : null)}
+                  onSlide={(side) => setSlid(side ? { id: item.id, side, unread: !item.read_at } : null)}
                   now={now}
                   timeFormat={timeFormat}
                   onOpen={() => open(item)}
@@ -368,7 +371,7 @@ function NotificationRow({
   const [whole, setWhole] = useState<string>();
   // An unread row slides to Read, a read one to Unread (S-251).
   const act = unread ? onRead : onUnread;
-  const slide = useRowSwipe({ enabled: swipe, open: slid, onOpen: onSlide, onAct: act });
+  const slide = useRowSwipe({ enabled: swipe, action: unread ? "read" : "unread", open: slid, onOpen: onSlide, onAct: act });
   const openRow = (event: MouseEvent) => {
     if (!slide.endsDrag(event)) onOpen();
   };

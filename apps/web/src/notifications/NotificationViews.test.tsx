@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -73,8 +73,12 @@ function Where() {
   return <output data-testid="where">{location.pathname + location.search}</output>;
 }
 
+/** The last mounted view's cache: a test refreshes it as the live signal or another device would. */
+let client: QueryClient;
+const refresh = () => act(() => client.invalidateQueries({ queryKey: ["notifications", w] }));
+
 function mount(ui: React.ReactNode, at = "/app/workspace") {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[at]}>
@@ -641,6 +645,61 @@ describe("on the phone, a row", () => {
     fireEvent.click(unread);
     await waitFor(() => expect(calls("/unread")).toHaveLength(1));
     expect(document.activeElement).toBe(row.closest('[role="tabpanel"]'));
+  });
+
+  // A row left open closes once it turns read or unread: the action under it would be the other one.
+  it("closes once a tap on it reads it, so Unread never shows under a row opened on Read", async () => {
+    sheet([notice({ url: null, seen_at: seenAt })]);
+    const row = await rowOf(tom);
+    const title = within(row).getByRole("button", { name: tom });
+    drag(title, 80);
+    expect(within(row).getByRole("button", { name: "Read" })).toBeTruthy();
+    // From here the core answers the row read.
+    answer({ all: feedPage([notice({ url: null, seen_at: seenAt, read_at: readAt })]) });
+    // A tap, not the click that ended the drag.
+    press(title);
+    fireEvent.pointerUp(title, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.click(title);
+    await waitFor(() => expect(calls("/read")).toHaveLength(1));
+    await waitFor(() => expect(row.className).not.toContain("is-unread"));
+    expect(slid(row)).toBe("");
+    expect(row.querySelector(".ni-under")).toBeNull();
+  });
+
+  it("closes when it turns read while open, as when another device read it", async () => {
+    sheet([notice({ seen_at: seenAt })]);
+    const row = await rowOf(tom);
+    drag(within(row).getByRole("button", { name: tom }), 80);
+    expect(within(row).getByRole("button", { name: "Read" })).toBeTruthy();
+    answer({ all: feedPage([notice({ seen_at: seenAt, read_at: readAt })]) });
+    await refresh();
+    await waitFor(() => expect(row.className).not.toContain("is-unread"));
+    expect(slid(row)).toBe("");
+    expect(row.querySelector(".ni-under")).toBeNull();
+    expect(calls("/read")).toHaveLength(0);
+    expect(calls("/unread")).toHaveLength(0);
+  });
+
+  it("drops a drag when the row turns read under the finger, so letting go past half does not mark it unread", async () => {
+    sheet([notice({ seen_at: seenAt })]);
+    const row = await rowOf(tom);
+    const title = within(row).getByRole("button", { name: tom });
+    press(title);
+    fireEvent.pointerMove(title, { pointerId: 1, clientX: 160, clientY: 100 });
+    expect(slid(row)).toBe("translateX(60px)");
+    answer({ all: feedPage([notice({ seen_at: seenAt, read_at: readAt })]) });
+    await refresh();
+    await waitFor(() => expect(row.className).not.toContain("is-unread"));
+    expect(slid(row)).toBe("");
+    fireEvent.pointerMove(title, { pointerId: 1, clientX: 320, clientY: 100 });
+    expect(slid(row)).toBe("");
+    fireEvent.pointerUp(title, { pointerId: 1, clientX: 320, clientY: 100 });
+    // The click the let-go sends does not open the row either.
+    fireEvent.click(title);
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(calls("/unread")).toHaveLength(0);
+    expect(calls("/read")).toHaveLength(0);
+    expect(screen.getByTestId("where").textContent).toBe("/app/workspace");
   });
 
   it("does not slide in the desktop panel nor on the See all page, read or unread", async () => {
