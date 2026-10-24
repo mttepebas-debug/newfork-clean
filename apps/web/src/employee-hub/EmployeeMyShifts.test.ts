@@ -39,6 +39,14 @@ describe("My shifts: what each day says", () => {
     expect(days[1]!.shifts.map((item) => item.id)).toEqual([shift.id]);
     expect(days[4]!.open).toBe(1);
   });
+
+  // Mert 2026-10-24: a week not posted yet keeps its seven days, each saying Not published; a read without the
+  // posted days (before the database sends them) counts every day as posted.
+  it("marks the days whose week isn't posted", () => {
+    const posted = weekDays({ ...model(), posted_days: ["2026-08-24", "2026-08-25"] }, "2026-08-24");
+    expect(posted.filter((day) => !day.posted).map((day) => day.date)).toEqual(["2026-08-26", "2026-08-27", "2026-08-28", "2026-08-29", "2026-08-30"]);
+    expect(weekDays(model(), "2026-08-24").every((day) => day.posted)).toBe(true);
+  });
 });
 
 describe("My shifts: the two weeks asked one by one", () => {
@@ -50,6 +58,12 @@ describe("My shifts: the two weeks asked one by one", () => {
     // A week still on its way leaves only its own days out: the switch and the other week stay (variant A).
     expect(mergedWeeks([undefined, model(["2026-08-26"])])?.leave_days).toEqual(["2026-08-26"]);
     expect(mergedWeeks([undefined, undefined])).toBeUndefined();
+  });
+
+  it("keeps both weeks' posted days, and none when a read doesn't send them", () => {
+    const week = mergedWeeks([{ ...model(), posted_days: ["2026-08-24"] }, { ...model(), posted_days: ["2026-08-31"] }]);
+    expect(week?.posted_days).toEqual(["2026-08-24", "2026-08-31"]);
+    expect(mergedWeeks([{ ...model(), posted_days: ["2026-08-24"] }, model()])?.posted_days).toBeUndefined();
   });
 });
 

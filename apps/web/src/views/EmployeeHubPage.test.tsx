@@ -570,6 +570,23 @@ describe("EmployeeHubPage", () => {
     vi.useRealTimers();
   });
 
+  // Mert 2026-10-24 ("Not published için kart yapmana gerek yok.. 7 gün alt alta yine yazsın"): a week not posted
+  // yet keeps its seven day cards, each saying Not published, never Day off.
+  it("says Not published in each day of a week not posted yet", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    const thisWeekDays = ["2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-29", "2026-08-30"];
+    renderPageWithFixture({ ...fixture, posted_days: thisWeekDays } as EmployeeHubReadModel, "/app/employee-hub/schedule?date=2026-08-31");
+
+    const nextWeek = await screen.findByRole("tabpanel", { name: "Next week" });
+    const days = [...nextWeek.querySelectorAll("[data-day]")];
+    expect(days.map((day) => day.getAttribute("data-day"))).toEqual(["2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-05", "2026-09-06"]);
+    expect(days.map((day) => day.querySelector(".ems-off")?.textContent)).toEqual(Array(7).fill("Not published"));
+    expect(nextWeek.textContent).not.toContain("Day off");
+    vi.useRealTimers();
+  });
+
   // QA 60 (Mert 2026-10-20): the day card names the shift type as Home's card does; none, nothing added.
   it("names the shift type on a My shifts day card when the shift has one", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

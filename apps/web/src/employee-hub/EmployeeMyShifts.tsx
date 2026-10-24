@@ -26,7 +26,8 @@ const longDay = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString
 
 type Model = EmployeeHubReadModel;
 
-/** The days of a week with what the list shows for each: the employee's shifts, approved time off, open shifts. */
+/** The days of a week with what the list shows for each: the employee's shifts, approved time off, open shifts,
+ *  and whether its week is posted at one of her locations (a read without posted days counts every day posted). */
 export function weekDays(model: Model, start: string, openDates: readonly string[] = []) {
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDays(start, i);
@@ -37,7 +38,8 @@ export function weekDays(model: Model, start: string, openDates: readonly string
     const timeOff = model.leave_days.includes(date);
     // Released shifts in the pool, not unassigned ones (QA 38, S-151 (3)).
     const open = openDates.filter((day) => day === date).length;
-    return { date, shifts, timeOff, open };
+    const posted = !model.posted_days || model.posted_days.includes(date);
+    return { date, shifts, timeOff, open, posted };
   });
 }
 
@@ -64,7 +66,13 @@ export function mergedWeeks(parts: (Model | undefined)[]): Model | undefined {
   const [a, b] = parts.filter((part): part is Model => Boolean(part));
   if (!a || !b) return a;
   const byId = <T extends { id: string }>(items: T[]) => [...new Map(items.map((item) => [item.id, item])).values()];
-  return { ...a, shifts: byId([...a.shifts, ...b.shifts]), leave_days: [...new Set([...a.leave_days, ...b.leave_days])].sort() };
+  const days = (x: string[], y: string[]) => [...new Set([...x, ...y])].sort();
+  return {
+    ...a,
+    shifts: byId([...a.shifts, ...b.shifts]),
+    leave_days: days(a.leave_days, b.leave_days),
+    posted_days: a.posted_days && b.posted_days ? days(a.posted_days, b.posted_days) : undefined,
+  };
 }
 
 /** The days of one week as cards. */
@@ -102,6 +110,10 @@ function DayCards({ days, today, shiftId, timeFormat }: {
             <CalendarX2 size={20} strokeWidth={1.8} aria-hidden="true" />
             <span>Time off · Approved</span>
           </div>
+        ) : !day.posted ? (
+          // A week not posted yet keeps its seven days, each saying so (Mert 2026-10-24, "Günlerin içerisinde not
+          // published yazsın"): no card for the week, and never Day off.
+          <div className="ems-off">Not published</div>
         ) : (
           <div className="ems-off">
             Day off
