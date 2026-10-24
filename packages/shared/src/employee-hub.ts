@@ -20,6 +20,10 @@ export const employeeHubShiftSchema = z.object({
   employee_name: z.string().nullable().optional(),
   /** The shift's type ("Brunch", "Dinner"); only on the person's own shifts (Daylight Home). */
   shift_type_name: z.string().nullable().optional(),
+  /** Home's week strip: the type's colour and default times (HH:MM); null when no type or no times; own shifts only. */
+  shift_type_color: z.string().nullable().optional(),
+  shift_type_start_time: timeSchema.nullable().optional(),
+  shift_type_end_time: timeSchema.nullable().optional(),
   /** A teammate's shift in a Management department job: Home's "Manager on the floor". */
   is_management: z.boolean().optional(),
 });
@@ -58,6 +62,9 @@ export const employeeHubReadModelSchema = z.object({
   team: z.array(employeeHubTeamMemberSchema),
   // The days of the range with time off the person has, old system and new alike (time off rebuild D3).
   leave_days: z.array(z.string().date()).default([]),
+  // The days of the range whose week is posted at one of the person's locations: a day with no shift there is a
+  // day off, not a schedule still to come (Home's week strip). Optional until the database sends it everywhere.
+  posted_days: z.array(z.string().date()).optional(),
 });
 export type EmployeeHubReadModel = z.infer<typeof employeeHubReadModelSchema>;
 
