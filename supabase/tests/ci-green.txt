@@ -235,6 +235,7 @@ supabase/tests/notify_people.test.sql
 supabase/tests/notify_people_access.test.sql
 supabase/tests/listed_job_one_rule.test.sql
 supabase/tests/lineup_publish.test.sql
+supabase/tests/lineup_others.test.sql
 supabase/tests/notify_lineup.test.sql
 supabase/tests/shift_exchange_release.test.sql
 supabase/tests/scheduling_settings_shift_types_rls.test.sql
