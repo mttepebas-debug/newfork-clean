@@ -34,9 +34,13 @@
   background: transparent;
   color: var(--theme-muted-strong);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.ni-icon:hover {
-  background: var(--theme-surface-muted);
+/* The header's buttons sit on the sky (S-251, Mert 2026-10-23: "Gökyüzü temasi ve bütünlüğü bozuluyor"):
+   no grey plate on hover or tap; only the icon darkens. */
+.ni-icon:hover,
+.ni-icon:active {
+  background: transparent;
   color: var(--theme-text);
 }
 .ni-link:focus-visible,
@@ -174,28 +178,59 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+/* S-251 (variant A): every row is exactly two one-line lines and the same height (64 px; 68 px on the
+   phone), with no buttons in it but the unread dot; the short time sits at the right of the second line.
+   A long older notice is cut at the end of each line. */
 .ni-row {
   position: relative;
-  display: grid;
-  grid-template-columns: 10px 32px minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 10px 12px 12px 8px;
-  border-bottom: 1px solid var(--theme-border-subtle);
+  overflow: hidden;
 }
-.ni-row:hover {
+.ni-swipe {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px 32px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  height: 64px;
+  padding: 0 14px 0 8px;
+  background: var(--theme-surface);
+}
+.ni-row:hover .ni-swipe {
   background: var(--theme-surface-soft);
 }
-.ni-row.is-wide {
+.ni-row.is-wide .ni-swipe {
   padding-left: 14px;
 }
+/* The unread dot is the row's Mark as read; a read row keeps the same space empty. */
 .ni-dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 24px;
+  height: 32px;
+  margin-left: -7px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  background: transparent;
+}
+button.ni-dot {
+  border-radius: 6px;
+  cursor: pointer;
+}
+button.ni-dot::before {
   width: 8px;
   height: 8px;
-  margin-top: 12px;
   border-radius: 50%;
-}
-.ni-row.is-unread .ni-dot {
   background: var(--theme-accent);
+  content: "";
+}
+button.ni-dot:hover::before {
+  box-shadow: 0 0 0 4px var(--theme-selected);
+}
+button.ni-dot:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 0;
 }
 .ni-tile {
   display: grid;
@@ -211,26 +246,31 @@
 .ni-slate { background: var(--theme-surface-muted); color: var(--theme-muted-strong); }
 .ni-row-text {
   display: grid;
+  grid-template-rows: 20px 20px;
   min-width: 0;
-  gap: 2px;
 }
 .ni-row-title {
-  justify-self: start;
+  display: block;
+  min-width: 0;
   padding: 0;
+  overflow: hidden;
   border: 0;
   background: none;
   color: var(--theme-text);
   font: inherit;
   font-size: 14px;
   font-weight: 550;
+  line-height: 20px;
   text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 }
 .ni-row-title:disabled {
   cursor: default;
 }
-/* S-247: the title's button covers the row, so a click or tap anywhere on it opens the notice;
-   Review and the row's tools sit above it. The focus ring goes round the whole row. */
+/* S-247: the title's button covers the row, so a click or tap anywhere on it opens the notice; the unread
+   dot sits above it. The focus ring goes round the whole row. */
 .ni-row-title::after {
   position: absolute;
   inset: 0;
@@ -249,97 +289,57 @@
 .ni-row:has(.ni-row-title:not(:disabled)) {
   cursor: pointer;
 }
-.ni-row-actions,
-.ni-row-tools {
-  position: relative;
-  z-index: 1;
-  /* Only their buttons sit above the row: the empty part of these strips still opens the notice. */
-  pointer-events: none;
-}
-.ni-row-actions > *,
-.ni-row-tools > * {
-  pointer-events: auto;
-}
 .ni-row.is-unread .ni-row-title {
   font-weight: 750;
 }
 .ni-row:hover .ni-row-title:not(:disabled) {
   text-decoration: underline;
 }
-/* S-248: a notice is short; an older one that still carries every detail stops at two lines (the page it
-   opens shows the rest). */
-.ni-row-body {
-  display: -webkit-box;
-  overflow: hidden;
+.ni-row-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: baseline;
+  min-width: 0;
+  height: 20px;
+}
+.ni-row-sub {
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: var(--theme-text-secondary);
   font-size: 13px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.ni-row-meta {
-  margin: 2px 0 0;
+/* A closed card says how it closed, muted; its title stays as it was. */
+.ni-row-sub.is-closed {
+  color: var(--theme-muted-strong);
+}
+.ni-row-line time {
   color: var(--theme-muted-strong);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  white-space: nowrap;
 }
-.ni-need {
-  color: var(--theme-warning);
-  font-weight: 700;
-}
-.ni-row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-/* Row buttons are the small size of the design (32 px), green and white roles as everywhere. */
-.ni-row-actions .nf-button {
-  min-height: 32px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 650;
-}
-/* Decline is white like Requests' Deny; armed for its second click it turns red. */
-.ni-row-actions .nf-button.ni-decline.is-armed {
-  border-color: var(--theme-danger-strong);
-  background: var(--theme-danger-strong);
-  color: var(--theme-surface);
-}
-.ni-row-tools {
-  display: flex;
-  opacity: 0;
-  transition: opacity 120ms;
-}
-.ni-row:hover .ni-row-tools,
-.ni-row:focus-within .ni-row-tools,
-.ni-sheet .ni-row-tools {
-  opacity: 1;
-}
-/* A touch screen has no hover: the row's tools stay in sight. */
-@media (hover: none) {
-  .ni-row-tools {
-    opacity: 1;
+/* With a mouse the time sits above the row's button, so its full date shows on hover (a click on it still
+   opens the notice). */
+@media (hover: hover) {
+  .ni-row-line time {
+    position: relative;
+    z-index: 1;
   }
 }
-.ni-row.is-resolved .ni-row-title,
-.ni-row.is-resolved .ni-row-body {
-  color: var(--theme-muted-strong);
+/* The phone's rows are 68 px, and its unread dot is a 44 px target. */
+.ni-sheet .ni-swipe {
+  height: 68px;
 }
-.ni-chip {
-  display: inline-flex;
-  justify-self: start;
-  align-items: center;
-  gap: 5px;
-  margin-top: 6px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--theme-surface-muted);
-  color: var(--theme-muted-strong);
-  font-size: 12px;
-  font-weight: 650;
+.ni-sheet .ni-dot {
+  width: 44px;
+  height: 44px;
+  margin-left: -17px;
 }
 .ni-empty {
   display: grid;
@@ -495,10 +495,6 @@
 }
 .ni-sheet-said.is-error {
   color: var(--theme-danger);
-}
-.ni-sheet .ni-row-actions .nf-button {
-  min-height: 44px;
-  padding: 0 16px;
 }
 
 /* The left menu's Notifications row opens the panel; collapsed, a dot says something is new. */

@@ -1,34 +1,57 @@
 import type { NotificationFilter, NotificationItem } from "@newfork/shared";
 import {
+  ArrowLeftRight,
   BellOff,
   Building2,
+  CalendarCheck,
   CalendarDays,
-  CalendarOff,
-  Check,
+  CalendarX,
   CircleCheck,
+  CircleHelp,
+  CircleX,
   ClipboardCheck,
+  Crown,
   FileText,
+  Hand,
+  MapPinOff,
   Megaphone,
   Repeat2,
   ShieldCheck,
+  TimerOff,
+  Undo2,
+  UserPen,
+  UserPlus,
   Users,
-  type LucideIcon,
 } from "lucide-react";
-import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { resolveTimeInputFormat, type TimeFormat } from "../schedule/timeInput";
 import { LinesOutline, LoadError } from "../shell/LoadState";
-import { arrivalLabel, arrivalTitle, emptyTitle, isNewNotice, resolvedLine, rowLook, type TileIcon } from "./notification-model";
+import { StepsIn } from "../shell/StepsIn";
+import { arrivalLabel, arrivalTitle, emptyTitle, isNewNotice, rowLines, rowLook, type TileIcon } from "./notification-model";
 import { useMarkNotificationsRead, useMarkNotificationsSeen, useNotificationCounts, useNotificationFeed } from "./notifications-data";
 import "./notifications.css";
 import { useViewAddress } from "../shell/view-address";
 
-const icons: Record<TileIcon, LucideIcon> = {
-  clipboard: ClipboardCheck,
+const icons: Record<TileIcon, ComponentType<{ size?: number }>> = {
+  "time-off": CalendarX,
+  swap: ArrowLeftRight,
+  pickup: Hand,
+  cover: StepsIn,
+  asked: CircleHelp,
+  exchange: Repeat2,
+  approved: CircleCheck,
+  declined: CircleX,
+  revoked: Undo2,
+  expired: TimerOff,
+  joined: UserPlus,
+  name: UserPen,
+  "no-location": MapPinOff,
+  owner: Crown,
+  published: CalendarCheck,
   calendar: CalendarDays,
-  swap: Repeat2,
-  "time-off": CalendarOff,
+  clipboard: ClipboardCheck,
   users: Users,
   file: FileText,
   megaphone: Megaphone,
@@ -112,7 +135,7 @@ function useMinuteClock(fixed: Date | undefined): Date {
 /**
  * The list itself, newest first: what came since the list was last opened under New, the rest under
  * Earlier (S-247 (2)). Showing the list marks it seen; a row stays where it is while the list is open.
- * A row opens its link and reads it; an open request also offers Review.
+ * A row opens its link and reads it; its unread dot reads it.
  */
 export function NotificationList({
   workspaceId,
@@ -260,6 +283,14 @@ export function NotificationList({
   );
 }
 
+/** Whether a line is cut at its end. */
+const isCut = (line: HTMLElement | null) => Boolean(line && line.scrollWidth > line.clientWidth);
+
+/**
+ * One notice in exactly two one-line lines (S-251, variant A): the title, then the body or how the card
+ * closed, with the short arrival time at its right. Both lines stay whole for a screen reader (the second
+ * describes the row's button) and on hover when one is cut.
+ */
 function NotificationRow({
   item,
   viewerId,
@@ -280,55 +311,49 @@ function NotificationRow({
   const look = rowLook(item);
   const Icon = icons[look.icon];
   const unread = !item.read_at;
-  const open = item.needs_action && !item.resolved_at;
-  const resolved = resolvedLine(item, viewerId, now, timeFormat);
-  const classes = ["ni-row", unread ? "is-unread" : "", item.resolved_at ? "is-resolved" : "", wide ? "is-wide" : ""]
-    .filter(Boolean)
-    .join(" ");
+  const lines = rowLines(item, viewerId);
+  const lineId = useId();
+  const first = useRef<HTMLButtonElement>(null);
+  const second = useRef<HTMLParagraphElement>(null);
+  const [whole, setWhole] = useState<string>();
+  const classes = ["ni-row", unread ? "is-unread" : "", wide ? "is-wide" : ""].filter(Boolean).join(" ");
   return (
-    <li className={classes}>
-      <span className="ni-dot" aria-hidden />
-      <span className={`ni-tile ni-${look.tone}`} aria-hidden>
-        <Icon size={16} />
-      </span>
-      <div className="ni-row-text">
-        {/* The title's button covers the whole row (S-247): a tap anywhere on it opens the notice. */}
-        <button type="button" className="ni-row-title" onClick={onOpen} disabled={!item.url && !unread}>
-          {unread ? <span className="sr-only">Unread: </span> : null}
-          {item.title}
-        </button>
-        {item.body ? <p className="ni-row-body">{item.body}</p> : null}
-        <p className="ni-row-meta">
-          {open ? (
-            <>
-              <span className="ni-need">Needs action</span> ·{" "}
-            </>
-          ) : null}
-          {look.label} ·{" "}
-          <time dateTime={item.created_at} title={arrivalTitle(item.created_at, timeFormat)}>
-            {arrivalLabel(item.created_at, now, timeFormat)}
-          </time>
-        </p>
-        {resolved ? (
-          <span className="ni-chip">
-            <Check size={13} aria-hidden />
-            {resolved}
-          </span>
-        ) : null}
-        {open && item.url ? (
-          <div className="ni-row-actions">
-            <button type="button" className="nf-button secondary-button" onClick={onOpen}>
-              Review
-            </button>
-          </div>
-        ) : null}
-      </div>
-      <div className="ni-row-tools">
+    <li
+      className={classes}
+      onPointerEnter={() => setWhole(isCut(first.current) || isCut(second.current) ? [lines.first, lines.second].filter(Boolean).join("\n") : undefined)}
+    >
+      <div className="ni-swipe">
         {unread ? (
-          <button type="button" className="ni-icon" onClick={onRead} aria-label={`Mark as read: ${item.title}`} title="Mark as read">
-            <CircleCheck size={16} aria-hidden />
+          <button type="button" className="ni-dot" onClick={onRead} aria-label={`Mark as read: ${item.title}`} title="Mark as read" />
+        ) : (
+          <span className="ni-dot" aria-hidden />
+        )}
+        <span className={`ni-tile ni-${look.tone}`} aria-hidden>
+          <Icon size={16} />
+        </span>
+        <div className="ni-row-text">
+          {/* The title's button covers the whole row (S-247): a tap anywhere on it opens the notice. */}
+          <button
+            ref={first}
+            type="button"
+            className="ni-row-title"
+            onClick={onOpen}
+            disabled={!item.url && !unread}
+            aria-describedby={lines.second ? lineId : undefined}
+            title={whole}
+          >
+            {unread ? <span className="sr-only">Unread: </span> : null}
+            {lines.first}
           </button>
-        ) : null}
+          <div className="ni-row-line">
+            <p ref={second} id={lineId} className={lines.closed ? "ni-row-sub is-closed" : "ni-row-sub"}>
+              {lines.second}
+            </p>
+            <time dateTime={item.created_at} title={arrivalTitle(item.created_at, timeFormat)} onClick={onOpen}>
+              {arrivalLabel(item.created_at, now)}
+            </time>
+          </div>
+        </div>
       </div>
     </li>
   );

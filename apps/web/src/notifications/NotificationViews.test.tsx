@@ -36,6 +36,7 @@ const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("@newfork/ui", async (original) => ({ ...(await original<typeof import("@newfork/ui")>()), toast }));
 
 const { NotificationBell, NotificationsPage, NotificationsPanel } = await import("./NotificationViews");
+const { NotificationList } = await import("./NotificationList");
 
 /** Answers the API by path: the list per filter (an older page when a cursor is sent), counts, seen and read. */
 function answer(
@@ -196,11 +197,13 @@ describe("NotificationsPanel", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("offers Review on another open request", async () => {
+  // S-251: no Review button; the row itself opens what waits on the reader.
+  it("opens another open request from the row itself", async () => {
     answer({ all: feedPage([notice({ type: "people.onboarding_review_needed", area: "people", subject_type: "employee", url: "/app/employees" })]) });
     mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Review" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ }));
     expect(screen.getByTestId("where").textContent).toBe("/app/employees");
+    expect(screen.queryByRole("button", { name: "Review" })).toBeNull();
   });
 
   // Time off rebuild D3: the new time off's cards carry their own links; the person deciding reviews it in
@@ -209,7 +212,7 @@ describe("NotificationsPanel", () => {
     const asked = `/app/schedule/requests?type=time_off&request=${requestId}`;
     answer({ all: feedPage([notice({ subject_type: "time_off", url: asked })]) });
     const first = mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Review" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ }));
     expect(screen.getByTestId("where").textContent).toBe(asked);
     first.unmount();
     answer({ all: feedPage([notice({ type: "time_off.decided", topic: "time_off", needs_action: false, subject_type: "time_off",
@@ -310,23 +313,114 @@ describe("a notice opens in the person's view", () => {
   });
 });
 
-// D7: the old inline verdict went with the old time off; an open time off card is opened with Review, in
-// Requests → Time off's answer drawer, like every other open request.
+// D7: the old inline verdict went with the old time off; an open time off card opens Requests → Time off's
+// answer drawer, like every other open request. S-251: the row itself opens it; nothing in the row answers it.
 describe("an open time off card", () => {
-  it("offers Review, which opens the request where it is answered", async () => {
+  it("opens the request where it is answered from the row, with nothing in the row to answer it", async () => {
     answer({ all: feedPage([notice()]) });
     mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Review" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ }));
     expect(screen.getByTestId("where").textContent).toBe(`/app/schedule/requests?type=time_off&request=${requestId}`);
-    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Decline" })).toBeNull();
+    for (const name of ["Review", "Approve", "Decline"]) expect(screen.queryByRole("button", { name })).toBeNull();
   });
 
-  it("shows how a decided request closed instead of Review", async () => {
+  it("says on its second line how a decided request closed, without a time", async () => {
     answer({ all: feedPage([notice({ resolved_at: "2026-10-16T17:00:00Z", resolution: "approved", resolved_by: me })]) });
     mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
-    expect(await screen.findByText(/^You approved · /)).toBeTruthy();
+    const row = (await screen.findByRole("button", { name: /^(Unread: )?Time off request from Tom Becker$/ })).closest("li")!;
+    expect(row.querySelector(".ni-row-sub")!.textContent).toBe("You approved");
+    expect(row.textContent).not.toContain("Jury duty summons");
     expect(screen.queryByRole("button", { name: "Review" })).toBeNull();
+  });
+});
+
+const tom = /^(Unread: )?Time off request from Tom Becker$/;
+const rowOf = async (name: RegExp) => (await screen.findByRole("button", { name })).closest("li")!;
+
+// S-251 (variant A): every row is exactly two one-line lines, the same height, with no buttons in it but the
+// unread dot; the row opens the notice.
+describe("a row", () => {
+  // Five minutes after the fixture's notice came.
+  const at = new Date("2026-10-16T16:43:30Z");
+  const list = (items: Parameters<typeof feedPage>[0]) => {
+    answer({ all: feedPage(items) });
+    return mount(<NotificationList workspaceId={w} viewerId={me} filter="all" panelId="list" now={at} />);
+  };
+
+  it("is the title, then the body with the short time at its right", async () => {
+    list([notice()]);
+    const row = await rowOf(tom);
+    expect(row.querySelector(".ni-row-title")!.textContent).toBe("Unread: Time off request from Tom Becker");
+    expect(row.querySelector(".ni-row-sub")!.textContent).toBe("Wed, Oct 21 · Jury duty summons.");
+    const time = row.querySelector("time")!;
+    expect(time.textContent).toBe("5m");
+    expect(time.getAttribute("title")).toMatch(/^Friday, October 16, 2026 at \d{1,2}:38 (AM|PM) \S/);
+    // The old meta line ("Needs action · Approvals · 5m ago") is gone.
+    expect(row.textContent).not.toMatch(/Needs action|Approvals|ago/);
+  });
+
+  it("has no buttons but its unread dot and itself", async () => {
+    list([notice(), notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", title: "Walk-in cooler repair on Tuesday", needs_action: false, read_at: "2026-10-16T16:40:00Z" })]);
+    const unread = await rowOf(tom);
+    expect(within(unread).getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? button.textContent)).toEqual([
+      "Mark as read: Time off request from Tom Becker",
+      "Unread: Time off request from Tom Becker",
+    ]);
+    const read = await rowOf(/^Walk-in cooler repair on Tuesday$/);
+    expect(within(read).getAllByRole("button").map((button) => button.textContent)).toEqual(["Walk-in cooler repair on Tuesday"]);
+    expect(read.querySelector(".ni-dot")!.tagName).toBe("SPAN");
+  });
+
+  it("reads it with the unread dot, without opening it", async () => {
+    list([notice()]);
+    fireEvent.click(await screen.findByRole("button", { name: "Mark as read: Time off request from Tom Becker" }));
+    await waitFor(() => expect(calls("/read")).toHaveLength(1));
+    expect(JSON.parse(String((calls("/read")[0]![2] as RequestInit).body))).toEqual({ ids: [notice().id] });
+    expect(screen.getByTestId("where").textContent).toBe("/app/workspace");
+  });
+
+  it("keeps an empty second line when the notice has no body", async () => {
+    list([notice({ body: null })]);
+    const row = await rowOf(tom);
+    expect(row.querySelector(".ni-row-sub")!.textContent).toBe("");
+    expect(row.querySelector(".ni-row-title")!.getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("keeps its arrival time on the right once the card closed", async () => {
+    list([notice({ created_at: "2026-10-16T13:40:00Z", resolved_at: "2026-10-16T16:42:00Z", resolution: "approved", resolved_by: "a8200000-0000-4000-8000-000000000067", resolved_by_name: "Deniz P." })]);
+    const row = await rowOf(tom);
+    expect(row.querySelector(".ni-row-sub")!.textContent).toBe("Approved by Deniz P.");
+    expect(row.querySelector("time")!.textContent).toBe("3h");
+  });
+
+  it("reads its second line to a screen reader with the row, and shows both lines whole on hover when one is cut", async () => {
+    list([notice()]);
+    const row = await rowOf(tom);
+    const title = row.querySelector<HTMLButtonElement>(".ni-row-title")!;
+    expect(document.getElementById(title.getAttribute("aria-describedby")!)!.textContent).toBe("Wed, Oct 21 · Jury duty summons.");
+    fireEvent.pointerEnter(row);
+    expect(title.getAttribute("title")).toBeNull();
+    const line = row.querySelector(".ni-row-sub")!;
+    Object.defineProperty(line, "scrollWidth", { configurable: true, value: 420 });
+    Object.defineProperty(line, "clientWidth", { configurable: true, value: 300 });
+    fireEvent.pointerLeave(row);
+    fireEvent.pointerEnter(row);
+    expect(title.getAttribute("title")).toBe("Time off request from Tom Becker\nWed, Oct 21 · Jury duty summons.");
+  });
+
+  it("draws its tile by what it is about", async () => {
+    list([
+      notice(),
+      notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", type: "shift_changes.cover_asked", area: "shift_changes", topic: "shift_changes",
+        title: "Ali P. asks you to take a shift", data: { kind: "cover", audience: "direct" } }),
+      notice({ id: "a8200000-0000-4000-8000-000000000066", type: "shift_changes.approval_needed", area: "shift_changes", topic: "approvals",
+        title: "Can K. wants to cover for Ali P.", data: { kind: "cover", audience: "direct" } }),
+    ]);
+    const tile = async (name: RegExp) => (await rowOf(name)).querySelector(".ni-tile")!;
+    expect((await tile(tom)).className).toContain("ni-amber");
+    expect((await tile(tom)).querySelector("svg")!.getAttribute("class")).toContain("lucide-calendar-x");
+    expect((await tile(/^(Unread: )?Ali P\. asks you to take a shift$/)).querySelector("svg")!.getAttribute("class")).toContain("lucide-circle-help");
+    expect((await tile(/^(Unread: )?Can K\. wants to cover for Ali P\.$/)).querySelector("svg")!.getAttribute("class")).toContain("steps-in");
   });
 });
 
