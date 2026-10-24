@@ -48,6 +48,7 @@ import { EmployeeDrawer } from "../employees/EmployeeDrawer";
 import { ScheduleFilterCommandStrip } from "../schedule/components/ScheduleFilterCommandStrip";
 import { ScheduleSearchEmpty } from "../schedule/components/ScheduleSearch";
 import { scheduleSearchTerm, searchScheduleModel } from "../schedule/lib/scheduleSearch";
+import { useSetScheduleSearchQuery } from "../schedule/hooks/useScheduleSearchQuery";
 import {
   ScheduleCellContextMenu,
   ScheduleContextMenu,
@@ -287,6 +288,7 @@ export function SchedulePage({
   const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useSearchParams();
+  const setSearchQuery = useSetScheduleSearchQuery();
   const { activeDraftId, isEditMode, setMode: setScheduleMode } = useScheduleMode();
   const today = useScheduleToday(context?.workspace.id ?? null);
   const selectedDate = validDate(search.get("date")) ?? today;
@@ -2251,12 +2253,6 @@ export function SchedulePage({
   const searchMatchesOutsideFilters = searchFindsNoOne &&
     searchScheduleModel(filterScheduleModel(sortedModel, new URLSearchParams()), searchTerm, { day: searchDay })
       .model.employees.length > 0;
-  const setSearchQuery = (value: string) => {
-    setSearch(
-      (current) => withScheduleSearchValue(current, "q", value.trim() ? value : null),
-      { replace: true },
-    );
-  };
   const showAllFilters = () => {
     const next = new URLSearchParams(search);
     for (const param of ["locations", "shiftTypes", "jobs", "employees"]) next.delete(param);
