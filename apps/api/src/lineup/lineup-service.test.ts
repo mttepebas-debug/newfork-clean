@@ -85,6 +85,18 @@ describe("lineup service", () => {
     });
   });
 
+  it("passes on the published lineups at her locations she is not on, with no ticket and no acknowledgement", async () => {
+    const result = await lineupService(client(myLineups)).myLineups({ ...actor, date: "2028-09-11" });
+    expect(result.others).toEqual(myLineups.others);
+    expect(result.others[0]).not.toHaveProperty("mine");
+    expect(result.others[0]).not.toHaveProperty("acknowledged_at");
+  });
+
+  it("reads an older answer with no others as none", async () => {
+    const { others: _others, ...older } = myLineups;
+    expect((await lineupService(client(older)).myLineups({ ...actor, date: "2028-09-11" })).others).toEqual([]);
+  });
+
   it("reads the manager's day: every reachable location unless she chose some", async () => {
     const rpc = client(lineupDay);
     expect(await lineupService(rpc).day({ ...actor, date: "2028-09-11" })).toEqual(lineupDay);
